@@ -1,0 +1,282 @@
+/* ===== Excel Shell 레이아웃 ===== */
+.shell {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  flex-direction: column;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  background: white;
+}
+
+/* ── 타이틀바 ── */
+.titlebar {
+  background: #217346;
+  color: white;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 36px;
+  padding: 0 0 0 8px;
+  flex-shrink: 0;
+}
+
+.titleLeft  { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.titleCenter { text-align: center; font-size: 13px; }
+.titleRight { display: flex; justify-content: flex-end; }
+
+.logo {
+  background: white;
+  color: #217346;
+  font-weight: bold;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  line-height: 1.3;
+}
+
+.winBtns { display: flex; }
+.winBtns span {
+  width: 48px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+}
+.winBtns span:hover { background: rgba(255,255,255,0.2); }
+.closeBtn:hover { background: #e81123 !important; }
+
+/* ── 리본 탭 ── */
+.ribbonTabs {
+  background: #217346;
+  display: flex;
+  padding: 0 4px;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.ribbonTabs::-webkit-scrollbar { height: 0; }
+
+.rtab {
+  color: rgba(255,255,255,0.85);
+  padding: 5px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 3px 3px 0 0;
+  white-space: nowrap;
+  user-select: none;
+}
+.rtab:hover { color: white; background: rgba(255,255,255,0.1); }
+.rtabActive  { background: white; color: #333; }
+.rtabDropdown { background: rgba(255,255,255,0.15); color: white; }
+
+/* ── 홈 드롭다운 ── */
+.dropdown {
+  position: fixed;
+  left: 0;
+  background: white;
+  border: 1px solid #c0c0c0;
+  border-top: 3px solid #217346;
+  box-shadow: 2px 4px 12px rgba(0,0,0,0.18);
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 480px;
+}
+
+.dropTitle {
+  background: #217346;
+  color: white;
+  font-weight: bold;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.dropGame {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.dropGame:last-child { border-bottom: none; }
+
+.dropIcon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+.dropName { font-size: 13px; font-weight: bold; color: #222; min-width: 68px; }
+.dropBtns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.dropBtn {
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #c0c0c0;
+  border-radius: 3px;
+  background: white;
+  color: #333;
+  white-space: nowrap;
+}
+.dropBtn:hover:not(:disabled) { background: #e8f4fd; border-color: #217346; color: #217346; }
+.dropBtn:disabled { opacity: 0.5; cursor: default; }
+.dropBtnSame    { background: #e8f5e9; color: #217346; border-color: #a5d6a7; }
+.dropBtnCurrent { background: #217346; color: white; border-color: #217346; cursor: default; }
+
+/* ── 리본 ── */
+.ribbon {
+  background: white;
+  border-bottom: 1px solid #c0c0c0;
+  padding: 4px 8px;
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  min-height: 64px;
+  align-items: stretch;
+  overflow-x: auto;
+}
+.ribbon::-webkit-scrollbar { height: 0; }
+
+.rGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 8px;
+  border-right: 1px solid #e0e0e0;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.rGroupBtns {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  align-items: center;
+}
+
+.rGroupLabel {
+  font-size: 11px;
+  color: #666;
+  margin-top: auto;
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
+.rBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 2px;
+  font-size: 11px;
+  color: #333;
+  min-width: 30px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.rBtn:hover { background: #e8f4fd; border-color: #c8dff5; }
+
+.rBtnIcon { font-size: 16px; line-height: 1.3; }
+
+/* ── 수식바 ── */
+.formulaBar {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #c0c0c0;
+  height: 30px;
+  background: white;
+  flex-shrink: 0;
+}
+
+.fbCell {
+  width: 80px;
+  min-width: 80px;
+  padding: 0 8px;
+  font-size: 13px;
+  border-right: 1px solid #c0c0c0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.fbCell:hover { background: #f5f5f5; }
+
+.fbFx {
+  padding: 0 8px;
+  color: #888;
+  font-size: 13px;
+  border-right: 1px solid #c0c0c0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.fbInput {
+  padding: 0 10px;
+  font-size: 13px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  color: #333;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* ── 시트 영역 ── */
+.sheetArea {
+  flex: 1;
+  overflow: auto;
+  background: white;
+  scrollbar-width: thin;
+  scrollbar-color: #b0b0b0 #f0f0f0;
+
+  /* 스프레드시트 배경 격자 */
+  background-image:
+    linear-gradient(to right, #d0d0d0 1px, transparent 1px),
+    linear-gradient(to bottom, #d0d0d0 1px, transparent 1px);
+  background-size: 30px 30px;
+  background-attachment: local;
+}
+
+/* 게임 컨텐츠를 격자 위에 띄움 */
+.sheetArea > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── 상태바 ── */
+.statusBar {
+  background: #217346;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  height: 26px;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.statusLeft  { display: flex; align-items: center; gap: 14px; }
+.statusRight { display: flex; align-items: center; gap: 14px; font-size: 12px; opacity: 0.85; }
+
+.statusItem { color: rgba(255,255,255,0.9); }
+.statusItem strong { color: white; }
+
+/* ── 반응형 ── */
+@media (max-width: 960px) {
+  .rGroup:nth-child(2),
+  .rGroup:nth-child(4) { display: none; }
+}
+
+@media (max-width: 640px) {
+  .titlebar { grid-template-columns: auto 1fr auto; height: 32px; }
+  .titleLeft > span:not(.logo) { display: none; }
+  .winBtns span { width: 40px; height: 32px; }
+  .statusRight { display: none; }
+}
+
+@media (max-width: 480px) {
+  .rGroup:not(:last-child) { display: none; }
+}

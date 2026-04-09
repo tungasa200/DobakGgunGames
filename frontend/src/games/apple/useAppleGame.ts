@@ -1,0 +1,98 @@
+import { useCallback, useReducer, useRef } from 'react';
+
+export const TIME_LIMIT = 120;
+
+const APPLE_WEIGHTS = [5, 5, 4, 4, 3, 3, 2, 2, 1]; // 1~9의 가중치
+const WEIGHT_TOTAL = APPLE_WEIGHTS.reduce((a, b) => a + b, 0);
+
+function randomApple(): number {
+  let r = Math.random() * WEIGHT_TOTAL;
+  for (let i = 0; i < APPLE_WEIGHTS.length; i++) {
+    r -= APPLE_WEIGHTS[i];
+    if (r <= 0) return i + 1;
+  }
+  return 9;
+}
+
+export type Apple = number | null;
+
+interface State {
+  apples: Apple[][];
+  rows: number;
+  cols: number;
+  score: number;
+  timeLeft: number;
+  status: 'idle' | 'playing' | 'ended';
+}
+
+type Action =
+  | { type: 'START'; rows: number; cols: number }
+  | { type: 'TICK' }
+  | { type: 'REMOVE'; coords: { r: number; c: number }[] }
+  | { type: 'END' };
+
+function makeApples(rows: number, cols: number): Apple[][] {
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => randomApple())
+  );
+}
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'START':
+      return {
+        apples: makeApples(action.rows, action.cols),
+        rows: action.rows,
+        cols: action.cols,
+        score: 0,
+        timeLeft: TIME_LIMIT,
+        status: 'playing',
+      };
+    case 'TICK':
+      if (state.status !== 'playing') return state;
+      return { ...state, timeLeft: state.timeLeft - 1 };
+    case 'REMOVE': {
+      const next = state.apples.map((row) => [...row]);
+      action.coords.forEach(({ r, c }) => { next[r][c] = null; });
+      return { ...state, apples: next, score: state.score + action.coords.length };
+    }
+    case 'END':
+      return { ...state, status: 'ended' };
+    default:
+      return state;
+  }
+}
+
+export function useAppleGame() {
+  const [state, dispatch] = useReducer(reducer, {
+    apples: [],
+    rows: 10,
+    cols: 17,
+    score: 0,
+    timeLeft: TIME_LIMIT,
+    status: 'idle',
+  });
+
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const start = useCallback((rows: number, cols: number) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    dispatch({ type: 'START', rows, cols });
+    timerRef.current = setInterval(() => {
+      dispatch({ type: 'TICK' });
+    }, 1000);
+  }, []);
+
+  // END 처리는 컴포넌트에서 timeLeft === 0 감지 후 호출
+  const end = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    dispatch({ type: 'END' });
+  }, []);
+
+  const removeApples = useCallback((coords: { r: number; c: number }[]) => {
+    dispatch({ type: 'REMOVE', coords });
+  }, []);
+
+  return { state, start, end, removeApples };
+}

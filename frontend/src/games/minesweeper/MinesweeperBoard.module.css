@@ -1,0 +1,189 @@
+.wrap {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.backLink { color: #1e3a6e; text-decoration: none; font-size: 0.9rem; }
+.title    { font-size: 1.4rem; font-weight: 700; color: #1e3a6e; margin: 0; }
+
+/* 난이도 */
+.diffRow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+.diffBtn {
+  padding: 6px 14px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.diffActive { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
+
+.resetBtn {
+  padding: 6px 14px;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-left: auto;
+}
+
+/* 상태 바 */
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #f0f4ff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.mineCount { font-weight: 700; font-size: 1rem; min-width: 48px; }
+.status    { flex: 1; text-align: center; font-weight: 600; color: #1e3a6e; }
+.timer     { color: #555; font-size: 0.9rem; }
+.win       { color: #27ae60; }
+.lose      { color: #c0392b; }
+
+/* 보드 */
+.boardWrapper { overflow-x: auto; margin-bottom: 24px; }
+
+.board {
+  display: inline-grid;
+  gap: 1px;
+  background: #aaa;
+  border: 2px solid #888;
+  user-select: none;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #fff #888 #888 #fff;
+  cursor: pointer;
+  box-sizing: border-box;
+  font-weight: bold;
+  font-size: 14px;
+  touch-action: none;
+}
+
+.cell:active { border-color: #888 #888 #888 #888; background: #bbb; }
+
+.revealed {
+  background: #d0d0d0;
+  border: 1px solid #aaa;
+  border-color: #aaa;
+  cursor: default;
+}
+
+.flag     { font-size: 14px; }
+.question { font-size: 12px; font-weight: bold; color: #555; }
+
+/* 테이블 */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.table th, .table td {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.table th { background: #f0f4ff; font-weight: 600; color: #1e3a6e; }
+.placeholder { color: #aaa; font-style: italic; }
+.hint { color: #c0392b; font-size: 0.85rem; margin: 4px 0 8px; }
+
+/* 랭킹 */
+.rankSection { margin-top: 8px; }
+
+.rankTabs { display: flex; gap: 4px; margin-bottom: 8px; }
+
+.rankTab {
+  padding: 4px 12px;
+  border: 1px solid #bbb;
+  border-radius: 4px 4px 0 0;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.rankTabActive { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
+
+/* 모달 */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px 28px;
+  min-width: 280px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.modal h3 { margin: 0 0 8px; font-size: 1.4rem; }
+.modal p  { color: #555; margin: 0 0 16px; }
+
+.nameInput {
+  width: 100%;
+  padding: 10px;
+  font-size: 1rem;
+  border: 2px solid #aaa;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.nameInput:focus { outline: none; border-color: #1e3a6e; }
+
+.modalBtns { display: flex; gap: 8px; justify-content: center; }
+
+.primaryBtn {
+  padding: 10px 20px;
+  background: #1e3a6e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.primaryBtn:disabled { opacity: 0.4; cursor: default; }
+
+.secondaryBtn {
+  padding: 10px 20px;
+  border: 1px solid #999;
+  border-radius: 6px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* 엑셀 모드 */
+.excelMode { font-family: 'Calibri', 'Segoe UI', sans-serif; }

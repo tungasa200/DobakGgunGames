@@ -1,0 +1,344 @@
+.wrap {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px 16px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.backLink { color: #6c2fa0; text-decoration: none; font-size: 0.9rem; }
+.title    { font-size: 1.4rem; font-weight: 700; color: #2c3e50; margin: 0; }
+
+/* 난이도 */
+.diffRow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+
+.diffBtn {
+  padding: 7px 16px;
+  border: 2px solid #8e44ad;
+  border-radius: 5px;
+  background: #fff;
+  color: #8e44ad;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+}
+.diffBtn:hover { background: #8e44ad; color: #fff; }
+.diffActive    { background: #8e44ad; color: #fff; }
+
+/* 정보 바 */
+.infoBar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  justify-content: center;
+}
+
+.infoItem {
+  text-align: center;
+  background: #fff;
+  border-radius: 8px;
+  padding: 5px 14px;
+  border: 1px solid #ddd;
+  min-width: 64px;
+}
+.infoLabel { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.infoValue { font-size: 1.3rem; font-weight: bold; color: #2c3e50; }
+
+/* 상태 */
+.status {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #2c3e50;
+  min-height: 1.5em;
+  margin: 4px 0 8px;
+}
+.statusOver { color: #e74c3c; }
+
+/* 게임 영역 */
+.gameArea {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+/* 사이드 패널 */
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.sideBox {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.sideTitle {
+  font-size: 0.7rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+
+.miniCanvas {
+  border: 1px solid #333;
+  border-radius: 3px;
+  display: block;
+  margin: 0 auto;
+  width: 80px;
+  height: 80px;
+}
+
+.hintsBox { font-size: 0; } /* hide on mobile via media query */
+.hints {
+  font-size: 0.72rem;
+  color: #555;
+  text-align: left;
+  line-height: 2;
+}
+
+/* 보드 */
+.board {
+  border: 2px solid #333;
+  border-radius: 2px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* 버튼 */
+.controls { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+
+.startBtn {
+  padding: 10px 22px;
+  background: #8e44ad;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.startBtn:hover { background: #7d3c98; }
+
+.pauseBtn {
+  padding: 10px 22px;
+  background: #f39c12;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pauseBtn:hover:not(:disabled) { background: #d68910; }
+.pauseBtn:disabled { background: #95a5a6; cursor: default; }
+
+/* 모바일 컨트롤 — 터치 기기에서만 표시 */
+.mobileControls { display: none; margin-top: 10px; }
+.mobileRow { display: flex; gap: 8px; justify-content: center; margin: 4px 0; }
+.mobileBtn {
+  width: 56px;
+  height: 56px;
+  font-size: 1.5em;
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  background: #2c3e50;
+  color: #fff;
+  touch-action: manipulation;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mobileBtn:active { background: #1a252f; transform: scale(0.95); }
+.mobileDrop { width: 130px; font-size: 0.85em; }
+
+@media (hover: none) and (pointer: coarse) {
+  .mobileControls { display: block; }
+  .hintsBox { display: none; }
+}
+
+/* 랭킹 */
+.rankSection { margin-top: 24px; }
+.rankTitle   { text-align: center; margin: 0 0 10px; color: #2c3e50; font-size: 1rem; }
+
+.alltimeBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #f3e9ff, #e8d5f5);
+  border: 1px solid #c39bd3;
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.atLabel   { font-weight: bold; color: #7b2ff7; white-space: nowrap; }
+.atContent { color: #4a235a; }
+
+.rankTabs { display: flex; gap: 4px; margin-bottom: 6px; }
+
+.rankTab {
+  flex: 1;
+  padding: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 2px solid #8e44ad;
+  border-radius: 5px;
+  background: #fff;
+  color: #8e44ad;
+  font-weight: bold;
+  transition: all 0.15s;
+}
+.rankTab:hover     { background: #8e44ad; color: #fff; }
+.rankTabActive     { background: #8e44ad; color: #fff; }
+
+/* 테이블 */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+.table th {
+  background: #8e44ad;
+  color: #fff;
+  padding: 6px 10px;
+}
+.table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+.table tr:nth-child(even) td { background: #f9f9f9; }
+.table tr:first-child td     { color: #e67e22; font-weight: bold; }
+
+.placeholder { color: #aaa; font-style: italic; text-align: center; }
+
+/* 룰 패널 */
+.rulesPanel {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: #333;
+}
+.rulesPanel h4 { margin: 0 0 6px; color: #2c3e50; font-size: 0.9rem; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+.rulesPanel ul { margin: 2px 0 10px; padding-left: 18px; }
+.rulesPanel li { margin-bottom: 2px; }
+
+/* 모달 */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 28px 20px;
+  text-align: center;
+  width: 90%;
+  max-width: 340px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.modal h3 { margin: 0 0 6px; font-size: 1.4rem; color: #8e44ad; }
+.modal p  { color: #555; margin: 0 0 16px; }
+
+.nameInput {
+  padding: 8px 12px;
+  font-size: 1rem;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+.nameInput:focus { outline: none; border-color: #8e44ad; }
+
+.modalBtns { display: flex; gap: 8px; justify-content: center; }
+
+.primaryBtn {
+  padding: 10px 22px;
+  background: #8e44ad;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+.primaryBtn:hover    { background: #7d3c98; }
+.primaryBtn:disabled { opacity: 0.4; cursor: default; }
+
+.secondaryBtn {
+  padding: 10px 22px;
+  background: #95a5a6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.secondaryBtn:hover { background: #7f8c8d; }
+
+.hint { color: #c0392b; font-size: 0.85rem; margin: 4px 0 8px; }
+
+/* 엑셀 모드 */
+.excelMode {
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.excelMode .title     { color: #217346; }
+.excelMode .backLink  { color: #217346; }
+.excelMode .diffBtn   { border-color: #217346; color: #217346; }
+.excelMode .diffBtn:hover { background: #217346; color: #fff; }
+.excelMode .diffActive    { background: #217346; color: #fff; border-color: #217346; }
+.excelMode .startBtn  { background: #217346; }
+.excelMode .startBtn:hover { background: #1a6636; }
+.excelMode .pauseBtn  { background: #217346; }
+.excelMode .pauseBtn:hover:not(:disabled) { background: #1a6636; }
+.excelMode .infoBar   { background: transparent; }
+.excelMode .infoItem  { border-color: #d0d0d0; border-radius: 0; }
+.excelMode .infoValue { color: #217346; font-family: 'Calibri', sans-serif; }
+.excelMode .board     { border-color: #d0d0d0; }
+.excelMode .miniCanvas { border-color: #d0d0d0; }
+.excelMode .rankTab    { border-color: #217346; color: #217346; }
+.excelMode .rankTab:hover { background: #217346; color: #fff; }
+.excelMode .rankTabActive { background: #217346; color: #fff; border-color: #217346; }
+.excelMode .table th  { background: #217346; }
+.excelMode .modal h3  { color: #217346; }
+.excelMode .nameInput:focus { border-color: #217346; }
+.excelMode .primaryBtn { background: #217346; }
+.excelMode .primaryBtn:hover { background: #1a6636; }
+.excelMode .alltimeBanner { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-color: #a5d6a7; }
+.excelMode .atLabel   { color: #217346; }
+.excelMode .atContent { color: #1b5e20; }

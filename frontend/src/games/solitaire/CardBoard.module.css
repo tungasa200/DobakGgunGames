@@ -1,0 +1,283 @@
+.wrap {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px 12px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.backLink { color: #1e3a6e; text-decoration: none; font-size: 0.9rem; }
+.title    { font-size: 1.4rem; font-weight: 700; color: #1e3a6e; margin: 0; }
+
+/* 컨트롤 */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.drawBtns { display: flex; gap: 4px; }
+
+.diffBtn {
+  padding: 6px 14px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.diffActive { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
+
+.startBtn {
+  padding: 6px 14px;
+  background: #27ae60;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.undoBtn {
+  padding: 6px 14px;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.undoBtn:disabled { opacity: 0.35; cursor: default; }
+
+/* 상태 바 */
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #f0f4ff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  min-height: 32px;
+}
+
+.statusText { flex: 1; font-weight: 600; color: #27ae60; }
+.timer      { color: #555; font-size: 0.9rem; }
+.moves      { color: #555; font-size: 0.9rem; }
+
+/* 보드 */
+.board {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.zone {
+  position: relative;
+  border: 2px dashed #bbb;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.04);
+  box-sizing: border-box;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fHint {
+  font-size: 1.4rem;
+  color: #ccc;
+  pointer-events: none;
+  user-select: none;
+}
+
+.stockEmpty {
+  font-size: 1.6rem;
+  color: #bbb;
+  user-select: none;
+}
+
+.tableauRow {
+  display: flex;
+  align-items: flex-start;
+}
+
+.tableauCol {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 2px dashed #bbb;
+  background: rgba(0,0,0,0.03);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+/* 카드 */
+.card {
+  position: relative;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+  background: #fff;
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2px 3px;
+}
+
+.card:active { filter: brightness(0.93); }
+
+.cardBack {
+  border-radius: 5px;
+  border: 1px solid #999;
+  background: repeating-linear-gradient(
+    135deg,
+    #1a3a8a 0px, #1a3a8a 4px,
+    #2050c0 4px, #2050c0 8px
+  );
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.red   { color: #cc0000; }
+.black { color: #111; }
+
+.selected {
+  outline: 2px solid #f0a000;
+  outline-offset: -2px;
+  filter: brightness(0.92);
+}
+
+.cardTl {
+  font-weight: bold;
+  line-height: 1.1;
+  text-align: left;
+}
+
+.cardCenter {
+  text-align: center;
+  font-size: 1.3em;
+}
+
+.cardBr {
+  font-weight: bold;
+  line-height: 1.1;
+  text-align: right;
+  transform: rotate(180deg);
+}
+
+/* 랭킹 */
+.rankSection { margin-top: 8px; }
+
+.rankTabs { display: flex; gap: 4px; margin-bottom: 8px; }
+
+.rankTab {
+  padding: 4px 12px;
+  border: 1px solid #bbb;
+  border-radius: 4px 4px 0 0;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.rankTabActive { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.table th, .table td {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.table th { background: #f0f4ff; font-weight: 600; color: #1e3a6e; }
+.placeholder { color: #aaa; font-style: italic; }
+.hint { color: #c0392b; font-size: 0.85rem; margin: 4px 0 8px; }
+
+/* 모달 */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px 28px;
+  min-width: 280px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.modal h3 { margin: 0 0 8px; font-size: 1.4rem; }
+.modal p  { color: #555; margin: 0 0 16px; }
+
+.nameInput {
+  width: 100%;
+  padding: 10px;
+  font-size: 1rem;
+  border: 2px solid #aaa;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.nameInput:focus { outline: none; border-color: #1e3a6e; }
+
+.modalBtns { display: flex; gap: 8px; justify-content: center; }
+
+.primaryBtn {
+  padding: 10px 20px;
+  background: #1e3a6e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.primaryBtn:disabled { opacity: 0.4; cursor: default; }
+
+.secondaryBtn {
+  padding: 10px 20px;
+  border: 1px solid #999;
+  border-radius: 6px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* 엑셀 모드 */
+.excelMode { font-family: 'Calibri', 'Segoe UI', sans-serif; }
