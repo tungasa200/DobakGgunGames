@@ -1,0 +1,185 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { rankingsApi, type RankingEntry } from '../api/rankings';
+import styles from './HomePage.module.css';
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+interface GameConfig {
+  key: string;
+  name: string;
+  icon: string;
+  levels: { value: string; label: string }[];
+  defaultLevel: string;
+  fmt: (r: RankingEntry) => string;
+}
+
+const GAMES: GameConfig[] = [
+  {
+    key: 'minesweeper',
+    name: '지뢰찾기',
+    icon: '💣',
+    levels: [
+      { value: 'beginner', label: '초급' },
+      { value: 'intermediate', label: '중급' },
+      { value: 'expert', label: '고급' },
+    ],
+    defaultLevel: 'beginner',
+    fmt: (r) => `${r.time!.toFixed(2)}초`,
+  },
+  {
+    key: 'baseball',
+    name: '숫자야구',
+    icon: '⚾',
+    levels: [
+      { value: 'easy', label: '쉬움' },
+      { value: 'normal', label: '보통' },
+      { value: 'hard', label: '어려움' },
+    ],
+    defaultLevel: 'easy',
+    fmt: (r) => `${r.attempts}번`,
+  },
+  {
+    key: 'tetris',
+    name: '테트리스',
+    icon: '🟦',
+    levels: [
+      { value: 'easy', label: '쉬움' },
+      { value: 'normal', label: '보통' },
+      { value: 'hard', label: '어려움' },
+    ],
+    defaultLevel: 'normal',
+    fmt: (r) => `${r.score!.toLocaleString()}점`,
+  },
+  {
+    key: 'apple',
+    name: '사과게임',
+    icon: '🍎',
+    levels: [{ value: 'normal', label: '랭킹' }],
+    defaultLevel: 'normal',
+    fmt: (r) => `${r.score!.toLocaleString()}점`,
+  },
+  {
+    key: 'solitaire',
+    name: '솔리테어',
+    icon: '🃏',
+    levels: [
+      { value: 'draw1', label: '드로우1' },
+      { value: 'draw3', label: '드로우3' },
+    ],
+    defaultLevel: 'draw1',
+    fmt: (r) => {
+      const t = Math.round(r.time!);
+      const m = Math.floor(t / 60);
+      const s = t % 60;
+      return m > 0 ? `${m}분 ${String(s).padStart(2, '0')}초` : `${t}초`;
+    },
+  },
+];
+
+type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
+
+function GameCard({ game, rankings, activeLevel, onLevelChange }: {
+  game: GameConfig;
+  rankings: Record<string, RankingEntry[] | 'error'>;
+  activeLevel: string;
+  onLevelChange: (level: string) => void;
+}) {
+  const data = rankings[activeLevel];
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardHeader}>
+        <span className={styles.icon}>{game.icon}</span>
+        <div className={styles.title}>
+          <div className={styles.nameKo}>{game.name}</div>
+        </div>
+        <div className={styles.btns}>
+          <Link className={`${styles.btn} ${styles.btnNormal}`} to={`/${game.key}`}>기본</Link>
+          <Link className={`${styles.btn} ${styles.btnExcel}`} to={`/${game.key}/excel`}>📊 엑셀</Link>
+        </div>
+      </div>
+
+      <div className={styles.cardRanking}>
+        {game.levels.length > 1 && (
+          <div className={styles.tabs}>
+            {game.levels.map((lv) => (
+              <button
+                key={lv.value}
+                className={`${styles.tab} ${activeLevel === lv.value ? styles.tabActive : ''}`}
+                onClick={() => onLevelChange(lv.value)}
+              >
+                {lv.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className={styles.rankBody}>
+          {!data ? (
+            <p className={styles.placeholder}>불러오는 중...</p>
+          ) : data === 'error' ? (
+            <p className={styles.placeholder}>불러오기 실패</p>
+          ) : data.length === 0 ? (
+            <p className={styles.placeholder}>기록 없음</p>
+          ) : (
+            data.slice(0, 3).map((entry, i) => (
+              <div key={entry.id} className={styles.rankRow}>
+                <span className={styles.medal}>{MEDALS[i]}</span>
+                <span className={styles.rankName}>{entry.name}</span>
+                <span className={styles.rankScore}>{game.fmt(entry)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function HomePage() {
+  const [cache, setCache] = useState<RankCache>({});
+  const [activeLevels, setActiveLevels] = useState<Record<string, string>>(
+    Object.fromEntries(GAMES.map((g) => [g.key, g.defaultLevel]))
+  );
+
+  useEffect(() => {
+    GAMES.forEach((game) => {
+      game.levels.forEach(({ value: level }) => {
+        rankingsApi
+          .getWeekly(game.key, level)
+          .then((data) =>
+            setCache((prev) => ({
+              ...prev,
+              [game.key]: { ...(prev[game.key] ?? {}), [level]: data },
+            }))
+          )
+          .catch(() =>
+            setCache((prev) => ({
+              ...prev,
+              [game.key]: { ...(prev[game.key] ?? {}), [level]: 'error' },
+            }))
+          );
+      });
+    });
+  }, []);
+
+  return (
+    <div className={styles.page}>
+      <h1 className={styles.heading}>🎮 DobakGgun</h1>
+      <div className={styles.grid}>
+        {GAMES.map((game) => (
+          <GameCard
+            key={game.key}
+            game={game}
+            rankings={cache[game.key] ?? {}}
+            activeLevel={activeLevels[game.key]}
+            onLevelChange={(lv) =>
+              setActiveLevels((prev) => ({ ...prev, [game.key]: lv }))
+            }
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
