@@ -1,80 +1,83 @@
+/* ===== 일반 모드 — 원본 solitaire/index.html 완전 동일 ===== */
+/* 배경: GamePage에서 #0b5e20 (진한 초록) 고정 */
 .wrap {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px 12px;
-  font-family: 'Segoe UI', sans-serif;
-}
-
-.header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 14px;
+  width: 100%;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  color: white;
+  user-select: none;
 }
 
-.backLink { color: #1e3a6e; text-decoration: none; font-size: 0.9rem; }
-.title    { font-size: 1.4rem; font-weight: 700; color: #1e3a6e; margin: 0; }
-
-/* 컨트롤 */
+/* 드로우 모드 버튼 — 원본: .draw-btn { border: 2px solid #3498db } */
 .controls {
   display: flex;
-  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
   margin-bottom: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-.drawBtns { display: flex; gap: 4px; }
+.drawBtns { display: flex; gap: 8px; }
 
 .diffBtn {
-  padding: 6px 14px;
-  border: 1px solid #bbb;
-  border-radius: 4px;
-  background: #fff;
+  padding: 8px 16px;
+  font-size: 0.95em;
   cursor: pointer;
-  font-size: 0.85rem;
+  border: 2px solid #3498db;
+  border-radius: 5px;
+  background-color: white;
+  color: #3498db;
+  font-weight: bold;
+  transition: all 0.15s;
+  touch-action: manipulation;
 }
+.diffBtn:hover { background-color: #3498db; color: white; }
+.diffActive    { background-color: #3498db; color: white; }
 
-.diffActive { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
-
+/* 새 게임 버튼 — 원본: #new-game-btn { background-color: white; color: #333; } */
 .startBtn {
-  padding: 6px 14px;
-  background: #27ae60;
-  color: #fff;
+  padding: 8px 16px;
+  background-color: white;
+  color: #333;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 0.95em;
   cursor: pointer;
-  font-size: 0.85rem;
+  touch-action: manipulation;
 }
+.startBtn:hover { background-color: #f0f0f0; }
 
+/* 되돌리기 버튼 — 원본: #undo-btn { background-color: #f39c12 } */
 .undoBtn {
-  padding: 6px 14px;
-  border: 1px solid #999;
-  border-radius: 4px;
-  background: #f5f5f5;
+  padding: 8px 16px;
+  background-color: #f39c12;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 0.95em;
   cursor: pointer;
-  font-size: 0.85rem;
+  touch-action: manipulation;
 }
+.undoBtn:disabled { background-color: #95a5a6; cursor: default; opacity: 0.7; }
+.undoBtn:not(:disabled):hover { background-color: #e67e22; }
 
-.undoBtn:disabled { opacity: 0.35; cursor: default; }
-
-/* 상태 바 */
+/* 상태 바 — 원본: #info-bar { display: flex; gap: 24px; } */
 .statusBar {
   display: flex;
+  gap: 24px;
   align-items: center;
-  gap: 16px;
-  background: #f0f4ff;
-  padding: 6px 12px;
-  border-radius: 6px;
-  margin-bottom: 12px;
-  min-height: 32px;
+  margin: 6px 0;
 }
+.statusText { font-size: 1.1em; font-weight: bold; }
+.timer      { font-size: 1.1em; font-weight: bold; }
+.moves      { font-size: 1.1em; font-weight: bold; }
 
-.statusText { flex: 1; font-weight: 600; color: #27ae60; }
-.timer      { color: #555; font-size: 0.9rem; }
-.moves      { color: #555; font-size: 0.9rem; }
-
-/* 보드 */
+/* 보드 — 원본: #board { display: flex; flex-direction: column; align-items: flex-start; } */
 .board {
   display: flex;
   flex-direction: column;
@@ -88,11 +91,11 @@
   margin-bottom: 12px;
 }
 
+/* Zone — 원본: .zone { border: 2px dashed rgba(255,255,255,0.3); border-radius: 6px; } */
 .zone {
   position: relative;
-  border: 2px dashed #bbb;
+  border: 2px dashed rgba(255,255,255,0.3);
   border-radius: 6px;
-  background: rgba(0,0,0,0.04);
   box-sizing: border-box;
   cursor: pointer;
   flex-shrink: 0;
@@ -101,16 +104,18 @@
   justify-content: center;
 }
 
+/* F 힌트 — 원본: .f-hint { opacity: 0.25; font-size: 1.6em; } */
 .fHint {
-  font-size: 1.4rem;
-  color: #ccc;
+  font-size: 1.6em;
+  opacity: 0.25;
   pointer-events: none;
   user-select: none;
 }
 
+/* stock 빈 상태 */
 .stockEmpty {
-  font-size: 1.6rem;
-  color: #bbb;
+  font-size: 1.8em;
+  opacity: 0.35;
   user-select: none;
 }
 
@@ -119,109 +124,143 @@
   align-items: flex-start;
 }
 
+/* 태블로 칸 — 원본: .tableau-zone { border: 2px dashed rgba(255,255,255,0.2) } */
 .tableauCol {
   position: relative;
   flex-shrink: 0;
   border-radius: 6px;
-  border: 2px dashed #bbb;
-  background: rgba(0,0,0,0.03);
+  border: 2px dashed rgba(255,255,255,0.2);
   box-sizing: border-box;
   cursor: pointer;
 }
 
-/* 카드 */
+/* 카드 — 원본: .card { background: white; border: 1px solid #bbb; box-shadow: 1px 2px 4px rgba(0,0,0,0.25) } */
 .card {
   position: relative;
   border-radius: 5px;
-  border: 1px solid #aaa;
-  background: #fff;
-  box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
-  cursor: pointer;
-  user-select: none;
-  box-sizing: border-box;
+  border: 1px solid #bbb;
+  background: white;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.25);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  cursor: pointer;
+  font-weight: bold;
+  overflow: hidden;
+  box-sizing: border-box;
   padding: 2px 3px;
 }
 
-.card:active { filter: brightness(0.93); }
-
+/* 카드 뒷면 — 원본: .card.back { background: #1565c0; border: 2px solid #64b5f6; } */
 .cardBack {
   border-radius: 5px;
-  border: 1px solid #999;
-  background: repeating-linear-gradient(
-    135deg,
-    #1a3a8a 0px, #1a3a8a 4px,
-    #2050c0 4px, #2050c0 8px
-  );
-  box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+  background: #1565c0;
+  border: 2px solid #64b5f6;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.25);
   cursor: pointer;
   user-select: none;
   box-sizing: border-box;
+  position: relative;
+}
+/* 원본: .card.back::after { content: ''; position: absolute; inset: 4px; border: 1.5px solid rgba(255,255,255,0.2); background: repeating-linear-gradient(...) } */
+.cardBack::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,0.04),
+    rgba(255,255,255,0.04) 2px,
+    transparent 2px,
+    transparent 6px
+  );
 }
 
-.red   { color: #cc0000; }
-.black { color: #111; }
-
+/* 원본: .card.selected { outline: 3px solid #ffeb3b; z-index: 500 !important; } */
 .selected {
-  outline: 2px solid #f0a000;
-  outline-offset: -2px;
-  filter: brightness(0.92);
+  outline: 3px solid #ffeb3b;
+  z-index: 500 !important;
 }
 
-.cardTl {
-  font-weight: bold;
-  line-height: 1.1;
-  text-align: left;
-}
+.red   { color: #c62828; }
+.black { color: #212121; }
 
-.cardCenter {
-  text-align: center;
-  font-size: 1.3em;
-}
+.cardTl { position: absolute; top: 3px; left: 4px; line-height: 1.15; text-align: center; }
+.cardBr { position: absolute; bottom: 3px; right: 4px; transform: rotate(180deg); line-height: 1.15; text-align: center; }
+.cardCenter { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5em; pointer-events: none; }
 
-.cardBr {
-  font-weight: bold;
-  line-height: 1.1;
-  text-align: right;
-  transform: rotate(180deg);
-}
-
-/* 랭킹 */
-.rankSection { margin-top: 8px; }
-
-.rankTabs { display: flex; gap: 4px; margin-bottom: 8px; }
-
-.rankTab {
-  padding: 4px 12px;
-  border: 1px solid #bbb;
-  border-radius: 4px 4px 0 0;
-  background: #f5f5f5;
-  cursor: pointer;
-  font-size: 0.82rem;
-}
-
-.rankTabActive { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
-
-.table {
+/* 랭킹 패널 — 원본: #ranking-panel */
+.rankSection {
+  margin-top: 28px;
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-  margin-bottom: 8px;
+  max-width: min(480px, 100%);
 }
 
-.table th, .table td {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
+.rankTitle {
   text-align: center;
+  margin: 0 0 10px;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
 }
 
-.table th { background: #f0f4ff; font-weight: 600; color: #1e3a6e; }
-.placeholder { color: #aaa; font-style: italic; }
-.hint { color: #c0392b; font-size: 0.85rem; margin: 4px 0 8px; }
+/* 역대 1위 배너 — 원본: #alltime-banner */
+.alltimeBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #fef9e7, #fdebd0);
+  border: 1px solid #f0b27a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.88em;
+}
+.atLabel   { font-weight: bold; color: #b7950b; white-space: nowrap; }
+.atContent { color: #784212; }
 
-/* 모달 */
+/* 랭킹 탭 — 원본: .rank-tab { border: 2px solid #3498db } */
+.rankTabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.rankTab {
+  flex: 1;
+  padding: 7px;
+  font-size: 0.9em;
+  cursor: pointer;
+  border: 2px solid #3498db;
+  border-radius: 5px;
+  background: white;
+  color: #3498db;
+  font-weight: bold;
+  transition: all 0.15s;
+  touch-action: manipulation;
+}
+.rankTab:hover  { background: #3498db; color: white; }
+.rankTabActive  { background: #3498db; color: white; }
+
+/* 랭킹 테이블 — 원본: #ranking-table */
+.rankTable { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.rankTable th { background: #3498db; color: white; padding: 7px 8px; }
+.rankTable td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: center; }
+.rankTable tr:first-child td { color: #e67e22; font-weight: bold; }
+
+.placeholder { color: #aaa; font-style: italic; text-align: center; padding: 12px; }
+
+/* 룰 패널 — 원본: #rules-panel */
+.rulesPanel {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 14px 16px;
+  font-size: 0.88em;
+  line-height: 1.7;
+  color: #333;
+}
+.rulesPanel h4 { margin: 0 0 8px; color: #2c3e50; font-size: 1em; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+.rulesPanel ul { margin: 4px 0 10px; padding-left: 20px; }
+.rulesPanel li { margin-bottom: 3px; }
+
+/* 클리어 모달 — 원본: #modal-overlay / #modal-box */
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -230,71 +269,84 @@
   align-items: center;
   justify-content: center;
   z-index: 100;
+  padding: 16px;
 }
 
 .modal {
-  background: #fff;
+  background: white;
   border-radius: 12px;
-  padding: 32px 28px;
-  min-width: 280px;
+  padding: 28px 20px;
   text-align: center;
+  width: 90%;
+  max-width: 340px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
 
-.modal h3 { margin: 0 0 8px; font-size: 1.4rem; }
-.modal p  { color: #555; margin: 0 0 16px; }
+/* 원본: #modal-box h2 { color: #27ae60 } */
+.modal h2 { margin: 0 0 6px; font-size: 1.6em; color: #27ae60; }
+.modal p  { margin: 0 0 20px; color: #555; font-size: 1em; }
 
 .nameInput {
-  width: 100%;
-  padding: 10px;
-  font-size: 1rem;
-  border: 2px solid #aaa;
+  padding: 8px 12px;
+  font-size: 1em;
+  border: 1px solid #aaa;
   border-radius: 6px;
-  margin-bottom: 12px;
+  width: 100%;
   box-sizing: border-box;
+  margin-bottom: 14px;
 }
+.nameInput:focus { outline: none; border-color: #3498db; }
 
-.nameInput:focus { outline: none; border-color: #1e3a6e; }
+.hint { font-size: 0.85em; color: #e74c3c; min-height: 1.2em; margin-bottom: 8px; }
 
 .modalBtns { display: flex; gap: 8px; justify-content: center; }
 
-.primaryBtn {
-  padding: 10px 20px;
-  background: #1e3a6e;
-  color: #fff;
+/* 원본: #modal-submit { background: #3498db } */
+.submitBtn {
+  padding: 10px 22px;
+  background: #3498db;
+  color: white;
   border: none;
   border-radius: 6px;
+  font-size: 1em;
   cursor: pointer;
-  font-size: 1rem;
+  font-weight: bold;
+  touch-action: manipulation;
 }
+.submitBtn:hover    { background: #2980b9; }
+.submitBtn:disabled { opacity: 0.5; cursor: default; }
 
-.primaryBtn:disabled { opacity: 0.4; cursor: default; }
-
-.secondaryBtn {
-  padding: 10px 20px;
-  border: 1px solid #999;
+/* 원본: #modal-skip { background: #95a5a6 } */
+.skipBtn {
+  padding: 10px 22px;
+  background: #95a5a6;
+  color: white;
+  border: none;
   border-radius: 6px;
-  background: #f5f5f5;
+  font-size: 1em;
   cursor: pointer;
-  font-size: 1rem;
+  touch-action: manipulation;
 }
+.skipBtn:hover { background: #7f8c8d; }
 
-/* 엑셀 모드 */
+/* ===== 엑셀 모드 ===== */
 .excelMode {
   font-family: 'Calibri', 'Segoe UI', sans-serif;
   padding: 0;
   max-width: none;
   margin: 0;
+  color: inherit;
 }
-.excelMode .header    { display: none; }
 .excelMode .controls  { display: none; }
 .excelMode .statusBar { display: none; }
 .excelMode .board     { margin-bottom: 0; }
-.excelMode .rankSection { padding: 12px 8px; background: white; }
-.excelMode .rankTab { border-color: #217346; color: #217346; }
-.excelMode .rankTab:hover { background: #217346; color: #fff; }
-.excelMode .rankTabActive { background: #217346; color: #fff; border-color: #217346; }
-.excelMode .table th  { background: #217346; color: white; }
-.excelMode .primaryBtn { background: #217346; }
-.excelMode .primaryBtn:hover { background: #1a6636; }
+.excelMode .zone      { border-color: rgba(0,0,0,0.15); }
+.excelMode .tableauCol { border-color: rgba(0,0,0,0.1); }
+.excelMode .rankSection { padding: 12px 8px; background: white; margin-top: 0; color: #333; }
+.excelMode .rankTab       { border-color: #217346; color: #217346; }
+.excelMode .rankTab:hover { background: #217346; color: white; }
+.excelMode .rankTabActive { background: #217346; color: white; border-color: #217346; }
+.excelMode .rankTable th  { background: #217346; color: white; }
+.excelMode .submitBtn     { background: #217346; }
+.excelMode .submitBtn:hover { background: #1a6636; }
 .excelMode .nameInput:focus { border-color: #217346; }

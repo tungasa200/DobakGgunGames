@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useBaseballGame, DIGIT_COUNT, MAX_ATTEMPTS, type Level } from './useBaseballGame';
 import { rankingsApi } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
@@ -7,14 +6,12 @@ import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './BaseballBoard.module.css';
 
 const LEVELS: { value: Level; label: string }[] = [
-  { value: 'easy', label: '쉬움 (3자리)' },
+  { value: 'easy',   label: '쉬움 (3자리)' },
   { value: 'normal', label: '보통 (4자리)' },
-  { value: 'hard', label: '어려움 (5자리)' },
+  { value: 'hard',   label: '어려움 (5자리)' },
 ];
 
-interface Props {
-  excel?: boolean;
-}
+interface Props { excel?: boolean }
 
 export default function BaseballBoard({ excel = false }: Props) {
   const [level, setLevel] = useState<Level>('easy');
@@ -31,14 +28,12 @@ export default function BaseballBoard({ excel = false }: Props) {
   // 랭킹 패널
   const [rankLevel, setRankLevel] = useState<Level>('easy');
   const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({
-    weekly: [],
-    alltime: null,
+    weekly: [], alltime: null,
   });
   const [rankLoading, setRankLoading] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
-  useEffect(() => {
-    if (state.won) setModalOpen(true);
-  }, [state.won]);
+  useEffect(() => { if (state.won) setModalOpen(true); }, [state.won]);
 
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet } = useExcelShell();
@@ -74,14 +69,7 @@ export default function BaseballBoard({ excel = false }: Props) {
     setSubmitState('loading');
     try {
       const { token, timestamp } = await createToken('baseball', level, state.attempts);
-      await rankingsApi.submit('baseball', {
-        level,
-        name,
-        attempts: state.attempts,
-        time: state.elapsed,
-        token,
-        timestamp,
-      });
+      await rankingsApi.submit('baseball', { level, name, attempts: state.attempts, time: state.elapsed, token, timestamp });
       setSubmitState('done');
     } catch {
       setSubmitState('error');
@@ -108,29 +96,16 @@ export default function BaseballBoard({ excel = false }: Props) {
   const digitCount = DIGIT_COUNT[state.level];
   const maxAttempts = MAX_ATTEMPTS[state.level];
 
-  const statusText = (() => {
-    if (state.won) return `${state.attempts}번 만에 정답! (${state.elapsed.toFixed(2)}초)`;
-    if (state.history.length === 0) return 'GAME START';
-    const last = state.history[0];
-    if (last.strikes === 0 && last.balls === 0) return '아웃!';
-    const s = last.strikes > 0 ? `${last.strikes} 스트라이크` : '';
-    const b = last.balls > 0 ? `${last.balls} 볼` : '';
-    return [s, b].filter(Boolean).join(' ');
-  })();
-
   const showGameArea    = !excel || activeSheet === 'game';
   const showRankingArea = !excel || activeSheet === 'ranking';
+  const showRulesArea   = !excel ? showRules : activeSheet === 'rules';
+
+  type HistoryRow = { attempt: number; guess: string; strikes: number; balls: number };
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
-      {!excel && (
-        <div className={styles.header}>
-          <Link to="/" className={styles.backLink}>← 홈</Link>
-          <h2 className={styles.title}>⚾ 숫자야구</h2>
-        </div>
-      )}
 
-      {/* 난이도 선택 — 일반 모드에서만 */}
+      {/* 난이도 — 일반 모드에서만 */}
       {!excel && (
         <div className={styles.diffRow}>
           {LEVELS.map((lv) => (
@@ -138,22 +113,16 @@ export default function BaseballBoard({ excel = false }: Props) {
               key={lv.value}
               className={`${styles.diffBtn} ${level === lv.value ? styles.diffActive : ''}`}
               onClick={() => handleLevelChange(lv.value)}
-            >
-              {lv.label}
-            </button>
+            >{lv.label}</button>
           ))}
-          <button className={styles.resetBtn} onClick={() => { reset(level); setInput(''); setHint(''); }}>
-            리셋
-          </button>
         </div>
       )}
 
-      {/* 상태 바 — 일반 모드에서만 */}
+      {/* 상태 — 일반 모드에서만 */}
       {!excel && (
         <div className={styles.statusBar}>
-          <span className={styles.status}>{statusText}</span>
-          <span className={styles.timer}>⏱ {state.elapsed.toFixed(1)}초</span>
           <span className={styles.attempts}>{state.attempts}번째 시도</span>
+          <span className={styles.timer}>⏱ {state.elapsed.toFixed(1)}초</span>
         </div>
       )}
 
@@ -180,19 +149,33 @@ export default function BaseballBoard({ excel = false }: Props) {
           </div>
           {hint && <p className={styles.hint}>{hint}</p>}
 
-          {/* 기록 테이블 */}
-          <table className={styles.table}>
-            <thead>
-              <tr><th>#</th><th>입력</th><th>스트라이크</th><th>볼</th></tr>
-            </thead>
-            <tbody>
-              {state.history.length === 0 ? (
-                <tr><td colSpan={4} className={styles.placeholder}>시도 기록이 여기에 표시됩니다.</td></tr>
-              ) : (
-                excel
-                  ? Array.from({ length: maxAttempts }, (_, i) => {
-                      const row = state.history.find((r) => r.attempt === maxAttempts - i);
-                      return row ? (
+          {/* 히스토리 테이블 */}
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr><th>#</th><th>입력</th><th>스트라이크</th><th>볼</th></tr>
+              </thead>
+              <tbody>
+                {state.history.length === 0 ? (
+                  <tr><td colSpan={4} className={styles.placeholder}>입력 기록이 여기에 표시됩니다.</td></tr>
+                ) : (
+                  excel
+                    ? Array.from({ length: maxAttempts }, (_, i) => {
+                        const row = state.history.find((r: HistoryRow) => r.attempt === maxAttempts - i);
+                        return row ? (
+                          <tr key={row.attempt}>
+                            <td>{row.attempt}</td>
+                            <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
+                            <td className={styles.strike}>{row.strikes}S</td>
+                            <td className={row.balls > 0 ? styles.ball : undefined}>
+                              {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={i}><td>{maxAttempts - i}</td><td></td><td></td><td></td></tr>
+                        );
+                      })
+                    : state.history.map((row: HistoryRow) => (
                         <tr key={row.attempt}>
                           <td>{row.attempt}</td>
                           <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
@@ -201,44 +184,56 @@ export default function BaseballBoard({ excel = false }: Props) {
                             {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
                           </td>
                         </tr>
-                      ) : (
-                        <tr key={i}><td>{maxAttempts - i}</td><td></td><td></td><td></td></tr>
-                      );
-                    })
-                  : state.history.map((row) => (
-                      <tr key={row.attempt}>
-                        <td>{row.attempt}</td>
-                        <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
-                        <td className={styles.strike}>{row.strikes}S</td>
-                        <td className={row.balls > 0 ? styles.ball : undefined}>
-                          {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
-                        </td>
-                      </tr>
-                    ))
-              )}
-            </tbody>
-          </table>
+                      ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 리셋 버튼 — 일반 모드 */}
+          {!excel && (
+            <button className={styles.resetBtn} onClick={() => { reset(level); setInput(''); setHint(''); }}>
+              RESET
+            </button>
+          )}
         </>
       )}
 
-      {/* 랭킹 패널 — 랭킹 시트 */}
-      {showRankingArea && (
+      {/* 랭킹 — 랭킹 시트 */}
+      {showRankingArea && !showRulesArea && (
         <div className={styles.rankSection}>
+          {!excel && <h3 className={styles.rankTitle}>주간 RANK</h3>}
+          {!excel && rankings.alltime && (
+            <div className={styles.alltimeBanner}>
+              <span className={styles.atLabel}>👑 역대 1위</span>
+              <span className={styles.atContent}>
+                {(rankings.alltime as { name: string; attempts: number; time: number; createdAt: string }).name}
+                {' · '}
+                {(rankings.alltime as { name: string; attempts: number; time: number; createdAt: string }).attempts}번
+                {' · '}
+                {new Date((rankings.alltime as { name: string; attempts: number; time: number; createdAt: string }).createdAt).toLocaleDateString('ko-KR')}
+              </span>
+            </div>
+          )}
           <div className={styles.rankTabs}>
             {LEVELS.map((lv) => (
               <button
                 key={lv.value}
                 className={`${styles.rankTab} ${rankLevel === lv.value ? styles.rankTabActive : ''}`}
-                onClick={() => { setRankLevel(lv.value); loadRanking(lv.value); }}
-              >
-                {lv.label.split(' ')[0]}
-              </button>
+                onClick={() => { setRankLevel(lv.value); loadRanking(lv.value); setShowRules(false); }}
+              >{lv.label.split(' ')[0]}</button>
             ))}
+            {!excel && (
+              <button
+                className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
+                onClick={() => setShowRules(true)}
+              >룰</button>
+            )}
           </div>
           {rankLoading ? (
             <p className={styles.placeholder}>불러오는 중...</p>
           ) : (
-            <table className={styles.table}>
+            <table className={styles.rankTable}>
               <thead><tr><th>순위</th><th>이름</th><th>시도</th><th>시간</th><th>날짜</th></tr></thead>
               <tbody>
                 {(rankings.weekly as Array<{ id: number; name: string; attempts: number; time: number; createdAt: string }>).length === 0 ? (
@@ -246,10 +241,8 @@ export default function BaseballBoard({ excel = false }: Props) {
                 ) : (
                   (rankings.weekly as Array<{ id: number; name: string; attempts: number; time: number; createdAt: string }>).map((r, i) => (
                     <tr key={r.id}>
-                      <td>{i + 1}</td>
-                      <td>{r.name}</td>
-                      <td>{r.attempts}번</td>
-                      <td>{r.time.toFixed(2)}초</td>
+                      <td>{i + 1}</td><td>{r.name}</td>
+                      <td>{r.attempts}번</td><td>{r.time.toFixed(2)}초</td>
                       <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
                     </tr>
                   ))
@@ -257,6 +250,23 @@ export default function BaseballBoard({ excel = false }: Props) {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* 룰 패널 */}
+      {showRulesArea && (
+        <div className={styles.rulesPanel}>
+          <h4>기본 규칙</h4>
+          <ul>
+            <li>컴퓨터가 서로 다른 숫자로 이루어진 N자리 수를 무작위로 정함</li>
+            <li>스트라이크(S): 숫자와 위치가 모두 정확</li>
+            <li>볼(B): 숫자는 맞지만 위치가 다름</li>
+            <li>아웃: 일치하는 숫자가 하나도 없음</li>
+          </ul>
+          <h4>난이도</h4>
+          <ul>
+            <li>쉬움: 3자리 / 보통: 4자리 / 어려움: 5자리</li>
+          </ul>
         </div>
       )}
 
@@ -269,7 +279,7 @@ export default function BaseballBoard({ excel = false }: Props) {
             <input
               className={styles.nameInput}
               type="text"
-              placeholder="이름 입력"
+              placeholder="이름을 입력하세요"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRanking(); }}
@@ -277,10 +287,10 @@ export default function BaseballBoard({ excel = false }: Props) {
             />
             {submitState === 'error' && <p className={styles.hint}>등록 실패. 다시 시도해 주세요.</p>}
             <div className={styles.modalBtns}>
-              <button className={styles.guessBtn} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>
-                {submitState === 'loading' ? '등록 중...' : '랭킹 등록'}
+              <button className={styles.submitBtn} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>
+                {submitState === 'loading' ? '등록 중...' : '등록'}
               </button>
-              <button className={styles.resetBtn} onClick={() => setModalOpen(false)}>건너뛰기</button>
+              <button className={styles.skipBtn} onClick={() => setModalOpen(false)}>건너뛰기</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAppleGame } from './useAppleGame';
 import { rankingsApi } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
@@ -96,6 +95,9 @@ export default function AppleCanvas({ excel = false }: Props) {
   // 드래그 상태 (ref로 관리 — render 없이 draw만 트리거)
   const dragRef = useRef({ active: false, sx: 0, sy: 0, cx: 0, cy: 0 });
 
+  // 드래그 합계 표시
+  const [dragSum, setDragSum] = useState<number | null>(null);
+
   // 상태 메시지
   const [msg, setMsg] = useState('▶ 시작 버튼을 눌러주세요');
 
@@ -105,8 +107,9 @@ export default function AppleCanvas({ excel = false }: Props) {
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
 
   // 랭킹
-  const [rankings, setRankings] = useState<unknown[]>([]);
+  const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({ weekly: [], alltime: null });
   const [rankLoading, setRankLoading] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // 레이아웃 계산
   const calcLayout = useCallback(() => {
@@ -285,6 +288,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     if (state.status !== 'playing') return;
     const p = getPos(e);
     dragRef.current = { active: true, sx: p.x, sy: p.y, cx: p.x, cy: p.y };
+    setDragSum(0);
     draw();
   }
 
@@ -295,6 +299,13 @@ export default function AppleCanvas({ excel = false }: Props) {
       const p = getPos(e);
       dragRef.current.cx = p.x;
       dragRef.current.cy = p.y;
+      const { rows, cols, size, pad } = layout;
+      const { sum } = calcSelection(
+        dragRef.current.sx, dragRef.current.sy,
+        dragRef.current.cx, dragRef.current.cy,
+        rows, cols, state.apples, pad, size
+      );
+      setDragSum(sum);
       draw();
     }
     function onUp(e: MouseEvent | TouchEvent) {
@@ -316,6 +327,7 @@ export default function AppleCanvas({ excel = false }: Props) {
         setTimeout(() => { if (state.status === 'playing') setMsg('사과를 드래그하세요!'); }, 700);
       }
       dragRef.current.active = false;
+      setDragSum(null);
       draw();
     }
     document.addEventListener('mousemove', onMove);
@@ -338,6 +350,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     setModalOpen(false);
     setPlayerName('');
     setSubmitState('idle');
+    setDragSum(null);
   }
 
   async function handleSubmitRanking() {
@@ -357,10 +370,13 @@ export default function AppleCanvas({ excel = false }: Props) {
   async function loadRanking() {
     setRankLoading(true);
     try {
-      const data = await rankingsApi.getWeekly('apple', 'normal');
-      setRankings(data as unknown[]);
+      const [weekly, alltime] = await Promise.all([
+        rankingsApi.getWeekly('apple', 'normal'),
+        rankingsApi.getAlltimeBest('apple', 'normal'),
+      ]);
+      setRankings({ weekly: weekly as unknown[], alltime });
     } catch {
-      setRankings([]);
+      setRankings({ weekly: [], alltime: null });
     } finally {
       setRankLoading(false);
     }
@@ -372,32 +388,29 @@ export default function AppleCanvas({ excel = false }: Props) {
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`} ref={wrapRef}>
+
+      {/* 정보 바 — 일반 모드에서만 */}
       {!excel && (
-        <div className={styles.header}>
-          <Link to="/" className={styles.backLink}>← 홈</Link>
-          <h2 className={styles.title}>🍎 사과게임</h2>
+        <div className={styles.infoBar}>
+          <div className={styles.infoItem}>
+            <div className={styles.infoLabel}>점수</div>
+            <div className={styles.infoValue}>{state.score}</div>
+          </div>
+          <div className={styles.infoItem}>
+            <div className={styles.infoLabel}>남은 시간</div>
+            <div className={`${styles.infoValue} ${timeWarning ? styles.timeWarning : ''}`}>
+              {formatTime(state.timeLeft)}
+            </div>
+          </div>
+          <div className={styles.infoItem}>
+            <div className={styles.infoLabel}>선택 합계</div>
+            <div className={styles.infoValue}>{dragSum !== null ? dragSum : '-'}</div>
+          </div>
         </div>
       )}
 
-      {/* 상태 바 — 일반 모드에서만 */}
-      {!excel && (
-        <div className={styles.statusBar}>
-          <span className={styles.scoreLabel}>점수 <strong>{state.score}</strong></span>
-          <span className={styles.statusMsg}>{msg}</span>
-          <span className={`${styles.timer} ${timeWarning ? styles.timerWarning : ''}`}>
-            {formatTime(state.timeLeft)}
-          </span>
-        </div>
-      )}
-
-      {/* 시작 버튼 — 일반 모드에서만 */}
-      {!excel && (
-        <div className={styles.controls}>
-          <button className={styles.startBtn} onClick={handleStart}>
-            {state.status === 'idle' ? '▶ 시작' : '↺ 다시하기'}
-          </button>
-        </div>
-      )}
+      {/* 상태 메시지 — 일반 모드에서만 */}
+      {!excel && <div className={styles.statusMsg}>{msg}</div>}
 
       {/* 캔버스 — 게임 시트 */}
       {showGameArea && (
@@ -411,22 +424,78 @@ export default function AppleCanvas({ excel = false }: Props) {
         </div>
       )}
 
+      {/* 시작 버튼 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.controls}>
+          <button className={styles.startBtn} onClick={handleStart}>
+            {state.status === 'idle' ? '▶ 시작' : '↺ 다시하기'}
+          </button>
+        </div>
+      )}
+
       {/* 랭킹 — 랭킹 시트 */}
       {showRankingArea && (
         <div className={styles.rankSection}>
-          <button className={styles.rankLoadBtn} onClick={loadRanking}>
-            랭킹 불러오기
-          </button>
-          {rankLoading ? (
+          {!excel && <h3 className={styles.rankTitle}>주간 RANK</h3>}
+          {!excel && rankings.alltime && (
+            <div className={styles.alltimeBanner}>
+              <span className={styles.atLabel}>👑 역대 1위</span>
+              <span className={styles.atContent}>
+                {(rankings.alltime as { name: string; score: number; createdAt: string }).name}
+                {' · '}
+                {(rankings.alltime as { name: string; score: number; createdAt: string }).score.toLocaleString()}점
+                {' · '}
+                {new Date((rankings.alltime as { name: string; score: number; createdAt: string }).createdAt).toLocaleDateString('ko-KR')}
+              </span>
+            </div>
+          )}
+          <div className={styles.rankTabs}>
+            <button
+              className={`${styles.rankTab} ${!showRules ? styles.rankTabActive : ''}`}
+              onClick={() => { setShowRules(false); loadRanking(); }}
+            >랭킹</button>
+            {!excel && (
+              <button
+                className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
+                onClick={() => setShowRules(true)}
+              >룰</button>
+            )}
+          </div>
+          {showRules ? (
+            <div className={styles.rulesPanel}>
+              <h4>게임 방법</h4>
+              <ul>
+                <li>격자에 놓인 사과(1~9)를 마우스로 드래그해 직사각형 선택</li>
+                <li>선택한 사과의 합이 <strong>10</strong>이면 사과가 사라지고 점수 획득</li>
+                <li>합이 10이 아니면 선택이 취소됨</li>
+                <li>사라진 자리는 빈 공간으로 남음 (중력 없음)</li>
+              </ul>
+              <h4>점수 계산</h4>
+              <ul>
+                <li>제거된 사과 1개당 1점</li>
+                <li>시간 내에 최대한 많은 사과를 제거하세요</li>
+              </ul>
+              <h4>색상 안내 (드래그 중)</h4>
+              <ul>
+                <li>파란색: 합계 10 미만 (더 선택 가능)</li>
+                <li>초록색: 합계 정확히 10 (제거 가능!)</li>
+                <li>빨간색: 합계 10 초과 (범위 축소 필요)</li>
+              </ul>
+              <h4>제한시간</h4>
+              <ul>
+                <li>2분 (120초)</li>
+              </ul>
+            </div>
+          ) : rankLoading ? (
             <p className={styles.placeholder}>불러오는 중...</p>
           ) : (
-            <table className={styles.table}>
+            <table className={styles.rankTable}>
               <thead><tr><th>순위</th><th>이름</th><th>점수</th><th>날짜</th></tr></thead>
               <tbody>
-                {(rankings as Array<{ id: number; name: string; score: number; createdAt: string }>).length === 0 ? (
+                {(rankings.weekly as Array<{ id: number; name: string; score: number; createdAt: string }>).length === 0 ? (
                   <tr><td colSpan={4} className={styles.placeholder}>기록 없음</td></tr>
                 ) : (
-                  (rankings as Array<{ id: number; name: string; score: number; createdAt: string }>).map((r, i) => (
+                  (rankings.weekly as Array<{ id: number; name: string; score: number; createdAt: string }>).map((r, i) => (
                     <tr key={r.id}>
                       <td>{i + 1}</td><td>{r.name}</td>
                       <td>{r.score.toLocaleString()}점</td>
@@ -440,16 +509,16 @@ export default function AppleCanvas({ excel = false }: Props) {
         </div>
       )}
 
-      {/* 클리어 모달 */}
+      {/* 게임 오버 모달 */}
       {modalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
-            <h3>🍎 게임 종료</h3>
+            <h2>GAME OVER</h2>
             <p>최종 점수: <strong>{state.score}점</strong></p>
             <input
               className={styles.nameInput}
               type="text"
-              placeholder="이름 입력"
+              placeholder="이름을 입력하세요"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRanking(); }}
@@ -457,10 +526,10 @@ export default function AppleCanvas({ excel = false }: Props) {
             />
             {submitState === 'error' && <p className={styles.hint}>등록 실패. 다시 시도해 주세요.</p>}
             <div className={styles.modalBtns}>
-              <button className={styles.primaryBtn} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>
-                {submitState === 'loading' ? '등록 중...' : '랭킹 등록'}
+              <button className={styles.submitBtn} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>
+                {submitState === 'loading' ? '등록 중...' : '등록'}
               </button>
-              <button className={styles.secondaryBtn} onClick={() => setModalOpen(false)}>건너뛰기</button>
+              <button className={styles.skipBtn} onClick={() => setModalOpen(false)}>건너뛰기</button>
             </div>
           </div>
         </div>

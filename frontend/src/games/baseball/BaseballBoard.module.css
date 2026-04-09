@@ -1,219 +1,209 @@
+/* ===== 일반 모드 — 원본 numberBaseball/index.html 완전 동일 ===== */
 .wrap {
-  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 480px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 20px 16px;
   font-family: 'Segoe UI', sans-serif;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.backLink {
-  color: #1e3a6e;
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #1e3a6e;
-  margin: 0;
-}
-
-/* 난이도 */
-.diffRow {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
+/* 난이도 버튼 — 원본: border: 2px solid #1e3a6e */
+.diffRow { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 16px; }
 
 .diffBtn {
-  padding: 6px 14px;
-  border: 1px solid #bbb;
-  border-radius: 4px;
-  background: #fff;
+  padding: 8px 18px;
+  font-size: 0.95em;
   cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.diffActive {
-  background: #1e3a6e;
-  color: #fff;
-  border-color: #1e3a6e;
-}
-
-.resetBtn {
-  padding: 6px 14px;
-  border: 1px solid #999;
-  border-radius: 4px;
-  background: #f5f5f5;
-  cursor: pointer;
-  font-size: 0.85rem;
-  margin-left: auto;
-}
-
-/* 상태 바 */
-.statusBar {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  background: #f0f4ff;
-  padding: 8px 12px;
+  border: 2px solid #1e3a6e;
   border-radius: 6px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+  background: white;
+  color: #1e3a6e;
+  font-weight: bold;
+  transition: all 0.15s;
+  touch-action: manipulation;
 }
+.diffBtn:hover { background: #1e3a6e; color: white; }
+.diffActive    { background: #1e3a6e; color: white; }
 
-.status { font-weight: 600; color: #1e3a6e; flex: 1; }
-.timer { color: #555; font-size: 0.9rem; }
-.attempts { color: #555; font-size: 0.9rem; }
-
-/* 입력 */
-.inputRow {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 4px;
+/* 리셋 버튼 — 원본: background: #3a5f9c */
+.resetBtn {
+  padding: 10px 24px;
+  font-size: 1em;
+  cursor: pointer;
+  background: #3a5f9c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  margin-bottom: 28px;
+  touch-action: manipulation;
 }
+.resetBtn:hover { background: #2e4e85; }
+
+/* 상태 바 — 원본: #info-bar { gap: 24px; } */
+.statusBar { display: flex; gap: 24px; align-items: center; margin-bottom: 10px; }
+.status    { font-size: 1.1em; font-weight: bold; color: #1e3a6e; }
+.timer     { font-size: 1.1em; font-weight: bold; color: #1e3a6e; }
+.attempts  { font-size: 1.1em; font-weight: bold; color: #1e3a6e; }
+
+/* 상태 메시지 — 원본: #status */
+.statusMsg { font-size: 1.1em; font-weight: bold; margin-bottom: 14px; color: #1e3a6e; }
+
+/* 입력 — 원본: #input-area */
+.inputRow { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
 
 .input {
-  flex: 1;
+  width: 120px;
   padding: 10px 14px;
-  font-size: 1.2rem;
-  letter-spacing: 8px;
-  border: 2px solid #aaa;
+  font-size: 1.3em;
+  border: 2px solid #a0aec0;
   border-radius: 6px;
   text-align: center;
+  letter-spacing: 6px;
+  font-weight: bold;
+  color: #1e3a6e;
+  box-sizing: border-box;
 }
-
 .input:focus { outline: none; border-color: #1e3a6e; }
 
 .guessBtn {
   padding: 10px 20px;
+  font-size: 1em;
+  cursor: pointer;
   background: #1e3a6e;
-  color: #fff;
+  color: white;
   border: none;
   border-radius: 6px;
-  font-size: 1rem;
-  cursor: pointer;
+  font-weight: bold;
+  touch-action: manipulation;
 }
+.guessBtn:hover    { background: #152d57; }
+.guessBtn:disabled { background: #bbb; cursor: default; }
 
-.guessBtn:disabled { opacity: 0.4; cursor: default; }
+.hint { font-size: 0.85em; color: #e74c3c; min-height: 1.2em; margin-bottom: 8px; }
 
-.hint {
-  color: #c0392b;
-  font-size: 0.85rem;
-  margin: 4px 0 8px;
-}
-
-/* 테이블 */
-.table {
+/* 히스토리 테이블 — 원본: white bg card */
+.tableWrap {
   width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 24px;
-  font-size: 0.9rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #c5cedf;
+  overflow: hidden;
+  margin-bottom: 10px;
 }
 
-.table th,
-.table td {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  text-align: center;
-}
-
-.table th { background: #f0f4ff; font-weight: 600; color: #1e3a6e; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+.table th { background: #1e3a6e; color: white; padding: 8px; }
+.table td { padding: 7px 8px; border-bottom: 1px solid #eee; text-align: center; }
+.table tr:last-child td { border-bottom: none; }
 
 .strike { color: #e74c3c; font-weight: bold; }
-.ball   { color: #2980b9; font-weight: bold; }
-.placeholder { color: #aaa; font-style: italic; }
+.ball   { color: #3498db; font-weight: bold; }
+.placeholder { text-align: center; padding: 18px; color: #aaa; font-size: 0.9em; }
 
-/* 랭킹 */
-.rankSection { margin-top: 8px; }
+/* 랭킹 패널 */
+.rankSection { width: 100%; margin-top: 0; }
+.rankTitle   { text-align: center; margin: 0 0 10px; color: #1e3a6e; font-size: 1rem; font-weight: bold; }
 
-.rankTabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
+.rankTabs { display: flex; gap: 4px; margin-bottom: 8px; }
 .rankTab {
-  padding: 4px 12px;
-  border: 1px solid #bbb;
-  border-radius: 4px 4px 0 0;
-  background: #f5f5f5;
+  flex: 1;
+  padding: 7px;
+  font-size: 0.9em;
   cursor: pointer;
-  font-size: 0.82rem;
+  border: 2px solid #1e3a6e;
+  border-radius: 6px;
+  background: white;
+  color: #1e3a6e;
+  font-weight: bold;
+  transition: all 0.15s;
+  touch-action: manipulation;
 }
+.rankTab:hover  { background: #1e3a6e; color: white; }
+.rankTabActive  { background: #1e3a6e; color: white; }
 
-.rankTabActive {
-  background: #1e3a6e;
-  color: #fff;
-  border-color: #1e3a6e;
+.rankTable { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.rankTable th { background: #1e3a6e; color: white; padding: 7px 8px; }
+.rankTable td { padding: 6px 8px; border-bottom: 1px solid #dde3f0; text-align: center; }
+.rankTable tr:nth-child(even) td { background: #f0f3fa; }
+.rankTable tr:first-child td { color: #1e3a6e; font-weight: bold; }
+
+/* 역대 1위 배너 */
+.alltimeBanner {
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, #eafaf1, #d5f5e3);
+  border: 1px solid #82e0aa; border-radius: 8px;
+  padding: 8px 12px; margin-bottom: 10px; font-size: 0.88em;
 }
+.atLabel   { font-weight: bold; color: #1e8449; white-space: nowrap; }
+.atContent { color: #145a32; }
 
-/* 모달 */
+/* 룰 패널 */
+.rulesPanel {
+  background: #fff; border-radius: 8px; border: 1px solid #c5cedf;
+  padding: 14px 16px; font-size: 0.88em; line-height: 1.7; color: #333;
+}
+.rulesPanel h4 { margin: 0 0 8px; color: #1e3a6e; font-size: 1em; font-weight: bold; border-bottom: 1px solid #dde3f0; padding-bottom: 6px; }
+.rulesPanel ul { margin: 4px 0 10px; padding-left: 20px; }
+.rulesPanel li { margin-bottom: 3px; }
+
+/* 클리어 모달 */
 .modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 16px;
 }
-
 .modal {
-  background: #fff;
-  border-radius: 12px;
-  padding: 32px 28px;
-  min-width: 280px;
-  text-align: center;
+  background: white; border-radius: 12px; padding: 28px 20px;
+  text-align: center; width: 90%; max-width: 340px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
-
-.modal h3 { margin: 0 0 8px; font-size: 1.4rem; }
-.modal p  { color: #555; margin: 0 0 16px; }
+.modal h3 { margin: 0 0 6px; font-size: 1.6em; color: #1e3a6e; }
+.modal p  { margin: 0 0 20px; color: #555; font-size: 1em; }
 
 .nameInput {
-  width: 100%;
-  padding: 10px;
-  font-size: 1rem;
-  border: 2px solid #aaa;
-  border-radius: 6px;
-  margin-bottom: 12px;
-  box-sizing: border-box;
+  padding: 8px 12px; font-size: 1em; border: 1px solid #aaa;
+  border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 14px;
 }
-
 .nameInput:focus { outline: none; border-color: #1e3a6e; }
 
-.modalBtns {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
+.modalBtns { display: flex; gap: 8px; justify-content: center; }
 
-/* 엑셀 모드 */
+.submitBtn {
+  padding: 10px 22px; background: #1e3a6e; color: white;
+  border: none; border-radius: 6px; font-size: 1em; cursor: pointer;
+  font-weight: bold; touch-action: manipulation;
+}
+.submitBtn:hover    { background: #152d57; }
+.submitBtn:disabled { opacity: 0.5; cursor: default; }
+
+.skipBtn {
+  padding: 10px 22px; background: #95a5a6; color: white;
+  border: none; border-radius: 6px; font-size: 1em; cursor: pointer;
+  touch-action: manipulation;
+}
+.skipBtn:hover { background: #7f8c8d; }
+
+/* ===== 엑셀 모드 ===== */
 .excelMode {
   font-family: 'Calibri', 'Segoe UI', sans-serif;
-  padding: 0;
-  max-width: none;
-  margin: 0;
+  padding: 0; max-width: none; margin: 0; align-items: flex-start;
 }
-.excelMode .header    { display: none; }
 .excelMode .diffRow   { display: none; }
 .excelMode .statusBar { display: none; }
-.excelMode .table { margin-bottom: 0; }
-.excelMode .rankSection { padding: 12px 8px; background: white; }
-.excelMode .rankTab { border-color: #217346; color: #217346; }
-.excelMode .rankTab:hover { background: #217346; color: #fff; }
-.excelMode .rankTabActive { background: #217346; color: #fff; border-color: #217346; }
-.excelMode .table th { background: #217346; color: white; }
-.excelMode .guessBtn { background: #217346; }
+.excelMode .statusMsg { display: none; }
+.excelMode .tableWrap { border-radius: 0; border-color: #d0d0d0; margin-bottom: 0; }
+.excelMode .table th  { background: #217346; color: white; }
+.excelMode .rankSection  { padding: 12px 8px; background: white; }
+.excelMode .rankTab      { border-color: #217346; color: #217346; }
+.excelMode .rankTab:hover { background: #217346; color: white; }
+.excelMode .rankTabActive { background: #217346; color: white; border-color: #217346; }
+.excelMode .rankTable th  { background: #217346; color: white; }
+.excelMode .guessBtn      { background: #217346; }
 .excelMode .guessBtn:hover { background: #1a6636; }
-.excelMode .input:focus { border-color: #217346; }
+.excelMode .input:focus    { border-color: #217346; }
 .excelMode .nameInput:focus { border-color: #217346; }
+.excelMode .submitBtn { background: #217346; }
+.excelMode .submitBtn:hover { background: #1a6636; }

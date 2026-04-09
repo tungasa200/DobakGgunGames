@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useSolitaireGame, type DrawMode, type Card, type Selection } from './useSolitaireGame';
 import { rankingsApi } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
@@ -97,8 +96,9 @@ export default function CardBoard({ excel = false }: Props) {
 
   // 랭킹
   const [rankLevel, setRankLevel] = useState<DrawMode>('draw1');
-  const [rankings, setRankings] = useState<unknown[]>([]);
+  const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({ weekly: [], alltime: null });
   const [rankLoading, setRankLoading] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
     if (state.status === 'won') {
@@ -146,10 +146,13 @@ export default function CardBoard({ excel = false }: Props) {
   async function loadRanking(lv: DrawMode) {
     setRankLoading(true);
     try {
-      const data = await rankingsApi.getWeekly('solitaire', lv);
-      setRankings(data as unknown[]);
+      const [weekly, alltime] = await Promise.all([
+        rankingsApi.getWeekly('solitaire', lv),
+        rankingsApi.getAlltimeBest('solitaire', lv),
+      ]);
+      setRankings({ weekly: weekly as unknown[], alltime });
     } catch {
-      setRankings([]);
+      setRankings({ weekly: [], alltime: null });
     } finally {
       setRankLoading(false);
     }
@@ -173,13 +176,6 @@ export default function CardBoard({ excel = false }: Props) {
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`} ref={wrapRef}>
-      {!excel && (
-        <div className={styles.header}>
-          <Link to="/" className={styles.backLink}>← 홈</Link>
-          <h2 className={styles.title}>🃏 솔리테어</h2>
-        </div>
-      )}
-
       {/* 컨트롤 바 — 일반 모드에서만 */}
       {!excel && (
         <div className={styles.controls}>
@@ -298,27 +294,75 @@ export default function CardBoard({ excel = false }: Props) {
 
       {/* 랭킹 — 랭킹 시트 */}
       {showRankingArea && <div className={styles.rankSection}>
+        {!excel && <h3 className={styles.rankTitle}>주간 RANK</h3>}
+        {!excel && rankings.alltime && (
+          <div className={styles.alltimeBanner}>
+            <span className={styles.atLabel}>👑 역대 1위</span>
+            <span className={styles.atContent}>
+              {(rankings.alltime as { name: string; time: number; moves: number; createdAt: string }).name}
+              {' · '}
+              {formatTime(Math.round((rankings.alltime as { name: string; time: number; moves: number; createdAt: string }).time))}
+              {' · '}
+              {(rankings.alltime as { name: string; time: number; moves: number; createdAt: string }).moves}수
+              {' · '}
+              {new Date((rankings.alltime as { name: string; time: number; moves: number; createdAt: string }).createdAt).toLocaleDateString('ko-KR')}
+            </span>
+          </div>
+        )}
         <div className={styles.rankTabs}>
           {(['draw1', 'draw3'] as DrawMode[]).map((dm) => (
             <button
               key={dm}
-              className={`${styles.rankTab} ${rankLevel === dm ? styles.rankTabActive : ''}`}
-              onClick={() => { setRankLevel(dm); loadRanking(dm); }}
+              className={`${styles.rankTab} ${rankLevel === dm && !showRules ? styles.rankTabActive : ''}`}
+              onClick={() => { setRankLevel(dm); loadRanking(dm); setShowRules(false); }}
             >
               {dm === 'draw1' ? '드로우1' : '드로우3'}
             </button>
           ))}
+          {!excel && (
+            <button
+              className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
+              onClick={() => setShowRules(true)}
+            >룰</button>
+          )}
         </div>
-        {rankLoading ? (
+        {showRules ? (
+          <div className={styles.rulesPanel}>
+            <h4>기본 조작</h4>
+            <ul>
+              <li>카드를 <b>클릭</b>해 선택하고, 놓을 위치를 클릭하세요</li>
+              <li>카드를 <b>더블클릭</b>하면 파운데이션으로 자동 이동</li>
+              <li>왼쪽 위 더미를 클릭하면 카드를 뒤집습니다</li>
+              <li>더미가 비면 클릭하여 버린 카드를 다시 가져옵니다</li>
+              <li>↩ 되돌리기로 한 수 취소 가능 (최대 50회)</li>
+            </ul>
+            <h4>태블로 규칙</h4>
+            <ul>
+              <li>빨강↔검정 교대, 숫자는 1씩 감소해야 합니다</li>
+              <li>빈 칸에는 <b>K</b>만 놓을 수 있습니다</li>
+              <li>앞면 보이는 카드 여러 장을 한번에 이동 가능</li>
+            </ul>
+            <h4>파운데이션 규칙</h4>
+            <ul>
+              <li>같은 무늬로 <b>A → K</b> 순서로 쌓습니다</li>
+              <li>4개를 모두 채우면 승리! 🎉</li>
+            </ul>
+            <h4>드로우 모드</h4>
+            <ul>
+              <li><b>드로우 1:</b> 한 번에 카드 1장씩 뒤집기 (기본)</li>
+              <li><b>드로우 3:</b> 한 번에 카드 3장씩 뒤집기 (어려움)</li>
+            </ul>
+          </div>
+        ) : rankLoading ? (
           <p className={styles.placeholder}>불러오는 중...</p>
         ) : (
-          <table className={styles.table}>
+          <table className={styles.rankTable}>
             <thead><tr><th>순위</th><th>이름</th><th>시간</th><th>수</th><th>날짜</th></tr></thead>
             <tbody>
-              {(rankings as Array<{ id: number; name: string; time: number; moves: number; createdAt: string }>).length === 0 ? (
+              {(rankings.weekly as Array<{ id: number; name: string; time: number; moves: number; createdAt: string }>).length === 0 ? (
                 <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
               ) : (
-                (rankings as Array<{ id: number; name: string; time: number; moves: number; createdAt: string }>).map((r, i) => (
+                (rankings.weekly as Array<{ id: number; name: string; time: number; moves: number; createdAt: string }>).map((r, i) => (
                   <tr key={r.id}>
                     <td>{i + 1}</td><td>{r.name}</td>
                     <td>{formatTime(Math.round(r.time))}</td>
@@ -336,12 +380,12 @@ export default function CardBoard({ excel = false }: Props) {
       {modalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
-            <h3>🎉 클리어!</h3>
+            <h2>🎉 클리어!</h2>
             <p>{formatTime(state.elapsed)} / {state.moves}수</p>
             <input
               className={styles.nameInput}
               type="text"
-              placeholder="이름 입력"
+              placeholder="이름을 입력하세요"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRanking(); }}
@@ -349,10 +393,10 @@ export default function CardBoard({ excel = false }: Props) {
             />
             {submitState === 'error' && <p className={styles.hint}>등록 실패. 다시 시도해 주세요.</p>}
             <div className={styles.modalBtns}>
-              <button className={styles.primaryBtn} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>
-                {submitState === 'loading' ? '등록 중...' : '랭킹 등록'}
+              <button className={styles.submitBtn} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>
+                {submitState === 'loading' ? '등록 중...' : '등록'}
               </button>
-              <button className={styles.secondaryBtn} onClick={() => setModalOpen(false)}>건너뛰기</button>
+              <button className={styles.skipBtn} onClick={() => setModalOpen(false)}>건너뛰기</button>
             </div>
           </div>
         </div>

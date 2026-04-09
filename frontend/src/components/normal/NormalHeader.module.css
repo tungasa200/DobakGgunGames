@@ -1,0 +1,134 @@
+/* 원본 normal-ui.js #normal-header 완전 동일하게 구현 */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  color: white;
+  font-family: sans-serif;
+  font-size: 14px;
+  position: relative;
+  border-bottom: 1px solid rgba(0,0,0,0.15);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* 로고 */
+.logo {
+  font-weight: bold;
+  font-size: 15px;
+  white-space: nowrap;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* 게임 목록 버튼 */
+.menuBtn {
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: white;
+  padding: 5px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  font-family: sans-serif;
+  flex-shrink: 0;
+}
+.menuBtn:hover { background: rgba(255,255,255,0.32); }
+
+/* 드롭다운 */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+  z-index: 1000;
+  min-width: 290px;
+  color: black;
+}
+
+.dropTitle {
+  color: white;
+  font-weight: bold;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.dropItem {
+  padding: 8px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dropItem:last-child { border-bottom: none; }
+
+.dropIcon { font-size: 17px; width: 22px; text-align: center; flex-shrink: 0; }
+.dropName { font-size: 14px; font-weight: bold; color: #333; min-width: 60px; }
+.dropBtns { display: flex; gap: 6px; margin-left: auto; }
+
+.dropBtn {
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  color: #444;
+  text-decoration: none;
+  display: inline-block;
+  white-space: nowrap;
+  transition: all 0.1s;
+}
+.dropBtn:hover { background: #f0f0f0; border-color: #999; color: #111; }
+
+/* 현재 페이지 버튼 */
+.dropCurrent {
+  color: white !important;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* 같은 게임의 엑셀 모드 버튼 */
+.dropExcelSame {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+.dropExcelSame:hover { background: #d0ecd4; border-color: #81c784; color: #1b5e20; }
+
+/* 중앙 타이틀 */
+.center {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: bold;
+  pointer-events: none;
+  color: white;
+}
+
+/* 엑셀 모드 버튼 */
+.excelBtn {
+  background: white;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+.excelBtn:hover { background: #f0f0f0; }
+
+@media (max-width: 520px) { .center { display: none; } }
+@media (max-width: 380px) { .logo  { display: none; } }

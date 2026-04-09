@@ -5,16 +5,6 @@
   font-family: 'Segoe UI', sans-serif;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.backLink { color: #6c2fa0; text-decoration: none; font-size: 0.9rem; }
-.title    { font-size: 1.4rem; font-weight: 700; color: #2c3e50; margin: 0; }
-
 /* 난이도 */
 .diffRow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 
@@ -35,22 +25,22 @@
 /* 정보 바 */
 .infoBar {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   justify-content: center;
 }
 
 .infoItem {
   text-align: center;
-  background: #fff;
+  background: white;
   border-radius: 8px;
-  padding: 5px 14px;
+  padding: 6px 14px;
   border: 1px solid #ddd;
-  min-width: 64px;
+  min-width: 70px;
 }
-.infoLabel { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
-.infoValue { font-size: 1.3rem; font-weight: bold; color: #2c3e50; }
+.infoLabel { font-size: 0.72em; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.infoValue { font-size: 1.4em; font-weight: bold; color: #2c3e50; }
 
 /* 상태 */
 .status {
@@ -76,40 +66,41 @@
 .sidePanel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 100px;
+  gap: 10px;
+  width: 110px;
   flex-shrink: 0;
 }
 
 .sideBox {
-  background: #fff;
+  background: white;
   border-radius: 8px;
   border: 1px solid #ddd;
-  padding: 8px;
+  padding: 10px;
   text-align: center;
 }
 
 .sideTitle {
-  font-size: 0.7rem;
+  font-size: 0.72em;
   color: #888;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   font-weight: bold;
 }
 
 .miniCanvas {
   border: 1px solid #333;
-  border-radius: 3px;
+  border-radius: 4px;
+  background-color: #111827;
   display: block;
   margin: 0 auto;
   width: 80px;
   height: 80px;
 }
 
-.hintsBox { font-size: 0; } /* hide on mobile via media query */
+.hintsBox { } /* hide on mobile via media query */
 .hints {
-  font-size: 0.72rem;
+  font-size: 0.76em;
   color: #555;
   text-align: left;
   line-height: 2;
@@ -180,8 +171,8 @@
 }
 
 /* 랭킹 */
-.rankSection { margin-top: 24px; }
-.rankTitle   { text-align: center; margin: 0 0 10px; color: #2c3e50; font-size: 1rem; }
+.rankSection { margin-top: 28px; width: 100%; max-width: min(560px, 100%); }
+.rankTitle   { text-align: center; margin: 0 0 10px; color: #2c3e50; font-size: 1rem; font-weight: bold; }
 
 .alltimeBanner {
   display: flex;
@@ -321,8 +312,7 @@
   margin: 0;
 }
 
-/* 엑셀 모드에서 헤더/난이도/정보바/컨트롤 숨김 (ExcelShell에서 제공) */
-.excelMode .header    { display: none; }
+/* 엑셀 모드에서 난이도/정보바/컨트롤 숨김 (ExcelShell에서 제공) */
 .excelMode .diffRow   { display: none; }
 .excelMode .infoBar   { display: none; }
 .excelMode .controls  { display: none; }

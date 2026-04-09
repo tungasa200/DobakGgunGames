@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import ExcelShell from '../components/excel/ExcelShell';
+import NormalHeader from '../components/normal/NormalHeader';
 
 const BaseballBoard    = lazy(() => import('../games/baseball/BaseballBoard'));
 const MinesweeperBoard = lazy(() => import('../games/minesweeper/MinesweeperBoard'));
@@ -24,11 +25,29 @@ const FILE_TITLES: Record<string, string> = {
   apple:       'apple_game.xlsx',
 };
 
-// 게임별 그리드 셀 크기 (원본과 동일하게 맞춤)
+// 게임별 그리드 셀 크기 (엑셀 모드)
 const CELL_SIZES: Record<string, number> = {
   tetris:      30,
   minesweeper: 30,
   apple:       52,
+};
+
+// 게임별 배경색 — 원본 body { background-color } 와 동일
+const BG_COLORS: Record<string, string> = {
+  minesweeper: '#f0f0f0',
+  baseball:    '#e8ecf4',
+  tetris:      '#f0f0f0',
+  solitaire:   '#0b5e20',
+  apple:       '#f0f0f0',
+};
+
+// 게임별 강조색 — 원본 NORMAL_GAME_CONFIG.accentColor 와 동일
+const ACCENT_COLORS: Record<string, string> = {
+  minesweeper: '#3498db',
+  baseball:    '#1e3a6e',
+  tetris:      '#8e44ad',
+  solitaire:   '#27ae60',
+  apple:       '#f18064',
 };
 
 export default function GamePage({ excel }: { excel: boolean }) {
@@ -39,7 +58,7 @@ export default function GamePage({ excel }: { excel: boolean }) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
         <p>존재하지 않는 게임입니다.</p>
-        <Link to="/">홈으로</Link>
+        <a href="/">홈으로</a>
       </div>
     );
   }
@@ -52,9 +71,9 @@ export default function GamePage({ excel }: { excel: boolean }) {
     game === 'tetris'      ? <TetrisBoard      excel={excel} /> :
     null;
 
-  return (
-    <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>로딩 중...</div>}>
-      {excel && board ? (
+  if (excel) {
+    return (
+      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>로딩 중...</div>}>
         <ExcelShell
           game={game}
           gameName={name}
@@ -63,9 +82,29 @@ export default function GamePage({ excel }: { excel: boolean }) {
         >
           {board}
         </ExcelShell>
-      ) : (
-        board
-      )}
+      </Suspense>
+    );
+  }
+
+  // 일반 모드: 원본 HTML처럼 전체화면 + 게임별 배경색 + 공통 헤더
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>로딩 중...</div>}>
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        overflow: 'auto',
+        background: BG_COLORS[game] ?? '#f0f0f0',
+        fontFamily: 'sans-serif',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        <NormalHeader
+          currentGame={game}
+          gameName={name}
+          accentColor={ACCENT_COLORS[game] ?? '#2c3e50'}
+        />
+        {board}
+      </div>
     </Suspense>
   );
 }

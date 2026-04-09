@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { rankingsApi } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
@@ -793,13 +792,6 @@ export default function TetrisBoard({ excel = false }: Props) {
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
-      {!excel && (
-        <div className={styles.header}>
-          <Link to="/" className={styles.backLink}>← 홈</Link>
-          <h2 className={styles.title}>🟦 테트리스</h2>
-        </div>
-      )}
-
       {/* 난이도 — 일반 모드에서만 */}
       {!excel && (
         <div className={styles.diffRow}>

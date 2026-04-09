@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useMinesweeperGame, PRESETS, type Level } from './useMinesweeperGame';
 import { rankingsApi } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
@@ -138,13 +137,6 @@ export default function MinesweeperBoard({ excel = false }: Props) {
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
-      {!excel && (
-        <div className={styles.header}>
-          <Link to="/" className={styles.backLink}>← 홈</Link>
-          <h2 className={styles.title}>💣 지뢰찾기</h2>
-        </div>
-      )}
-
       {/* 난이도 — 일반 모드에서만 */}
       {!excel && (
         <div className={styles.diffRow}>
@@ -189,10 +181,14 @@ export default function MinesweeperBoard({ excel = false }: Props) {
 
                 if (cell.isRevealed) {
                   className += ' ' + styles.revealed;
-                  if (cell.isMine) content = '💣';
+                  if (cell.isMine) { content = '💣'; className += ' ' + styles.mine; }
                   else if (cell.adjMines > 0) content = String(cell.adjMines);
                 } else if (cell.mark === 'flag')   { content = '🚩'; className += ' ' + styles.flag; }
                 else if (cell.mark === 'question') { content = '?';  className += ' ' + styles.question; }
+
+                // 엑셀 모드에서는 숫자 색상 CSS가 처리 (color: #333 override)
+                const numColor = !excel && cell.isRevealed && cell.adjMines > 0 && !cell.isMine
+                  ? NUM_COLORS[cell.adjMines] : undefined;
 
                 const cellKey = `${r}-${c}`;
                 return (
@@ -204,8 +200,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
                       height: cellSize,
                       fontSize: cell.isRevealed && !cell.isMine && cell.adjMines > 0
                         ? Math.max(10, cellSize * 0.55) : undefined,
-                      color: cell.isRevealed && cell.adjMines > 0 && !cell.isMine
-                        ? NUM_COLORS[cell.adjMines] : undefined,
+                      color: numColor,
                     }}
                     onClick={() => revealCell(r, c)}
                     onContextMenu={(e) => { e.preventDefault(); toggleMark(r, c); }}
