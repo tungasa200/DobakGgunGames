@@ -186,4 +186,35 @@
 }
 
 /* 엑셀 모드 */
-.excelMode { font-family: 'Calibri', 'Segoe UI', sans-serif; }
+.excelMode {
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  padding: 0;
+  max-width: none;
+  margin: 0;
+}
+.excelMode .header    { display: none; }
+.excelMode .diffRow   { display: none; }
+.excelMode .statusBar { display: none; }
+.excelMode .boardWrapper { margin-bottom: 0; }
+
+/* 엑셀 모드에서 보드 셀을 스프레드시트 셀처럼 */
+.excelMode .board { background: #d0d0d0; border: 1px solid #d0d0d0; border-radius: 0; }
+.excelMode .cell {
+  background: #d4d4d4;
+  border-color: #fff #888 #888 #fff;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.excelMode .revealed {
+  background: white;
+  border: 1px solid #d0d0d0;
+}
+
+/* 랭킹 */
+.excelMode .rankSection { padding: 12px 8px; background: white; }
+.excelMode .rankTab { border-color: #217346; color: #217346; }
+.excelMode .rankTab:hover { background: #217346; color: #fff; }
+.excelMode .rankTabActive { background: #217346; color: #fff; border-color: #217346; }
+.excelMode .table th { background: #217346; color: white; }
+.excelMode .primaryBtn { background: #217346; }
+.excelMode .primaryBtn:hover { background: #1a6636; }
+.excelMode .nameInput:focus { border-color: #217346; }

@@ -316,21 +316,63 @@
 /* 엑셀 모드 */
 .excelMode {
   font-family: 'Calibri', 'Segoe UI', sans-serif;
+  padding: 0;
+  max-width: none;
+  margin: 0;
 }
-.excelMode .title     { color: #217346; }
-.excelMode .backLink  { color: #217346; }
-.excelMode .diffBtn   { border-color: #217346; color: #217346; }
-.excelMode .diffBtn:hover { background: #217346; color: #fff; }
-.excelMode .diffActive    { background: #217346; color: #fff; border-color: #217346; }
-.excelMode .startBtn  { background: #217346; }
-.excelMode .startBtn:hover { background: #1a6636; }
-.excelMode .pauseBtn  { background: #217346; }
-.excelMode .pauseBtn:hover:not(:disabled) { background: #1a6636; }
-.excelMode .infoBar   { background: transparent; }
-.excelMode .infoItem  { border-color: #d0d0d0; border-radius: 0; }
-.excelMode .infoValue { color: #217346; font-family: 'Calibri', sans-serif; }
-.excelMode .board     { border-color: #d0d0d0; }
-.excelMode .miniCanvas { border-color: #d0d0d0; }
+
+/* 엑셀 모드에서 헤더/난이도/정보바/컨트롤 숨김 (ExcelShell에서 제공) */
+.excelMode .header    { display: none; }
+.excelMode .diffRow   { display: none; }
+.excelMode .infoBar   { display: none; }
+.excelMode .controls  { display: none; }
+.excelMode .status    { display: none; }
+
+/* 게임 영역을 스프레드시트처럼 */
+.excelMode .gameArea  { gap: 0; margin-bottom: 0; }
+
+/* 사이드 패널을 엑셀 셀 스타일로 */
+.excelMode .sidePanel {
+  width: 120px;
+  gap: 0;
+  border-right: 1px solid #d0d0d0;
+}
+.excelMode .sideBox {
+  background: white;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid #d0d0d0;
+  padding: 0;
+}
+.excelMode .sideTitle {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  background: #f2f2f2;
+  color: #444;
+  font-weight: bold;
+  font-size: 12px;
+  border-bottom: 1px solid #aaa;
+  border-top: 1px solid #aaa;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0;
+}
+.excelMode .miniCanvas {
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid #d0d0d0;
+  margin: 0;
+  width: 120px;
+  height: 120px;
+}
+.excelMode .hintsBox  { display: none; }
+
+/* 보드 */
+.excelMode .board { border: 3px solid #d0d0d0; border-top: 1px solid #d0d0d0; border-radius: 0; }
+
+/* 랭킹 탭 색상 */
 .excelMode .rankTab    { border-color: #217346; color: #217346; }
 .excelMode .rankTab:hover { background: #217346; color: #fff; }
 .excelMode .rankTabActive { background: #217346; color: #fff; border-color: #217346; }
@@ -342,3 +384,9 @@
 .excelMode .alltimeBanner { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-color: #a5d6a7; }
 .excelMode .atLabel   { color: #217346; }
 .excelMode .atContent { color: #1b5e20; }
+
+/* 랭킹 섹션 — 시트 탭으로 전환 시 표시 */
+.excelMode .rankSection {
+  padding: 12px 8px;
+  background: white;
+}

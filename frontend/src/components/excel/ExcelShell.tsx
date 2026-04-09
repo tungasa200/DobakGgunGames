@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect, type ReactNode } from 'react';
+import { useRef, useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExcelShellProvider, useExcelShell } from './ExcelShellContext';
+import { ExcelShellProvider, useExcelShell, type SheetTab } from './ExcelShellContext';
 import styles from './ExcelShell.module.css';
 
 // ===== 게임 목록 =====
@@ -12,23 +12,37 @@ const GAMES = [
   { key: 'apple',       label: '사과게임', icon: '🍎' },
 ];
 
+// ===== 열 라벨 헬퍼 (A, B, C, ..., AA, ...) =====
+function colLabel(i: number): string {
+  let label = '';
+  let n = i + 1;
+  while (n > 0) {
+    n--;
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26);
+  }
+  return label;
+}
+
 // ===== Props =====
 export interface ExcelShellProps {
   game: string;           // 현재 게임 key
   gameName: string;       // 표시용 한글 이름
   fileTitle?: string;     // 상단 파일명 (기본: game_score.xlsx)
   ribbonGameGroup?: ReactNode;  // 게임 전용 리본 그룹
+  cellSize?: number;      // 그리드 셀 크기 (기본: 96, 테트리스/지뢰찾기: 30)
   children: ReactNode;
 }
 
 // ===== 내부: 크롬 렌더러 (Context 소비) =====
-function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, children }: ExcelShellProps) {
-  const { formulaCell, formulaContent, statusItems } = useExcelShell();
+function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize = 96, children }: ExcelShellProps) {
+  const { formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet } = useExcelShell();
   const navigate = useNavigate();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const homeTabRef  = useRef<HTMLSpanElement>(null);
+  const sheetAreaRef = useRef<HTMLDivElement>(null);
 
   const title = fileTitle ?? `${game}_score.xlsx`;
 
@@ -51,7 +65,29 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, children 
     };
   }, [dropdownOpen]);
 
-  // 공통 리본 그룹 (장식용 — 클릭 시 아무 동작 없음)
+  // 그리드 헤더 개수 계산
+  const [colCount, setColCount] = useState(30);
+  const [rowCount, setRowCount] = useState(50);
+
+  useEffect(() => {
+    function measure() {
+      const el = sheetAreaRef.current;
+      if (!el) return;
+      setColCount(Math.ceil(el.clientWidth / cellSize) + 4);
+      setRowCount(Math.ceil(el.clientHeight / cellSize) + 4);
+    }
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (sheetAreaRef.current) ro.observe(sheetAreaRef.current);
+    return () => ro.disconnect();
+  }, [cellSize]);
+
+  // 배경 격자 크기를 셀 크기에 맞춤
+  const sheetAreaStyle = useMemo(() => ({
+    backgroundSize: `${cellSize}px ${cellSize}px`,
+  }), [cellSize]);
+
+  // 공통 리본 그룹 (장식용)
   const RIBBON_COMMON_GROUPS = [
     {
       label: '클립보드',
@@ -85,6 +121,12 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, children 
         { icon: ',',  label: '쉼표' },
       ],
     },
+  ];
+
+  const SHEET_TABS: { key: SheetTab; label: string }[] = [
+    { key: 'game',    label: '게임' },
+    { key: 'ranking', label: '랭킹' },
+    { key: 'rules',   label: '룰' },
   ];
 
   return (
@@ -151,7 +193,6 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, children 
 
       {/* ── 리본 ── */}
       <div className={styles.ribbon}>
-        {/* 공통 그룹 */}
         {RIBBON_COMMON_GROUPS.map(grp => (
           <div key={grp.label} className={styles.rGroup}>
             <div className={styles.rGroupBtns}>
@@ -165,8 +206,6 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, children 
             <div className={styles.rGroupLabel}>{grp.label}</div>
           </div>
         ))}
-
-        {/* 게임 전용 그룹 */}
         {ribbonGameGroup}
       </div>
 
@@ -178,8 +217,58 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, children 
       </div>
 
       {/* ── 시트 영역 ── */}
-      <div className={styles.sheetArea}>
-        {children}
+      <div className={styles.sheetArea} ref={sheetAreaRef} style={sheetAreaStyle}>
+        <div className={styles.gridWrapper}>
+          {/* 열 헤더 */}
+          <div className={styles.colHeaderRow}>
+            <div className={styles.corner} />
+            {Array.from({ length: colCount }, (_, i) => (
+              <div
+                key={i}
+                className={styles.colHeader}
+                style={{ width: cellSize, minWidth: cellSize }}
+              >
+                {colLabel(i)}
+              </div>
+            ))}
+          </div>
+
+          {/* 행 + 게임 콘텐츠 */}
+          <div className={styles.rowsArea}>
+            <div className={styles.rowNums}>
+              {Array.from({ length: rowCount }, (_, i) => (
+                <div
+                  key={i}
+                  className={styles.rowNum}
+                  style={{ height: cellSize }}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+            <div className={styles.gameContent}>
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 시트 탭 ── */}
+      <div className={styles.sheetTabs}>
+        <button
+          className={styles.sheetAddBtn}
+          title="새 게임"
+          onClick={() => setActiveSheet('game')}
+        >＋</button>
+        {SHEET_TABS.map(tab => (
+          <div
+            key={tab.key}
+            className={`${styles.sheetTab} ${activeSheet === tab.key ? styles.sheetTabActive : ''}`}
+            onClick={() => setActiveSheet(tab.key)}
+          >
+            {tab.label}
+          </div>
+        ))}
       </div>
 
       {/* ── 상태바 ── */}

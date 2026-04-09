@@ -141,7 +141,7 @@ export default function AppleCanvas({ excel = false }: Props) {
   }, [state.timeLeft, state.status, end]);
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     setFormula('A1', `=APPLE_SCORE(sum,${state.score})`);
@@ -367,69 +367,78 @@ export default function AppleCanvas({ excel = false }: Props) {
   }
 
   const timeWarning = state.status === 'playing' && state.timeLeft <= 30;
+  const showGameArea    = !excel || activeSheet === 'game';
+  const showRankingArea = !excel || activeSheet === 'ranking';
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`} ref={wrapRef}>
-      <div className={styles.header}>
-        <Link to="/" className={styles.backLink}>← 홈</Link>
-        <h2 className={styles.title}>🍎 사과게임{excel ? ' (엑셀 모드)' : ''}</h2>
-      </div>
+      {!excel && (
+        <div className={styles.header}>
+          <Link to="/" className={styles.backLink}>← 홈</Link>
+          <h2 className={styles.title}>🍎 사과게임</h2>
+        </div>
+      )}
 
-      {/* 상태 바 */}
-      <div className={styles.statusBar}>
-        <span className={styles.scoreLabel}>점수 <strong>{state.score}</strong></span>
-        <span className={styles.statusMsg}>{msg}</span>
-        <span className={`${styles.timer} ${timeWarning ? styles.timerWarning : ''}`}>
-          {formatTime(state.timeLeft)}
-        </span>
-      </div>
+      {/* 상태 바 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.statusBar}>
+          <span className={styles.scoreLabel}>점수 <strong>{state.score}</strong></span>
+          <span className={styles.statusMsg}>{msg}</span>
+          <span className={`${styles.timer} ${timeWarning ? styles.timerWarning : ''}`}>
+            {formatTime(state.timeLeft)}
+          </span>
+        </div>
+      )}
 
-      {/* 시작 버튼 */}
-      <div className={styles.controls}>
-        <button className={styles.startBtn} onClick={handleStart}>
-          {state.status === 'idle' ? '▶ 시작' : '↺ 다시하기'}
-        </button>
-      </div>
+      {/* 시작 버튼 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.controls}>
+          <button className={styles.startBtn} onClick={handleStart}>
+            {state.status === 'idle' ? '▶ 시작' : '↺ 다시하기'}
+          </button>
+        </div>
+      )}
 
-      {/* 캔버스 */}
-      <div className={styles.canvasWrap}>
-        <canvas
-          ref={canvasRef}
-          className={styles.canvas}
-          onMouseDown={handlePointerDown}
-          onTouchStart={(e) => { e.preventDefault(); handlePointerDown(e); }}
-        />
-      </div>
+      {/* 캔버스 — 게임 시트 */}
+      {showGameArea && (
+        <div className={styles.canvasWrap}>
+          <canvas
+            ref={canvasRef}
+            className={styles.canvas}
+            onMouseDown={handlePointerDown}
+            onTouchStart={(e) => { e.preventDefault(); handlePointerDown(e); }}
+          />
+        </div>
+      )}
 
-      {/* 랭킹 */}
-      <div className={styles.rankSection}>
-        <button
-          className={styles.rankLoadBtn}
-          onClick={loadRanking}
-        >
-          랭킹 불러오기
-        </button>
-        {rankLoading ? (
-          <p className={styles.placeholder}>불러오는 중...</p>
-        ) : (
-          <table className={styles.table}>
-            <thead><tr><th>순위</th><th>이름</th><th>점수</th><th>날짜</th></tr></thead>
-            <tbody>
-              {(rankings as Array<{ id: number; name: string; score: number; createdAt: string }>).length === 0 ? (
-                <tr><td colSpan={4} className={styles.placeholder}>기록 없음</td></tr>
-              ) : (
-                (rankings as Array<{ id: number; name: string; score: number; createdAt: string }>).map((r, i) => (
-                  <tr key={r.id}>
-                    <td>{i + 1}</td><td>{r.name}</td>
-                    <td>{r.score.toLocaleString()}점</td>
-                    <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {/* 랭킹 — 랭킹 시트 */}
+      {showRankingArea && (
+        <div className={styles.rankSection}>
+          <button className={styles.rankLoadBtn} onClick={loadRanking}>
+            랭킹 불러오기
+          </button>
+          {rankLoading ? (
+            <p className={styles.placeholder}>불러오는 중...</p>
+          ) : (
+            <table className={styles.table}>
+              <thead><tr><th>순위</th><th>이름</th><th>점수</th><th>날짜</th></tr></thead>
+              <tbody>
+                {(rankings as Array<{ id: number; name: string; score: number; createdAt: string }>).length === 0 ? (
+                  <tr><td colSpan={4} className={styles.placeholder}>기록 없음</td></tr>
+                ) : (
+                  (rankings as Array<{ id: number; name: string; score: number; createdAt: string }>).map((r, i) => (
+                    <tr key={r.id}>
+                      <td>{i + 1}</td><td>{r.name}</td>
+                      <td>{r.score.toLocaleString()}점</td>
+                      <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {/* 클리어 모달 */}
       {modalOpen && (

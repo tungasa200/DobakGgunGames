@@ -38,7 +38,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   }, [state.status]);
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     const remaining = state.totalMines - state.flagCount;
@@ -133,133 +133,137 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   })();
 
   const remaining = state.totalMines - state.flagCount;
+  const showGameArea    = !excel || activeSheet === 'game';
+  const showRankingArea = !excel || activeSheet === 'ranking';
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
-      <div className={styles.header}>
-        <Link to="/" className={styles.backLink}>← 홈</Link>
-        <h2 className={styles.title}>💣 지뢰찾기{excel ? ' (엑셀 모드)' : ''}</h2>
-      </div>
-
-      {/* 난이도 */}
-      <div className={styles.diffRow}>
-        {LEVELS.map((lv) => (
-          <button
-            key={lv.value}
-            className={`${styles.diffBtn} ${level === lv.value ? styles.diffActive : ''}`}
-            onClick={() => handleLevelChange(lv.value)}
-          >
-            {lv.label}
-          </button>
-        ))}
-        <button className={styles.resetBtn} onClick={() => reset(level)}>리셋</button>
-      </div>
-
-      {/* 상태 바 */}
-      <div className={styles.statusBar}>
-        <span className={styles.mineCount}>💣 {remaining}</span>
-        <span
-          className={`${styles.status} ${state.status === 'won' ? styles.win : state.status === 'lost' ? styles.lose : ''}`}
-        >
-          {statusText}
-        </span>
-        <span className={styles.timer}>⏱ {state.elapsed.toFixed(1)}초</span>
-      </div>
-
-      {/* 보드 */}
-      <div
-        className={styles.boardWrapper}
-        style={{ overflowX: 'auto' }}
-      >
-        <div
-          className={styles.board}
-          style={{
-            gridTemplateColumns: `repeat(${state.cols}, ${cellSize}px)`,
-            gridTemplateRows: `repeat(${state.rows}, ${cellSize}px)`,
-          }}
-        >
-          {state.board.map((row, r) =>
-            row.map((cell, c) => {
-              let content = '';
-              let className = styles.cell;
-
-              if (cell.isRevealed) {
-                className += ' ' + styles.revealed;
-                if (cell.isMine) content = '💣';
-                else if (cell.adjMines > 0) content = String(cell.adjMines);
-              } else if (cell.mark === 'flag')     { content = '🚩'; className += ' ' + styles.flag; }
-              else if (cell.mark === 'question')   { content = '?';  className += ' ' + styles.question; }
-
-              const cellKey = `${r}-${c}`;
-
-              return (
-                <div
-                  key={cellKey}
-                  className={className}
-                  style={{
-                    width: cellSize,
-                    height: cellSize,
-                    fontSize: cell.isRevealed && !cell.isMine && cell.adjMines > 0
-                      ? Math.max(10, cellSize * 0.55)
-                      : undefined,
-                    color: cell.isRevealed && cell.adjMines > 0 && !cell.isMine
-                      ? NUM_COLORS[cell.adjMines]
-                      : undefined,
-                  }}
-                  onClick={() => revealCell(r, c)}
-                  onContextMenu={(e) => { e.preventDefault(); toggleMark(r, c); }}
-                  onMouseDown={(e) => {
-                    mouseButtonsRef.current[cellKey] = (mouseButtonsRef.current[cellKey] ?? 0) | e.buttons;
-                    if ((mouseButtonsRef.current[cellKey] & 3) === 3) chordClick(r, c);
-                  }}
-                  onMouseUp={() => { mouseButtonsRef.current[cellKey] = 0; }}
-                  onMouseLeave={() => { mouseButtonsRef.current[cellKey] = 0; }}
-                  onTouchStart={(e) => handleTouchStart(r, c, e)}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                >
-                  {content}
-                </div>
-              );
-            })
-          )}
+      {!excel && (
+        <div className={styles.header}>
+          <Link to="/" className={styles.backLink}>← 홈</Link>
+          <h2 className={styles.title}>💣 지뢰찾기</h2>
         </div>
-      </div>
+      )}
 
-      {/* 랭킹 */}
-      <div className={styles.rankSection}>
-        <div className={styles.rankTabs}>
+      {/* 난이도 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.diffRow}>
           {LEVELS.map((lv) => (
             <button
               key={lv.value}
-              className={`${styles.rankTab} ${rankLevel === lv.value ? styles.rankTabActive : ''}`}
-              onClick={() => { setRankLevel(lv.value); loadRanking(lv.value); }}
+              className={`${styles.diffBtn} ${level === lv.value ? styles.diffActive : ''}`}
+              onClick={() => handleLevelChange(lv.value)}
             >
-              {lv.label.split(' ')[0]}
+              {lv.label}
             </button>
           ))}
+          <button className={styles.resetBtn} onClick={() => reset(level)}>리셋</button>
         </div>
-        {rankLoading ? (
-          <p className={styles.placeholder}>불러오는 중...</p>
-        ) : (
-          <table className={styles.table}>
-            <thead><tr><th>순위</th><th>이름</th><th>시간</th><th>날짜</th></tr></thead>
-            <tbody>
-              {(rankings as Array<{ id: number; name: string; time: number; createdAt: string }>).length === 0 ? (
-                <tr><td colSpan={4} className={styles.placeholder}>기록 없음</td></tr>
-              ) : (
-                (rankings as Array<{ id: number; name: string; time: number; createdAt: string }>).map((r, i) => (
-                  <tr key={r.id}>
-                    <td>{i + 1}</td><td>{r.name}</td>
-                    <td>{r.time.toFixed(2)}초</td>
-                    <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+      )}
+
+      {/* 상태 바 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.statusBar}>
+          <span className={styles.mineCount}>💣 {remaining}</span>
+          <span className={`${styles.status} ${state.status === 'won' ? styles.win : state.status === 'lost' ? styles.lose : ''}`}>
+            {statusText}
+          </span>
+          <span className={styles.timer}>⏱ {state.elapsed.toFixed(1)}초</span>
+        </div>
+      )}
+
+      {/* 보드 — 게임 시트 */}
+      {showGameArea && (
+        <div className={styles.boardWrapper} style={{ overflowX: 'auto' }}>
+          <div
+            className={styles.board}
+            style={{
+              gridTemplateColumns: `repeat(${state.cols}, ${cellSize}px)`,
+              gridTemplateRows: `repeat(${state.rows}, ${cellSize}px)`,
+            }}
+          >
+            {state.board.map((row, r) =>
+              row.map((cell, c) => {
+                let content = '';
+                let className = styles.cell;
+
+                if (cell.isRevealed) {
+                  className += ' ' + styles.revealed;
+                  if (cell.isMine) content = '💣';
+                  else if (cell.adjMines > 0) content = String(cell.adjMines);
+                } else if (cell.mark === 'flag')   { content = '🚩'; className += ' ' + styles.flag; }
+                else if (cell.mark === 'question') { content = '?';  className += ' ' + styles.question; }
+
+                const cellKey = `${r}-${c}`;
+                return (
+                  <div
+                    key={cellKey}
+                    className={className}
+                    style={{
+                      width: cellSize,
+                      height: cellSize,
+                      fontSize: cell.isRevealed && !cell.isMine && cell.adjMines > 0
+                        ? Math.max(10, cellSize * 0.55) : undefined,
+                      color: cell.isRevealed && cell.adjMines > 0 && !cell.isMine
+                        ? NUM_COLORS[cell.adjMines] : undefined,
+                    }}
+                    onClick={() => revealCell(r, c)}
+                    onContextMenu={(e) => { e.preventDefault(); toggleMark(r, c); }}
+                    onMouseDown={(e) => {
+                      mouseButtonsRef.current[cellKey] = (mouseButtonsRef.current[cellKey] ?? 0) | e.buttons;
+                      if ((mouseButtonsRef.current[cellKey] & 3) === 3) chordClick(r, c);
+                    }}
+                    onMouseUp={() => { mouseButtonsRef.current[cellKey] = 0; }}
+                    onMouseLeave={() => { mouseButtonsRef.current[cellKey] = 0; }}
+                    onTouchStart={(e) => handleTouchStart(r, c, e)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    {content}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 랭킹 — 랭킹 시트 */}
+      {showRankingArea && (
+        <div className={styles.rankSection}>
+          <div className={styles.rankTabs}>
+            {LEVELS.map((lv) => (
+              <button
+                key={lv.value}
+                className={`${styles.rankTab} ${rankLevel === lv.value ? styles.rankTabActive : ''}`}
+                onClick={() => { setRankLevel(lv.value); loadRanking(lv.value); }}
+              >
+                {lv.label.split(' ')[0]}
+              </button>
+            ))}
+          </div>
+          {rankLoading ? (
+            <p className={styles.placeholder}>불러오는 중...</p>
+          ) : (
+            <table className={styles.table}>
+              <thead><tr><th>순위</th><th>이름</th><th>시간</th><th>날짜</th></tr></thead>
+              <tbody>
+                {(rankings as Array<{ id: number; name: string; time: number; createdAt: string }>).length === 0 ? (
+                  <tr><td colSpan={4} className={styles.placeholder}>기록 없음</td></tr>
+                ) : (
+                  (rankings as Array<{ id: number; name: string; time: number; createdAt: string }>).map((r, i) => (
+                    <tr key={r.id}>
+                      <td>{i + 1}</td><td>{r.name}</td>
+                      <td>{r.time.toFixed(2)}초</td>
+                      <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {/* 클리어 모달 */}
       {modalOpen && (

@@ -41,7 +41,7 @@ export default function BaseballBoard({ excel = false }: Props) {
   }, [state.won]);
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     setFormula('A1', `=BASEBALL_TRY(attempt,${state.attempts})`);
@@ -118,132 +118,147 @@ export default function BaseballBoard({ excel = false }: Props) {
     return [s, b].filter(Boolean).join(' ');
   })();
 
+  const showGameArea    = !excel || activeSheet === 'game';
+  const showRankingArea = !excel || activeSheet === 'ranking';
+
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
-      <div className={styles.header}>
-        <Link to="/" className={styles.backLink}>← 홈</Link>
-        <h2 className={styles.title}>⚾ 숫자야구{excel ? ' (엑셀 모드)' : ''}</h2>
-      </div>
+      {!excel && (
+        <div className={styles.header}>
+          <Link to="/" className={styles.backLink}>← 홈</Link>
+          <h2 className={styles.title}>⚾ 숫자야구</h2>
+        </div>
+      )}
 
-      {/* 난이도 선택 */}
-      <div className={styles.diffRow}>
-        {LEVELS.map((lv) => (
-          <button
-            key={lv.value}
-            className={`${styles.diffBtn} ${level === lv.value ? styles.diffActive : ''}`}
-            onClick={() => handleLevelChange(lv.value)}
-          >
-            {lv.label}
-          </button>
-        ))}
-        <button className={styles.resetBtn} onClick={() => { reset(level); setInput(''); setHint(''); }}>
-          리셋
-        </button>
-      </div>
-
-      {/* 상태 바 */}
-      <div className={styles.statusBar}>
-        <span className={styles.status}>{statusText}</span>
-        <span className={styles.timer}>⏱ {state.elapsed.toFixed(1)}초</span>
-        <span className={styles.attempts}>{state.attempts}번째 시도</span>
-      </div>
-
-      {/* 입력 */}
-      <div className={styles.inputRow}>
-        <input
-          ref={inputRef}
-          className={styles.input}
-          type="text"
-          inputMode="numeric"
-          maxLength={digitCount}
-          placeholder={'_'.repeat(digitCount)}
-          value={input}
-          disabled={state.won}
-          onChange={(e) => setInput(e.target.value.replace(/[^0-9]/g, '').slice(0, digitCount))}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleGuess(); }}
-        />
-        <button className={styles.guessBtn} disabled={state.won} onClick={handleGuess}>
-          확인
-        </button>
-      </div>
-      {hint && <p className={styles.hint}>{hint}</p>}
-
-      {/* 기록 테이블 */}
-      <table className={styles.table}>
-        <thead>
-          <tr><th>#</th><th>입력</th><th>스트라이크</th><th>볼</th></tr>
-        </thead>
-        <tbody>
-          {state.history.length === 0 ? (
-            <tr><td colSpan={4} className={styles.placeholder}>시도 기록이 여기에 표시됩니다.</td></tr>
-          ) : (
-            /* 엑셀 모드: 빈 행 미리 채워서 maxAttempts 줄 유지 */
-            excel
-              ? Array.from({ length: maxAttempts }, (_, i) => {
-                  const row = state.history.find((r) => r.attempt === maxAttempts - i);
-                  return row ? (
-                    <tr key={row.attempt}>
-                      <td>{row.attempt}</td>
-                      <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
-                      <td className={styles.strike}>{row.strikes}S</td>
-                      <td className={row.balls > 0 ? styles.ball : undefined}>
-                        {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr key={i}><td>{maxAttempts - i}</td><td></td><td></td><td></td></tr>
-                  );
-                })
-              : state.history.map((row) => (
-                  <tr key={row.attempt}>
-                    <td>{row.attempt}</td>
-                    <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
-                    <td className={styles.strike}>{row.strikes}S</td>
-                    <td className={row.balls > 0 ? styles.ball : undefined}>
-                      {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
-                    </td>
-                  </tr>
-                ))
-          )}
-        </tbody>
-      </table>
-
-      {/* 랭킹 패널 */}
-      <div className={styles.rankSection}>
-        <div className={styles.rankTabs}>
+      {/* 난이도 선택 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.diffRow}>
           {LEVELS.map((lv) => (
             <button
               key={lv.value}
-              className={`${styles.rankTab} ${rankLevel === lv.value ? styles.rankTabActive : ''}`}
-              onClick={() => { setRankLevel(lv.value); loadRanking(lv.value); }}
+              className={`${styles.diffBtn} ${level === lv.value ? styles.diffActive : ''}`}
+              onClick={() => handleLevelChange(lv.value)}
             >
-              {lv.label.split(' ')[0]}
+              {lv.label}
             </button>
           ))}
+          <button className={styles.resetBtn} onClick={() => { reset(level); setInput(''); setHint(''); }}>
+            리셋
+          </button>
         </div>
-        {rankLoading ? (
-          <p className={styles.placeholder}>불러오는 중...</p>
-        ) : (
+      )}
+
+      {/* 상태 바 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.statusBar}>
+          <span className={styles.status}>{statusText}</span>
+          <span className={styles.timer}>⏱ {state.elapsed.toFixed(1)}초</span>
+          <span className={styles.attempts}>{state.attempts}번째 시도</span>
+        </div>
+      )}
+
+      {/* 게임 영역 — 게임 시트 */}
+      {showGameArea && (
+        <>
+          {/* 입력 */}
+          <div className={styles.inputRow}>
+            <input
+              ref={inputRef}
+              className={styles.input}
+              type="text"
+              inputMode="numeric"
+              maxLength={digitCount}
+              placeholder={'_'.repeat(digitCount)}
+              value={input}
+              disabled={state.won}
+              onChange={(e) => setInput(e.target.value.replace(/[^0-9]/g, '').slice(0, digitCount))}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleGuess(); }}
+            />
+            <button className={styles.guessBtn} disabled={state.won} onClick={handleGuess}>
+              확인
+            </button>
+          </div>
+          {hint && <p className={styles.hint}>{hint}</p>}
+
+          {/* 기록 테이블 */}
           <table className={styles.table}>
-            <thead><tr><th>순위</th><th>이름</th><th>시도</th><th>시간</th><th>날짜</th></tr></thead>
+            <thead>
+              <tr><th>#</th><th>입력</th><th>스트라이크</th><th>볼</th></tr>
+            </thead>
             <tbody>
-              {(rankings.weekly as Array<{ id: number; name: string; attempts: number; time: number; createdAt: string }>).length === 0 ? (
-                <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
+              {state.history.length === 0 ? (
+                <tr><td colSpan={4} className={styles.placeholder}>시도 기록이 여기에 표시됩니다.</td></tr>
               ) : (
-                (rankings.weekly as Array<{ id: number; name: string; attempts: number; time: number; createdAt: string }>).map((r, i) => (
-                  <tr key={r.id}>
-                    <td>{i + 1}</td>
-                    <td>{r.name}</td>
-                    <td>{r.attempts}번</td>
-                    <td>{r.time.toFixed(2)}초</td>
-                    <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
-                  </tr>
-                ))
+                excel
+                  ? Array.from({ length: maxAttempts }, (_, i) => {
+                      const row = state.history.find((r) => r.attempt === maxAttempts - i);
+                      return row ? (
+                        <tr key={row.attempt}>
+                          <td>{row.attempt}</td>
+                          <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
+                          <td className={styles.strike}>{row.strikes}S</td>
+                          <td className={row.balls > 0 ? styles.ball : undefined}>
+                            {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={i}><td>{maxAttempts - i}</td><td></td><td></td><td></td></tr>
+                      );
+                    })
+                  : state.history.map((row) => (
+                      <tr key={row.attempt}>
+                        <td>{row.attempt}</td>
+                        <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
+                        <td className={styles.strike}>{row.strikes}S</td>
+                        <td className={row.balls > 0 ? styles.ball : undefined}>
+                          {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
+                        </td>
+                      </tr>
+                    ))
               )}
             </tbody>
           </table>
-        )}
-      </div>
+        </>
+      )}
+
+      {/* 랭킹 패널 — 랭킹 시트 */}
+      {showRankingArea && (
+        <div className={styles.rankSection}>
+          <div className={styles.rankTabs}>
+            {LEVELS.map((lv) => (
+              <button
+                key={lv.value}
+                className={`${styles.rankTab} ${rankLevel === lv.value ? styles.rankTabActive : ''}`}
+                onClick={() => { setRankLevel(lv.value); loadRanking(lv.value); }}
+              >
+                {lv.label.split(' ')[0]}
+              </button>
+            ))}
+          </div>
+          {rankLoading ? (
+            <p className={styles.placeholder}>불러오는 중...</p>
+          ) : (
+            <table className={styles.table}>
+              <thead><tr><th>순위</th><th>이름</th><th>시도</th><th>시간</th><th>날짜</th></tr></thead>
+              <tbody>
+                {(rankings.weekly as Array<{ id: number; name: string; attempts: number; time: number; createdAt: string }>).length === 0 ? (
+                  <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
+                ) : (
+                  (rankings.weekly as Array<{ id: number; name: string; attempts: number; time: number; createdAt: string }>).map((r, i) => (
+                    <tr key={r.id}>
+                      <td>{i + 1}</td>
+                      <td>{r.name}</td>
+                      <td>{r.attempts}번</td>
+                      <td>{r.time.toFixed(2)}초</td>
+                      <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {/* 클리어 모달 */}
       {modalOpen && (

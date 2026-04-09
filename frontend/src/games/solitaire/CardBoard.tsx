@@ -107,7 +107,7 @@ export default function CardBoard({ excel = false }: Props) {
   }, [state.status]);
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     setFormula('A1', `=SOLITAIRE_MOVE(count,${state.moves})`);
@@ -168,39 +168,48 @@ export default function CardBoard({ excel = false }: Props) {
 
   const statusText = state.status === 'won' ? '🎉 클리어!' : '';
 
+  const showGameArea    = !excel || activeSheet === 'game';
+  const showRankingArea = !excel || activeSheet === 'ranking';
+
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`} ref={wrapRef}>
-      <div className={styles.header}>
-        <Link to="/" className={styles.backLink}>← 홈</Link>
-        <h2 className={styles.title}>🃏 솔리테어{excel ? ' (엑셀 모드)' : ''}</h2>
-      </div>
-
-      {/* 컨트롤 바 */}
-      <div className={styles.controls}>
-        <div className={styles.drawBtns}>
-          {(['draw1', 'draw3'] as DrawMode[]).map((dm) => (
-            <button
-              key={dm}
-              className={`${styles.diffBtn} ${drawMode === dm ? styles.diffActive : ''}`}
-              onClick={() => handleDrawModeChange(dm)}
-            >
-              {dm === 'draw1' ? '드로우1' : '드로우3'}
-            </button>
-          ))}
+      {!excel && (
+        <div className={styles.header}>
+          <Link to="/" className={styles.backLink}>← 홈</Link>
+          <h2 className={styles.title}>🃏 솔리테어</h2>
         </div>
-        <button className={styles.startBtn} onClick={() => startGame(drawMode)}>새 게임</button>
-        <button className={styles.undoBtn} disabled={!state.history.length} onClick={undo}>↩ 되돌리기</button>
-      </div>
+      )}
 
-      {/* 상태 바 */}
-      <div className={styles.statusBar}>
-        <span className={styles.statusText}>{statusText}</span>
-        <span className={styles.timer}>⏱ {formatTime(state.elapsed)}</span>
-        <span className={styles.moves}>🃏 {state.moves}수</span>
-      </div>
+      {/* 컨트롤 바 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.controls}>
+          <div className={styles.drawBtns}>
+            {(['draw1', 'draw3'] as DrawMode[]).map((dm) => (
+              <button
+                key={dm}
+                className={`${styles.diffBtn} ${drawMode === dm ? styles.diffActive : ''}`}
+                onClick={() => handleDrawModeChange(dm)}
+              >
+                {dm === 'draw1' ? '드로우1' : '드로우3'}
+              </button>
+            ))}
+          </div>
+          <button className={styles.startBtn} onClick={() => startGame(drawMode)}>새 게임</button>
+          <button className={styles.undoBtn} disabled={!state.history.length} onClick={undo}>↩ 되돌리기</button>
+        </div>
+      )}
 
-      {/* 보드 */}
-      <div className={styles.board} style={{ gap }}>
+      {/* 상태 바 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.statusBar}>
+          <span className={styles.statusText}>{statusText}</span>
+          <span className={styles.timer}>⏱ {formatTime(state.elapsed)}</span>
+          <span className={styles.moves}>🃏 {state.moves}수</span>
+        </div>
+      )}
+
+      {/* 보드 — 게임 시트 */}
+      {showGameArea && <div className={styles.board} style={{ gap }}>
         {/* 상단 행: Stock | Waste | spacer | Foundation×4 */}
         <div className={styles.topRow} style={{ gap }}>
           {/* Stock */}
@@ -285,10 +294,10 @@ export default function CardBoard({ excel = false }: Props) {
             );
           })}
         </div>
-      </div>
+      </div>}
 
-      {/* 랭킹 */}
-      <div className={styles.rankSection}>
+      {/* 랭킹 — 랭킹 시트 */}
+      {showRankingArea && <div className={styles.rankSection}>
         <div className={styles.rankTabs}>
           {(['draw1', 'draw3'] as DrawMode[]).map((dm) => (
             <button
@@ -321,7 +330,7 @@ export default function CardBoard({ excel = false }: Props) {
             </tbody>
           </table>
         )}
-      </div>
+      </div>}
 
       {/* 클리어 모달 */}
       {modalOpen && (

@@ -157,4 +157,18 @@
 }
 
 /* 엑셀 모드 */
-.excelMode { font-family: 'Calibri', 'Segoe UI', sans-serif; }
+.excelMode {
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  padding: 0;
+  max-width: none;
+  margin: 0;
+}
+.excelMode .header    { display: none; }
+.excelMode .statusBar { display: none; }
+.excelMode .controls  { display: none; }
+.excelMode .canvasWrap { margin-bottom: 0; }
+.excelMode .rankSection { padding: 12px 8px; background: white; }
+.excelMode .table th  { background: #217346; color: white; }
+.excelMode .primaryBtn { background: #217346; }
+.excelMode .primaryBtn:hover { background: #1a6636; }
+.excelMode .nameInput:focus { border-color: #217346; }

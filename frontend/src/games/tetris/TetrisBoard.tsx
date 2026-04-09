@@ -173,7 +173,7 @@ export default function TetrisBoard({ excel = false }: Props) {
   const COLORS = excel ? COLORS_EXCEL : COLORS_NORMAL;
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     const colLabel = (n: number) => String.fromCharCode(65 + n);
@@ -786,131 +786,186 @@ export default function TetrisBoard({ excel = false }: Props) {
     { value: 'hard',   label: '어려움' },
   ];
 
+  // 엑셀 모드: 시트에 따라 보이는 영역 결정
+  const showGameArea    = !excel || activeSheet === 'game';
+  const showRankingArea = !excel || activeSheet === 'ranking';
+  const showRulesArea   = !excel ? showRules : activeSheet === 'rules';
+
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
-      <div className={styles.header}>
-        <Link to="/" className={styles.backLink}>← 홈</Link>
-        <h2 className={styles.title}>🟦 테트리스{excel ? ' (엑셀 모드)' : ''}</h2>
-      </div>
-
-      {/* 난이도 */}
-      <div className={styles.diffRow}>
-        {LEVELS.map(lv => (
-          <button
-            key={lv.value}
-            className={`${styles.diffBtn} ${difficulty === lv.value ? styles.diffActive : ''}`}
-            onClick={() => handleDifficultyChange(lv.value)}
-          >
-            {lv.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 상태 바 */}
-      <div className={styles.infoBar}>
-        <div className={styles.infoItem}><div className={styles.infoLabel}>점수</div><div className={styles.infoValue}>{score.toLocaleString()}</div></div>
-        <div className={styles.infoItem}><div className={styles.infoLabel}>레벨</div><div className={styles.infoValue}>{gameLevel}</div></div>
-        <div className={styles.infoItem}><div className={styles.infoLabel}>줄</div><div className={styles.infoValue}>{lines}</div></div>
-        <div className={styles.infoItem}><div className={styles.infoLabel}>콤보</div><div className={styles.infoValue} style={{ color: combo >= 2 ? '#e67e22' : undefined }}>{combo >= 2 ? `x${combo}` : '-'}</div></div>
-      </div>
-
-      {statusText && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
-
-      {/* 게임 영역 */}
-      <div className={styles.gameArea}>
-        {/* 사이드 패널 */}
-        <div className={styles.sidePanel}>
-          <div className={styles.sideBox}>
-            <div className={styles.sideTitle}>NEXT</div>
-            <canvas ref={nextRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
-          </div>
-          <div className={styles.sideBox}>
-            <div className={styles.sideTitle}>HOLD</div>
-            <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
-          </div>
-          <div className={`${styles.sideBox} ${styles.hintsBox}`}>
-            <div className={styles.sideTitle}>키</div>
-            <div className={styles.hints}>
-              ← → 이동<br />
-              ↑ 회전<br />
-              ↓ 내리기<br />
-              Space 급강하<br />
-              Shift 홀드<br />
-              P 일시정지
-            </div>
-          </div>
+      {!excel && (
+        <div className={styles.header}>
+          <Link to="/" className={styles.backLink}>← 홈</Link>
+          <h2 className={styles.title}>🟦 테트리스</h2>
         </div>
+      )}
 
-        {/* 보드 */}
-        <canvas
-          ref={boardRef}
-          width={BOARD_W * CELL}
-          height={BOARD_H * CELL}
-          className={styles.board}
-        />
-      </div>
-
-      {/* 버튼 */}
-      <div className={styles.controls}>
-        <button className={styles.startBtn} onClick={() => startGame()}>
-          {gameStatus === 'idle' ? '▶ 시작' : '↺ 다시하기'}
-        </button>
-        <button
-          className={styles.pauseBtn}
-          disabled={gameStatus !== 'playing' && gameStatus !== 'paused'}
-          onClick={togglePause}
-        >
-          {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
-        </button>
-      </div>
-
-      {/* 모바일 버튼 */}
-      <div className={styles.mobileControls}>
-        <div className={styles.mobileRow}>
-          <button className={styles.mobileBtn} style={{ width: 80, fontSize: '0.75em' }}
-            onClick={() => { if (gameStatus === 'playing') playerHold(); }}>HOLD</button>
-          <button className={styles.mobileBtn}
-            onClick={() => { if (gameStatus === 'playing') playerRotate(1); }}>↺</button>
-        </div>
-        <div className={styles.mobileRow}>
-          <button className={styles.mobileBtn} onClick={() => { if (gameStatus === 'playing') playerMove(-1); }}>←</button>
-          <button className={styles.mobileBtn} onClick={() => { if (gameStatus === 'playing') playerDrop(true); }}>↓</button>
-          <button className={styles.mobileBtn} onClick={() => { if (gameStatus === 'playing') playerMove(1); }}>→</button>
-        </div>
-        <div className={styles.mobileRow}>
-          <button className={`${styles.mobileBtn} ${styles.mobileDrop}`}
-            onClick={() => { if (gameStatus === 'playing') playerHardDrop(); }}>급강하</button>
-        </div>
-      </div>
-
-      {/* 랭킹 */}
-      <div className={styles.rankSection}>
-        <h3 className={styles.rankTitle}>주간 RANK</h3>
-        {alltimeBest && (
-          <div className={styles.alltimeBanner}>
-            <span className={styles.atLabel}>👑 역대 1위</span>
-            <span className={styles.atContent}>
-              {alltimeBest.name} · {(alltimeBest.score ?? 0).toLocaleString()}점 · Lv.{alltimeBest.gameLevel ?? 1} · {new Date(alltimeBest.createdAt).toLocaleDateString('ko-KR')}
-            </span>
-          </div>
-        )}
-        <div className={styles.rankTabs}>
+      {/* 난이도 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.diffRow}>
           {LEVELS.map(lv => (
             <button
               key={lv.value}
-              className={`${styles.rankTab} ${rankLevel === lv.value && !showRules ? styles.rankTabActive : ''}`}
-              onClick={() => handleRankTabChange(lv.value)}
+              className={`${styles.diffBtn} ${difficulty === lv.value ? styles.diffActive : ''}`}
+              onClick={() => handleDifficultyChange(lv.value)}
             >
               {lv.label}
             </button>
           ))}
-          <button
-            className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
-            onClick={() => setShowRules(true)}
-          >룰</button>
         </div>
+      )}
 
-        {showRules ? (
+      {/* 상태 바 — 일반 모드에서만 */}
+      {!excel && (
+        <div className={styles.infoBar}>
+          <div className={styles.infoItem}><div className={styles.infoLabel}>점수</div><div className={styles.infoValue}>{score.toLocaleString()}</div></div>
+          <div className={styles.infoItem}><div className={styles.infoLabel}>레벨</div><div className={styles.infoValue}>{gameLevel}</div></div>
+          <div className={styles.infoItem}><div className={styles.infoLabel}>줄</div><div className={styles.infoValue}>{lines}</div></div>
+          <div className={styles.infoItem}><div className={styles.infoLabel}>콤보</div><div className={styles.infoValue} style={{ color: combo >= 2 ? '#e67e22' : undefined }}>{combo >= 2 ? `x${combo}` : '-'}</div></div>
+        </div>
+      )}
+
+      {!excel && statusText && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
+
+      {/* 게임 영역 — 게임 시트 활성 시 */}
+      {showGameArea && (
+        <>
+          <div className={styles.gameArea}>
+            {/* 사이드 패널 */}
+            <div className={styles.sidePanel}>
+              <div className={styles.sideBox}>
+                <div className={styles.sideTitle}>NEXT</div>
+                <canvas ref={nextRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
+              </div>
+              <div className={styles.sideBox}>
+                <div className={styles.sideTitle}>HOLD</div>
+                <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
+              </div>
+              <div className={`${styles.sideBox} ${styles.hintsBox}`}>
+                <div className={styles.sideTitle}>키</div>
+                <div className={styles.hints}>
+                  ← → 이동<br />
+                  ↑ 회전<br />
+                  ↓ 내리기<br />
+                  Space 급강하<br />
+                  Shift 홀드<br />
+                  P 일시정지
+                </div>
+              </div>
+            </div>
+
+            {/* 보드 */}
+            <canvas
+              ref={boardRef}
+              width={BOARD_W * CELL}
+              height={BOARD_H * CELL}
+              className={styles.board}
+            />
+          </div>
+
+          {/* 버튼 */}
+          <div className={styles.controls}>
+            <button className={styles.startBtn} onClick={() => startGame()}>
+              {gameStatus === 'idle' ? '▶ 시작' : '↺ 다시하기'}
+            </button>
+            <button
+              className={styles.pauseBtn}
+              disabled={gameStatus !== 'playing' && gameStatus !== 'paused'}
+              onClick={togglePause}
+            >
+              {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
+            </button>
+          </div>
+
+          {/* 모바일 버튼 */}
+          <div className={styles.mobileControls}>
+            <div className={styles.mobileRow}>
+              <button className={styles.mobileBtn} style={{ width: 80, fontSize: '0.75em' }}
+                onClick={() => { if (gameStatus === 'playing') playerHold(); }}>HOLD</button>
+              <button className={styles.mobileBtn}
+                onClick={() => { if (gameStatus === 'playing') playerRotate(1); }}>↺</button>
+            </div>
+            <div className={styles.mobileRow}>
+              <button className={styles.mobileBtn} onClick={() => { if (gameStatus === 'playing') playerMove(-1); }}>←</button>
+              <button className={styles.mobileBtn} onClick={() => { if (gameStatus === 'playing') playerDrop(true); }}>↓</button>
+              <button className={styles.mobileBtn} onClick={() => { if (gameStatus === 'playing') playerMove(1); }}>→</button>
+            </div>
+            <div className={styles.mobileRow}>
+              <button className={`${styles.mobileBtn} ${styles.mobileDrop}`}
+                onClick={() => { if (gameStatus === 'playing') playerHardDrop(); }}>급강하</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 랭킹 — 랭킹 시트 활성 시 */}
+      {showRankingArea && !showRulesArea && (
+        <div className={styles.rankSection}>
+          <h3 className={styles.rankTitle}>주간 RANK</h3>
+          {alltimeBest && (
+            <div className={styles.alltimeBanner}>
+              <span className={styles.atLabel}>👑 역대 1위</span>
+              <span className={styles.atContent}>
+                {alltimeBest.name} · {(alltimeBest.score ?? 0).toLocaleString()}점 · Lv.{alltimeBest.gameLevel ?? 1} · {new Date(alltimeBest.createdAt).toLocaleDateString('ko-KR')}
+              </span>
+            </div>
+          )}
+          {!excel && (
+            <div className={styles.rankTabs}>
+              {LEVELS.map(lv => (
+                <button
+                  key={lv.value}
+                  className={`${styles.rankTab} ${rankLevel === lv.value && !showRules ? styles.rankTabActive : ''}`}
+                  onClick={() => handleRankTabChange(lv.value)}
+                >
+                  {lv.label}
+                </button>
+              ))}
+              <button
+                className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
+                onClick={() => setShowRules(true)}
+              >룰</button>
+            </div>
+          )}
+          {excel && (
+            <div className={styles.rankTabs}>
+              {LEVELS.map(lv => (
+                <button
+                  key={lv.value}
+                  className={`${styles.rankTab} ${rankLevel === lv.value ? styles.rankTabActive : ''}`}
+                  onClick={() => handleRankTabChange(lv.value)}
+                >
+                  {lv.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {rankLoading ? (
+            <p className={styles.placeholder}>불러오는 중...</p>
+          ) : (
+            <table className={styles.table}>
+              <thead><tr><th>순위</th><th>이름</th><th>점수</th><th>레벨</th><th>날짜</th></tr></thead>
+              <tbody>
+                {rankings.length === 0 ? (
+                  <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
+                ) : rankings.map((r, i) => (
+                  <tr key={r.id}>
+                    <td>{i + 1}</td>
+                    <td>{r.name}</td>
+                    <td>{(r.score ?? 0).toLocaleString()}점</td>
+                    <td>Lv.{r.gameLevel ?? 1}</td>
+                    <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* 룰 — 룰 시트 활성 시 */}
+      {showRulesArea && (
+        <div className={styles.rankSection}>
           <div className={styles.rulesPanel}>
             <h4>조작법</h4>
             <ul>
@@ -940,27 +995,8 @@ export default function TetrisBoard({ excel = false }: Props) {
               <li>어려움: 0.18초/칸 → 최대 0.03초</li>
             </ul>
           </div>
-        ) : rankLoading ? (
-          <p className={styles.placeholder}>불러오는 중...</p>
-        ) : (
-          <table className={styles.table}>
-            <thead><tr><th>순위</th><th>이름</th><th>점수</th><th>레벨</th><th>날짜</th></tr></thead>
-            <tbody>
-              {rankings.length === 0 ? (
-                <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
-              ) : rankings.map((r, i) => (
-                <tr key={r.id}>
-                  <td>{i + 1}</td>
-                  <td>{r.name}</td>
-                  <td>{(r.score ?? 0).toLocaleString()}점</td>
-                  <td>Lv.{r.gameLevel ?? 1}</td>
-                  <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 게임 오버 모달 */}
       {modalOpen && (

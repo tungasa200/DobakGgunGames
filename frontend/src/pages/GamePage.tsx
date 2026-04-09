@@ -21,7 +21,14 @@ const FILE_TITLES: Record<string, string> = {
   baseball:    'baseball_score.xlsx',
   tetris:      'tetris_score.xlsx',
   solitaire:   'solitaire_score.xlsx',
-  apple:       'apple_score.xlsx',
+  apple:       'apple_game.xlsx',
+};
+
+// 게임별 그리드 셀 크기 (원본과 동일하게 맞춤)
+const CELL_SIZES: Record<string, number> = {
+  tetris:      30,
+  minesweeper: 30,
+  apple:       52,
 };
 
 export default function GamePage({ excel }: { excel: boolean }) {
@@ -52,6 +59,7 @@ export default function GamePage({ excel }: { excel: boolean }) {
           game={game}
           gameName={name}
           fileTitle={FILE_TITLES[game]}
+          cellSize={CELL_SIZES[game]}
         >
           {board}
         </ExcelShell>

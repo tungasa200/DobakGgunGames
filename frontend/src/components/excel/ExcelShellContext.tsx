@@ -7,12 +7,17 @@ export interface StatusItem {
   value: string | number;
 }
 
+export type SheetTab = 'game' | 'ranking' | 'rules';
+
 interface ExcelShellContextValue {
   // 수식바 상태
   formulaCell: string;
   formulaContent: string;
   // 상태바 왼쪽 항목
   statusItems: StatusItem[];
+  // 시트 탭
+  activeSheet: SheetTab;
+  setActiveSheet: (sheet: SheetTab) => void;
   // 업데이트 함수
   setFormula: (cell: string, content: string) => void;
   setStatusItems: (items: StatusItem[]) => void;
@@ -24,6 +29,8 @@ const defaultValue: ExcelShellContextValue = {
   formulaCell: 'A1',
   formulaContent: '',
   statusItems: [],
+  activeSheet: 'game',
+  setActiveSheet: noop,
   setFormula: noop,
   setStatusItems: noop,
 };
@@ -35,6 +42,7 @@ export function ExcelShellProvider({ children }: { children: ReactNode }) {
   const [formulaCell, setFormulaCell] = useState('A1');
   const [formulaContent, setFormulaContent] = useState('');
   const [statusItems, setStatusItemsState] = useState<StatusItem[]>([]);
+  const [activeSheet, setActiveSheet] = useState<SheetTab>('game');
 
   // 불필요한 리렌더 방지: 값이 바뀔 때만 갱신
   const prevCell    = useRef('A1');
@@ -50,7 +58,7 @@ export function ExcelShellProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ExcelShellContext.Provider value={{ formulaCell, formulaContent, statusItems, setFormula, setStatusItems }}>
+    <ExcelShellContext.Provider value={{ formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet, setFormula, setStatusItems }}>
       {children}
     </ExcelShellContext.Provider>
   );

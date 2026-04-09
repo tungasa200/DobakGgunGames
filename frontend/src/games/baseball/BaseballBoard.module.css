@@ -200,4 +200,20 @@
 /* 엑셀 모드 */
 .excelMode {
   font-family: 'Calibri', 'Segoe UI', sans-serif;
+  padding: 0;
+  max-width: none;
+  margin: 0;
 }
+.excelMode .header    { display: none; }
+.excelMode .diffRow   { display: none; }
+.excelMode .statusBar { display: none; }
+.excelMode .table { margin-bottom: 0; }
+.excelMode .rankSection { padding: 12px 8px; background: white; }
+.excelMode .rankTab { border-color: #217346; color: #217346; }
+.excelMode .rankTab:hover { background: #217346; color: #fff; }
+.excelMode .rankTabActive { background: #217346; color: #fff; border-color: #217346; }
+.excelMode .table th { background: #217346; color: white; }
+.excelMode .guessBtn { background: #217346; }
+.excelMode .guessBtn:hover { background: #1a6636; }
+.excelMode .input:focus { border-color: #217346; }
+.excelMode .nameInput:focus { border-color: #217346; }

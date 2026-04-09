@@ -18,12 +18,12 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   height: 36px;
-  padding: 0 0 0 8px;
+  padding: 0 0 0 6px;
   flex-shrink: 0;
 }
 
-.titleLeft  { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.titleCenter { text-align: center; font-size: 13px; }
+.titleLeft  { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.titleCenter { text-align: center; font-size: 14px; }
 .titleRight { display: flex; justify-content: flex-end; }
 
 .logo {
@@ -55,6 +55,7 @@
   display: flex;
   padding: 0 4px;
   flex-shrink: 0;
+  position: relative;
   overflow-x: auto;
 }
 .ribbonTabs::-webkit-scrollbar { height: 0; }
@@ -62,7 +63,7 @@
 .rtab {
   color: rgba(255,255,255,0.85);
   padding: 5px 12px;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   border-radius: 3px 3px 0 0;
   white-space: nowrap;
@@ -90,25 +91,25 @@
   color: white;
   font-weight: bold;
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .dropGame {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 14px;
+  padding: 8px 14px;
   border-bottom: 1px solid #f0f0f0;
 }
 .dropGame:last-child { border-bottom: none; }
 
-.dropIcon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
-.dropName { font-size: 13px; font-weight: bold; color: #222; min-width: 68px; }
+.dropIcon { font-size: 18px; width: 26px; text-align: center; flex-shrink: 0; }
+.dropName { font-size: 14px; font-weight: bold; color: #222; min-width: 68px; }
 .dropBtns { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .dropBtn {
-  padding: 3px 10px;
-  font-size: 12px;
+  padding: 4px 10px;
+  font-size: 13px;
   cursor: pointer;
   border: 1px solid #c0c0c0;
   border-radius: 3px;
@@ -153,7 +154,7 @@
 }
 
 .rGroupLabel {
-  font-size: 11px;
+  font-size: 14px;
   color: #666;
   margin-top: auto;
   padding-top: 2px;
@@ -167,7 +168,7 @@
   cursor: pointer;
   padding: 3px 5px;
   border-radius: 2px;
-  font-size: 11px;
+  font-size: 14px;
   color: #333;
   min-width: 30px;
   border: 1px solid transparent;
@@ -175,7 +176,7 @@
 }
 .rBtn:hover { background: #e8f4fd; border-color: #c8dff5; }
 
-.rBtnIcon { font-size: 16px; line-height: 1.3; }
+.rBtnIcon { font-size: 18px; line-height: 1.2; }
 
 /* ── 수식바 ── */
 .formulaBar {
@@ -188,10 +189,10 @@
 }
 
 .fbCell {
-  width: 80px;
-  min-width: 80px;
-  padding: 0 8px;
-  font-size: 13px;
+  width: 96px;
+  min-width: 96px;
+  padding: 0 6px;
+  font-size: 14px;
   border-right: 1px solid #c0c0c0;
   height: 100%;
   display: flex;
@@ -203,7 +204,8 @@
 .fbFx {
   padding: 0 8px;
   color: #888;
-  font-size: 13px;
+  font-style: italic;
+  font-size: 14px;
   border-right: 1px solid #c0c0c0;
   height: 100%;
   display: flex;
@@ -211,8 +213,8 @@
 }
 
 .fbInput {
-  padding: 0 10px;
-  font-size: 13px;
+  padding: 0 8px;
+  font-size: 14px;
   flex: 1;
   display: flex;
   align-items: center;
@@ -220,7 +222,6 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-family: 'Consolas', 'Courier New', monospace;
 }
 
 /* ── 시트 영역 ── */
@@ -235,14 +236,139 @@
   background-image:
     linear-gradient(to right, #d0d0d0 1px, transparent 1px),
     linear-gradient(to bottom, #d0d0d0 1px, transparent 1px);
-  background-size: 30px 30px;
+  background-size: 96px 29px;
+  background-position: 40px 24px;
   background-attachment: local;
 }
 
-/* 게임 컨텐츠를 격자 위에 띄움 */
-.sheetArea > * {
+.sheetArea::-webkit-scrollbar { width: 12px; height: 12px; }
+.sheetArea::-webkit-scrollbar-track { background: #f0f0f0; border-left: 1px solid #d0d0d0; border-top: 1px solid #d0d0d0; }
+.sheetArea::-webkit-scrollbar-thumb { background: #b0b0b0; border: 1px solid #909090; }
+.sheetArea::-webkit-scrollbar-thumb:hover { background: #888; }
+.sheetArea::-webkit-scrollbar-corner { background: #f0f0f0; }
+.sheetArea::-webkit-scrollbar-button { background: #e0e0e0; border: 1px solid #b0b0b0; display: block; width: 12px; height: 12px; }
+.sheetArea::-webkit-scrollbar-button:hover { background: #c8c8c8; }
+
+/* ── 그리드 래퍼 ── */
+.gridWrapper {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+
+/* ── 열 헤더 행 ── */
+.colHeaderRow {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.corner {
+  width: 40px;
+  min-width: 40px;
+  height: 24px;
+  background: #f2f2f2;
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #aaa;
+  flex-shrink: 0;
+}
+
+.colHeader {
+  background: #f2f2f2;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #444;
+  user-select: none;
+  height: 24px;
+  flex-shrink: 0;
+}
+.colHeader:hover { background: #d9e9ff; }
+
+/* ── 행 영역 ── */
+.rowsArea {
+  display: flex;
+  align-items: flex-start;
+}
+
+.rowNums {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+.rowNum {
+  background: #f2f2f2;
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #444;
+  width: 40px;
+  min-width: 40px;
+  user-select: none;
+  flex-shrink: 0;
+}
+.rowNum:hover { background: #d9e9ff; }
+
+/* ── 게임 콘텐츠 영역 ── */
+.gameContent {
   position: relative;
   z-index: 1;
+}
+
+/* ── 시트 탭 ── */
+.sheetTabs {
+  background: #f0f0f0;
+  border-top: 2px solid #c8c8c8;
+  display: flex;
+  align-items: flex-end;
+  padding: 3px 0 0 4px;
+  height: 34px;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.sheetAddBtn {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 16px;
+  padding: 2px 8px;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 3px 3px 0 0;
+  display: flex;
+  align-items: center;
+  margin-bottom: 1px;
+}
+.sheetAddBtn:hover { background: #d8d8d8; color: #217346; }
+
+.sheetTab {
+  background: #d8d8d8;
+  border: 1px solid #b0b0b0;
+  border-bottom: none;
+  padding: 3px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #555;
+  border-radius: 3px 3px 0 0;
+  white-space: nowrap;
+  user-select: none;
+}
+.sheetTabActive {
+  background: white;
+  color: #217346;
+  border-top: 2px solid #217346;
+  font-weight: bold;
 }
 
 /* ── 상태바 ── */
@@ -252,31 +378,30 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 10px;
-  height: 26px;
+  padding: 2px 8px;
+  font-size: 14px;
+  height: 28px;
   flex-shrink: 0;
-  font-size: 13px;
 }
 
-.statusLeft  { display: flex; align-items: center; gap: 14px; }
-.statusRight { display: flex; align-items: center; gap: 14px; font-size: 12px; opacity: 0.85; }
+.statusLeft  { display: flex; align-items: center; gap: 12px; }
+.statusRight { display: flex; align-items: center; gap: 14px; }
 
 .statusItem { color: rgba(255,255,255,0.9); }
 .statusItem strong { color: white; }
 
 /* ── 반응형 ── */
+@media (max-width: 1280px) { .rGroup:nth-child(5) { display: none; } }
+@media (max-width: 1080px) { .rGroup:nth-child(3) { display: none; } }
 @media (max-width: 960px) {
-  .rGroup:nth-child(2),
-  .rGroup:nth-child(4) { display: none; }
+  .rGroup:nth-child(2), .rGroup:nth-child(4) { display: none; }
 }
-
 @media (max-width: 640px) {
   .titlebar { grid-template-columns: auto 1fr auto; height: 32px; }
   .titleLeft > span:not(.logo) { display: none; }
-  .winBtns span { width: 40px; height: 32px; }
+  .winBtns span { width: 40px; height: 32px; font-size: 14px; }
   .statusRight { display: none; }
 }
-
 @media (max-width: 480px) {
   .rGroup:not(:last-child) { display: none; }
 }
