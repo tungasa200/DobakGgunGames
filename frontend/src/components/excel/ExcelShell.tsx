@@ -135,8 +135,7 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize 
     <div className={styles.shell}>
       {/* ── 타이틀바 ── */}
       <div className={styles.titlebar}>
-        <div className={styles.titleLeft}>
-          <span className={styles.logo}>X</span>
+        <div className={styles.titleLeft}>          
           <span>DobakGgun - {gameName}</span>
         </div>
         <div className={styles.titleCenter}>{title} - Excel</div>
