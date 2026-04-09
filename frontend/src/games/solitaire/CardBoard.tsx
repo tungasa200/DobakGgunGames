@@ -295,7 +295,7 @@ export default function CardBoard({ excel = false }: Props) {
       {/* 랭킹 — 랭킹 시트 */}
       {showRankingArea && <div className={styles.rankSection}>
         {!excel && <h3 className={styles.rankTitle}>주간 RANK</h3>}
-        {!excel && rankings.alltime && (
+        {!excel && !!rankings.alltime && (
           <div className={styles.alltimeBanner}>
             <span className={styles.atLabel}>👑 역대 1위</span>
             <span className={styles.atContent}>

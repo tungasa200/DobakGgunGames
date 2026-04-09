@@ -203,7 +203,7 @@ export default function BaseballBoard({ excel = false }: Props) {
       {showRankingArea && !showRulesArea && (
         <div className={styles.rankSection}>
           {!excel && <h3 className={styles.rankTitle}>주간 RANK</h3>}
-          {!excel && rankings.alltime && (
+          {!excel && !!rankings.alltime && (
             <div className={styles.alltimeBanner}>
               <span className={styles.atLabel}>👑 역대 1위</span>
               <span className={styles.atContent}>
