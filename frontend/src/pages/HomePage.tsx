@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { rankingsApi, type RankingEntry } from '../api/rankings';
+import NormalHeader from '../components/normal/NormalHeader';
 import styles from './HomePage.module.css';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -165,20 +166,31 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className={styles.page}>
-      <h1 className={styles.heading}>🎮 DobakGgun</h1>
-      <div className={styles.grid}>
-        {GAMES.map((game) => (
-          <GameCard
-            key={game.key}
-            game={game}
-            rankings={cache[game.key] ?? {}}
-            activeLevel={activeLevels[game.key]}
-            onLevelChange={(lv) =>
-              setActiveLevels((prev) => ({ ...prev, [game.key]: lv }))
-            }
-          />
-        ))}
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      overflow: 'auto',
+      background: '#f0f0f0',
+      fontFamily: 'sans-serif',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      <NormalHeader currentGame="" gameName="게임 목록" accentColor="#2c3e50" />
+      <div className={styles.page}>
+        <h1 className={styles.heading}>🎮 DobakGgun</h1>
+        <div className={styles.grid}>
+          {GAMES.map((game) => (
+            <GameCard
+              key={game.key}
+              game={game}
+              rankings={cache[game.key] ?? {}}
+              activeLevel={activeLevels[game.key]}
+              onLevelChange={(lv) =>
+                setActiveLevels((prev) => ({ ...prev, [game.key]: lv }))
+              }
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -26,16 +26,18 @@ function colLabel(i: number): string {
 
 // ===== Props =====
 export interface ExcelShellProps {
-  game: string;           // 현재 게임 key
+  game: string;           // 현재 게임 key (홈: '')
   gameName: string;       // 표시용 한글 이름
   fileTitle?: string;     // 상단 파일명 (기본: game_score.xlsx)
   ribbonGameGroup?: ReactNode;  // 게임 전용 리본 그룹
-  cellSize?: number;      // 그리드 셀 크기 (기본: 96, 테트리스/지뢰찾기: 30)
+  cellSize?: number;      // 그리드 열 셀 크기 (기본: 96)
+  rowHeight?: number;     // 행 높이 (기본: cellSize와 동일)
   children: ReactNode;
 }
 
 // ===== 내부: 크롬 렌더러 (Context 소비) =====
-function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize = 96, children }: ExcelShellProps) {
+function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize = 96, rowHeight, children }: ExcelShellProps) {
+  const rh = rowHeight ?? cellSize;
   const { formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet } = useExcelShell();
   const navigate = useNavigate();
 
@@ -74,18 +76,18 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize 
       const el = sheetAreaRef.current;
       if (!el) return;
       setColCount(Math.ceil(el.clientWidth / cellSize) + 4);
-      setRowCount(Math.ceil(el.clientHeight / cellSize) + 4);
+      setRowCount(Math.ceil(el.clientHeight / rh) + 4);
     }
     measure();
     const ro = new ResizeObserver(measure);
     if (sheetAreaRef.current) ro.observe(sheetAreaRef.current);
     return () => ro.disconnect();
-  }, [cellSize]);
+  }, [cellSize, rh]);
 
   // 배경 격자 크기를 셀 크기에 맞춤
   const sheetAreaStyle = useMemo(() => ({
-    backgroundSize: `${cellSize}px ${cellSize}px`,
-  }), [cellSize]);
+    backgroundSize: `${cellSize}px ${rh}px`,
+  }), [cellSize, rh]);
 
   // 공통 리본 그룹 (장식용)
   const RIBBON_COMMON_GROUPS = [
@@ -171,6 +173,22 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize 
           }}
         >
           <div className={styles.dropTitle}>게임 선택</div>
+          {/* 홈 항목 */}
+          <div className={styles.dropGame}>
+            <span className={styles.dropIcon}>🏠</span>
+            <span className={styles.dropName}>홈</span>
+            <div className={styles.dropBtns}>
+              <button
+                className={`${styles.dropBtn} ${game === '' ? styles.dropBtnSame : ''}`}
+                onClick={() => { navigate('/'); setDropdownOpen(false); }}
+              >기본 메인</button>
+              <button
+                className={`${styles.dropBtn} ${game === '' ? styles.dropBtnCurrent : ''}`}
+                onClick={() => { navigate('/excel'); setDropdownOpen(false); }}
+                disabled={game === ''}
+              >엑셀 메인</button>
+            </div>
+          </div>
           {GAMES.map(g => (
             <div key={g.key} className={styles.dropGame}>
               <span className={styles.dropIcon}>{g.icon}</span>
@@ -240,7 +258,7 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize 
                 <div
                   key={i}
                   className={styles.rowNum}
-                  style={{ height: cellSize }}
+                  style={{ height: rh }}
                 >
                   {i + 1}
                 </div>
