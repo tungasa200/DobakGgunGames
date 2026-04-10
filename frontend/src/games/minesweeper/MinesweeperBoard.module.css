@@ -306,6 +306,154 @@
 .excelMode .nameInput:focus  { border-color: #217346; }
 .excelMode .rulesPanel       { border-radius: 0; border: none; border-top: 1px solid #e0e0e0; }
 
+/* ===== 엑셀 랭킹·룰 시트 그리드 — 원본: #excel-ranking-sheet, #excel-rules-sheet ===== */
+
+/* 원본: #excel-grid-wrapper { display: inline-flex; flex-direction: column; } */
+.xSheetWrapper {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+/* 원본: #excel-col-header-row { display: flex; position: sticky; top: 0; z-index: 10; } */
+.xColHeaderRow {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* 원본: .xcorner { width: 40px; height: 24px; background: #f2f2f2; border-right: 1px solid #aaa; border-bottom: 1px solid #aaa; } */
+.xcorner {
+  width: 40px;
+  min-width: 40px;
+  height: 24px;
+  background: #f2f2f2;
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #aaa;
+  flex-shrink: 0;
+}
+
+/* 원본: .xch { background: #f2f2f2; border-right/bottom; 24px height; 14px; } */
+.xch {
+  background: #f2f2f2;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #444;
+  user-select: none;
+  height: 24px;
+  flex-shrink: 0;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xch:hover { background: #d9e9ff; }
+
+/* 원본: #excel-rank-body-area { display: flex; } */
+.xBodyArea {
+  display: flex;
+  align-items: flex-start;
+}
+
+/* 원본: #excel-rank-row-nums { display: flex; flex-direction: column; position: sticky; left: 0; z-index: 5; } */
+.xRowNums {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+/* 원본: .xrn { background: #f2f2f2; border-right: 1px solid #aaa; border-bottom: 1px solid #d0d0d0; 40px wide; 14px; } */
+.xrn {
+  background: #f2f2f2;
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #444;
+  width: 40px;
+  min-width: 40px;
+  user-select: none;
+  flex-shrink: 0;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xrn:hover { background: #d9e9ff; }
+
+/* 원본: #excel-rank-grid / #excel-rules-grid { display: grid; } */
+.xRankGrid {
+  display: grid;
+}
+
+/* 원본: .xrank-cell { border-right/bottom: 1px solid #d0d0d0; flex; align-items: center; padding: 0 6px; 14px Calibri; nowrap; background: white; } */
+.xrankCell {
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 14px;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  overflow: hidden;
+  white-space: nowrap;
+  background: white;
+  align-self: stretch;
+}
+
+/* 원본: .xrank-cell.xrc-header { background: #217346; color: white; font-weight: bold; } */
+.xrcHeader {
+  background: #217346;
+  color: white;
+  font-weight: bold;
+}
+
+/* 원본: 주간 랭킹 타이틀 / 역대 1위 행 — background: #e8f4fd; color: #2471a3 */
+.xrcWeekTitle {
+  background: #e8f4fd;
+  color: #2471a3;
+  font-weight: bold;
+}
+
+/* 원본: .xrank-cell.xrc-filter { background: #f2f2f2; gap: 4px; } */
+.xrcFilter {
+  background: #f2f2f2;
+  gap: 4px;
+}
+
+/* 원본: .xrank-cell.xrc-alt { background: #f5f5f5; } */
+.xrcAlt {
+  background: #f5f5f5;
+}
+
+/* 원본: .xrank-cell.xrc-top { color: #c65000; font-weight: bold; } */
+.xrcTop {
+  color: #c65000;
+  font-weight: bold;
+}
+
+/* 원본: .xrank-filter-btn { padding: 1px 10px; 14px; border: 1px solid #d0d0d0; background: white; cursor: pointer; border-radius: 2px; } */
+.xrankFilterBtn {
+  padding: 1px 10px;
+  font-size: 14px;
+  border: 1px solid #d0d0d0;
+  background: white;
+  cursor: pointer;
+  border-radius: 2px;
+  color: #333;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xrankFilterBtn:hover { background: #e8e8e8; }
+
+/* 원본: .xrank-filter-btn.active { background: #217346; color: white; border-color: #217346; } */
+.xrankFilterBtnActive {
+  background: #217346;
+  color: white;
+  border-color: #217346;
+}
+
 /* ===== 엑셀 리본 게임 그룹 — 원본 excel.html: #xrg-game ===== */
 .xrgGame {
   display: flex;

@@ -37,7 +37,7 @@ export interface ExcelShellProps {
 // ===== 내부: 크롬 렌더러 (Context 소비) =====
 function ExcelShellInner({ game, gameName, fileTitle, cellSize = 96, rowHeight, children }: ExcelShellProps) {
   const rh = rowHeight ?? cellSize;
-  const { formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet, ribbonGameGroup } = useExcelShell();
+  const { formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet, ribbonGameGroup, setSheetSize } = useExcelShell();
   const navigate = useNavigate();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -76,6 +76,7 @@ function ExcelShellInner({ game, gameName, fileTitle, cellSize = 96, rowHeight, 
       if (!el) return;
       setColCount(Math.ceil(el.clientWidth / cellSize) + 4);
       setRowCount(Math.ceil(el.clientHeight / rh) + 4);
+      setSheetSize({ width: el.clientWidth, height: el.clientHeight });
     }
     measure();
     const ro = new ResizeObserver(measure);
@@ -234,39 +235,44 @@ function ExcelShellInner({ game, gameName, fileTitle, cellSize = 96, rowHeight, 
 
       {/* ── 시트 영역 ── */}
       <div className={styles.sheetArea} ref={sheetAreaRef} style={sheetAreaStyle}>
-        <div className={styles.gridWrapper}>
-          {/* 열 헤더 */}
-          <div className={styles.colHeaderRow}>
-            <div className={styles.corner} />
-            {Array.from({ length: colCount }, (_, i) => (
-              <div
-                key={i}
-                className={styles.colHeader}
-                style={{ width: cellSize, minWidth: cellSize }}
-              >
-                {colLabel(i)}
-              </div>
-            ))}
-          </div>
-
-          {/* 행 + 게임 콘텐츠 */}
-          <div className={styles.rowsArea}>
-            <div className={styles.rowNums}>
-              {Array.from({ length: rowCount }, (_, i) => (
+        {activeSheet === 'game' ? (
+          <div className={styles.gridWrapper}>
+            {/* 열 헤더 */}
+            <div className={styles.colHeaderRow}>
+              <div className={styles.corner} />
+              {Array.from({ length: colCount }, (_, i) => (
                 <div
                   key={i}
-                  className={styles.rowNum}
-                  style={{ height: rh }}
+                  className={styles.colHeader}
+                  style={{ width: cellSize, minWidth: cellSize }}
                 >
-                  {i + 1}
+                  {colLabel(i)}
                 </div>
               ))}
             </div>
-            <div className={styles.gameContent}>
-              {children}
+
+            {/* 행 + 게임 콘텐츠 */}
+            <div className={styles.rowsArea}>
+              <div className={styles.rowNums}>
+                {Array.from({ length: rowCount }, (_, i) => (
+                  <div
+                    key={i}
+                    className={styles.rowNum}
+                    style={{ height: rh }}
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+              <div className={styles.gameContent}>
+                {children}
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          /* 랭킹·룰 시트: 게임 컴포넌트가 자체 Excel 그리드 구조를 렌더 */
+          children
+        )}
       </div>
 
       {/* ── 시트 탭 ── */}
