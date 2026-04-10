@@ -26,6 +26,7 @@ interface State {
 }
 
 type Action =
+  | { type: 'INIT'; rows: number; cols: number }
   | { type: 'START'; rows: number; cols: number }
   | { type: 'TICK' }
   | { type: 'REMOVE'; coords: { r: number; c: number }[] }
@@ -39,6 +40,15 @@ function makeApples(rows: number, cols: number): Apple[][] {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case 'INIT':
+      return {
+        apples: makeApples(action.rows, action.cols),
+        rows: action.rows,
+        cols: action.cols,
+        score: 0,
+        timeLeft: TIME_LIMIT,
+        status: 'idle',
+      };
     case 'START':
       return {
         apples: makeApples(action.rows, action.cols),
@@ -75,6 +85,13 @@ export function useAppleGame() {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // 사과 배치만 초기화 (타이머 시작 안 함) — 원본 initGame()에 대응
+  const init = useCallback((rows: number, cols: number) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    dispatch({ type: 'INIT', rows, cols });
+  }, []);
+
   const start = useCallback((rows: number, cols: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
     dispatch({ type: 'START', rows, cols });
@@ -94,5 +111,5 @@ export function useAppleGame() {
     dispatch({ type: 'REMOVE', coords });
   }, []);
 
-  return { state, start, end, removeApples };
+  return { state, init, start, end, removeApples };
 }

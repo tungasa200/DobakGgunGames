@@ -7,13 +7,42 @@ import styles from './AppleCanvas.module.css';
 
 interface Props { excel?: boolean }
 
-// 엑셀 모드 색상 팔레트
+// 엑셀 모드 고정 크기 — 원본: SIZE = 30, PAD = SIZE
+const EXCEL_SIZE = 30;
+const EXCEL_PAD  = 30;
+const EXCEL_ROWS = 10;
+const EXCEL_COLS = 17;
+
+// 엑셀 모드 색상 팔레트 — 원본 XL_CLR
 const XL_CLR = {
   normal: { bg: '#FFFFFF', bd: '#D0D0D0', tx: '#555555' },
   hit:    { bg: '#E5F7E8', bd: '#9ED4A5', tx: '#276327' },
   low:    { bg: '#DCEEF8', bd: '#8BBDD8', tx: '#1F497D' },
   over:   { bg: '#E0E0E0', bd: '#B0B0B0', tx: '#666666' },
 };
+
+// 열 라벨 (A, B, ..., AA, ...)
+function colLabel(i: number): string {
+  let label = '';
+  let n = i + 1;
+  while (n > 0) {
+    n--;
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26);
+  }
+  return label;
+}
+
+// 주간 날짜 범위
+function weekRange(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now); mon.setDate(now.getDate() + diffToMon);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  return `주간 랭킹 (${fmt(mon)} ~ ${fmt(sun)})`;
+}
 
 function drawAppleShape(
   ctx: CanvasRenderingContext2D,
@@ -85,20 +114,25 @@ function formatTime(s: number) {
 }
 
 export default function AppleCanvas({ excel = false }: Props) {
-  const { state, start, end, removeApples } = useAppleGame();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const { state, init, start, end, removeApples } = useAppleGame();
+  const canvasRef    = useRef<HTMLCanvasElement>(null);
+  const wrapRef      = useRef<HTMLDivElement>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
 
   // 레이아웃
-  const [layout, setLayout] = useState({ rows: 10, cols: 17, size: 28, pad: 8 });
+  const [layout, setLayout] = useState(
+    excel
+      ? { rows: EXCEL_ROWS, cols: EXCEL_COLS, size: EXCEL_SIZE, pad: EXCEL_PAD }
+      : { rows: 10, cols: 17, size: 28, pad: 8 }
+  );
 
-  // 드래그 상태 (ref로 관리 — render 없이 draw만 트리거)
+  // 드래그 상태
   const dragRef = useRef({ active: false, sx: 0, sy: 0, cx: 0, cy: 0 });
 
-  // 드래그 합계 표시
+  // 드래그 합계
   const [dragSum, setDragSum] = useState<number | null>(null);
 
-  // 상태 메시지
+  // 상태 메시지 (일반 모드)
   const [msg, setMsg] = useState('▶ 시작 버튼을 눌러주세요');
 
   // 모달
@@ -106,23 +140,40 @@ export default function AppleCanvas({ excel = false }: Props) {
   const [playerName, setPlayerName] = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
 
-  // 랭킹
+  // 일반 모드 랭킹
   const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({ weekly: [], alltime: null });
   const [rankLoading, setRankLoading] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
-  // 레이아웃 계산
+  // 엑셀 모드 랭킹
+  const [excelRankings, setExcelRankings] = useState<unknown[]>([]);
+  const [excelAlltime, setExcelAlltime] = useState<unknown | null>(null);
+  const [excelRankLoading, setExcelRankLoading] = useState(false);
+
+  // 레이아웃 계산 — 원본 setupLayout() 에 대응
   const calcLayout = useCallback(() => {
+    if (excel) {
+      // 엑셀 모드: 고정 SIZE — 원본: PAD = SIZE
+      const l = { rows: EXCEL_ROWS, cols: EXCEL_COLS, size: EXCEL_SIZE, pad: EXCEL_PAD };
+      setLayout(l);
+      return l;
+    }
     const wrap = wrapRef.current;
     if (!wrap) return;
     const isPortrait = window.innerHeight > window.innerWidth;
-    const cols = excel ? 17 : (isPortrait ? 10 : 17);
-    const rows = excel ? 10 : (isPortrait ? 17 : 10);
+    const cols = isPortrait ? 10 : 17;
+    const rows = isPortrait ? 17 : 10;
+    const pad  = 8;
+    // 원본: maxW = Math.min(window.innerWidth - 16, 560)
     const maxW = Math.min(wrap.clientWidth - 16, 560);
-    const pad = excel ? 0 : 8;
-    const size = Math.max(24, Math.min(excel ? 40 : 30, Math.floor((maxW - pad * 2) / cols)));
-    setLayout({ rows, cols, size, pad });
-    return { rows, cols, size, pad };
+    const size = Math.max(24, Math.min(30, Math.floor((maxW - pad * 2) / cols)));
+    // 원본: canvas-wrap에 max-width 동적 설정
+    if (canvasWrapRef.current) {
+      canvasWrapRef.current.style.maxWidth = `${pad * 2 + cols * size}px`;
+    }
+    const l = { rows, cols, size, pad };
+    setLayout(l);
+    return l;
   }, [excel]);
 
   useEffect(() => {
@@ -136,6 +187,13 @@ export default function AppleCanvas({ excel = false }: Props) {
     };
   }, [calcLayout]);
 
+  // 엑셀 모드: 마운트 시 사과 초기 배치 (원본 initGame())
+  useEffect(() => {
+    if (!excel) return;
+    init(EXCEL_ROWS, EXCEL_COLS);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel]);
+
   // timeLeft === 0 → end
   useEffect(() => {
     if (state.status === 'playing' && state.timeLeft <= 0) {
@@ -144,13 +202,15 @@ export default function AppleCanvas({ excel = false }: Props) {
   }, [state.timeLeft, state.status, end]);
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems, activeSheet } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
+
+  // 수식바 / 상태바
   useEffect(() => {
     if (!excel) return;
     setFormula('A1', `=APPLE_SCORE(sum,${state.score})`);
     setStatusItems([
       { label: '점수', value: state.score },
-      { label: '남은 시간', value: `${state.timeLeft}s` },
+      { label: '시간', value: formatTime(state.timeLeft) },
     ]);
   }, [excel, state.score, state.timeLeft, setFormula, setStatusItems]);
 
@@ -192,6 +252,18 @@ export default function AppleCanvas({ excel = false }: Props) {
     if (excel) {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // 원본: 테두리 빈 셀 한 줄 (배경과 동화되는 패딩 역할)
+      ctx.strokeStyle = '#D0D0D0';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      for (let r = -1; r <= rows; r++) {
+        for (let c = -1; c <= cols; c++) {
+          if (r >= 0 && r < rows && c >= 0 && c < cols) continue;
+          const bx = pad + c * size;
+          const by = pad + r * size;
+          ctx.strokeRect(bx + 0.5, by + 0.5, size - 1, size - 1);
+        }
+      }
     }
 
     for (let r = 0; r < rows; r++) {
@@ -270,7 +342,6 @@ export default function AppleCanvas({ excel = false }: Props) {
     }
   }, [state, layout, excel]);
 
-  // state/layout 변경 시 재드로우
   useEffect(() => { draw(); }, [draw]);
 
   // 포인터 위치 변환
@@ -292,7 +363,6 @@ export default function AppleCanvas({ excel = false }: Props) {
     draw();
   }
 
-  // document-level move/up (마우스가 canvas 밖으로 나가도 동작)
   useEffect(() => {
     function onMove(e: MouseEvent | TouchEvent) {
       if (!dragRef.current.active) return;
@@ -313,8 +383,6 @@ export default function AppleCanvas({ excel = false }: Props) {
       const p = getPos(e);
       dragRef.current.cx = p.x;
       dragRef.current.cy = p.y;
-
-      // 합계 10이면 제거
       const { rows, cols, size, pad } = layout;
       const { selected, sum } = calcSelection(
         dragRef.current.sx, dragRef.current.sy,
@@ -344,7 +412,7 @@ export default function AppleCanvas({ excel = false }: Props) {
   }, [layout, state.apples, state.status, draw, removeApples]);
 
   function handleStart() {
-    const l = calcLayout() ?? layout;
+    const l = (excel ? layout : calcLayout()) ?? layout;
     start(l.rows, l.cols);
     setMsg('사과를 드래그하세요!');
     setModalOpen(false);
@@ -352,6 +420,30 @@ export default function AppleCanvas({ excel = false }: Props) {
     setSubmitState('idle');
     setDragSum(null);
   }
+
+  // 리본 게임 그룹 등록 — 원본 ribbonGroupHtml에 대응
+  useEffect(() => {
+    if (!excel) {
+      setRibbonGameGroup(null);
+      return;
+    }
+    setRibbonGameGroup(
+      <div className={styles.xrgGame}>
+        <div className={styles.xrgBtns}>
+          <div className={styles.xrb} onClick={handleStart}>
+            <span className={styles.xrbIcon}>▶</span>
+            <span>시작</span>
+          </div>
+          <div className={styles.xrb} onClick={handleStart}>
+            <span className={styles.xrbIcon}>↺</span>
+            <span>다시하기</span>
+          </div>
+        </div>
+        <div className={styles.xrgLabel}>사과게임</div>
+      </div>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, state.status, setRibbonGameGroup]);
 
   async function handleSubmitRanking() {
     const name = playerName.trim();
@@ -361,7 +453,11 @@ export default function AppleCanvas({ excel = false }: Props) {
       const { token, timestamp } = await createToken('apple', 'normal', state.score);
       await rankingsApi.submit('apple', { level: 'normal', name, score: state.score, token, timestamp });
       setModalOpen(false);
-      loadRanking();
+      if (excel) {
+        loadExcelRanking();
+      } else {
+        loadRanking();
+      }
     } catch {
       setSubmitState('error');
     }
@@ -382,14 +478,47 @@ export default function AppleCanvas({ excel = false }: Props) {
     }
   }
 
+  async function loadExcelRanking() {
+    setExcelRankLoading(true);
+    try {
+      const [weekly, alltime] = await Promise.all([
+        rankingsApi.getWeekly('apple', 'normal'),
+        rankingsApi.getAlltimeBest('apple', 'normal'),
+      ]);
+      setExcelRankings(weekly as unknown[]);
+      setExcelAlltime(alltime);
+    } catch {
+      setExcelRankings([]);
+      setExcelAlltime(null);
+    } finally {
+      setExcelRankLoading(false);
+    }
+  }
+
   const timeWarning = state.status === 'playing' && state.timeLeft <= 30;
   const showGameArea    = !excel || activeSheet === 'game';
   const showRankingArea = !excel || activeSheet === 'ranking';
+  const showRulesArea   = !excel || activeSheet === 'rules';
+
+  // 엑셀 랭킹 시트 — 원본 buildRankingGrid() 에 대응
+  const RANK_COLS = [
+    { label: '순위', span: 2 },
+    { label: '이름', span: 5 },
+    { label: '점수', span: 3 },
+    { label: '날짜', span: 3 },
+  ];
+  const RANK_TOTAL = RANK_COLS.reduce((s, c) => s + c.span, 0); // 13
+  const RANK_CELL_W = 80; // 원본: RANK_CELL_W = 80
+  const RANK_ROW_H  = 29; // 원본: gridAutoRows = '29px'
+
+  // 엑셀 룰 시트 — 원본 buildRulesSheet() 에 대응
+  const RULES_TOTAL  = 12; // 원본: RULES_SPAN = 12
+  const RULES_CELL_W = 80; // 원본: RULES_CELL_W = 80
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`} ref={wrapRef}>
 
-      {/* 정보 바 — 일반 모드에서만 */}
+      {/* 정보 바 — 일반 모드 */}
       {!excel && (
         <div className={styles.infoBar}>
           <div className={styles.infoItem}>
@@ -409,22 +538,22 @@ export default function AppleCanvas({ excel = false }: Props) {
         </div>
       )}
 
-      {/* 상태 메시지 — 일반 모드에서만 */}
+      {/* 상태 메시지 — 일반 모드 */}
       {!excel && <div className={styles.statusMsg}>{msg}</div>}
 
       {/* 캔버스 — 게임 시트 */}
       {showGameArea && (
-        <div className={styles.canvasWrap}>
+        <div className={styles.canvasWrap} ref={canvasWrapRef}>
           <canvas
             ref={canvasRef}
-            className={styles.canvas}
+            className={`${styles.canvas} ${excel ? styles.canvasExcel : ''}`}
             onMouseDown={handlePointerDown}
             onTouchStart={(e) => { e.preventDefault(); handlePointerDown(e); }}
           />
         </div>
       )}
 
-      {/* 시작 버튼 — 일반 모드에서만 */}
+      {/* 시작 버튼 — 일반 모드 */}
       {!excel && (
         <div className={styles.controls}>
           <button className={styles.startBtn} onClick={handleStart}>
@@ -433,11 +562,11 @@ export default function AppleCanvas({ excel = false }: Props) {
         </div>
       )}
 
-      {/* 랭킹 — 랭킹 시트 */}
-      {showRankingArea && (
+      {/* 일반 모드: 랭킹 패널 */}
+      {!excel && showRankingArea && (
         <div className={styles.rankSection}>
-          {!excel && <h3 className={styles.rankTitle}>주간 RANK</h3>}
-          {!excel && !!rankings.alltime && (
+          <h3 className={styles.rankTitle}>주간 RANK</h3>
+          {!!rankings.alltime && (
             <div className={styles.alltimeBanner}>
               <span className={styles.atLabel}>👑 역대 1위</span>
               <span className={styles.atContent}>
@@ -454,12 +583,10 @@ export default function AppleCanvas({ excel = false }: Props) {
               className={`${styles.rankTab} ${!showRules ? styles.rankTabActive : ''}`}
               onClick={() => { setShowRules(false); loadRanking(); }}
             >랭킹</button>
-            {!excel && (
-              <button
-                className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
-                onClick={() => setShowRules(true)}
-              >룰</button>
-            )}
+            <button
+              className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
+              onClick={() => setShowRules(true)}
+            >룰</button>
           </div>
           {showRules ? (
             <div className={styles.rulesPanel}>
@@ -508,6 +635,213 @@ export default function AppleCanvas({ excel = false }: Props) {
           )}
         </div>
       )}
+
+      {/* 엑셀 모드: 랭킹 시트 — 원본 buildRankingGrid() 구조 완전 이식 */}
+      {excel && showRankingArea && (() => {
+        const extraCols = Math.max(8, Math.ceil(sheetSize.width / RANK_CELL_W));
+        const totalHeaderCols = RANK_TOTAL + extraCols;
+        const dataRowCount = (excelRankings as unknown[]).length > 0 ? (excelRankings as unknown[]).length : 1;
+        const contentRows = 3 + dataRowCount + 1; // title + header + data + alltime
+        const extraRows = Math.max(20, Math.ceil(sheetSize.height / RANK_ROW_H));
+        const totalRows = contentRows + extraRows;
+
+        type RankRow = { id: number; name: string; score: number; createdAt: string };
+        const rows = excelRankings as RankRow[];
+        const at = excelAlltime as (RankRow | null);
+
+        const RankCell = (
+          text: string,
+          colStart: number,
+          span: number,
+          cls: string[],
+          extraStyle?: React.CSSProperties,
+          key?: string | number,
+        ) => (
+          <div
+            key={key ?? `${colStart}-${text}`}
+            className={[styles.xrankCell, ...cls.map(c => styles[c as keyof typeof styles])].filter(Boolean).join(' ')}
+            style={{ gridColumn: `${colStart} / span ${span}`, ...extraStyle }}
+            title={text}
+          >
+            {text}
+          </div>
+        );
+
+        return (
+          <div className={styles.xSheetWrapper}>
+            <div className={styles.xColHeaderRow}>
+              <div className={styles.xcorner} />
+              {Array.from({ length: totalHeaderCols }, (_, i) => (
+                <div key={i} className={styles.xch} style={{ width: RANK_CELL_W, minWidth: RANK_CELL_W }}>{colLabel(i)}</div>
+              ))}
+            </div>
+            <div className={styles.xBodyArea}>
+              <div className={styles.xRowNums}>
+                {Array.from({ length: totalRows }, (_, i) => (
+                  <div key={i} className={styles.xrn} style={{ height: RANK_ROW_H }}>{i + 1}</div>
+                ))}
+              </div>
+              <div
+                className={styles.xRankGrid}
+                style={{ gridTemplateColumns: `repeat(${RANK_TOTAL}, ${RANK_CELL_W}px)`, gridAutoRows: `${RANK_ROW_H}px` }}
+              >
+                {/* 1행: 주간 랭킹 타이틀 — 원본: background:#e8f5e9; color:#1b5e20 */}
+                {RankCell(weekRange(), 1, RANK_TOTAL, ['xrcWeekTitle'], { fontWeight: 'bold' }, 'title')}
+
+                {/* 2행: 컬럼 헤더 — 원본: xrc-header (초록) */}
+                {(() => {
+                  let cs = 1;
+                  return RANK_COLS.map((col) => {
+                    const start = cs;
+                    cs += col.span;
+                    return RankCell(col.label, start, col.span, ['xrcHeader'], undefined, `h-${col.label}`);
+                  });
+                })()}
+
+                {/* 데이터 행 */}
+                {excelRankLoading ? (
+                  RankCell('불러오는 중...', 1, RANK_TOTAL, [], { color: '#888' }, 'loading')
+                ) : rows.length === 0 ? (
+                  RankCell('기록 없음', 1, RANK_TOTAL, [], { color: '#aaa' }, 'empty')
+                ) : (
+                  rows.map((row, i) => {
+                    const alt = i % 2 === 1 ? styles.xrcAlt : '';
+                    const top = i === 0 ? styles.xrcTop : '';
+                    const date = new Date(row.createdAt).toLocaleDateString('ko-KR');
+                    const values = [String(i + 1), row.name, `${row.score.toLocaleString()}점`, date];
+                    let cs = 1;
+                    return RANK_COLS.map((col, ci) => {
+                      const start = cs;
+                      cs += col.span;
+                      return (
+                        <div
+                          key={`${row.id}-${col.label}`}
+                          className={[styles.xrankCell, alt, top].filter(Boolean).join(' ')}
+                          style={{ gridColumn: `${start} / span ${col.span}` }}
+                          title={values[ci]}
+                        >
+                          {values[ci]}
+                        </div>
+                      );
+                    });
+                  })
+                )}
+
+                {/* 역대 1위 — 원본: background:#e8f5e9; color:#1b5e20 */}
+                {at
+                  ? RankCell(
+                      `👑 역대 1위  ${at.name} · ${at.score.toLocaleString()}점 · ${new Date(at.createdAt).toLocaleDateString('ko-KR')}`,
+                      1, RANK_TOTAL, ['xrcWeekTitle'], { paddingLeft: 8 }, 'alltime'
+                    )
+                  : RankCell('👑 역대 1위  기록 없음', 1, RANK_TOTAL, [], { color: '#aaa', paddingLeft: 8 }, 'alltime-empty')
+                }
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 엑셀 모드: 룰 시트 — 원본 buildRulesSheet() 구조 완전 이식 */}
+      {excel && showRulesArea && (() => {
+        const extraCols = Math.max(8, Math.ceil(sheetSize.width / RULES_CELL_W));
+        const totalHeaderCols = RULES_TOTAL + extraCols;
+        // 타이틀(1)+빈(1)+기본규칙섹션(1)+5행+빈(1)+색상안내섹션(1)+4행+빈(1)+점수계산섹션(1)+2행 = 18
+        const contentRows = 18;
+        const extraRows = Math.max(20, Math.ceil(sheetSize.height / RANK_ROW_H));
+        const totalRows = contentRows + extraRows;
+
+        type CellDef = { text: string; colStart: number; span: number; cls: string[]; style?: React.CSSProperties; children?: React.ReactNode };
+        const rowDefs: CellDef[][] = [];
+
+        function addRow(...cells: CellDef[]) { rowDefs.push(cells); }
+        function fullCell(text: string, cls: string[], style?: React.CSSProperties): CellDef {
+          return { text, colStart: 1, span: RULES_TOTAL, cls, style };
+        }
+        function sectionRow(title: string): CellDef[] {
+          return [fullCell(title, [], { background: '#e8f5e9', color: '#1b5e20', fontWeight: 'bold', borderTop: '1px solid #a5d6a7' })];
+        }
+        function emptyRow(): CellDef[] { return [fullCell('', [])]; }
+
+        // 1행: 타이틀
+        addRow(fullCell('도박꾼 사과게임 — 게임 규칙', ['xrcHeader'], { justifyContent: 'center', fontSize: 14, letterSpacing: 1 }));
+        // 2행: 빈
+        addRow(...emptyRow());
+        // 기본 규칙
+        addRow(...sectionRow('■  기본 규칙'));
+        [
+          ['①', '격자에 놓인 숫자(1~9)를 마우스로 드래그해 직사각형 영역 선택'],
+          ['②', '선택한 숫자들의 합이 정확히 10이면 해당 셀이 제거되고 점수 획득'],
+          ['③', '합이 10이 아니면 선택이 취소됨'],
+          ['④', '제거된 자리는 빈 셀로 남음 (중력 없음)'],
+          ['⑤', '제한 시간(2분) 내에 최대한 많은 셀을 제거하세요'],
+        ].forEach(([num, text], i) => {
+          const alt = i % 2 === 1 ? ['xrcAlt'] : [] as string[];
+          addRow(
+            { text: num, colStart: 1, span: 1, cls: alt, style: { justifyContent: 'center', color: '#888' } },
+            { text, colStart: 2, span: RULES_TOTAL - 1, cls: alt },
+          );
+        });
+        addRow(...emptyRow());
+        // 색상 안내 — 원본: xl-color-swatch 포함
+        addRow(...sectionRow('■  선택 색상 안내 (드래그 중)'));
+        const colors = [
+          { bg: '#FFFFFF', tx: '#555555', label: '기본',   desc: '흰색 — 기본 (미선택)' },
+          { bg: '#DCEEF8', tx: '#1F497D', label: '합<10',  desc: '연한 파랑 — 합계 10 미만 (더 선택 가능)' },
+          { bg: '#E5F7E8', tx: '#276327', label: '합=10',  desc: '연한 초록 — 합계 정확히 10 (제거 가능!)' },
+          { bg: '#E0E0E0', tx: '#666666', label: '합>10',  desc: '연한 회색 — 합계 10 초과 (범위 축소 필요)' },
+        ];
+        colors.forEach(({ bg, tx, label, desc }, i) => {
+          const alt = i % 2 === 1 ? ['xrcAlt'] : [] as string[];
+          addRow(
+            { text: label, colStart: 1, span: 2, cls: alt, style: { background: bg, color: tx, fontWeight: 'bold', justifyContent: 'center' } },
+            { text: desc,  colStart: 3, span: RULES_TOTAL - 2, cls: alt },
+          );
+        });
+        addRow(...emptyRow());
+        // 점수 계산
+        addRow(...sectionRow('■  점수 계산'));
+        [['①', '제거된 셀 1개당 1점'], ['②', '시간 내에 최대한 많은 셀을 제거하세요']].forEach(([num, text], i) => {
+          const alt = i % 2 === 1 ? ['xrcAlt'] : [] as string[];
+          addRow(
+            { text: num, colStart: 1, span: 1, cls: alt, style: { justifyContent: 'center', color: '#888' } },
+            { text, colStart: 2, span: RULES_TOTAL - 1, cls: alt },
+          );
+        });
+
+        return (
+          <div className={styles.xSheetWrapper}>
+            <div className={styles.xColHeaderRow}>
+              <div className={styles.xcorner} />
+              {Array.from({ length: totalHeaderCols }, (_, i) => (
+                <div key={i} className={styles.xch} style={{ width: RULES_CELL_W, minWidth: RULES_CELL_W }}>{colLabel(i)}</div>
+              ))}
+            </div>
+            <div className={styles.xBodyArea}>
+              <div className={styles.xRowNums}>
+                {Array.from({ length: totalRows }, (_, i) => (
+                  <div key={i} className={styles.xrn} style={{ height: RANK_ROW_H }}>{i + 1}</div>
+                ))}
+              </div>
+              <div
+                className={styles.xRankGrid}
+                style={{ gridTemplateColumns: `repeat(${RULES_TOTAL}, ${RULES_CELL_W}px)`, gridAutoRows: `${RANK_ROW_H}px` }}
+              >
+                {rowDefs.map((cells, ri) =>
+                  cells.map((cell, ci) => (
+                    <div
+                      key={`${ri}-${ci}`}
+                      className={[styles.xrankCell, ...cell.cls.map(c => styles[c as keyof typeof styles])].filter(Boolean).join(' ')}
+                      style={{ gridColumn: `${cell.colStart} / span ${cell.span}`, ...cell.style }}
+                    >
+                      {cell.text}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 게임 오버 모달 */}
       {modalOpen && (

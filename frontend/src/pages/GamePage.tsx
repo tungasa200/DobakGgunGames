@@ -30,7 +30,7 @@ const CELL_SIZES: Record<string, number> = {
   tetris:      30,
   minesweeper: 30,
   baseball:    96,
-  apple:       52,
+  apple:       30, // 원본: SIZE=30, PAD=SIZE (고정)
 };
 
 // 게임별 행 높이 (열 너비와 다른 경우만 명시)
