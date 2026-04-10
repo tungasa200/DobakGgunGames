@@ -189,8 +189,13 @@ export default function AppleCanvas({ excel = false }: Props) {
 
   // 엑셀 모드: 마운트 시 사과 초기 배치 (원본 initGame())
   useEffect(() => {
-    if (!excel) return;
-    init(EXCEL_ROWS, EXCEL_COLS);
+    if (excel) {
+      init(EXCEL_ROWS, EXCEL_COLS);
+    } else {
+      // 일반 모드: 레이아웃 계산 후 초기 사과 배치 (원본 initGame())
+      const l = calcLayout();
+      if (l) init(l.rows, l.cols);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [excel]);
 
@@ -204,15 +209,16 @@ export default function AppleCanvas({ excel = false }: Props) {
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
 
-  // 수식바 / 상태바
+  // 수식바 / 상태바 — 원본: xl-score, xl-time, xl-sum
   useEffect(() => {
     if (!excel) return;
     setFormula('A1', `=APPLE_SCORE(sum,${state.score})`);
     setStatusItems([
       { label: '점수', value: state.score },
       { label: '시간', value: formatTime(state.timeLeft) },
+      { label: '선택합계', value: dragSum !== null ? dragSum : '-' },
     ]);
-  }, [excel, state.score, state.timeLeft, setFormula, setStatusItems]);
+  }, [excel, state.score, state.timeLeft, dragSum, setFormula, setStatusItems]);
 
   // 게임 종료 → 모달
   useEffect(() => {
@@ -508,12 +514,12 @@ export default function AppleCanvas({ excel = false }: Props) {
     { label: '날짜', span: 3 },
   ];
   const RANK_TOTAL = RANK_COLS.reduce((s, c) => s + c.span, 0); // 13
-  const RANK_CELL_W = 80; // 원본: RANK_CELL_W = 80
-  const RANK_ROW_H  = 29; // 원본: gridAutoRows = '29px'
+  const RANK_CELL_W = EXCEL_SIZE; // 배경 격자(30px)와 일치
+  const RANK_ROW_H  = EXCEL_SIZE; // 배경 격자(30px)와 일치
 
   // 엑셀 룰 시트 — 원본 buildRulesSheet() 에 대응
-  const RULES_TOTAL  = 12; // 원본: RULES_SPAN = 12
-  const RULES_CELL_W = 80; // 원본: RULES_CELL_W = 80
+  const RULES_TOTAL  = 12;
+  const RULES_CELL_W = EXCEL_SIZE; // 배경 격자(30px)와 일치
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`} ref={wrapRef}>
