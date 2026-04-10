@@ -9,7 +9,7 @@
   align-items: center;
 }
 
-/* 난이도 버튼 — 원본: border: 2px solid #3498db */
+/* 난이도 버튼 — 원본: #difficulty-panel { gap: 8px; margin-bottom: 10px; } */
 .diffRow { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
 
 .diffBtn {
@@ -27,41 +27,73 @@
 .diffBtn:hover { background: #3498db; color: white; }
 .diffActive    { background: #3498db; color: white; }
 
-.resetBtn {
-  padding: 8px 16px;
+/* 커스텀 패널 — 원본: #custom-panel */
+.customPanel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+.customPanel label { font-size: 0.9em; color: #555; display: flex; align-items: center; gap: 4px; }
+.customPanel input {
+  width: 52px;
+  padding: 4px 6px;
   font-size: 0.95em;
-  background: #3498db;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  text-align: center;
+}
+.applyBtn {
+  padding: 6px 14px;
+  font-size: 0.9em;
+  cursor: pointer;
+  background: #2ecc71;
   color: white;
   border: none;
   border-radius: 5px;
-  cursor: pointer;
+  font-weight: bold;
   touch-action: manipulation;
 }
-.resetBtn:hover { background: #2980b9; }
+.applyBtn:hover { background: #27ae60; }
+.customHint { font-size: 0.8em; color: #e74c3c; }
 
-/* 상태 바 — 원본: #info-bar { gap: 24px; } / #status { margin-top: 10px; } */
-.statusBar {
+/* 상태 바 — 원본: #info-bar { gap: 24px; margin: 6px 0; } */
+.infoBar {
   display: flex;
   gap: 24px;
   align-items: center;
   margin: 6px 0;
 }
 .mineCount { font-size: 1.1em; font-weight: bold; color: #e74c3c; }
-.status    { font-size: 1.1em; font-weight: bold; color: #2c3e50; flex: 1; text-align: center; }
 .timer     { font-size: 1.1em; font-weight: bold; color: #2c3e50; }
+
+/* 상태 텍스트 — 원본: #status { margin-top: 10px; font-size: 1.2em; margin-bottom: 16px; } */
+.status {
+  margin-top: 10px;
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 16px;
+  color: #2c3e50;
+}
 .win  { color: #27ae60; }
 .lose { color: #c0392b; }
 
-/* 게임판 — 원본: #board-wrap { border: 2px solid #333; overflow: hidden; } */
-.boardWrapper { overflow: hidden; max-width: 100%; border: 2px solid #333; margin-bottom: 16px; }
+/* 게임판 — 원본: #board-wrap { overflow: hidden; max-width: 100%; border: 2px solid #333; } */
+.boardWrapper { overflow: hidden; max-width: 100%; border: 2px solid #333; }
 
-/* 원본: #game-board { display: grid; } — gap 없음, 배경색 없음 */
+/* 원본: #game-board { display: grid; } */
 .board {
   display: inline-grid;
   user-select: none;
 }
 
-/* 셀 — 원본: border: 1px solid #ccc; background: #ddd; (완전 평면) */
+/* 셀 — 원본: width/height: var(--cell-size)=30px; border: 1px solid #ccc; background: #ddd */
 .cell {
   width: 30px;
   height: 30px;
@@ -81,10 +113,7 @@
 }
 
 /* 열린 셀 — 원본: background: #fff */
-.revealed {
-  background-color: #fff;
-  cursor: default;
-}
+.revealed { background-color: #fff; cursor: default; }
 
 /* 깃발 — 원본: background: #f1c40f; color: white */
 .flag { background-color: #f1c40f; color: white; }
@@ -95,9 +124,25 @@
 /* 지뢰(게임오버) — 원본: background: #e74c3c; color: white */
 .mine { background-color: #e74c3c; color: white; }
 
-/* ===== 랭킹 — 원본 스타일 ===== */
-.rankSection { margin-top: 28px; width: 100%; max-width: min(420px, 100%); }
+/* 리셋 버튼 — 원본: #reset-btn { margin-top: 15px; } */
+.resetBtn {
+  margin-top: 15px;
+  padding: 10px 20px;
+  font-size: 1em;
+  cursor: pointer;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  touch-action: manipulation;
+}
+.resetBtn:hover { background: #2980b9; }
 
+/* ===== 랭킹 — 원본: #ranking-panel { margin-top: 28px; max-width: min(420px, 100%); } ===== */
+.rankSection { margin-top: 28px; width: 100%; max-width: min(420px, 100%); }
+.rankTitle { text-align: center; margin: 0 0 10px; color: #2c3e50; }
+
+/* 원본: #ranking-tabs { gap: 4px; margin-bottom: 8px; } */
 .rankTabs { display: flex; gap: 4px; margin-bottom: 8px; }
 
 .rankTab {
@@ -115,6 +160,7 @@
 .rankTab:hover  { background: #3498db; color: white; }
 .rankTabActive  { background: #3498db; color: white; }
 
+/* 원본: #ranking-table */
 .table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
 .table th { background: #3498db; color: white; padding: 7px 8px; }
 .table td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: center; }
@@ -123,7 +169,21 @@
 
 .placeholder { color: #aaa; font-style: italic; text-align: center; padding: 12px; }
 
-/* ===== 클리어 모달 ===== */
+/* 룰 패널 — 원본: #rules-panel */
+.rulesPanel {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 14px 16px;
+  font-size: 0.88em;
+  line-height: 1.7;
+  color: #333;
+}
+.rulesPanel h4 { margin: 0 0 8px; color: #2c3e50; font-size: 1em; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+.rulesPanel ul { margin: 4px 0 10px; padding-left: 20px; }
+.rulesPanel li { margin-bottom: 3px; }
+
+/* ===== 클리어 모달 — 원본: #modal-overlay, #modal-box ===== */
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -144,7 +204,8 @@
   max-width: 340px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
-.modal h3 { margin: 0 0 6px; font-size: 1.6em; color: #27ae60; }
+/* 원본 일반: h2 { color: #27ae60 } */
+.modal h2 { margin: 0 0 6px; font-size: 1.6em; color: #27ae60; }
 .modal p  { margin: 0 0 20px; color: #555; font-size: 1em; }
 
 .nameInput {
@@ -160,6 +221,7 @@
 
 .modalBtns { display: flex; gap: 8px; justify-content: center; }
 
+/* 원본: #modal-submit { background: #3498db } */
 .primaryBtn {
   padding: 10px 22px;
   background: #3498db;
@@ -173,6 +235,10 @@
 }
 .primaryBtn:hover    { background: #2980b9; }
 .primaryBtn:disabled { opacity: 0.5; cursor: default; }
+
+/* 원본 excel: #modal-submit { background: #217346 } */
+.primaryBtnExcel         { background: #217346; }
+.primaryBtnExcel:hover   { background: #1a6636; }
 
 .secondaryBtn {
   padding: 10px 22px;
@@ -197,12 +263,10 @@
   align-items: flex-start;
 }
 
-/* 헤더/난이도/상태바 숨김 */
-.excelMode .diffRow   { display: none; }
-.excelMode .statusBar { display: none; }
-.excelMode .boardWrapper { border: none; overflow: visible; max-width: none; margin-bottom: 0; }
+/* 보드 래퍼 — 원본 excel: #board-wrap { border: none; overflow: visible; } */
+.excelMode .boardWrapper { border: none; overflow: visible; max-width: none; }
 
-/* 셀 — 원본 excel.html: background: #f0f0f0; border: 1px solid #d0d0d0; flat */
+/* 셀 — 원본 excel: background: #f0f0f0; border: 1px solid #d0d0d0; font: Calibri 14px */
 .excelMode .cell {
   background: #f0f0f0;
   border: 1px solid #d0d0d0;
@@ -219,24 +283,66 @@
   z-index: 1;
   position: relative;
 }
-/* 열린 셀 — 원본: background: white */
+/* 원본 excel: .cell.revealed { background: white } */
 .excelMode .revealed { background: white; }
 
-/* 깃발 — 원본 excel: background: white; color: #9c0006 */
+/* 원본 excel: .cell.flag { background: white; color: #9c0006 } */
 .excelMode .flag     { background: white; color: #9c0006; }
 
-/* 물음표 — 원본 excel: background: white; color: #7b00c7 */
+/* 원본 excel: .cell.question { background: white; color: #7b00c7 } */
 .excelMode .question { background: white; color: #7b00c7; }
 
-/* 지뢰(게임오버) — 원본 excel: background: #ffc7ce; color: #9c0006 */
+/* 원본 excel: .cell.mine { background: #ffc7ce; color: #9c0006 } */
 .excelMode .mine     { background: #ffc7ce; color: #9c0006; }
 
-/* 랭킹 */
-.excelMode .rankSection   { padding: 12px 8px; background: white; width: auto; }
+/* 랭킹/룰 시트 (엑셀 모드) */
+.excelMode .rankSection   { padding: 12px 8px; background: white; width: auto; max-width: none; margin-top: 0; }
 .excelMode .rankTab       { border-color: #217346; color: #217346; }
 .excelMode .rankTab:hover { background: #217346; color: white; }
 .excelMode .rankTabActive { background: #217346; color: white; border-color: #217346; }
-.excelMode .table th      { background: #217346; color: white; }
+.excelMode .table th      { background: #217346; }
 .excelMode .primaryBtn    { background: #217346; }
 .excelMode .primaryBtn:hover { background: #1a6636; }
 .excelMode .nameInput:focus  { border-color: #217346; }
+.excelMode .rulesPanel       { border-radius: 0; border: none; border-top: 1px solid #e0e0e0; }
+
+/* ===== 엑셀 리본 게임 그룹 — 원본 excel.html: #xrg-game ===== */
+.xrgGame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 8px;
+  border-right: 1px solid #e0e0e0;
+  gap: 2px;
+}
+.xrgBtns {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  align-items: center;
+}
+.xrgLabel {
+  font-size: 11px;
+  color: #666;
+  margin-top: auto;
+  padding-top: 2px;
+}
+/* 원본: .xrb */
+.xrb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 2px;
+  font-size: 11px;
+  color: #333;
+  min-width: 30px;
+  border: 1px solid transparent;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xrb:hover { background: #e8f4fd; border-color: #c8dff5; }
+.xrbIcon { font-size: 18px; line-height: 1.2; }
+
+/* 원본: .xrb.xdiff-active */
+.xrbActive { background: #c8e6c9 !important; border-color: #4caf50 !important; }
