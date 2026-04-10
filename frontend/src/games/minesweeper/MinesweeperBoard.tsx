@@ -17,7 +17,7 @@ interface Props { excel?: boolean }
 
 export default function MinesweeperBoard({ excel = false }: Props) {
   const [level, setLevel] = useState<Level>('beginner');
-  const { state, reset, resetCustom, revealCell, chordClick, toggleMark } = useMinesweeperGame(level);
+  const { state, reset, resetCustom, revealCell, chordClick, toggleMark } = useMinesweeperGame('beginner');
 
   // 커스텀 패널
   const [showCustom, setShowCustom] = useState(false);
