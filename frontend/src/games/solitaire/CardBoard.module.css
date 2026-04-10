@@ -388,6 +388,7 @@
   display: inline-flex;
   flex-direction: column;
   min-width: 100%;
+  color: #333; /* .wrap의 color:white 상속 차단 */
 }
 
 /* 원본: #excel-rank-col-header-row { display: flex; position: sticky; top: 0; z-index: 10; } */
