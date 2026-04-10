@@ -5,11 +5,11 @@ import styles from './ExcelShell.module.css';
 
 // ===== 게임 목록 =====
 const GAMES = [
-  { key: 'minesweeper', label: '지뢰찾기', icon: '💣' },
-  { key: 'baseball',    label: '숫자야구', icon: '⚾' },
-  { key: 'tetris',      label: '테트리스', icon: '🟦' },
-  { key: 'solitaire',   label: '솔리테어', icon: '🃏' },
-  { key: 'apple',       label: '사과게임', icon: '🍎' },
+  { key: 'minesweeper', label: '지뢰찾기', icon: '1.' },
+  { key: 'baseball',    label: '숫자야구', icon: '2.' },
+  { key: 'tetris',      label: '테트리스', icon: '3.' },
+  { key: 'solitaire',   label: '솔리테어', icon: '4.' },
+  { key: 'apple',       label: '사과게임', icon: '5.' },
 ];
 
 // ===== 열 라벨 헬퍼 (A, B, C, ..., AA, ...) =====
@@ -29,16 +29,15 @@ export interface ExcelShellProps {
   game: string;           // 현재 게임 key (홈: '')
   gameName: string;       // 표시용 한글 이름
   fileTitle?: string;     // 상단 파일명 (기본: game_score.xlsx)
-  ribbonGameGroup?: ReactNode;  // 게임 전용 리본 그룹
   cellSize?: number;      // 그리드 열 셀 크기 (기본: 96)
   rowHeight?: number;     // 행 높이 (기본: cellSize와 동일)
   children: ReactNode;
 }
 
 // ===== 내부: 크롬 렌더러 (Context 소비) =====
-function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize = 96, rowHeight, children }: ExcelShellProps) {
+function ExcelShellInner({ game, gameName, fileTitle, cellSize = 96, rowHeight, children }: ExcelShellProps) {
   const rh = rowHeight ?? cellSize;
-  const { formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet } = useExcelShell();
+  const { formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet, ribbonGameGroup } = useExcelShell();
   const navigate = useNavigate();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -174,7 +173,7 @@ function ExcelShellInner({ game, gameName, fileTitle, ribbonGameGroup, cellSize 
           <div className={styles.dropTitle}>게임 선택</div>
           {/* 홈 항목 */}
           <div className={styles.dropGame}>
-            <span className={styles.dropIcon}>🏠</span>
+            <span className={styles.dropIcon}>0.</span>
             <span className={styles.dropName}>홈</span>
             <div className={styles.dropBtns}>
               <button

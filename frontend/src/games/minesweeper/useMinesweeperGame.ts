@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 
-export type Level = 'beginner' | 'intermediate' | 'expert';
+export type Level = 'beginner' | 'intermediate' | 'expert' | 'custom';
 export type CellMark = 'none' | 'flag' | 'question';
 
-export const PRESETS: Record<Level, { rows: number; cols: number; mines: number }> = {
+export const PRESETS: Record<Exclude<Level, 'custom'>, { rows: number; cols: number; mines: number }> = {
   beginner:     { rows: 9,  cols: 9,  mines: 10 },
   intermediate: { rows: 16, cols: 16, mines: 40 },
   expert:       { rows: 16, cols: 30, mines: 99 },
@@ -32,7 +32,7 @@ interface State {
 }
 
 type Action =
-  | { type: 'RESET'; level: Level }
+  | { type: 'RESET'; level: Level; customRows?: number; customCols?: number; customMines?: number }
   | { type: 'REVEAL'; r: number; c: number; newBoard: Cell[][]; revealedCount: number }
   | { type: 'MARK'; r: number; c: number; mark: CellMark; flagDelta: number }
   | { type: 'WIN'; elapsed: number }
@@ -53,13 +53,15 @@ function emptyBoard(rows: number, cols: number): Cell[][] {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'RESET': {
-      const p = PRESETS[action.level];
+      const rows  = action.level === 'custom' ? (action.customRows  ?? 10) : PRESETS[action.level].rows;
+      const cols  = action.level === 'custom' ? (action.customCols  ?? 10) : PRESETS[action.level].cols;
+      const mines = action.level === 'custom' ? (action.customMines ?? 15) : PRESETS[action.level].mines;
       return {
         level: action.level,
-        rows: p.rows,
-        cols: p.cols,
-        totalMines: p.mines,
-        board: emptyBoard(p.rows, p.cols),
+        rows,
+        cols,
+        totalMines: mines,
+        board: emptyBoard(rows, cols),
         revealedCount: 0,
         flagCount: 0,
         status: 'idle',
@@ -152,7 +154,7 @@ function revealAllMines(board: Cell[][]): Cell[][] {
   );
 }
 
-function initState(level: Level): State {
+function initState(level: Exclude<Level, 'custom'>): State {
   const p = PRESETS[level];
   return {
     level,
@@ -190,6 +192,10 @@ export function useMinesweeperGame(initialLevel: Level = 'beginner') {
   const reset = useCallback((level: Level = state.level) => {
     dispatch({ type: 'RESET', level });
   }, [state.level]);
+
+  const resetCustom = useCallback((rows: number, cols: number, mines: number) => {
+    dispatch({ type: 'RESET', level: 'custom', customRows: rows, customCols: cols, customMines: mines });
+  }, []);
 
   const revealCell = useCallback((r: number, c: number) => {
     if (state.status === 'won' || state.status === 'lost') return;
@@ -276,5 +282,5 @@ export function useMinesweeperGame(initialLevel: Level = 'beginner') {
     dispatch({ type: 'MARK', r, c, mark, flagDelta });
   }, [state.status, state.board]);
 
-  return { state, reset, revealCell, chordClick, toggleMark };
+  return { state, reset, resetCustom, revealCell, chordClick, toggleMark };
 }
