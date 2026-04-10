@@ -658,7 +658,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
       {modalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
-            <h2>🎉 클리어!</h2>
+            <h2>CLEAR</h2>
             <p id="modal-time-text">클리어 시간: {state.elapsed.toFixed(2)}초</p>
             <input
               className={styles.nameInput}

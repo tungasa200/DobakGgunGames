@@ -320,9 +320,9 @@
 .rowNum:hover { background: #d9e9ff; }
 
 /* ── 게임 콘텐츠 영역 ── */
+/* z-index 제거 — stacking context를 만들면 모달(fixed z-index:100)이 colHeaderRow(z-index:10) 아래에 갇힘 */
 .gameContent {
   position: relative;
-  z-index: 1;
 }
 
 /* ── 시트 탭 ── */
