@@ -170,7 +170,7 @@ function initState(level: Exclude<Level, 'custom'>): State {
   };
 }
 
-export function useMinesweeperGame(initialLevel: Level = 'beginner') {
+export function useMinesweeperGame(initialLevel: Exclude<Level, 'custom'> = 'beginner') {
   const [state, dispatch] = useReducer(reducer, initialLevel, initState);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
