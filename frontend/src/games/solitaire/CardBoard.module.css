@@ -476,6 +476,7 @@
   overflow: hidden;
   white-space: nowrap;
   background: white;
+  color: #333;
   align-self: stretch;
 }
 /* 원본: .xrank-cell.xrc-header { background: #217346; color: white; font-weight: bold; } */
