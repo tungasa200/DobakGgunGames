@@ -439,7 +439,7 @@ export default function BaseballBoard({ excel = false }: Props) {
                     const alt = i % 2 === 1 ? styles.xrcAlt : '';
                     const top = i === 0 ? styles.xrcTop : '';
                     const date = new Date(row.createdAt).toLocaleDateString('ko-KR');
-                    const values = [String(i + 1), row.name, `${row.attempts}번`, `${row.time.toFixed(2)}초`, date];
+                    const values = [String(i + 1), row.name, `${row.attempts ?? 0}번`, `${(row.time ?? 0).toFixed(2)}초`, date];
                     let cs = 1;
                     return RANK_COLS.map((col) => {
                       const start = cs;
@@ -461,10 +461,14 @@ export default function BaseballBoard({ excel = false }: Props) {
 
                 {/* 역대 1위 — 원본: background:#eafaf1; color:#1e8449 */}
                 {(() => {
-                  const at = rankings.alltime as { name: string; attempts: number; time: number; createdAt: string } | null;
+                  // getAlltimeBest는 기록 없을 때 {} 반환 → 'id' in 체크로 유효성 확인
+                  const raw = rankings.alltime;
+                  const at = (raw && typeof raw === 'object' && 'id' in (raw as object))
+                    ? raw as { name: string; attempts: number; time: number; createdAt: string }
+                    : null;
                   return at
                     ? RankCell(
-                        `👑 역대 1위  ${at.name} · ${at.attempts}번 · ${at.time.toFixed(2)}초 · ${new Date(at.createdAt).toLocaleDateString('ko-KR')}`,
+                        `👑 역대 1위  ${at.name} · ${at.attempts}번 · ${(at.time ?? 0).toFixed(2)}초 · ${new Date(at.createdAt).toLocaleDateString('ko-KR')}`,
                         1, RANK_TOTAL, [],
                         { background: '#eafaf1', color: '#1e8449', fontWeight: 'bold', paddingLeft: 8 },
                         'alltime'
