@@ -25,11 +25,17 @@ const FILE_TITLES: Record<string, string> = {
   apple:       'apple_game.xlsx',
 };
 
-// 게임별 그리드 셀 크기 (엑셀 모드)
+// 게임별 그리드 셀 크기 (엑셀 모드) — 열 너비
 const CELL_SIZES: Record<string, number> = {
   tetris:      30,
   minesweeper: 30,
+  baseball:    96,
   apple:       52,
+};
+
+// 게임별 행 높이 (열 너비와 다른 경우만 명시)
+const ROW_HEIGHTS: Record<string, number> = {
+  baseball: 29,
 };
 
 // 게임별 배경색 — 원본 body { background-color } 와 동일
@@ -79,6 +85,7 @@ export default function GamePage({ excel }: { excel: boolean }) {
           gameName={name}
           fileTitle={FILE_TITLES[game]}
           cellSize={CELL_SIZES[game]}
+          rowHeight={ROW_HEIGHTS[game]}
         >
           {board}
         </ExcelShell>
