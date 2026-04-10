@@ -13,6 +13,7 @@ interface GameConfig {
   levels: { value: string; label: string }[];
   defaultLevel: string;
   fmt: (r: RankingEntry) => string;
+  comingSoon?: boolean;
 }
 
 const GAMES: GameConfig[] = [
@@ -51,6 +52,7 @@ const GAMES: GameConfig[] = [
     ],
     defaultLevel: 'normal',
     fmt: (r) => `${r.score!.toLocaleString()}점`,
+    comingSoon: true,
   },
   {
     key: 'apple',
@@ -75,6 +77,7 @@ const GAMES: GameConfig[] = [
       const s = t % 60;
       return m > 0 ? `${m}분 ${String(s).padStart(2, '0')}초` : `${t}초`;
     },
+    comingSoon: true,
   },
 ];
 
@@ -89,7 +92,8 @@ function GameCard({ game, rankings, activeLevel, onLevelChange }: {
   const data = rankings[activeLevel];
 
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${game.comingSoon ? styles.cardComingSoon : ''}`}>
+      {game.comingSoon && <div className={styles.comingSoonOverlay}><span>준비중</span></div>}
       <div className={styles.cardHeader}>
         <span className={styles.icon}>{game.icon}</span>
         <div className={styles.title}>
