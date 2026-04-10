@@ -82,7 +82,6 @@
   display: flex;
   flex-direction: column;
   margin-bottom: 24px;
-  overflow-x: auto;
 }
 
 .topRow {
@@ -329,7 +328,7 @@
 }
 .skipBtn:hover { background: #7f8c8d; }
 
-/* ===== 엑셀 모드 ===== */
+/* ===== 엑셀 모드 기본 ===== */
 .excelMode {
   font-family: 'Calibri', 'Segoe UI', sans-serif;
   padding: 0;
@@ -337,16 +336,170 @@
   margin: 0;
   color: inherit;
 }
-.excelMode .controls  { display: none; }
-.excelMode .statusBar { display: none; }
-.excelMode .board     { margin-bottom: 0; }
-.excelMode .zone      { border-color: rgba(0,0,0,0.15); }
-.excelMode .tableauCol { border-color: rgba(0,0,0,0.1); }
-.excelMode .rankSection { padding: 12px 8px; background: white; margin-top: 0; color: #333; }
-.excelMode .rankTab       { border-color: #217346; color: #217346; }
-.excelMode .rankTab:hover { background: #217346; color: white; }
-.excelMode .rankTabActive { background: #217346; color: white; border-color: #217346; }
-.excelMode .rankTable th  { background: #217346; color: white; }
 .excelMode .submitBtn     { background: #217346; }
 .excelMode .submitBtn:hover { background: #1a6636; }
 .excelMode .nameInput:focus { border-color: #217346; }
+
+/* ===== 엑셀 리본 게임 그룹 — 원본 excel.html: #xrg-game ===== */
+.xrgGame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 8px;
+  border-right: 1px solid #e0e0e0;
+  gap: 2px;
+}
+.xrgBtns {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  align-items: center;
+}
+.xrgLabel {
+  font-size: 14px;
+  color: #666;
+  margin-top: auto;
+  padding-top: 2px;
+}
+/* 원본: .xrb */
+.xrb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 2px;
+  font-size: 14px;
+  color: #333;
+  min-width: 30px;
+  border: 1px solid transparent;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xrb:hover { background: #e8f4fd; border-color: #c8dff5; }
+.xrbIcon { font-size: 18px; line-height: 1.2; }
+/* 원본: .xrb.xdraw-active */
+.xrbActive { background: #c8e6c9 !important; border-color: #4caf50 !important; }
+/* 원본: .xrb.xrb-disabled */
+.xrbDisabled { opacity: 0.4; cursor: default; pointer-events: none; }
+
+/* ===== 엑셀 랭킹·룰 시트 구조 — 원본 #excel-ranking-sheet / #excel-rules-sheet ===== */
+/* 원본: #excel-grid-wrapper { display: inline-flex; flex-direction: column; } */
+.xSheetWrapper {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+
+/* 원본: #excel-rank-col-header-row { display: flex; position: sticky; top: 0; z-index: 10; } */
+.xColHeaderRow {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* 원본: .xcorner { width: 40px; height: 24px; background: #f2f2f2; border-right: 1px solid #aaa; border-bottom: 1px solid #aaa; } */
+.xcorner {
+  width: 40px;
+  min-width: 40px;
+  height: 24px;
+  background: #f2f2f2;
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #aaa;
+  flex-shrink: 0;
+}
+
+/* 원본: .xch { background: #f2f2f2; border-right/bottom; 24px height; 14px; } */
+.xch {
+  background: #f2f2f2;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #444;
+  user-select: none;
+  height: 24px;
+  flex-shrink: 0;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xch:hover { background: #d9e9ff; }
+
+/* 원본: #excel-rank-body-area { display: flex; } */
+.xBodyArea {
+  display: flex;
+  align-items: flex-start;
+}
+
+/* 원본: #excel-rank-row-nums { display: flex; flex-direction: column; position: sticky; left: 0; } */
+.xRowNums {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+/* 원본: .xrn { background: #f2f2f2; border-right: 1px solid #aaa; border-bottom: 1px solid #d0d0d0; 40px wide; 14px; } */
+.xrn {
+  background: #f2f2f2;
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #444;
+  width: 40px;
+  min-width: 40px;
+  user-select: none;
+  flex-shrink: 0;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xrn:hover { background: #d9e9ff; }
+
+/* 원본: #excel-rank-grid / #excel-rules-grid { display: grid; } */
+.xRankGrid {
+  display: grid;
+}
+
+/* 원본: .xrank-cell */
+.xrankCell {
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 14px;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  overflow: hidden;
+  white-space: nowrap;
+  background: white;
+  align-self: stretch;
+}
+/* 원본: .xrank-cell.xrc-header { background: #217346; color: white; font-weight: bold; } */
+.xrcHeader { background: #217346; color: white; font-weight: bold; }
+/* 원본: .xrank-cell.xrc-filter { background: #f2f2f2; gap: 4px; } */
+.xrcFilter { background: #f2f2f2; gap: 4px; }
+/* 원본: .xrank-cell.xrc-alt { background: #f5f5f5; } */
+.xrcAlt { background: #f5f5f5; }
+/* 원본: .xrank-cell.xrc-top { color: #c65000; font-weight: bold; } */
+.xrcTop { color: #c65000; font-weight: bold; }
+/* 원본: 주간 타이틀 — background: #fef9e7; color: #b7950b */
+.xrcWeekTitle { background: #fef9e7; color: #b7950b; font-weight: bold; }
+
+/* 원본: .xrank-filter-btn */
+.xrankFilterBtn {
+  padding: 1px 10px;
+  font-size: 14px;
+  border: 1px solid #d0d0d0;
+  background: white;
+  cursor: pointer;
+  border-radius: 2px;
+  color: #333;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xrankFilterBtn:hover { background: #e8e8e8; }
+/* 원본: .xrank-filter-btn.active { background: #217346; color: white; border-color: #217346; } */
+.xrankFilterBtnActive { background: #217346; color: white; border-color: #217346; }

@@ -31,11 +31,13 @@ const CELL_SIZES: Record<string, number> = {
   minesweeper: 30,
   baseball:    96,
   apple:       30, // 원본: SIZE=30, PAD=SIZE (고정)
+  solitaire:   96, // 원본: --xcw: 96px
 };
 
 // 게임별 행 높이 (열 너비와 다른 경우만 명시)
 const ROW_HEIGHTS: Record<string, number> = {
-  baseball: 29,
+  baseball:  29,
+  solitaire: 29, // 원본: XCH = 29
 };
 
 // 게임별 배경색 — 원본 body { background-color } 와 동일
