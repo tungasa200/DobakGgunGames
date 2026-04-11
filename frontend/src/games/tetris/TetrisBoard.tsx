@@ -172,7 +172,7 @@ export default function TetrisBoard({ excel = false }: Props) {
   const COLORS = excel ? COLORS_EXCEL : COLORS_NORMAL;
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems, activeSheet } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     const colLabel = (n: number) => String.fromCharCode(65 + n);
@@ -312,21 +312,23 @@ export default function TetrisBoard({ excel = false }: Props) {
       comboAlpha.current -= 0.025;
     }
 
-    // NEXT 캔버스
+    // NEXT 캔버스 — 게임 전(nextPiece=null)에도 배경을 항상 채움
     const nc = nextRef.current;
-    if (nc && nextPiece.current) {
+    if (nc) {
       const nctx = nc.getContext('2d');
       if (nctx) {
         nctx.fillStyle = excel ? '#FFFFFF' : '#111827';
         nctx.fillRect(0, 0, 4, 4);
-        const m = nextPiece.current;
-        const ox = Math.floor((4 - m[0].length) / 2);
-        const oy = Math.floor((4 - m.length) / 2);
-        m.forEach((row, y) => {
-          row.forEach((val, x) => {
-            if (val !== 0) drawCell(nctx, x + ox, y + oy, val);
+        if (nextPiece.current) {
+          const m = nextPiece.current;
+          const ox = Math.floor((4 - m[0].length) / 2);
+          const oy = Math.floor((4 - m.length) / 2);
+          m.forEach((row, y) => {
+            row.forEach((val, x) => {
+              if (val !== 0) drawCell(nctx, x + ox, y + oy, val);
+            });
           });
-        });
+        }
       }
     }
 
@@ -773,6 +775,49 @@ export default function TetrisBoard({ excel = false }: Props) {
     setShowRules(false);
   }
 
+  // ===== 엑셀 모드: 리본 게임 그룹 =====
+  useEffect(() => {
+    if (!excel) { setRibbonGameGroup(null); return; }
+    const ICONS: Record<Level, string> = { easy: '📈', normal: '📊', hard: '📉' };
+    setRibbonGameGroup(
+      <div className={styles.xrgGame}>
+        <div className={styles.xrgBtns}>
+          {(['easy', 'normal', 'hard'] as Level[]).map(lv => (
+            <div
+              key={lv}
+              className={`${styles.xrb} ${difficulty === lv ? styles.xrbActive : ''}`}
+              onClick={() => handleDifficultyChange(lv)}
+            >
+              <span className={styles.xrbIcon}>{ICONS[lv]}</span>
+              <span>{{ easy: '쉬움', normal: '보통', hard: '어려움' }[lv]}</span>
+            </div>
+          ))}
+          <div className={styles.xrb} onClick={() => startGame()}>
+            <span className={styles.xrbIcon}>▶</span>
+            <span>{gameStatus === 'idle' ? '시작' : '다시하기'}</span>
+          </div>
+          <div
+            className={`${styles.xrb} ${gameStatus !== 'playing' && gameStatus !== 'paused' ? styles.xrbDisabled : ''}`}
+            onClick={togglePause}
+          >
+            <span className={styles.xrbIcon}>{gameStatus === 'paused' ? '▶' : '⏸'}</span>
+            <span>{gameStatus === 'paused' ? '계속' : '일시정지'}</span>
+          </div>
+        </div>
+        <div className={styles.xrgLabel}>테트리스</div>
+      </div>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, difficulty, gameStatus, setRibbonGameGroup]);
+
+  // ===== 엑셀 모드: ranking 시트 활성 시 랭킹 로드 =====
+  useEffect(() => {
+    if (!excel || activeSheet !== 'ranking') return;
+    loadRanking(rankLevel);
+    loadAlltime(rankLevel);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, activeSheet]);
+
   // ===== 상태 텍스트 =====
   const statusText =
     gameStatus === 'idle'   ? '▶ 시작 버튼을 눌러주세요' :
@@ -786,9 +831,8 @@ export default function TetrisBoard({ excel = false }: Props) {
   ];
 
   // 엑셀 모드: 시트에 따라 보이는 영역 결정
-  const showGameArea    = !excel || activeSheet === 'game';
-  const showRankingArea = !excel || activeSheet === 'ranking';
-  const showRulesArea   = !excel ? showRules : activeSheet === 'rules';
+  const showGameArea  = !excel || activeSheet === 'game';
+  const showRulesArea = !excel ? showRules : activeSheet === 'rules';
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
@@ -833,6 +877,17 @@ export default function TetrisBoard({ excel = false }: Props) {
                 <div className={styles.sideTitle}>HOLD</div>
                 <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
               </div>
+              {/* 엑셀 모드: 점수/레벨/줄 — 원본 tside-label/tside-value */}
+              {excel && (
+                <>
+                  <div className={styles.tsideLabel}>Score</div>
+                  <div className={styles.tsideValue}>{score.toLocaleString()}</div>
+                  <div className={styles.tsideLabel}>Level</div>
+                  <div className={styles.tsideValue}>{gameLevel}</div>
+                  <div className={styles.tsideLabel}>Lines</div>
+                  <div className={styles.tsideValue}>{lines}</div>
+                </>
+              )}
               <div className={`${styles.sideBox} ${styles.hintsBox}`}>
                 <div className={styles.sideTitle}>키</div>
                 <div className={styles.hints}>
@@ -845,6 +900,9 @@ export default function TetrisBoard({ excel = false }: Props) {
                 </div>
               </div>
             </div>
+
+            {/* 엑셀 모드: 사이드패널과 보드 사이 gap 컬럼 (원본: #tetris-col-gap) */}
+            {excel && <div className={styles.tetrisColGap} />}
 
             {/* 보드 */}
             <canvas
@@ -890,11 +948,11 @@ export default function TetrisBoard({ excel = false }: Props) {
         </>
       )}
 
-      {/* 랭킹 — 랭킹 시트 활성 시 */}
-      {showRankingArea && !showRulesArea && (
+      {/* 랭킹 — 일반 모드: 항상 / 엑셀 모드: ranking 시트 */}
+      {(!excel || activeSheet === 'ranking') && (
         <div className={styles.rankSection}>
           <h3 className={styles.rankTitle}>주간 RANK</h3>
-          {alltimeBest && (
+          {!showRulesArea && alltimeBest && (
             <div className={styles.alltimeBanner}>
               <span className={styles.atLabel}>👑 역대 1위</span>
               <span className={styles.atContent}>
@@ -902,6 +960,7 @@ export default function TetrisBoard({ excel = false }: Props) {
               </span>
             </div>
           )}
+          {/* 일반 모드 탭 (룰 탭 포함) */}
           {!excel && (
             <div className={styles.rankTabs}>
               {LEVELS.map(lv => (
@@ -919,6 +978,7 @@ export default function TetrisBoard({ excel = false }: Props) {
               >룰</button>
             </div>
           )}
+          {/* 엑셀 모드 탭 */}
           {excel && (
             <div className={styles.rankTabs}>
               {LEVELS.map(lv => (
@@ -932,7 +992,38 @@ export default function TetrisBoard({ excel = false }: Props) {
               ))}
             </div>
           )}
-          {rankLoading ? (
+          {/* 콘텐츠 — 룰 or 랭킹 */}
+          {showRulesArea ? (
+            <div className={styles.rulesPanel}>
+              <h4>조작법</h4>
+              <ul>
+                <li>← → 방향키: 좌우 이동</li>
+                <li>↑ 방향키: 회전</li>
+                <li>↓ 방향키: 빠른 낙하 (+1점)</li>
+                <li>Space / 더블탭: 급강하 (+2점/칸)</li>
+                <li>Shift / HOLD 버튼: 블록 홀드 (블록당 1회)</li>
+                <li>P: 일시정지</li>
+              </ul>
+              <h4>점수 계산</h4>
+              <ul>
+                <li>1줄: 100 × 레벨</li>
+                <li>2줄: 300 × 레벨</li>
+                <li>3줄: 500 × 레벨</li>
+                <li>4줄 (테트리스): 800 × 레벨</li>
+              </ul>
+              <h4>콤보 · 레벨</h4>
+              <ul>
+                <li>연속 줄 제거 시 콤보 보너스: 50 × (콤보-1) × 레벨</li>
+                <li>10줄 제거마다 레벨 상승, 최대 레벨 11</li>
+              </ul>
+              <h4>난이도별 초기 낙하속도</h4>
+              <ul>
+                <li>쉬움: 0.8초/칸 → 최대 0.21초</li>
+                <li>보통: 0.4초/칸 → 최대 0.09초</li>
+                <li>어려움: 0.18초/칸 → 최대 0.03초</li>
+              </ul>
+            </div>
+          ) : rankLoading ? (
             <p className={styles.placeholder}>불러오는 중...</p>
           ) : (
             <table className={styles.table}>
@@ -955,8 +1046,8 @@ export default function TetrisBoard({ excel = false }: Props) {
         </div>
       )}
 
-      {/* 룰 — 룰 시트 활성 시 */}
-      {showRulesArea && (
+      {/* 룰 시트 — 엑셀 모드: rules 시트 활성 시 */}
+      {excel && activeSheet === 'rules' && (
         <div className={styles.rankSection}>
           <div className={styles.rulesPanel}>
             <h4>조작법</h4>
