@@ -357,19 +357,20 @@ export default function TetrisBoard({ excel = false }: Props) {
   }, [excel]);
 
   function drawCell(context: CanvasRenderingContext2D, x: number, y: number, colorIndex: number) {
-    if (colorIndex === 8) {
-      const hue = (Date.now() / 500 * 60 + x * 36 + y * 18) % 360;
-      context.fillStyle = `hsl(${hue}, 100%, 60%)`;
-    } else {
-      context.fillStyle = COLORS[colorIndex] ?? '#ccc';
-    }
     if (excel) {
-      // 엑셀 모드: 스프레드시트 셀처럼
-      context.fillRect(x + 0.05, y + 0.05, 0.9, 0.9);
-      context.strokeStyle = 'rgba(0,0,0,0.15)';
+      // 엑셀 모드: 원본처럼 단일 미색
+      context.fillStyle = '#EEEEEE';
+      context.fillRect(x, y, 1, 1);
+      context.strokeStyle = '#D2D2D2';
       context.lineWidth = 0.04;
-      context.strokeRect(x + 0.05, y + 0.05, 0.9, 0.9);
+      context.strokeRect(x, y, 1, 1);
     } else {
+      if (colorIndex === 8) {
+        const hue = (Date.now() / 500 * 60 + x * 36 + y * 18) % 360;
+        context.fillStyle = `hsl(${hue}, 100%, 60%)`;
+      } else {
+        context.fillStyle = COLORS[colorIndex] ?? '#ccc';
+      }
       context.fillRect(x, y, 1, 1);
       context.fillStyle = 'rgba(255,255,255,0.25)';
       context.fillRect(x, y, 1, 0.07);
