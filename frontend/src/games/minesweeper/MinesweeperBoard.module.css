@@ -253,6 +253,7 @@
 .secondaryBtn:hover { background: #7f8c8d; }
 
 .hint { color: #e74c3c; font-size: 0.85em; margin: 4px 0 8px; }
+.ipNotice { color: #888; font-size: 0.75em; margin: 4px 0 8px; }
 
 /* ===== 엑셀 모드 ===== */
 .excelMode {

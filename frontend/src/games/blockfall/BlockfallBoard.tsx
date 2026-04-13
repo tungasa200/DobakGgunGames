@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { rankingsApi } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
+import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './BlockfallBoard.module.css';
 
@@ -168,6 +169,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const [modalOpen, setModalOpen]     = useState(false);
   const [playerName, setPlayerName]   = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [nameBanned, setNameBanned]   = useState(false);
 
   const COLORS = excel ? COLORS_EXCEL : COLORS_NORMAL;
 
@@ -744,6 +746,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
   async function handleSubmitRanking() {
     const name = playerName.trim();
     if (!name) return;
+    if (containsProfanity(name)) { setNameBanned(true); return; }
+    setNameBanned(false);
     setSubmitState('loading');
     try {
       const { token, timestamp } = await createToken('blockfall', difficulty, scoreRef.current);
@@ -1093,11 +1097,13 @@ export default function BlockfallBoard({ excel = false }: Props) {
               type="text"
               placeholder="이름을 입력하세요"
               value={playerName}
-              onChange={e => setPlayerName(e.target.value)}
+              onChange={e => { setPlayerName(e.target.value); setNameBanned(false); }}
               onKeyDown={e => { if (e.key === 'Enter') handleSubmitRanking(); }}
               autoFocus
               maxLength={50}
             />
+            <p className={styles.ipNotice}>랭킹 등록 시 어뷰징 방지를 위해 IP 주소가 수집됩니다.</p>
+            {nameBanned && <p className={styles.hint}>사용할 수 없는 닉네임입니다.</p>}
             {submitState === 'error' && <p className={styles.hint}>등록 실패. 다시 시도해 주세요.</p>}
             <div className={styles.modalBtns}>
               <button className={styles.primaryBtn} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>

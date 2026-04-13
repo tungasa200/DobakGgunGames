@@ -1,0 +1,43 @@
+.footer {
+  background: #2c3e50;
+  color: #aab;
+  font-family: sans-serif;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.inner {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  text-align: center;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.link {
+  color: #ccd;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.link:hover { color: #fff; text-decoration: underline; }
+
+.divider { color: #556; }
+
+.copy {
+  margin: 0 0 5px;
+  color: #778;
+}
+
+.notice {
+  margin: 0;
+  color: #667;
+  font-size: 11px;
+}

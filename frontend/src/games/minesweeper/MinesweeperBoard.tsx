@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMinesweeperGame, type Level } from './useMinesweeperGame';
 import { rankingsApi, type RankingEntry } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
+import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './MinesweeperBoard.module.css';
 
@@ -53,6 +54,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [nameBanned, setNameBanned] = useState(false);
 
   // 랭킹
   const [rankLevel, setRankLevel] = useState<Exclude<Level, 'custom'>>('beginner');
@@ -187,6 +189,8 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   async function handleSubmitRanking() {
     const name = playerName.trim();
     if (!name) return;
+    if (containsProfanity(name)) { setNameBanned(true); return; }
+    setNameBanned(false);
     setSubmitState('loading');
     try {
       const rankLv = level === 'custom' ? 'beginner' : level;
@@ -680,10 +684,12 @@ export default function MinesweeperBoard({ excel = false }: Props) {
               placeholder="이름을 입력하세요"
               maxLength={50}
               value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
+              onChange={(e) => { setPlayerName(e.target.value); setNameBanned(false); }}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitRanking(); }}
               autoFocus
             />
+            <p className={styles.ipNotice}>랭킹 등록 시 어뷰징 방지를 위해 IP 주소가 수집됩니다.</p>
+            {nameBanned && <p className={styles.hint}>사용할 수 없는 닉네임입니다.</p>}
             {submitState === 'error' && <p className={styles.hint}>등록 실패. 다시 시도해 주세요.</p>}
             <div className={styles.modalBtns}>
               <button className={`${styles.primaryBtn} ${excel ? styles.primaryBtnExcel : ''}`} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>

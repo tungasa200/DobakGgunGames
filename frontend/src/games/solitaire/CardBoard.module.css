@@ -297,6 +297,7 @@
 .nameInput:focus { outline: none; border-color: #3498db; }
 
 .hint { font-size: 0.85em; color: #e74c3c; min-height: 1.2em; margin-bottom: 8px; }
+.ipNotice { color: #888; font-size: 0.75em; margin: 4px 0 8px; }
 
 .modalBtns { display: flex; gap: 8px; justify-content: center; }
 

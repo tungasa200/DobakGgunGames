@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { rankingsApi, type RankingEntry } from '../api/rankings';
 import NormalHeader from '../components/normal/NormalHeader';
+import Footer from '../components/normal/Footer';
 import styles from './HomePage.module.css';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -194,6 +195,7 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

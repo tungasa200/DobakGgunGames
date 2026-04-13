@@ -82,6 +82,7 @@
 .guessBtn:disabled { background: #bbb; cursor: default; }
 
 .hint { font-size: 0.85em; color: #e74c3c; min-height: 1.2em; margin-bottom: 8px; }
+.ipNotice { color: #888; font-size: 0.75em; margin: 4px 0 8px; }
 
 /* 히스토리 테이블 — 원본: white bg card */
 .tableWrap {
