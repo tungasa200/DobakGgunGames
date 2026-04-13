@@ -1,6 +1,6 @@
 package com.dobakggun.dto;
 
-import com.dobakggun.entity.Ranking;
+import com.dobakggun.entity.*;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -21,11 +21,44 @@ public class RankingResponse {
         this.id = r.getId();
         this.name = r.getName();
         this.level = r.getLevel();
-        this.time = r.getTime();
-        this.score = r.getScore();
-        this.attempts = r.getAttempts();
-        this.moves = r.getMoves();
-        this.gameLevel = r.getGameLevel();
         this.createdAt = r.getCreatedAt();
+
+        if (r instanceof MinesweeperRanking ms) {
+            this.time = ms.getTime();
+            this.score = null;
+            this.attempts = null;
+            this.moves = null;
+            this.gameLevel = null;
+        } else if (r instanceof BaseballRanking bb) {
+            this.attempts = bb.getAttempts();
+            this.time = bb.getTime();
+            this.score = null;
+            this.moves = null;
+            this.gameLevel = null;
+        } else if (r instanceof SolitaireRanking sl) {
+            this.time = sl.getTime();
+            this.moves = sl.getMoves();
+            this.score = null;
+            this.attempts = null;
+            this.gameLevel = null;
+        } else if (r instanceof TetrisRanking tt) {
+            this.score = tt.getScore();
+            this.gameLevel = tt.getGameLevel();
+            this.time = null;
+            this.attempts = null;
+            this.moves = null;
+        } else if (r instanceof AppleRanking ap) {
+            this.score = ap.getScore();
+            this.time = null;
+            this.attempts = null;
+            this.moves = null;
+            this.gameLevel = null;
+        } else {
+            this.time = null;
+            this.score = null;
+            this.attempts = null;
+            this.moves = null;
+            this.gameLevel = null;
+        }
     }
 }

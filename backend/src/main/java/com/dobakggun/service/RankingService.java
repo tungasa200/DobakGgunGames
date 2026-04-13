@@ -2,8 +2,8 @@ package com.dobakggun.service;
 
 import com.dobakggun.dto.RankingRequest;
 import com.dobakggun.dto.RankingResponse;
-import com.dobakggun.entity.Ranking;
-import com.dobakggun.repository.RankingRepository;
+import com.dobakggun.entity.*;
+import com.dobakggun.repository.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,13 +26,19 @@ public class RankingService {
     private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "tetris", "solitaire", "apple");
     private static final int RATE_LIMIT_PER_MINUTE = 3;
 
-    private final RankingRepository rankingRepository;
+    private final MinesweeperRankingRepository minesweeperRepo;
+    private final BaseballRankingRepository baseballRepo;
+    private final TetrisRankingRepository tetrisRepo;
+    private final SolitaireRankingRepository solitaireRepo;
+    private final AppleRankingRepository appleRepo;
     private final HmacService hmacService;
 
     public List<RankingResponse> getWeeklyRankings(String game, String level) {
         validateGame(game);
-        LocalDateTime weekStart = LocalDateTime.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toLocalDate().atStartOfDay();
-        List<Ranking> rankings = queryWeekly(game, level, weekStart);
+        LocalDateTime weekStart = LocalDateTime.now()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .toLocalDate().atStartOfDay();
+        List<? extends Ranking> rankings = queryWeekly(game, level, weekStart);
         return rankings.stream().map(RankingResponse::new).toList();
     }
 
@@ -50,7 +56,7 @@ public class RankingService {
 
         // Rate limit
         LocalDateTime oneMinuteAgo = LocalDateTime.now().minusMinutes(1);
-        long recentCount = rankingRepository.countByIpHashAndGameAndCreatedAtAfter(ipHash, game, oneMinuteAgo);
+        long recentCount = countByIpHash(game, ipHash, oneMinuteAgo);
         if (recentCount >= RATE_LIMIT_PER_MINUTE) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "잠시 후 다시 시도해주세요.");
         }
@@ -64,40 +70,61 @@ public class RankingService {
         // 점수 범위 검증
         validateScoreBounds(game, req);
 
-        Ranking ranking = Ranking.builder()
-                .game(game)
-                .level(req.getLevel())
-                .name(req.getName().trim())
-                .time(req.getTime())
-                .score(req.getScore())
-                .attempts(req.getAttempts())
-                .moves(req.getMoves())
-                .gameLevel(req.getGameLevel())
-                .ipHash(ipHash)
-                .build();
-
-        return new RankingResponse(rankingRepository.save(ranking));
+        Ranking saved = saveRanking(game, req, ipHash);
+        return new RankingResponse(saved);
     }
 
-    private List<Ranking> queryWeekly(String game, String level, LocalDateTime weekStart) {
+    private List<? extends Ranking> queryWeekly(String game, String level, LocalDateTime weekStart) {
         return switch (game) {
-            case "minesweeper" -> rankingRepository.findWeeklyByTime(game, level, weekStart);
-            case "baseball"    -> rankingRepository.findWeeklyByAttempts(game, level, weekStart);
-            case "tetris"      -> rankingRepository.findWeeklyByScore(game, level, weekStart);
-            case "solitaire"   -> rankingRepository.findWeeklyByTimeAndMoves(game, level, weekStart);
-            case "apple"       -> rankingRepository.findWeeklyByScore(game, level, weekStart);
+            case "minesweeper" -> minesweeperRepo.findWeekly(level, weekStart);
+            case "baseball"    -> baseballRepo.findWeekly(level, weekStart);
+            case "tetris"      -> tetrisRepo.findWeekly(level, weekStart);
+            case "solitaire"   -> solitaireRepo.findWeekly(level, weekStart);
+            case "apple"       -> appleRepo.findWeekly(level, weekStart);
             default -> List.of();
         };
     }
 
     private Ranking queryAlltimeBest(String game, String level) {
         return switch (game) {
-            case "minesweeper" -> rankingRepository.findAlltimeBestByTime(game, level);
-            case "baseball"    -> rankingRepository.findAlltimeBestByAttempts(game, level);
-            case "tetris"      -> rankingRepository.findAlltimeBestByScore(game, level);
-            case "solitaire"   -> rankingRepository.findAlltimeBestByTimeAndMoves(game, level);
-            case "apple"       -> rankingRepository.findAlltimeBestByScore(game, level);
+            case "minesweeper" -> minesweeperRepo.findAlltimeBest(level);
+            case "baseball"    -> baseballRepo.findAlltimeBest(level);
+            case "tetris"      -> tetrisRepo.findAlltimeBest(level);
+            case "solitaire"   -> solitaireRepo.findAlltimeBest(level);
+            case "apple"       -> appleRepo.findAlltimeBest(level);
             default -> null;
+        };
+    }
+
+    private long countByIpHash(String game, String ipHash, LocalDateTime after) {
+        return switch (game) {
+            case "minesweeper" -> minesweeperRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "baseball"    -> baseballRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "tetris"      -> tetrisRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "solitaire"   -> solitaireRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "apple"       -> appleRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            default -> 0L;
+        };
+    }
+
+    private Ranking saveRanking(String game, RankingRequest req, String ipHash) {
+        return switch (game) {
+            case "minesweeper" -> minesweeperRepo.save(MinesweeperRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .time(req.getTime()).ipHash(ipHash).build());
+            case "baseball" -> baseballRepo.save(BaseballRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .attempts(req.getAttempts()).time(req.getTime()).ipHash(ipHash).build());
+            case "tetris" -> tetrisRepo.save(TetrisRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .score(req.getScore()).gameLevel(req.getGameLevel()).ipHash(ipHash).build());
+            case "solitaire" -> solitaireRepo.save(SolitaireRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .time(req.getTime()).moves(req.getMoves()).ipHash(ipHash).build());
+            case "apple" -> appleRepo.save(AppleRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .score(req.getScore()).ipHash(ipHash).build());
+            default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다.");
         };
     }
 
