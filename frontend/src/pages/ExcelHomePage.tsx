@@ -12,7 +12,7 @@ const GAME_LIST = [
   { key: 'minesweeper', label: '지뢰찾기' },
   { key: 'baseball',    label: '숫자야구' },
   { key: 'solitaire',   label: '솔리테어' },
-  { key: 'tetris',      label: '테트리스' },
+  { key: 'blockfall',   label: '블록폴' },
   { key: 'apple',       label: '사과게임' },
 ];
 
@@ -40,7 +40,7 @@ const RANK_COLS = [
     },
   },
   {
-    key: 'tt', game: 'tetris', label: '테트리스',
+    key: 'tt', game: 'blockfall', label: '블록폴',
     levels: ['easy', 'normal', 'hard'],
     levelLabels: ['쉬움', '보통', '어려움'],
     fmt: (r: RankingEntry) => `${r.score!.toLocaleString()}점`,

@@ -23,12 +23,12 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RankingService {
 
-    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "tetris", "solitaire", "apple");
+    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "solitaire", "apple");
     private static final int RATE_LIMIT_PER_MINUTE = 3;
 
     private final MinesweeperRankingRepository minesweeperRepo;
     private final BaseballRankingRepository baseballRepo;
-    private final TetrisRankingRepository tetrisRepo;
+    private final BlockfallRankingRepository blockfallRepo;
     private final SolitaireRankingRepository solitaireRepo;
     private final AppleRankingRepository appleRepo;
     private final HmacService hmacService;
@@ -78,7 +78,7 @@ public class RankingService {
         return switch (game) {
             case "minesweeper" -> minesweeperRepo.findWeekly(level, weekStart);
             case "baseball"    -> baseballRepo.findWeekly(level, weekStart);
-            case "tetris"      -> tetrisRepo.findWeekly(level, weekStart);
+            case "blockfall"      -> blockfallRepo.findWeekly(level, weekStart);
             case "solitaire"   -> solitaireRepo.findWeekly(level, weekStart);
             case "apple"       -> appleRepo.findWeekly(level, weekStart);
             default -> List.of();
@@ -89,7 +89,7 @@ public class RankingService {
         return switch (game) {
             case "minesweeper" -> minesweeperRepo.findAlltimeBest(level);
             case "baseball"    -> baseballRepo.findAlltimeBest(level);
-            case "tetris"      -> tetrisRepo.findAlltimeBest(level);
+            case "blockfall"      -> blockfallRepo.findAlltimeBest(level);
             case "solitaire"   -> solitaireRepo.findAlltimeBest(level);
             case "apple"       -> appleRepo.findAlltimeBest(level);
             default -> null;
@@ -100,7 +100,7 @@ public class RankingService {
         return switch (game) {
             case "minesweeper" -> minesweeperRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "baseball"    -> baseballRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
-            case "tetris"      -> tetrisRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "blockfall"      -> blockfallRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "solitaire"   -> solitaireRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "apple"       -> appleRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             default -> 0L;
@@ -115,7 +115,7 @@ public class RankingService {
             case "baseball" -> baseballRepo.save(BaseballRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
                     .attempts(req.getAttempts()).time(req.getTime()).ipHash(ipHash).build());
-            case "tetris" -> tetrisRepo.save(TetrisRanking.builder()
+            case "blockfall" -> blockfallRepo.save(BlockfallRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
                     .score(req.getScore()).gameLevel(req.getGameLevel()).ipHash(ipHash).build());
             case "solitaire" -> solitaireRepo.save(SolitaireRanking.builder()
@@ -132,7 +132,7 @@ public class RankingService {
         return switch (game) {
             case "minesweeper", "solitaire" -> String.valueOf(req.getTime());
             case "baseball"                 -> String.valueOf(req.getAttempts());
-            case "tetris", "apple"          -> String.valueOf(req.getScore());
+            case "blockfall", "apple"          -> String.valueOf(req.getScore());
             default -> "";
         };
     }
@@ -141,7 +141,7 @@ public class RankingService {
         boolean invalid = switch (game) {
             case "minesweeper" -> req.getTime() == null || req.getTime() < 0.4 || req.getTime() > 3600;
             case "baseball"    -> req.getAttempts() == null || req.getAttempts() < 1 || req.getAttempts() > 999;
-            case "tetris"      -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 9_999_999;
+            case "blockfall"      -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 9_999_999;
             case "solitaire"   -> req.getTime() == null || req.getTime() < 1 || req.getMoves() == null || req.getMoves() < 1;
             case "apple"       -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 1200;
             default -> true;
@@ -161,7 +161,7 @@ public class RankingService {
         Set<String> valid = switch (game) {
             case "minesweeper" -> Set.of("beginner", "intermediate", "expert");
             case "baseball"    -> Set.of("easy", "normal", "hard");
-            case "tetris"      -> Set.of("easy", "normal", "hard");
+            case "blockfall"      -> Set.of("easy", "normal", "hard");
             case "solitaire"   -> Set.of("draw1", "draw3");
             case "apple"       -> Set.of("normal");
             default -> Set.of();

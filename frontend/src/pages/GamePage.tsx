@@ -7,12 +7,12 @@ const BaseballBoard    = lazy(() => import('../games/baseball/BaseballBoard'));
 const MinesweeperBoard = lazy(() => import('../games/minesweeper/MinesweeperBoard'));
 const AppleCanvas      = lazy(() => import('../games/apple/AppleCanvas'));
 const CardBoard        = lazy(() => import('../games/solitaire/CardBoard'));
-const TetrisBoard      = lazy(() => import('../games/tetris/TetrisBoard'));
+const BlockfallBoard   = lazy(() => import('../games/blockfall/BlockfallBoard'));
 
 const GAME_NAMES: Record<string, string> = {
   minesweeper: '지뢰찾기',
   baseball:    '숫자야구',
-  tetris:      '테트리스',
+  blockfall:   '블록폴',
   solitaire:   '솔리테어',
   apple:       '사과게임',
 };
@@ -20,14 +20,14 @@ const GAME_NAMES: Record<string, string> = {
 const FILE_TITLES: Record<string, string> = {
   minesweeper: 'minesweeper_score.xlsx',
   baseball:    'baseball_score.xlsx',
-  tetris:      'tetris_score.xlsx',
+  blockfall:   'blockfall_score.xlsx',
   solitaire:   'solitaire_score.xlsx',
   apple:       'apple_game.xlsx',
 };
 
 // 게임별 그리드 셀 크기 (엑셀 모드) — 열 너비
 const CELL_SIZES: Record<string, number> = {
-  tetris:      30,
+  blockfall:   30,
   minesweeper: 30,
   baseball:    96,
   apple:       30, // 원본: SIZE=30, PAD=SIZE (고정)
@@ -44,7 +44,7 @@ const ROW_HEIGHTS: Record<string, number> = {
 const BG_COLORS: Record<string, string> = {
   minesweeper: '#f0f0f0',
   baseball:    '#e8ecf4',
-  tetris:      '#f0f0f0',
+  blockfall:   '#f0f0f0',
   solitaire:   '#0b5e20',
   apple:       '#f0f0f0',
 };
@@ -53,7 +53,7 @@ const BG_COLORS: Record<string, string> = {
 const ACCENT_COLORS: Record<string, string> = {
   minesweeper: '#3498db',
   baseball:    '#1e3a6e',
-  tetris:      '#8e44ad',
+  blockfall:   '#8e44ad',
   solitaire:   '#27ae60',
   apple:       '#f18064',
 };
@@ -76,7 +76,7 @@ export default function GamePage({ excel }: { excel: boolean }) {
     game === 'minesweeper' ? <MinesweeperBoard excel={excel} /> :
     game === 'apple'       ? <AppleCanvas      excel={excel} /> :
     game === 'solitaire'   ? <CardBoard        excel={excel} /> :
-    game === 'tetris'      ? <TetrisBoard      excel={excel} /> :
+    game === 'blockfall'   ? <BlockfallBoard   excel={excel} /> :
     null;
 
   if (excel) {

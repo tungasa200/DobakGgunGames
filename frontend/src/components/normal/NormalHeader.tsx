@@ -7,7 +7,7 @@ const GAMES = [
   { key: 'minesweeper', label: '지뢰찾기', icon: '💣' },
   { key: 'baseball',    label: '숫자야구', icon: '⚾' },
   { key: 'solitaire',   label: '솔리테어', icon: '🃏' },
-  { key: 'tetris',      label: '테트리스', icon: '🟦' },
+  { key: 'blockfall',   label: '블록폴',   icon: '🟦' },
   { key: 'apple',       label: '사과게임', icon: '🍎' },
 ];
 

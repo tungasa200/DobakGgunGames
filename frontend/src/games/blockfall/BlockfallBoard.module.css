@@ -91,7 +91,7 @@
   font-weight: bold;
 }
 
-/* 원본: canvas#tetris-next, canvas#tetris-hold { width:120px; height:120px; background-color:#111827; } */
+/* 원본: canvas#blockfall-next, canvas#blockfall-hold { width:120px; height:120px; background-color:#111827; } */
 .miniCanvas {
   border: 1px solid #333;
   border-radius: 4px;
@@ -342,8 +342,8 @@
   box-sizing: border-box;
 }
 
-/* 원본: #tetris-col-gap { width:30px; flex-shrink:0; align-self:stretch; } */
-.tetrisColGap {
+/* 원본: #blockfall-col-gap { width:30px; flex-shrink:0; align-self:stretch; } */
+.blockfallColGap {
   width: 30px;
   flex-shrink: 0;
   align-self: stretch;
@@ -466,7 +466,7 @@
   font-family: 'Calibri', 'Segoe UI', sans-serif;
   background: white;
 }
-/* 원본 tetris 랭킹: 주간 타이틀 — 보라색 테마 */
+/* 원본 blockfall 랭킹: 주간 타이틀 — 보라색 테마 */
 .xrcHeader { background: #8e44ad; color: white; font-weight: bold; }
 .xrcFilter { background: #f2f2f2; gap: 4px; }
 .xrcAlt { background: #f9f0ff; }
@@ -532,7 +532,7 @@
   width: 120px;
   box-sizing: border-box;
 }
-/* 원본 excel: canvas#tetris-next { background:white; border:1px solid #d0d0d0; border-top:none; } */
+/* 원본 excel: canvas#blockfall-next { background:white; border:1px solid #d0d0d0; border-top:none; } */
 .excelMode .miniCanvas {
   border: none;
   border-radius: 0;

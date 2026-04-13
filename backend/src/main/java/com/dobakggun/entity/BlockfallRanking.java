@@ -6,11 +6,11 @@ import lombok.experimental.SuperBuilder;
 
 // 필드: level, name, score, game_level, ip_hash, created_at
 @Entity
-@Table(name = "tetris_ranking", indexes = {
+@Table(name = "blockfall_ranking", indexes = {
         @Index(name = "idx_tt_level_created", columnList = "level,created_at")
 })
 @Getter @Setter @NoArgsConstructor @SuperBuilder
-public class TetrisRanking extends Ranking {
+public class BlockfallRanking extends Ranking {
 
     @Column(nullable = false)
     private Integer score;

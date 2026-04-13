@@ -42,8 +42,8 @@ const GAMES: GameConfig[] = [
     fmt: (r) => `${r.attempts}번`,
   },
   {
-    key: 'tetris',
-    name: '테트리스',
+    key: 'blockfall',
+    name: '블록폴',
     icon: '🟦',
     levels: [
       { value: 'easy', label: '쉬움' },
@@ -52,7 +52,6 @@ const GAMES: GameConfig[] = [
     ],
     defaultLevel: 'normal',
     fmt: (r) => `${r.score!.toLocaleString()}점`,
-    comingSoon: true,
   },
   {
     key: 'apple',
@@ -77,7 +76,6 @@ const GAMES: GameConfig[] = [
       const s = t % 60;
       return m > 0 ? `${m}분 ${String(s).padStart(2, '0')}초` : `${t}초`;
     },
-    comingSoon: true,
   },
 ];
 

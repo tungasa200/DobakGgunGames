@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { rankingsApi } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
-import styles from './TetrisBoard.module.css';
+import styles from './BlockfallBoard.module.css';
 
 // ===== 상수 =====
 const BOARD_W = 10, BOARD_H = 20, CELL = 30;
@@ -115,7 +115,7 @@ type RankEntry = { id: number; name: string; score: number; gameLevel?: number; 
 
 interface Props { excel?: boolean }
 
-export default function TetrisBoard({ excel = false }: Props) {
+export default function BlockfallBoard({ excel = false }: Props) {
   // ===== 캔버스 refs =====
   const boardRef = useRef<HTMLCanvasElement>(null);
   const nextRef  = useRef<HTMLCanvasElement>(null);
@@ -178,10 +178,10 @@ export default function TetrisBoard({ excel = false }: Props) {
     const colLabel = (n: number) => String.fromCharCode(65 + n);
     const cell = `${colLabel(player.current.pos.x)}${player.current.pos.y + 1}`;
     const formula = gameStatus === 'playing'
-      ? `=TETRIS_DROP(level,${gameLevelRef.current},speed,${dropInterval.current}ms)`
+      ? `=BLOCKFALL_DROP(level,${gameLevelRef.current},speed,${dropInterval.current}ms)`
       : gameStatus === 'over'
       ? `=GAME_OVER(score,${scoreRef.current})`
-      : '=IF(ISBLANK(A1),"",TETRIS_SCORE())';
+      : '=IF(ISBLANK(A1),"",BLOCKFALL_SCORE())';
     setFormula(gameStatus === 'playing' ? cell : 'A1', formula);
     setStatusItems([
       { label: '점수', value: score.toLocaleString() },
@@ -720,7 +720,7 @@ export default function TetrisBoard({ excel = false }: Props) {
   async function loadRanking(lv: Level) {
     setRankLoading(true);
     try {
-      const data = await rankingsApi.getWeekly('tetris', lv);
+      const data = await rankingsApi.getWeekly('blockfall', lv);
       setRankings(data as RankEntry[]);
     } catch { setRankings([]); }
     finally { setRankLoading(false); }
@@ -728,7 +728,7 @@ export default function TetrisBoard({ excel = false }: Props) {
 
   async function loadAlltime(lv: Level) {
     try {
-      const data = await rankingsApi.getAlltimeBest('tetris', lv);
+      const data = await rankingsApi.getAlltimeBest('blockfall', lv);
       if (data && (data as RankEntry).id) setAlltimeBest(data as RankEntry);
       else setAlltimeBest(null);
     } catch { setAlltimeBest(null); }
@@ -746,8 +746,8 @@ export default function TetrisBoard({ excel = false }: Props) {
     if (!name) return;
     setSubmitState('loading');
     try {
-      const { token, timestamp } = await createToken('tetris', difficulty, scoreRef.current);
-      await rankingsApi.submit('tetris', {
+      const { token, timestamp } = await createToken('blockfall', difficulty, scoreRef.current);
+      await rankingsApi.submit('blockfall', {
         level: difficulty,
         name,
         score: scoreRef.current,
@@ -805,7 +805,7 @@ export default function TetrisBoard({ excel = false }: Props) {
             <span>{gameStatus === 'paused' ? '계속' : '일시정지'}</span>
           </div>
         </div>
-        <div className={styles.xrgLabel}>테트리스</div>
+        <div className={styles.xrgLabel}>블록폴</div>
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -902,8 +902,8 @@ export default function TetrisBoard({ excel = false }: Props) {
               </div>
             </div>
 
-            {/* 엑셀 모드: 사이드패널과 보드 사이 gap 컬럼 (원본: #tetris-col-gap) */}
-            {excel && <div className={styles.tetrisColGap} />}
+            {/* 엑셀 모드: 사이드패널과 보드 사이 gap 컬럼 (원본: #blockfall-col-gap) */}
+            {excel && <div className={styles.blockfallColGap} />}
 
             {/* 보드 */}
             <canvas
@@ -1010,7 +1010,7 @@ export default function TetrisBoard({ excel = false }: Props) {
                 <li>1줄: 100 × 레벨</li>
                 <li>2줄: 300 × 레벨</li>
                 <li>3줄: 500 × 레벨</li>
-                <li>4줄 (테트리스): 800 × 레벨</li>
+                <li>4줄 (블록폴): 800 × 레벨</li>
               </ul>
               <h4>콤보 · 레벨</h4>
               <ul>
@@ -1065,7 +1065,7 @@ export default function TetrisBoard({ excel = false }: Props) {
               <li>1줄: 100 × 레벨</li>
               <li>2줄: 300 × 레벨</li>
               <li>3줄: 500 × 레벨</li>
-              <li>4줄 (테트리스): 800 × 레벨</li>
+              <li>4줄 (블록폴): 800 × 레벨</li>
             </ul>
             <h4>콤보 · 레벨</h4>
             <ul>

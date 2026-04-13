@@ -8,7 +8,7 @@
 |---|---|---|
 | 💣 지뢰찾기 | 초급 / 중급 / 고급 | 시간 (빠를수록) |
 | ⚾ 숫자야구 | 쉬움 / 보통 / 어려움 | 시도 횟수 (적을수록) |
-| 🟦 테트리스 | 쉬움 / 보통 / 어려움 | 점수 (높을수록) |
+| 🟦 블록폴 | 쉬움 / 보통 / 어려움 | 점수 (높을수록) |
 | 🍎 사과게임 | 일반 | 점수 (높을수록) |
 | 🃏 솔리테어 | 드로우1 / 드로우3 | 시간 → 이동 수 |
 
@@ -69,7 +69,7 @@ GET  /api/{game}/rankings/alltime?level={level}  역대 최고 1개
 POST /api/{game}/rankings                        점수 제출
 ```
 
-`{game}`: `minesweeper` | `baseball` | `tetris` | `solitaire` | `apple`
+`{game}`: `minesweeper` | `baseball` | `blockfall` | `solitaire` | `apple`
 
 ### 점수 제출 요청 예시
 

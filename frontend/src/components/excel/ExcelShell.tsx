@@ -7,7 +7,7 @@ import styles from './ExcelShell.module.css';
 const GAMES = [
   { key: 'minesweeper', label: '지뢰찾기', icon: '1.' },
   { key: 'baseball',    label: '숫자야구', icon: '2.' },
-  { key: 'tetris',      label: '테트리스', icon: '3.' },
+  { key: 'blockfall',   label: '블록폴',   icon: '3.' },
   { key: 'solitaire',   label: '솔리테어', icon: '4.' },
   { key: 'apple',       label: '사과게임', icon: '5.' },
 ];

@@ -41,7 +41,7 @@ public class RankingResponse {
             this.score = null;
             this.attempts = null;
             this.gameLevel = null;
-        } else if (r instanceof TetrisRanking tt) {
+        } else if (r instanceof BlockfallRanking tt) {
             this.score = tt.getScore();
             this.gameLevel = tt.getGameLevel();
             this.time = null;
