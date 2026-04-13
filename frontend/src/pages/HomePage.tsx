@@ -148,6 +148,10 @@ export default function HomePage() {
   );
 
   useEffect(() => {
+    document.title = '도박꾼게임즈';
+  }, []);
+
+  useEffect(() => {
     GAMES.forEach((game) => {
       game.levels.forEach(({ value: level }) => {
         rankingsApi

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import ExcelShell from '../components/excel/ExcelShell';
 import NormalHeader from '../components/normal/NormalHeader';
@@ -61,6 +61,11 @@ const ACCENT_COLORS: Record<string, string> = {
 export default function GamePage({ excel }: { excel: boolean }) {
   const { game } = useParams<{ game: string }>();
   const name = game ? GAME_NAMES[game] : undefined;
+
+  useEffect(() => {
+    if (!name || !game) return;
+    document.title = excel ? (FILE_TITLES[game] ?? game) : name;
+  }, [game, excel, name]);
 
   if (!name || !game) {
     return (

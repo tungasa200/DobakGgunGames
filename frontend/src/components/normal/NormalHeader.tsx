@@ -79,7 +79,7 @@ export default function NormalHeader({ currentGame, gameName, accentColor }: Pro
       <Link
         className={styles.excelBtn}
         style={{ color: accentColor }}
-        to={`/${currentGame}/excel`}
+        to={currentGame ? `/${currentGame}/excel` : '/excel'}
       >📊 엑셀 모드</Link>
     </div>
   );

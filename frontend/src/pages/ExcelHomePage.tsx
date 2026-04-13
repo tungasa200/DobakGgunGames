@@ -282,6 +282,10 @@ function HomeGrid() {
 }
 
 export default function ExcelHomePage() {
+  useEffect(() => {
+    document.title = 'dobakggun';
+  }, []);
+
   return (
     <ExcelShell
       game=""
