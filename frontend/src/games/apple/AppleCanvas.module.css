@@ -122,15 +122,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #fff0f0, #ffe5e5);
-  border: 1px solid #f5b7b1;
+  background: linear-gradient(135deg, #fef9e7, #fdebd0);
+  border: 1px solid #f0b27a;
   border-radius: 8px;
   padding: 8px 12px;
   margin-bottom: 10px;
   font-size: 0.88em;
 }
-.atLabel   { font-weight: bold; color: #c0392b; white-space: nowrap; }
-.atContent { color: #922b21; }
+.atLabel   { font-weight: bold; color: #b7950b; white-space: nowrap; }
+.atContent { color: #784212; }
 
 /* 랭킹 탭 — 원본: .rank-tab */
 .rankTabs { display: flex; gap: 4px; margin-bottom: 8px; }

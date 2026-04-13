@@ -181,15 +181,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #f3e9ff, #e8d5f5);
-  border: 1px solid #c39bd3;
+  background: linear-gradient(135deg, #fef9e7, #fdebd0);
+  border: 1px solid #f0b27a;
   border-radius: 8px;
   padding: 7px 12px;
   margin-bottom: 8px;
   font-size: 0.85rem;
 }
-.atLabel   { font-weight: bold; color: #7b2ff7; white-space: nowrap; }
-.atContent { color: #4a235a; }
+.atLabel   { font-weight: bold; color: #b7950b; white-space: nowrap; }
+.atContent { color: #784212; }
 
 .rankTabs { display: flex; gap: 4px; margin-bottom: 6px; }
 
@@ -556,9 +556,9 @@
 .excelMode .nameInput:focus { border-color: #217346; }
 .excelMode .primaryBtn { background: #217346; }
 .excelMode .primaryBtn:hover { background: #1a6636; }
-.excelMode .alltimeBanner { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-color: #a5d6a7; }
-.excelMode .atLabel   { color: #217346; }
-.excelMode .atContent { color: #1b5e20; }
+.excelMode .alltimeBanner { background: linear-gradient(135deg, #fef9e7, #fdebd0); border-color: #f0b27a; }
+.excelMode .atLabel   { color: #b7950b; }
+.excelMode .atContent { color: #784212; }
 
 /* 랭킹 섹션 — 시트 탭으로 전환 시 표시 */
 .excelMode .rankSection {

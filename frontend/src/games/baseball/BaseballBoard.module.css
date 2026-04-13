@@ -132,12 +132,12 @@
 /* 역대 1위 배너 */
 .alltimeBanner {
   display: flex; align-items: center; gap: 8px;
-  background: linear-gradient(135deg, #eafaf1, #d5f5e3);
-  border: 1px solid #82e0aa; border-radius: 8px;
+  background: linear-gradient(135deg, #fef9e7, #fdebd0);
+  border: 1px solid #f0b27a; border-radius: 8px;
   padding: 8px 12px; margin-bottom: 10px; font-size: 0.88em;
 }
-.atLabel   { font-weight: bold; color: #1e8449; white-space: nowrap; }
-.atContent { color: #145a32; }
+.atLabel   { font-weight: bold; color: #b7950b; white-space: nowrap; }
+.atContent { color: #784212; }
 
 /* 룰 패널 */
 .rulesPanel {

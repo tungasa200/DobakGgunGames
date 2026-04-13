@@ -477,7 +477,7 @@ export default function BaseballBoard({ excel = false }: Props) {
                     ? RankCell(
                         `👑 역대 1위  ${at.name} · ${at.attempts}번 · ${(at.time ?? 0).toFixed(2)}초 · ${new Date(at.createdAt).toLocaleDateString('ko-KR')}`,
                         1, RANK_TOTAL, [],
-                        { background: '#eafaf1', color: '#1e8449', fontWeight: 'bold', paddingLeft: 8 },
+                        { background: '#fef9e7', color: '#b7950b', fontWeight: 'bold', paddingLeft: 8 },
                         'alltime'
                       )
                     : RankCell('👑 역대 1위  기록 없음', 1, RANK_TOTAL, [], { color: '#aaa', paddingLeft: 8 }, 'alltime-empty');
