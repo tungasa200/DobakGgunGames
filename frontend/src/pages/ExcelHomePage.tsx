@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import ExcelShell from '../components/excel/ExcelShell';
 import { useExcelShell } from '../components/excel/ExcelShellContext';
-import { rankingsApi, type RankingEntry } from '../api/rankings';
+import { getCachedWeekly, type RankingEntry } from '../api/rankings';
 import styles from './ExcelHomePage.module.css';
 
 const COL_A = 96;
@@ -74,21 +74,21 @@ function HomeGrid() {
     setStatusItems([{ label: '게임', value: '5개' }]);
   }, [setFormula, setStatusItems]);
 
-  // 랭킹 로드
+  const fetchLevel = (colKey: string, game: string, level: string) => {
+    getCachedWeekly(game, level)
+      .then(data => setCache(prev => ({
+        ...prev,
+        [colKey]: { ...(prev[colKey] ?? {}), [level]: data },
+      })))
+      .catch(() => setCache(prev => ({
+        ...prev,
+        [colKey]: { ...(prev[colKey] ?? {}), [level]: 'error' },
+      })));
+  };
+
+  // 기본 레벨만 로딩
   useEffect(() => {
-    RANK_COLS.forEach(col => {
-      col.levels.forEach(level => {
-        rankingsApi.getWeekly(col.game, level)
-          .then(data => setCache(prev => ({
-            ...prev,
-            [col.key]: { ...(prev[col.key] ?? {}), [level]: data },
-          })))
-          .catch(() => setCache(prev => ({
-            ...prev,
-            [col.key]: { ...(prev[col.key] ?? {}), [level]: 'error' },
-          })));
-      });
-    });
+    RANK_COLS.forEach(col => fetchLevel(col.key, col.game, col.levels[0]));
   }, []);
 
   const handleCell = useCallback((addr: string, value: string, formula?: string) => {
@@ -228,7 +228,10 @@ function HomeGrid() {
                   <button
                     key={lv}
                     className={`${styles.rtab} ${activeLevels[col.key] === lv ? styles.rtabActive : ''}`}
-                    onClick={() => setActiveLevels(prev => ({ ...prev, [col.key]: lv }))}
+                    onClick={() => {
+                      setActiveLevels(prev => ({ ...prev, [col.key]: lv }));
+                      if (!cache[col.key]?.[lv]) fetchLevel(col.key, col.game, lv);
+                    }}
                   >{col.levelLabels[li]}</button>
                 ))}
               </div>

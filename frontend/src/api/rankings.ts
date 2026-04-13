@@ -36,6 +36,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+const weeklyCache = new Map<string, { data: RankingEntry[]; fetchedAt: number }>();
+const CACHE_TTL = 5 * 60 * 1000;
+
+export function getCachedWeekly(game: string, level: string): Promise<RankingEntry[]> {
+  const key = `${game}:${level}`;
+  const cached = weeklyCache.get(key);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
+    return Promise.resolve(cached.data);
+  }
+  return rankingsApi.getWeekly(game, level).then(data => {
+    weeklyCache.set(key, { data, fetchedAt: Date.now() });
+    return data;
+  });
+}
+
 export const rankingsApi = {
   getWeekly: (game: string, level: string) =>
     request<RankingEntry[]>(`/api/${game}/rankings?level=${level}`),

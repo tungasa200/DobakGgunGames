@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { rankingsApi, type RankingEntry } from '../api/rankings';
+import { getCachedWeekly, type RankingEntry } from '../api/rankings';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
 import styles from './HomePage.module.css';
@@ -151,25 +151,24 @@ export default function HomePage() {
     document.title = '도박꾼게임즈';
   }, []);
 
+  const fetchLevel = (gameKey: string, level: string) => {
+    getCachedWeekly(gameKey, level)
+      .then((data) =>
+        setCache((prev) => ({
+          ...prev,
+          [gameKey]: { ...(prev[gameKey] ?? {}), [level]: data },
+        }))
+      )
+      .catch(() =>
+        setCache((prev) => ({
+          ...prev,
+          [gameKey]: { ...(prev[gameKey] ?? {}), [level]: 'error' },
+        }))
+      );
+  };
+
   useEffect(() => {
-    GAMES.forEach((game) => {
-      game.levels.forEach(({ value: level }) => {
-        rankingsApi
-          .getWeekly(game.key, level)
-          .then((data) =>
-            setCache((prev) => ({
-              ...prev,
-              [game.key]: { ...(prev[game.key] ?? {}), [level]: data },
-            }))
-          )
-          .catch(() =>
-            setCache((prev) => ({
-              ...prev,
-              [game.key]: { ...(prev[game.key] ?? {}), [level]: 'error' },
-            }))
-          );
-      });
-    });
+    GAMES.forEach((game) => fetchLevel(game.key, game.defaultLevel));
   }, []);
 
   return (
@@ -192,9 +191,10 @@ export default function HomePage() {
               game={game}
               rankings={cache[game.key] ?? {}}
               activeLevel={activeLevels[game.key]}
-              onLevelChange={(lv) =>
-                setActiveLevels((prev) => ({ ...prev, [game.key]: lv }))
-              }
+              onLevelChange={(lv) => {
+                setActiveLevels((prev) => ({ ...prev, [game.key]: lv }));
+                if (!cache[game.key]?.[lv]) fetchLevel(game.key, lv);
+              }}
             />
           ))}
         </div>
