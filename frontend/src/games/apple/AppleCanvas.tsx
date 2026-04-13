@@ -209,6 +209,20 @@ export default function AppleCanvas({ excel = false }: Props) {
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
 
+  // 일반 모드: 최초 로딩 시 자동 로드
+  useEffect(() => {
+    if (excel) return;
+    loadRanking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 엑셀 모드: 랭킹 시트 전환 시 자동 로드
+  useEffect(() => {
+    if (!excel || activeSheet !== 'ranking') return;
+    loadExcelRanking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, activeSheet]);
+
   // 수식바 / 상태바 — 원본: xl-score, xl-time, xl-sum
   useEffect(() => {
     if (!excel) return;

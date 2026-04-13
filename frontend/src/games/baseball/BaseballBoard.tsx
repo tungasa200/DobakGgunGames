@@ -102,6 +102,13 @@ export default function BaseballBoard({ excel = false }: Props) {
     );
   }, [excel, level, handleLevelChange, reset, setRibbonGameGroup]);
 
+  // 일반 모드: 최초 로딩 시 자동 로드
+  useEffect(() => {
+    if (excel) return;
+    loadRanking(rankLevel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 엑셀 모드: 랭킹 시트 진입 시 자동 로드
   useEffect(() => {
     if (!excel || activeSheet !== 'ranking') return;

@@ -235,6 +235,13 @@ export default function CardBoard({ excel = false }: Props) {
     );
   }, [excel, drawMode, state.history.length, setRibbonGameGroup, startGame, undo]);
 
+  // 일반 모드: 최초 로딩 시 자동 로드
+  useEffect(() => {
+    if (excel) return;
+    loadRanking(rankLevel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 랭킹 시트 전환 시 자동 로드
   useEffect(() => {
     if (!excel) return;

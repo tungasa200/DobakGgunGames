@@ -71,6 +71,20 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
 
+  // 일반 모드: 최초 로딩 시 자동 로드
+  useEffect(() => {
+    if (excel) return;
+    loadRanking('beginner');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 엑셀 모드: 랭킹 시트 전환 시 자동 로드
+  useEffect(() => {
+    if (!excel || activeSheet !== 'ranking') return;
+    loadRanking(rankLevel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, activeSheet]);
+
   // 엑셀 수식바 / 상태바
   useEffect(() => {
     if (!excel) return;
