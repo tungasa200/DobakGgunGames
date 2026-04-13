@@ -5,7 +5,7 @@ import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './BlockfallBoard.module.css';
 
 // ===== 상수 =====
-const BOARD_W = 10, BOARD_H = 20, CELL = 30;
+const BOARD_W = 11, BOARD_H = 21, CELL = 30;
 
 const COLORS_NORMAL = [
   null,
