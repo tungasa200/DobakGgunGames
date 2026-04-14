@@ -194,8 +194,9 @@ export default function MinesweeperBoard({ excel = false }: Props) {
     setSubmitState('loading');
     try {
       const rankLv = level === 'custom' ? 'beginner' : level;
-      const { token, timestamp } = await createToken('minesweeper', rankLv, state.elapsed.toFixed(2));
-      await rankingsApi.submit('minesweeper', { level: rankLv, name, time: state.elapsed, token, timestamp });
+      const roundedTime = parseFloat(state.elapsed.toFixed(2));
+      const { token, timestamp } = await createToken('minesweeper', rankLv, roundedTime.toFixed(2));
+      await rankingsApi.submit('minesweeper', { level: rankLv, name, time: roundedTime, token, timestamp });
       setModalOpen(false);
       loadRanking(rankLv);
     } catch {

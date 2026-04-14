@@ -130,9 +130,12 @@ public class RankingService {
 
     private String extractValue(String game, RankingRequest req) {
         return switch (game) {
-            case "minesweeper", "solitaire" -> String.valueOf(req.getTime());
-            case "baseball"                 -> String.valueOf(req.getAttempts());
-            case "blockfall", "apple"          -> String.valueOf(req.getScore());
+            // 클라이언트가 toFixed(2) 문자열로 서명하므로 서버도 동일 포맷으로 비교
+            case "minesweeper" -> String.format("%.2f", req.getTime());
+            // 클라이언트가 정수로 서명하므로 소수점 없이 비교
+            case "solitaire"   -> String.valueOf(req.getTime().longValue());
+            case "baseball"    -> String.valueOf(req.getAttempts());
+            case "blockfall", "apple" -> String.valueOf(req.getScore());
             default -> "";
         };
     }

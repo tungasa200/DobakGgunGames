@@ -25,9 +25,13 @@ export interface SubmitPayload {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isPost = init?.method === 'POST';
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...init,
+    headers: {
+      ...(isPost ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
