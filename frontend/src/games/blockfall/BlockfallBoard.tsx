@@ -1111,7 +1111,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
                 className={styles.xRankGrid}
                 style={{ gridTemplateColumns: `repeat(${RANK_TOTAL_BF}, ${XL_CELL}px)`, gridAutoRows: `${XL_CELL}px` }}
               >
-                {/* 1행: 주간 랭킹 타이틀 — 원본: background:#f3e9ff;color:#7b2ff7 */}
+                {/* 1행: 주간 랭킹 타이틀 */}
                 {RCell(bfWeekRangeStr(), 1, RANK_TOTAL_BF, ['xrcWeekTitle'], { fontWeight: 'bold' }, 'title')}
 
                 {/* 2행: 필터 버튼 */}
@@ -1166,7 +1166,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
                       })
                 }
 
-                {/* 역대 1위 — 원본: background:#f3e9ff;color:#7b2ff7 */}
+                {/* 역대 1위 */}
                 {alltimeBest
                   ? RCell(
                       `👑 역대 1위  ${alltimeBest.name} · ${(alltimeBest.score ?? 0).toLocaleString()}점 · Lv.${alltimeBest.gameLevel ?? 1} · ${new Date(alltimeBest.createdAt).toLocaleDateString('ko-KR')}`,

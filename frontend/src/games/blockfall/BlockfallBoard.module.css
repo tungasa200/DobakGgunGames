@@ -467,13 +467,11 @@
   font-family: 'Calibri', 'Segoe UI', sans-serif;
   background: white;
 }
-/* 원본 blockfall 랭킹: 주간 타이틀 — 보라색 테마 */
-.xrcHeader { background: #8e44ad; color: white; font-weight: bold; }
+.xrcHeader { background: #217346; color: white; font-weight: bold; }
 .xrcFilter { background: #f2f2f2; gap: 4px; }
-.xrcAlt { background: #f9f0ff; }
+.xrcAlt { background: #f5f5f5; }
 .xrcTop { color: #c65000; font-weight: bold; }
-/* 원본: 주간 랭킹 타이틀 — background:#f3e9ff;color:#7b2ff7 */
-.xrcWeekTitle { background: #f3e9ff; color: #7b2ff7; font-weight: bold; }
+.xrcWeekTitle { background: #fef9e7; color: #b7950b; font-weight: bold; }
 .xrankFilterBtn {
   padding: 1px 10px;
   font-size: 14px;
@@ -484,7 +482,7 @@
   font-family: 'Calibri', 'Segoe UI', sans-serif;
 }
 .xrankFilterBtn:hover { background: #e8e8e8; }
-.xrankFilterBtnActive { background: #8e44ad; color: white; border-color: #8e44ad; }
+.xrankFilterBtnActive { background: #217346; color: white; border-color: #217346; }
 
 /* ===== 엑셀 모드 ===== */
 .excelMode {
