@@ -248,28 +248,24 @@ export default function BaseballBoard({ excel = false }: Props) {
                   <tr><th>#</th><th>입력</th><th>스트라이크</th><th>볼</th></tr>
                 </thead>
                 <tbody>
-                  {state.history.length === 0 && !excel ? (
-                    <tr><td colSpan={4} className={styles.placeholder}>입력 기록이 여기에 표시됩니다.</td></tr>
-                  ) : (
-                    Array.from({ length: maxAttempts }, (_, i) => {
-                      // history는 최신순(내림차순)으로 저장됨
-                      // i=0이 가장 최근 시도(maxAttempts번째), i=maxAttempts-1이 첫 번째 시도
-                      const rowNum = maxAttempts - i;
-                      const row = (state.history as HistoryRow[]).find((r) => r.attempt === rowNum);
-                      return row ? (
-                        <tr key={rowNum}>
-                          <td>{row.attempt}</td>
-                          <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
-                          <td className={styles.strike}>{row.strikes}S</td>
-                          <td className={row.balls > 0 ? styles.ball : undefined}>
-                            {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
-                          </td>
-                        </tr>
-                      ) : (
-                        <tr key={`empty-${rowNum}`}><td>{rowNum}</td><td></td><td></td><td></td></tr>
-                      );
-                    })
-                  )}
+                  {Array.from({ length: maxAttempts }, (_, i) => {
+                    // history는 최신순(내림차순)으로 저장됨
+                    // i=0이 가장 최근 시도(maxAttempts번째), i=maxAttempts-1이 첫 번째 시도
+                    const rowNum = maxAttempts - i;
+                    const row = (state.history as HistoryRow[]).find((r) => r.attempt === rowNum);
+                    return row ? (
+                      <tr key={rowNum}>
+                        <td>{row.attempt}</td>
+                        <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
+                        <td className={styles.strike}>{row.strikes}S</td>
+                        <td className={row.balls > 0 ? styles.ball : undefined}>
+                          {row.strikes === digitCount ? '-' : row.balls > 0 ? `${row.balls}B` : '아웃'}
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={`empty-${rowNum}`}><td>{rowNum}</td><td></td><td></td><td></td></tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
