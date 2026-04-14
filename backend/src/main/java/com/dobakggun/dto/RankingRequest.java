@@ -23,8 +23,9 @@ public class RankingRequest {
     private Integer moves;
     private Integer gameLevel;
 
-    @NotBlank
-    private String token;  // HMAC 검증 토큰
+    private String sessionId;  // Phase 1: 세션 기반 검증
+
+    private String token;  // 레거시 HMAC 검증 토큰 (전환 완료 후 제거)
 
     private Long timestamp;  // Unix timestamp (초)
 }

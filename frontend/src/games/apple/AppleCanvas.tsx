@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppleGame } from './useAppleGame';
-import { rankingsApi } from '../../api/rankings';
-import { createToken } from '../../utils/hmac';
+import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './AppleCanvas.module.css';
@@ -126,6 +125,9 @@ export default function AppleCanvas({ excel = false }: Props) {
       ? { rows: EXCEL_ROWS, cols: EXCEL_COLS, size: EXCEL_SIZE, pad: EXCEL_PAD }
       : { rows: 10, cols: 17, size: 28, pad: 8 }
   );
+
+  // 세션 ID
+  const sessionIdRef = useRef<string>('');
 
   // 드래그 상태
   const dragRef = useRef({ active: false, sx: 0, sy: 0, cx: 0, cy: 0 });
@@ -438,7 +440,7 @@ export default function AppleCanvas({ excel = false }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout, state.apples, state.status, draw, removeApples]);
 
-  function handleStart() {
+  async function handleStart() {
     const l = (excel ? layout : calcLayout()) ?? layout;
     start(l.rows, l.cols);
     setMsg('사과를 드래그하세요!');
@@ -446,6 +448,11 @@ export default function AppleCanvas({ excel = false }: Props) {
     setPlayerName('');
     setSubmitState('idle');
     setDragSum(null);
+    try {
+      sessionIdRef.current = await startSession('apple', 'normal');
+    } catch {
+      sessionIdRef.current = '';
+    }
   }
 
   // 리본 게임 그룹 등록 — 원본 ribbonGroupHtml에 대응
@@ -479,8 +486,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     setNameBanned(false);
     setSubmitState('loading');
     try {
-      const { token, timestamp } = await createToken('apple', 'normal', state.score);
-      await rankingsApi.submit('apple', { level: 'normal', name, score: state.score, token, timestamp });
+      await rankingsApi.submit('apple', { level: 'normal', name, score: state.score, sessionId: sessionIdRef.current });
       setModalOpen(false);
       if (excel) {
         loadExcelRanking();

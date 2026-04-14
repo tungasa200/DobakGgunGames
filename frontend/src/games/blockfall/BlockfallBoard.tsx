@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { rankingsApi } from '../../api/rankings';
-import { createToken } from '../../utils/hmac';
+import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './BlockfallBoard.module.css';
@@ -182,6 +181,9 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const holdPieceIsT = useRef(false);
   const holdPieceRot = useRef(0);
   const currentLevelRef = useRef<Level>('normal');
+
+  // 세션 ID
+  const sessionIdRef = useRef<string>('');
 
   // ===== React 상태 (UI 표시용) =====
   const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
@@ -658,6 +660,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
     setGameStatus('playing');
     lastTime.current = 0;
     animId.current = requestAnimationFrame(gameLoop);
+    startSession('blockfall', level).then(id => { sessionIdRef.current = id; }).catch(() => { sessionIdRef.current = ''; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameLoop]);
 
@@ -783,14 +786,12 @@ export default function BlockfallBoard({ excel = false }: Props) {
     setNameBanned(false);
     setSubmitState('loading');
     try {
-      const { token, timestamp } = await createToken('blockfall', difficulty, scoreRef.current);
       await rankingsApi.submit('blockfall', {
         level: difficulty,
         name,
         score: scoreRef.current,
         gameLevel: gameLevelRef.current,
-        token,
-        timestamp,
+        sessionId: sessionIdRef.current,
       });
       setModalOpen(false);
       loadRanking(difficulty);

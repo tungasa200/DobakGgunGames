@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useBaseballGame, DIGIT_COUNT, MAX_ATTEMPTS, type Level } from './useBaseballGame';
-import { rankingsApi } from '../../api/rankings';
-import { createToken } from '../../utils/hmac';
+import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './BaseballBoard.module.css';
@@ -40,9 +39,18 @@ interface Props { excel?: boolean }
 export default function BaseballBoard({ excel = false }: Props) {
   const [level, setLevel] = useState<Level>('easy');
   const { state, reset, guess } = useBaseballGame(level);
+  const sessionIdRef = useRef<string>('');
   const [input, setInput] = useState('');
   const [hint, setHint] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  async function initSession(lv: Level) {
+    try {
+      sessionIdRef.current = await startSession('baseball', lv);
+    } catch {
+      sessionIdRef.current = '';
+    }
+  }
 
   // 클리어 모달
   const [modalOpen, setModalOpen] = useState(false);
@@ -57,6 +65,9 @@ export default function BaseballBoard({ excel = false }: Props) {
   });
   const [rankLoading, setRankLoading] = useState(false);
   const [showRules, setShowRules] = useState(false);
+
+  // 마운트 시 최초 세션 발급
+  useEffect(() => { initSession(level); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (state.won) setModalOpen(true); }, [state.won]);
   useEffect(() => {
@@ -77,7 +88,8 @@ export default function BaseballBoard({ excel = false }: Props) {
     reset(lv);
     setInput('');
     setHint('');
-  }, [reset]);
+    initSession(lv);
+  }, [reset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!excel) {
@@ -97,7 +109,7 @@ export default function BaseballBoard({ excel = false }: Props) {
               <span>{lv.shortLabel}</span>
             </div>
           ))}
-          <div className={styles.xrb} onClick={() => { reset(level); setInput(''); setHint(''); }}>
+          <div className={styles.xrb} onClick={() => { reset(level); setInput(''); setHint(''); initSession(level); }}>
             <span className={styles.xrbIcon}>🔄</span>
             <span>새 시트</span>
           </div>
@@ -141,8 +153,7 @@ export default function BaseballBoard({ excel = false }: Props) {
     setNameBanned(false);
     setSubmitState('loading');
     try {
-      const { token, timestamp } = await createToken('baseball', level, state.attempts);
-      await rankingsApi.submit('baseball', { level, name, attempts: state.attempts, time: state.elapsed, token, timestamp });
+      await rankingsApi.submit('baseball', { level, name, attempts: state.attempts, time: state.elapsed, sessionId: sessionIdRef.current });
       setSubmitState('done');
     } catch {
       setSubmitState('error');
@@ -245,7 +256,7 @@ export default function BaseballBoard({ excel = false }: Props) {
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
-                  <tr><th>#</th><th>입력</th><th>스트라이크</th><th>볼</th></tr>
+                  <tr><th>이닝</th><th>입력</th><th>스트라이크</th><th>볼</th></tr>
                 </thead>
                 <tbody>
                   {Array.from({ length: maxAttempts }, (_, i) => {
@@ -272,7 +283,7 @@ export default function BaseballBoard({ excel = false }: Props) {
 
             {/* 리셋 버튼 — 일반 모드 */}
             {!excel && (
-              <button className={styles.resetBtn} onClick={() => { reset(level); setInput(''); setHint(''); }}>
+              <button className={styles.resetBtn} onClick={() => { reset(level); setInput(''); setHint(''); initSession(level); }}>
                 RESET
               </button>
             )}
@@ -328,7 +339,7 @@ export default function BaseballBoard({ excel = false }: Props) {
             <p className={styles.placeholder}>불러오는 중...</p>
           ) : (
             <table className={styles.rankTable}>
-              <thead><tr><th>순위</th><th>이름</th><th>시도</th><th>시간</th><th>날짜</th></tr></thead>
+              <thead><tr><th>순위</th><th>이름</th><th>투구</th><th>시간</th><th>날짜</th></tr></thead>
               <tbody>
                 {(rankings.weekly as Array<{ id: number; name: string; attempts: number; time: number; createdAt: string }>).length === 0 ? (
                   <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>

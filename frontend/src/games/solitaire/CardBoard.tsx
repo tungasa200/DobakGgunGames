@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useSolitaireGame, type DrawMode, type Card, type Selection } from './useSolitaireGame';
-import { rankingsApi } from '../../api/rankings';
-import { createToken } from '../../utils/hmac';
+import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './CardBoard.module.css';
@@ -136,6 +135,7 @@ export default function CardBoard({ excel = false }: Props) {
     autoMoveToFoundation, undo,
   } = useSolitaireGame(drawMode);
 
+  const sessionIdRef = useRef<string>('');
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState<Dims>({ cw: 70, ch: 98, gap: 8 });
 
@@ -214,13 +214,13 @@ export default function CardBoard({ excel = false }: Props) {
             <div
               key={dm}
               className={`${styles.xrb} ${drawMode === dm ? styles.xrbActive : ''}`}
-              onClick={() => { setDrawMode(dm); startGame(dm); }}
+              onClick={() => { setDrawMode(dm); handleStartGame(dm); }}
             >
               <span className={styles.xrbIcon}>{dm === 'draw1' ? '🃏' : '🎴'}</span>
               <span>{dm === 'draw1' ? '드로우1' : '드로우3'}</span>
             </div>
           ))}
-          <div className={styles.xrb} onClick={() => startGame(drawMode)}>
+          <div className={styles.xrb} onClick={() => handleStartGame(drawMode)}>
             <span className={styles.xrbIcon}>🔄</span>
             <span>새 시트</span>
           </div>
@@ -251,10 +251,15 @@ export default function CardBoard({ excel = false }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [excel, activeSheet]);
 
+  function handleStartGame(dm: DrawMode) {
+    startGame(dm);
+    startSession('solitaire', dm).then(id => { sessionIdRef.current = id; }).catch(() => { sessionIdRef.current = ''; });
+  }
+
   // ── 데이터 ──────────────────────────────────────────────────────────
   function handleDrawModeChange(dm: DrawMode) {
     setDrawMode(dm);
-    startGame(dm);
+    handleStartGame(dm);
   }
 
   async function handleSubmitRanking() {
@@ -264,14 +269,12 @@ export default function CardBoard({ excel = false }: Props) {
     setNameBanned(false);
     setSubmitState('loading');
     try {
-      const { token, timestamp } = await createToken('solitaire', drawMode, state.elapsed);
       await rankingsApi.submit('solitaire', {
         level: drawMode,
         name,
         time: state.elapsed,
         moves: state.moves,
-        token,
-        timestamp,
+        sessionId: sessionIdRef.current,
       });
       setModalOpen(false);
       loadRanking(drawMode);
@@ -453,7 +456,7 @@ export default function CardBoard({ excel = false }: Props) {
               </button>
             ))}
           </div>
-          <button className={styles.startBtn} onClick={() => startGame(drawMode)}>새 게임</button>
+          <button className={styles.startBtn} onClick={() => handleStartGame(drawMode)}>새 게임</button>
           <button className={styles.undoBtn} disabled={!state.history.length} onClick={undo}>↩ 되돌리기</button>
         </div>
       )}

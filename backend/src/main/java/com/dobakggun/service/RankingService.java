@@ -4,18 +4,16 @@ import com.dobakggun.dto.RankingRequest;
 import com.dobakggun.dto.RankingResponse;
 import com.dobakggun.entity.*;
 import com.dobakggun.repository.*;
+import com.dobakggun.util.IpHashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 
@@ -32,6 +30,8 @@ public class RankingService {
     private final SolitaireRankingRepository solitaireRepo;
     private final AppleRankingRepository appleRepo;
     private final HmacService hmacService;
+    private final SessionService sessionService;
+    private final IpHashUtil ipHashUtil;
 
     public List<RankingResponse> getWeeklyRankings(String game, String level) {
         validateGame(game);
@@ -52,7 +52,7 @@ public class RankingService {
         validateGame(game);
         validateLevel(game, req.getLevel());
 
-        String ipHash = hashIp(getClientIp(httpReq));
+        String ipHash = ipHashUtil.hash(getClientIp(httpReq));
 
         // Rate limit
         LocalDateTime oneMinuteAgo = LocalDateTime.now().minusMinutes(1);
@@ -61,10 +61,15 @@ public class RankingService {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "잠시 후 다시 시도해주세요.");
         }
 
-        // HMAC 검증
-        String value = extractValue(game, req);
-        if (req.getTimestamp() == null || !hmacService.verify(game, req.getLevel(), value, req.getTimestamp(), req.getToken())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 요청입니다.");
+        // 세션 기반 검증 (Phase 1) 또는 레거시 HMAC 검증
+        if (req.getSessionId() != null) {
+            sessionService.validateAndConsume(req.getSessionId(), game, httpReq);
+        } else {
+            String value = extractValue(game, req);
+            if (req.getTimestamp() == null || req.getToken() == null
+                    || !hmacService.verify(game, req.getLevel(), value, req.getTimestamp(), req.getToken())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 요청입니다.");
+            }
         }
 
         // 점수 범위 검증
@@ -180,15 +185,5 @@ public class RankingService {
             return xForwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
-    }
-
-    private String hashIp(String ip) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest((ip + "dobakggun_salt").getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (Exception e) {
-            return "unknown";
-        }
     }
 }

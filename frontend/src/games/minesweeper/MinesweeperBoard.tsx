@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMinesweeperGame, type Level } from './useMinesweeperGame';
-import { rankingsApi, type RankingEntry } from '../../api/rankings';
-import { createToken } from '../../utils/hmac';
+import { rankingsApi, startSession, type RankingEntry } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './MinesweeperBoard.module.css';
@@ -62,6 +61,18 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [alltime, setAlltime] = useState<RankingEntry | null>(null);
   const [rankLoading, setRankLoading] = useState(false);
+
+  // 세션 ID
+  const sessionIdRef = useRef<string>('');
+
+  // 첫 클릭 시 세션 발급
+  function handleRevealCell(r: number, c: number) {
+    if (state.status === 'idle') {
+      const rankLv = level === 'custom' ? 'beginner' : level;
+      startSession('minesweeper', rankLv).then(id => { sessionIdRef.current = id; }).catch(() => { sessionIdRef.current = ''; });
+    }
+    revealCell(r, c);
+  }
 
   // 양클릭 추적
   const mouseButtonsRef = useRef<Record<string, number>>({});
@@ -195,8 +206,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
     try {
       const rankLv = level === 'custom' ? 'beginner' : level;
       const roundedTime = parseFloat(state.elapsed.toFixed(2));
-      const { token, timestamp } = await createToken('minesweeper', rankLv, roundedTime.toFixed(2));
-      await rankingsApi.submit('minesweeper', { level: rankLv, name, time: roundedTime, token, timestamp });
+      await rankingsApi.submit('minesweeper', { level: rankLv, name, time: roundedTime, sessionId: sessionIdRef.current });
       setModalOpen(false);
       loadRanking(rankLv);
     } catch {
@@ -318,7 +328,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
                     key={cellKey}
                     className={cls}
                     style={{ color: numColor }}
-                    onClick={() => revealCell(r, c)}
+                    onClick={() => handleRevealCell(r, c)}
                     onContextMenu={(e) => { e.preventDefault(); toggleMark(r, c); }}
                     onMouseDown={(e) => {
                       mouseButtonsRef.current[cellKey] = (mouseButtonsRef.current[cellKey] ?? 0) | e.buttons;

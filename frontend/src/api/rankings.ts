@@ -20,8 +20,7 @@ export interface SubmitPayload {
   attempts?: number;
   moves?: number;
   gameLevel?: number;
-  token: string;
-  timestamp: number;
+  sessionId: string;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -38,6 +37,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
+}
+
+export async function startSession(game: string, level: string): Promise<string> {
+  const res = await request<{ sessionId: string; startedAt: number; expiresAt: number }>(
+    `/api/${game}/session/start`,
+    { method: 'POST', body: JSON.stringify({ level }) }
+  );
+  return res.sessionId;
 }
 
 export const rankingsApi = {
