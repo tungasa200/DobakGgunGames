@@ -63,7 +63,11 @@ function reducer(state: State, action: Action): State {
 
 function generateAnswer(n: number): number[] {
   const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-  pool.sort(() => Math.random() - 0.5);
+  // Fisher-Yates 셔플 (sort+random 방식은 V8에서 편향 발생)
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
   return pool.slice(0, n);
 }
 
@@ -107,6 +111,7 @@ export function useBaseballGame(initialLevel: Level = 'easy') {
   }, [state.timerRunning]);
 
   const reset = useCallback((level: Level = state.level) => {
+    startTimeRef.current = 0;
     dispatch({ type: 'RESET', level, answer: generateAnswer(DIGIT_COUNT[level]) });
   }, [state.level]);
 
@@ -122,6 +127,12 @@ export function useBaseballGame(initialLevel: Level = 'easy') {
     const attempt = state.attempts + 1;
     const { strikes, balls } = judge(digits, state.answer);
     const row: HistoryRow = { attempt, guess: input, strikes, balls };
+
+    // 첫 번째 guess 시 useEffect보다 먼저 호출되므로 startTimeRef를 직접 초기화
+    if (startTimeRef.current === 0) {
+      startTimeRef.current = Date.now();
+    }
+
     dispatch({ type: 'GUESS', row });
 
     const elapsed = (Date.now() - startTimeRef.current) / 1000;
