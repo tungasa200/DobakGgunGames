@@ -20,12 +20,14 @@ interface State {
   elapsed: number;
   timerRunning: boolean;
   won: boolean;
+  gameOver: boolean;
 }
 
 type Action =
   | { type: 'RESET'; level: Level; answer: number[] }
   | { type: 'GUESS'; row: HistoryRow }
   | { type: 'WIN'; elapsed: number }
+  | { type: 'GAME_OVER'; elapsed: number }
   | { type: 'TICK'; elapsed: number };
 
 function reducer(state: State, action: Action): State {
@@ -39,6 +41,7 @@ function reducer(state: State, action: Action): State {
         elapsed: 0,
         timerRunning: false,
         won: false,
+        gameOver: false,
       };
     case 'GUESS':
       return {
@@ -49,6 +52,8 @@ function reducer(state: State, action: Action): State {
       };
     case 'WIN':
       return { ...state, won: true, timerRunning: false, elapsed: action.elapsed };
+    case 'GAME_OVER':
+      return { ...state, gameOver: true, timerRunning: false, elapsed: action.elapsed };
     case 'TICK':
       return { ...state, elapsed: action.elapsed };
     default:
@@ -80,6 +85,7 @@ export function useBaseballGame(initialLevel: Level = 'easy') {
     elapsed: 0,
     timerRunning: false,
     won: false,
+    gameOver: false,
   }));
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -118,9 +124,11 @@ export function useBaseballGame(initialLevel: Level = 'easy') {
     const row: HistoryRow = { attempt, guess: input, strikes, balls };
     dispatch({ type: 'GUESS', row });
 
+    const elapsed = (Date.now() - startTimeRef.current) / 1000;
     if (strikes === digitCount) {
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
       dispatch({ type: 'WIN', elapsed });
+    } else if (attempt >= MAX_ATTEMPTS[state.level]) {
+      dispatch({ type: 'GAME_OVER', elapsed });
     }
     return null;
   }, [state.level, state.attempts, state.answer]);

@@ -59,6 +59,9 @@ export default function BaseballBoard({ excel = false }: Props) {
   const [showRules, setShowRules] = useState(false);
 
   useEffect(() => { if (state.won) setModalOpen(true); }, [state.won]);
+  useEffect(() => {
+    if (state.gameOver) setHint(`게임 오버! 정답은 ${state.answer.join('')} 였습니다.`);
+  }, [state.gameOver, state.answer]);
 
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
@@ -123,7 +126,7 @@ export default function BaseballBoard({ excel = false }: Props) {
   }, [modalOpen]);
 
   function handleGuess() {
-    if (state.won) return;
+    if (state.won || state.gameOver) return;
     const err = guess(input.trim());
     if (err) { setHint(err); return; }
     setHint('');
@@ -223,11 +226,11 @@ export default function BaseballBoard({ excel = false }: Props) {
                 maxLength={digitCount}
                 placeholder={'_'.repeat(digitCount)}
                 value={input}
-                disabled={state.won}
+                disabled={state.won || state.gameOver}
                 onChange={(e) => setInput(e.target.value.replace(/[^0-9]/g, '').slice(0, digitCount))}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleGuess(); }}
               />
-              <button className={styles.guessBtn} disabled={state.won} onClick={handleGuess}>
+              <button className={styles.guessBtn} disabled={state.won || state.gameOver} onClick={handleGuess}>
                 확인
               </button>
             </div>
@@ -249,9 +252,12 @@ export default function BaseballBoard({ excel = false }: Props) {
                     <tr><td colSpan={4} className={styles.placeholder}>입력 기록이 여기에 표시됩니다.</td></tr>
                   ) : (
                     Array.from({ length: maxAttempts }, (_, i) => {
-                      const row = (state.history as HistoryRow[]).find((r) => r.attempt === maxAttempts - i);
+                      // history는 최신순(내림차순)으로 저장됨
+                      // i=0이 가장 최근 시도(maxAttempts번째), i=maxAttempts-1이 첫 번째 시도
+                      const rowNum = maxAttempts - i;
+                      const row = (state.history as HistoryRow[]).find((r) => r.attempt === rowNum);
                       return row ? (
-                        <tr key={row.attempt}>
+                        <tr key={rowNum}>
                           <td>{row.attempt}</td>
                           <td style={{ letterSpacing: 4, fontWeight: 'bold' }}>{row.guess}</td>
                           <td className={styles.strike}>{row.strikes}S</td>
@@ -260,7 +266,7 @@ export default function BaseballBoard({ excel = false }: Props) {
                           </td>
                         </tr>
                       ) : (
-                        <tr key={i}><td>{maxAttempts - i}</td><td></td><td></td><td></td></tr>
+                        <tr key={`empty-${rowNum}`}><td>{rowNum}</td><td></td><td></td><td></td></tr>
                       );
                     })
                   )}
