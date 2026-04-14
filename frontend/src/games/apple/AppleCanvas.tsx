@@ -499,7 +499,8 @@ export default function AppleCanvas({ excel = false }: Props) {
         rankingsApi.getWeekly('apple', 'normal'),
         rankingsApi.getAlltimeBest('apple', 'normal'),
       ]);
-      setRankings({ weekly: weekly as unknown[], alltime });
+      const safeAlltime = (alltime && typeof alltime === 'object' && 'id' in (alltime as object)) ? alltime : null;
+      setRankings({ weekly: weekly as unknown[], alltime: safeAlltime });
     } catch {
       setRankings({ weekly: [], alltime: null });
     } finally {
@@ -515,7 +516,7 @@ export default function AppleCanvas({ excel = false }: Props) {
         rankingsApi.getAlltimeBest('apple', 'normal'),
       ]);
       setExcelRankings(weekly as unknown[]);
-      setExcelAlltime(alltime);
+      setExcelAlltime((alltime && typeof alltime === 'object' && 'id' in (alltime as object)) ? alltime : null);
     } catch {
       setExcelRankings([]);
       setExcelAlltime(null);
