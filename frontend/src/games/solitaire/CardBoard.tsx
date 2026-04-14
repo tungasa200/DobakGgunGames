@@ -669,13 +669,14 @@ export default function CardBoard({ excel = false }: Props) {
                       })
                 }
 
-                {/* 역대 1위 */}
-                {rankings.alltime
+                {/* 역대 1위 — alltime이 {} (기록 없음) 일 때는 id 없음 */}
+                {(rankings.alltime as { id?: number })?.id
                   ? (() => {
                       const at = rankings.alltime as AlltimeRow;
-                      const atDate = new Date(at.createdAt).toLocaleDateString('ko-KR');
-                      const atMin = Math.floor(at.time / 60), atSec = at.time % 60;
-                      const atTStr = atMin > 0 ? `${atMin}분 ${atSec}초` : `${at.time}초`;
+                      const atTime = at.time ?? 0;
+                      const atDate = at.createdAt ? new Date(at.createdAt).toLocaleDateString('ko-KR') : '-';
+                      const atMin = Math.floor(atTime / 60), atSec = atTime % 60;
+                      const atTStr = atMin > 0 ? `${atMin}분 ${atSec}초` : `${atTime}초`;
                       return RCell(
                         `👑 역대 1위  ${at.name} · ${atTStr} · ${at.moves}수 · ${atDate}`,
                         1, RANK_TOTAL, ['xrcWeekTitle'], { paddingLeft: 8 }, 'alltime'
@@ -849,13 +850,13 @@ export default function CardBoard({ excel = false }: Props) {
       {!excel && (
         <div className={styles.rankSection}>
           <h3 className={styles.rankTitle}>주간 RANK</h3>
-          {!!rankings.alltime && (
+          {!!(rankings.alltime as { id?: number })?.id && (
             <div className={styles.alltimeBanner}>
               <span className={styles.atLabel}>👑 역대 1위</span>
               <span className={styles.atContent}>
                 {(rankings.alltime as { name: string; time: number; moves: number; createdAt: string }).name}
                 {' · '}
-                {formatTime(Math.round((rankings.alltime as { name: string; time: number; moves: number; createdAt: string }).time))}
+                {formatTime(Math.round((rankings.alltime as { name: string; time: number; moves: number; createdAt: string }).time ?? 0))}
                 {' · '}
                 {(rankings.alltime as { name: string; time: number; moves: number; createdAt: string }).moves}수
                 {' · '}

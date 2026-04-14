@@ -368,9 +368,14 @@ export default function AppleCanvas({ excel = false }: Props) {
 
   // 포인터 위치 변환
   function getPos(e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) {
-    const canvas = canvasRef.current!;
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const src = 'touches' in e ? (e as TouchEvent).touches[0] : (e as MouseEvent);
+    // touchend 시 touches[]는 빈 배열 → changedTouches[0] 폴백
+    const src = 'touches' in e
+      ? ((e as TouchEvent).touches[0] ?? (e as TouchEvent).changedTouches[0])
+      : (e as MouseEvent);
+    if (!src) return { x: 0, y: 0 };
     return {
       x: (src.clientX - rect.left) * (canvas.width / rect.width),
       y: (src.clientY - rect.top)  * (canvas.height / rect.height),

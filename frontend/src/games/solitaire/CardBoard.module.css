@@ -336,6 +336,8 @@
   max-width: none;
   margin: 0;
   color: inherit;
+  /* xSheetWrapper가 뷰포트보다 넓을 때 왼쪽 잘림 방지 */
+  align-items: flex-start;
 }
 .excelMode .submitBtn     { background: #217346; }
 .excelMode .submitBtn:hover { background: #1a6636; }

@@ -1,9 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { rankingsApi } from '../../api/rankings';
 import { createToken } from '../../utils/hmac';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './BlockfallBoard.module.css';
+
+// ===== 엑셀 랭킹/룰 시트 상수 (원본 blockfall/excel.html 동일) =====
+const XL_CELL = 30; // 원본: CELL_SIZE = 30
+const RANK_COLS_BF = [
+  { label: '순위', span: 2 },
+  { label: '이름', span: 4 },
+  { label: '점수', span: 4 },
+  { label: '날짜', span: 3 },
+];
+const RANK_TOTAL_BF = RANK_COLS_BF.reduce((s, c) => s + c.span, 0); // 13
+const RULES_TOTAL_BF = 12; // 원본: RULES_TOTAL_SPAN = 12
+
+function bfWeekRangeStr(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now); mon.setDate(now.getDate() + diffToMon);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  return `주간 랭킹 (${fmt(mon)} ~ ${fmt(sun)})`;
+}
+
+function bfColLabel(i: number): string {
+  let label = '';
+  let n = i + 1;
+  while (n > 0) {
+    n--;
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26);
+  }
+  return label;
+}
 
 // ===== 상수 =====
 const BOARD_W = 11, BOARD_H = 21, CELL = 30;
@@ -174,7 +207,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const COLORS = excel ? COLORS_EXCEL : COLORS_NORMAL;
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     const colLabel = (n: number) => String.fromCharCode(65 + n);
@@ -953,8 +986,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
         </>
       )}
 
-      {/* 랭킹 — 일반 모드: 항상 / 엑셀 모드: ranking 시트 */}
-      {(!excel || activeSheet === 'ranking') && (
+      {/* ══ 일반 모드: 랭킹 섹션 ══ */}
+      {!excel && (
         <div className={styles.rankSection}>
           <h3 className={styles.rankTitle}>주간 RANK</h3>
           {!showRulesArea && alltimeBest && (
@@ -965,39 +998,21 @@ export default function BlockfallBoard({ excel = false }: Props) {
               </span>
             </div>
           )}
-          {/* 일반 모드 탭 (룰 탭 포함) */}
-          {!excel && (
-            <div className={styles.rankTabs}>
-              {LEVELS.map(lv => (
-                <button
-                  key={lv.value}
-                  className={`${styles.rankTab} ${rankLevel === lv.value && !showRules ? styles.rankTabActive : ''}`}
-                  onClick={() => handleRankTabChange(lv.value)}
-                >
-                  {lv.label}
-                </button>
-              ))}
+          <div className={styles.rankTabs}>
+            {LEVELS.map(lv => (
               <button
-                className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
-                onClick={() => setShowRules(true)}
-              >룰</button>
-            </div>
-          )}
-          {/* 엑셀 모드 탭 */}
-          {excel && (
-            <div className={styles.rankTabs}>
-              {LEVELS.map(lv => (
-                <button
-                  key={lv.value}
-                  className={`${styles.rankTab} ${rankLevel === lv.value ? styles.rankTabActive : ''}`}
-                  onClick={() => handleRankTabChange(lv.value)}
-                >
-                  {lv.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {/* 콘텐츠 — 룰 or 랭킹 */}
+                key={lv.value}
+                className={`${styles.rankTab} ${rankLevel === lv.value && !showRules ? styles.rankTabActive : ''}`}
+                onClick={() => handleRankTabChange(lv.value)}
+              >
+                {lv.label}
+              </button>
+            ))}
+            <button
+              className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
+              onClick={() => setShowRules(true)}
+            >룰</button>
+          </div>
           {showRulesArea ? (
             <div className={styles.rulesPanel}>
               <h4>조작법</h4>
@@ -1051,40 +1066,223 @@ export default function BlockfallBoard({ excel = false }: Props) {
         </div>
       )}
 
-      {/* 룰 시트 — 엑셀 모드: rules 시트 활성 시 */}
-      {excel && activeSheet === 'rules' && (
-        <div className={styles.rankSection}>
-          <div className={styles.rulesPanel}>
-            <h4>조작법</h4>
-            <ul>
-              <li>← → 방향키: 좌우 이동</li>
-              <li>↑ 방향키: 회전</li>
-              <li>↓ 방향키: 빠른 낙하 (+1점)</li>
-              <li>Space / 더블탭: 급강하 (+2점/칸)</li>
-              <li>Shift / HOLD 버튼: 블록 홀드 (블록당 1회)</li>
-              <li>P: 일시정지</li>
-            </ul>
-            <h4>점수 계산</h4>
-            <ul>
-              <li>1줄: 100 × 레벨</li>
-              <li>2줄: 300 × 레벨</li>
-              <li>3줄: 500 × 레벨</li>
-              <li>4줄 (블록폴): 800 × 레벨</li>
-            </ul>
-            <h4>콤보 · 레벨</h4>
-            <ul>
-              <li>연속 줄 제거 시 콤보 보너스: 50 × (콤보-1) × 레벨</li>
-              <li>10줄 제거마다 레벨 상승, 최대 레벨 11</li>
-            </ul>
-            <h4>난이도별 초기 낙하속도</h4>
-            <ul>
-              <li>쉬움: 0.8초/칸 → 최대 0.21초</li>
-              <li>보통: 0.4초/칸 → 최대 0.09초</li>
-              <li>어려움: 0.18초/칸 → 최대 0.03초</li>
-            </ul>
+      {/* ══ 엑셀 모드: 랭킹 시트 — 원본 buildRankingGrid() 구조 ══ */}
+      {excel && activeSheet === 'ranking' && (() => {
+        const extraCols = Math.max(10, Math.ceil((sheetSize.width || 600) / XL_CELL));
+        const totalHeaderCols = RANK_TOTAL_BF + extraCols;
+        const dataRowCount = rankings.length > 0 ? rankings.length : 1;
+        const contentRows = 3 + dataRowCount + 1; // title + filter + header + data + alltime
+        const extraRows = Math.max(20, Math.ceil((sheetSize.height || 400) / XL_CELL));
+        const totalRows = contentRows + extraRows;
+
+        const RCell = (
+          text: string,
+          colStart: number,
+          span: number,
+          cls: string[],
+          extraStyle?: CSSProperties,
+          key?: string | number,
+        ) => (
+          <div
+            key={key ?? `${colStart}-${text}`}
+            className={[styles.xrankCell, ...cls.map(c => styles[c as keyof typeof styles])].filter(Boolean).join(' ')}
+            style={{ gridColumn: `${colStart} / span ${span}`, ...extraStyle }}
+            title={text}
+          >
+            {text}
           </div>
-        </div>
-      )}
+        );
+
+        return (
+          <div className={styles.xSheetWrapper}>
+            <div className={styles.xColHeaderRow}>
+              <div className={styles.xcorner} />
+              {Array.from({ length: totalHeaderCols }, (_, i) => (
+                <div key={i} className={styles.xch} style={{ width: XL_CELL, minWidth: XL_CELL }}>{bfColLabel(i)}</div>
+              ))}
+            </div>
+            <div className={styles.xBodyArea}>
+              <div className={styles.xRowNums}>
+                {Array.from({ length: totalRows }, (_, i) => (
+                  <div key={i} className={styles.xrn} style={{ height: XL_CELL }}>{i + 1}</div>
+                ))}
+              </div>
+              <div
+                className={styles.xRankGrid}
+                style={{ gridTemplateColumns: `repeat(${RANK_TOTAL_BF}, ${XL_CELL}px)`, gridAutoRows: `${XL_CELL}px` }}
+              >
+                {/* 1행: 주간 랭킹 타이틀 — 원본: background:#f3e9ff;color:#7b2ff7 */}
+                {RCell(bfWeekRangeStr(), 1, RANK_TOTAL_BF, ['xrcWeekTitle'], { fontWeight: 'bold' }, 'title')}
+
+                {/* 2행: 필터 버튼 */}
+                <div
+                  key="filter"
+                  className={`${styles.xrankCell} ${styles.xrcFilter}`}
+                  style={{ gridColumn: `1 / span ${RANK_TOTAL_BF}` }}
+                >
+                  {LEVELS.map(lv => (
+                    <button
+                      key={lv.value}
+                      className={`${styles.xrankFilterBtn} ${rankLevel === lv.value ? styles.xrankFilterBtnActive : ''}`}
+                      onClick={() => handleRankTabChange(lv.value)}
+                    >
+                      {lv.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 3행: 컬럼 헤더 */}
+                {(() => {
+                  let cs = 1;
+                  return RANK_COLS_BF.map(col => {
+                    const start = cs; cs += col.span;
+                    return RCell(col.label, start, col.span, ['xrcHeader'], undefined, `h-${col.label}`);
+                  });
+                })()}
+
+                {/* 데이터 행 */}
+                {rankLoading
+                  ? RCell('불러오는 중...', 1, RANK_TOTAL_BF, [], { color: '#888' }, 'loading')
+                  : rankings.length === 0
+                    ? RCell('기록 없음', 1, RANK_TOTAL_BF, [], { color: '#aaa' }, 'empty')
+                    : rankings.map((row, i) => {
+                        const alt = i % 2 === 1 ? styles.xrcAlt : '';
+                        const top = i === 0 ? styles.xrcTop : '';
+                        const date = row.createdAt ? new Date(row.createdAt).toLocaleDateString('ko-KR') : '-';
+                        const values = [String(i + 1), row.name, `${(row.score ?? 0).toLocaleString()}점`, date];
+                        let cs = 1;
+                        return RANK_COLS_BF.map(col => {
+                          const start = cs; cs += col.span;
+                          const val = values[RANK_COLS_BF.indexOf(col)];
+                          return (
+                            <div
+                              key={`${row.id}-${col.label}`}
+                              className={[styles.xrankCell, alt, top].filter(Boolean).join(' ')}
+                              style={{ gridColumn: `${start} / span ${col.span}` }}
+                              title={val}
+                            >{val}</div>
+                          );
+                        });
+                      })
+                }
+
+                {/* 역대 1위 — 원본: background:#f3e9ff;color:#7b2ff7 */}
+                {alltimeBest
+                  ? RCell(
+                      `👑 역대 1위  ${alltimeBest.name} · ${(alltimeBest.score ?? 0).toLocaleString()}점 · Lv.${alltimeBest.gameLevel ?? 1} · ${new Date(alltimeBest.createdAt).toLocaleDateString('ko-KR')}`,
+                      1, RANK_TOTAL_BF, ['xrcWeekTitle'], { paddingLeft: 8, fontWeight: 'bold' }, 'alltime'
+                    )
+                  : RCell('👑 역대 1위  기록 없음', 1, RANK_TOTAL_BF, [], { color: '#aaa', paddingLeft: 8 }, 'alltime-empty')
+                }
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ══ 엑셀 모드: 룰 시트 — 원본 buildRulesSheet() 구조 ══ */}
+      {excel && activeSheet === 'rules' && (() => {
+        const extraCols = Math.max(10, Math.ceil((sheetSize.width || 600) / XL_CELL));
+        const totalHeaderCols = RULES_TOTAL_BF + extraCols;
+
+        type RuleCell = { text: string; colStart: number; span: number; cls: string[]; style?: CSSProperties };
+        const rows: RuleCell[][] = [];
+
+        function addRow(...cells: RuleCell[]) { rows.push(cells); }
+        function addSection(title: string) {
+          addRow({ text: title, colStart: 1, span: RULES_TOTAL_BF, cls: [], style: { background: '#e8f5e9', color: '#1a5c38', fontWeight: 'bold', borderTop: '1px solid #a5d6a7' } });
+        }
+        function addData(col1: string, col2: string, altIdx: number) {
+          const alt = altIdx % 2 === 1 ? ['xrcAlt'] : [] as string[];
+          addRow(
+            { text: col1, colStart: 1, span: 1, cls: alt, style: { justifyContent: 'center', color: '#888' } },
+            { text: col2, colStart: 2, span: RULES_TOTAL_BF - 1, cls: alt },
+          );
+        }
+
+        // 원본: buildRulesSheet() 구조
+        addRow({ text: '도박꾼 블록폴  —  게임 규칙', colStart: 1, span: RULES_TOTAL_BF, cls: ['xrcHeader'], style: { justifyContent: 'center', fontSize: 14, letterSpacing: 1 } });
+        addRow({ text: '', colStart: 1, span: RULES_TOTAL_BF, cls: [] });
+
+        addSection('■  조작법');
+        [
+          ['←→', '좌우 이동'],
+          ['↑', '회전'],
+          ['↓', '빠른 낙하 (+1점)'],
+          ['Space', '급강하 (+2점/칸)'],
+          ['Shift', '블록 홀드 (보관/교환, 블록당 1회)'],
+          ['P', '일시정지'],
+        ].forEach(([k, d], i) => addData(k, d, i));
+
+        addRow({ text: '', colStart: 1, span: RULES_TOTAL_BF, cls: [] });
+        addSection('■  점수 계산');
+        [
+          ['1줄', '100 × 레벨'],
+          ['2줄', '300 × 레벨'],
+          ['3줄', '500 × 레벨'],
+          ['4줄', '800 × 레벨 (블록폴)'],
+        ].forEach(([l, p], i) => addData(l, p, i));
+
+        addRow({ text: '', colStart: 1, span: RULES_TOTAL_BF, cls: [] });
+        addSection('■  레벨 시스템');
+        [
+          ['레벨', '10줄 제거마다 레벨 상승 (최대 11)'],
+          ['속도', '레벨이 높을수록 낙하 속도 증가'],
+        ].forEach(([k, v], i) => addData(k, v, i));
+
+        addRow({ text: '', colStart: 1, span: RULES_TOTAL_BF, cls: [] });
+        addSection('■  난이도별 시작 속도');
+        [
+          ['쉬움', '0.8초/칸 → 최대 0.21초'],
+          ['보통', '0.4초/칸 → 최대 0.09초'],
+          ['어려움', '0.18초/칸 → 최대 0.03초'],
+        ].forEach(([d, s], i) => addData(d, s, i));
+
+        addRow({ text: '', colStart: 1, span: RULES_TOTAL_BF, cls: [] });
+        addSection('■  점수 등록');
+        [
+          ['①', '게임 오버 후 이름을 입력하면 랭킹에 등록됩니다'],
+          ['②', '높은 점수일수록 높은 순위'],
+          ['③', '쉬움 / 보통 / 어려움 각각 별도 랭킹 운영'],
+        ].forEach(([n, t], i) => addData(n, t, i));
+
+        const extraRows = Math.max(10, Math.ceil((sheetSize.height || 400) / XL_CELL));
+        const totalRows = rows.length + extraRows;
+
+        return (
+          <div className={styles.xSheetWrapper}>
+            <div className={styles.xColHeaderRow}>
+              <div className={styles.xcorner} />
+              {Array.from({ length: totalHeaderCols }, (_, i) => (
+                <div key={i} className={styles.xch} style={{ width: XL_CELL, minWidth: XL_CELL }}>{bfColLabel(i)}</div>
+              ))}
+            </div>
+            <div className={styles.xBodyArea}>
+              <div className={styles.xRowNums}>
+                {Array.from({ length: totalRows }, (_, i) => (
+                  <div key={i} className={styles.xrn} style={{ height: XL_CELL }}>{i + 1}</div>
+                ))}
+              </div>
+              <div
+                className={styles.xRankGrid}
+                style={{ gridTemplateColumns: `repeat(${RULES_TOTAL_BF}, ${XL_CELL}px)`, gridAutoRows: `${XL_CELL}px` }}
+              >
+                {rows.map((rowCells, ri) =>
+                  rowCells.map((cell, ci) => (
+                    <div
+                      key={`${ri}-${ci}`}
+                      className={[styles.xrankCell, ...cell.cls.map(c => styles[c as keyof typeof styles])].filter(Boolean).join(' ')}
+                      style={{ gridColumn: `${cell.colStart} / span ${cell.span}`, ...cell.style }}
+                    >
+                      {cell.text}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 게임 오버 모달 */}
       {modalOpen && (

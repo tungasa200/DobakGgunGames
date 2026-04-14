@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import ExcelShell from '../components/excel/ExcelShell';
 import NormalHeader from '../components/normal/NormalHeader';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const BaseballBoard    = lazy(() => import('../games/baseball/BaseballBoard'));
 const MinesweeperBoard = lazy(() => import('../games/minesweeper/MinesweeperBoard'));
@@ -86,39 +87,43 @@ export default function GamePage({ excel }: { excel: boolean }) {
 
   if (excel) {
     return (
-      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>로딩 중...</div>}>
-        <ExcelShell
-          game={game}
-          gameName={name}
-          fileTitle={FILE_TITLES[game]}
-          cellSize={CELL_SIZES[game]}
-          rowHeight={ROW_HEIGHTS[game]}
-        >
-          {board}
-        </ExcelShell>
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>로딩 중...</div>}>
+          <ExcelShell
+            game={game}
+            gameName={name}
+            fileTitle={FILE_TITLES[game]}
+            cellSize={CELL_SIZES[game]}
+            rowHeight={ROW_HEIGHTS[game]}
+          >
+            {board}
+          </ExcelShell>
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
   // 일반 모드: 원본 HTML처럼 전체화면 + 게임별 배경색 + 공통 헤더
   return (
-    <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>로딩 중...</div>}>
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        overflow: 'auto',
-        background: BG_COLORS[game] ?? '#f0f0f0',
-        fontFamily: 'sans-serif',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        <NormalHeader
-          currentGame={game}
-          gameName={name}
-          accentColor={ACCENT_COLORS[game] ?? '#2c3e50'}
-        />
-        {board}
-      </div>
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>로딩 중...</div>}>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          overflow: 'auto',
+          background: BG_COLORS[game] ?? '#f0f0f0',
+          fontFamily: 'sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          <NormalHeader
+            currentGame={game}
+            gameName={name}
+            accentColor={ACCENT_COLORS[game] ?? '#2c3e50'}
+          />
+          {board}
+        </div>
+      </Suspense>
+    </ErrorBoundary>
   );
 }

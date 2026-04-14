@@ -492,6 +492,8 @@
   padding: 0;
   max-width: none;
   margin: 0;
+  /* xSheetWrapper가 뷰포트보다 넓을 때 왼쪽 잘림 방지 */
+  align-items: flex-start;
 }
 
 /* 엑셀 모드에서 난이도/정보바/컨트롤 숨김 (ExcelShell에서 제공) */
