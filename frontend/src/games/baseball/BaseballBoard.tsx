@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useBaseballGame, DIGIT_COUNT, MAX_ATTEMPTS, type Level } from './useBaseballGame';
-import { rankingsApi, startSession } from '../../api/rankings';
+import { startBaseballSession } from '../../api/baseball';
+import { rankingsApi } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './BaseballBoard.module.css';
@@ -46,7 +47,8 @@ export default function BaseballBoard({ excel = false }: Props) {
 
   async function initSession(lv: Level) {
     try {
-      sessionIdRef.current = await startSession('baseball', lv);
+      const res = await startBaseballSession(lv);
+      sessionIdRef.current = res.sessionId;
     } catch {
       sessionIdRef.current = '';
     }
@@ -71,8 +73,11 @@ export default function BaseballBoard({ excel = false }: Props) {
 
   useEffect(() => { if (state.won) setModalOpen(true); }, [state.won]);
   useEffect(() => {
-    if (state.gameOver) setHint(`게임 오버! 정답은 ${state.answer.join('')} 였습니다.`);
-  }, [state.gameOver, state.answer]);
+    if (state.gameOver) {
+      const answerStr = state.revealedAnswer ? ` 정답은 ${state.revealedAnswer} 였습니다.` : '';
+      setHint(`게임 오버!${answerStr}`);
+    }
+  }, [state.gameOver, state.revealedAnswer]);
 
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
@@ -137,9 +142,9 @@ export default function BaseballBoard({ excel = false }: Props) {
     if (!modalOpen) inputRef.current?.focus();
   }, [modalOpen]);
 
-  function handleGuess() {
+  async function handleGuess() {
     if (state.won || state.gameOver) return;
-    const err = guess(input.trim());
+    const err = await guess(input.trim(), sessionIdRef.current);
     if (err) { setHint(err); return; }
     setHint('');
     setInput('');

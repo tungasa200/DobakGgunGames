@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useSolitaireGame, type DrawMode, type Card, type Selection } from './useSolitaireGame';
 import { rankingsApi, startSession } from '../../api/rankings';
+import { sendMovesBatch } from '../../api/solitaire';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './CardBoard.module.css';
@@ -136,6 +137,8 @@ export default function CardBoard({ excel = false }: Props) {
   } = useSolitaireGame(drawMode);
 
   const sessionIdRef = useRef<string>('');
+  const lastSentMovesRef = useRef<number>(0);  // 마지막으로 서버에 보낸 누적 이동 수
+  const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState<Dims>({ cw: 70, ch: 98, gap: 8 });
 
@@ -162,6 +165,27 @@ export default function CardBoard({ excel = false }: Props) {
   const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({ weekly: [], alltime: null });
   const [rankLoading, setRankLoading] = useState(false);
   const [showRules, setShowRules] = useState(false);
+
+  // 이동 수 변화 감지 → 500ms 디바운스 후 배치 전송
+  useEffect(() => {
+    if (!sessionIdRef.current || state.status === 'idle') return;
+    const delta = state.moves - lastSentMovesRef.current;
+    if (delta <= 0) return;
+
+    if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
+    batchTimerRef.current = setTimeout(async () => {
+      const sid = sessionIdRef.current;
+      const d = state.moves - lastSentMovesRef.current;
+      if (sid && d > 0) {
+        try {
+          await sendMovesBatch(sid, d);
+          lastSentMovesRef.current = state.moves;
+        } catch {
+          // 네트워크 오류 시 조용히 무시 (다음 배치에서 누적)
+        }
+      }
+    }, 500);
+  }, [state.moves, state.status]);
 
   useEffect(() => {
     if (state.status === 'won') {
@@ -252,6 +276,8 @@ export default function CardBoard({ excel = false }: Props) {
   }, [excel, activeSheet]);
 
   function handleStartGame(dm: DrawMode) {
+    lastSentMovesRef.current = 0;
+    if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
     startGame(dm);
     startSession('solitaire', dm).then(id => { sessionIdRef.current = id; }).catch(() => { sessionIdRef.current = ''; });
   }
@@ -268,6 +294,18 @@ export default function CardBoard({ excel = false }: Props) {
     if (containsProfanity(name)) { setNameBanned(true); return; }
     setNameBanned(false);
     setSubmitState('loading');
+
+    // 잔여 이동 배치 플러시 (디바운스 취소 후 즉시 전송)
+    if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
+    const sid = sessionIdRef.current;
+    const remaining = state.moves - lastSentMovesRef.current;
+    if (sid && remaining > 0) {
+      try {
+        await sendMovesBatch(sid, remaining);
+        lastSentMovesRef.current = state.moves;
+      } catch { /* 무시 */ }
+    }
+
     try {
       await rankingsApi.submit('solitaire', {
         level: drawMode,

@@ -58,11 +58,11 @@ public class SessionService {
 
         sessionRepo.save(session);
 
-        return new SessionStartResponse(
-            sessionId,
-            now.toEpochMilli(),
-            expiresAt.toEpochMilli()
-        );
+        return SessionStartResponse.builder()
+            .sessionId(sessionId)
+            .startedAt(now.toEpochMilli())
+            .expiresAt(expiresAt.toEpochMilli())
+            .build();
     }
 
     /**

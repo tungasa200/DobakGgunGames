@@ -1,5 +1,10 @@
 import { useCallback, useReducer, useRef } from 'react';
 
+export interface AppleEvent {
+  t: number;           // 게임 시작 이후 경과 ms
+  cells: number[][];   // 제거된 셀 좌표 [[r, c], ...]
+}
+
 export const TIME_LIMIT = 120;
 
 const APPLE_WEIGHTS = [5, 5, 4, 4, 3, 3, 2, 2, 1]; // 1~9의 가중치
@@ -84,6 +89,8 @@ export function useAppleGame() {
   });
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const gameStartTimeRef = useRef<number>(0);
+  const eventsRef = useRef<AppleEvent[]>([]);
 
   // 사과 배치만 초기화 (타이머 시작 안 함) — 원본 initGame()에 대응
   const init = useCallback((rows: number, cols: number) => {
@@ -94,6 +101,8 @@ export function useAppleGame() {
 
   const start = useCallback((rows: number, cols: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
+    gameStartTimeRef.current = Date.now();
+    eventsRef.current = [];
     dispatch({ type: 'START', rows, cols });
     timerRef.current = setInterval(() => {
       dispatch({ type: 'TICK' });
@@ -108,8 +117,10 @@ export function useAppleGame() {
   }, []);
 
   const removeApples = useCallback((coords: { r: number; c: number }[]) => {
+    const t = gameStartTimeRef.current > 0 ? Date.now() - gameStartTimeRef.current : 0;
+    eventsRef.current.push({ t, cells: coords.map(({ r, c }) => [r, c]) });
     dispatch({ type: 'REMOVE', coords });
   }, []);
 
-  return { state, init, start, end, removeApples };
+  return { state, init, start, end, removeApples, eventsRef };
 }

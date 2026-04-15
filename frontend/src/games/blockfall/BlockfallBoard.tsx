@@ -791,6 +791,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
         name,
         score: scoreRef.current,
         gameLevel: gameLevelRef.current,
+        linesCleared: linesRef.current,
         sessionId: sessionIdRef.current,
       });
       setModalOpen(false);

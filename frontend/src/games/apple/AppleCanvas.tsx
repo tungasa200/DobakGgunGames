@@ -114,7 +114,7 @@ function formatTime(s: number) {
 }
 
 export default function AppleCanvas({ excel = false }: Props) {
-  const { state, init, start, end, removeApples } = useAppleGame();
+  const { state, init, start, end, removeApples, eventsRef } = useAppleGame();
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const wrapRef      = useRef<HTMLDivElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
@@ -486,7 +486,13 @@ export default function AppleCanvas({ excel = false }: Props) {
     setNameBanned(false);
     setSubmitState('loading');
     try {
-      await rankingsApi.submit('apple', { level: 'normal', name, score: state.score, sessionId: sessionIdRef.current });
+      await rankingsApi.submit('apple', {
+        level: 'normal',
+        name,
+        score: state.score,
+        sessionId: sessionIdRef.current,
+        events: eventsRef.current,
+      });
       setModalOpen(false);
       if (excel) {
         loadExcelRanking();

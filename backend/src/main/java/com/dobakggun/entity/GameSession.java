@@ -40,6 +40,9 @@ public class GameSession {
     @Builder.Default
     private boolean ipMismatch = false;
 
+    @Column(columnDefinition = "TEXT")
+    private String extra;  // 게임별 추가 데이터 (JSON string)
+
     public enum SessionState {
         ACTIVE, SUBMITTED, EXPIRED
     }

@@ -12,6 +12,11 @@ export interface RankingEntry {
   createdAt: string;
 }
 
+export interface AppleEventPayload {
+  t: number;
+  cells: number[][];
+}
+
 export interface SubmitPayload {
   level: string;
   name: string;
@@ -20,6 +25,8 @@ export interface SubmitPayload {
   attempts?: number;
   moves?: number;
   gameLevel?: number;
+  linesCleared?: number;
+  events?: AppleEventPayload[];
   sessionId: string;
 }
 

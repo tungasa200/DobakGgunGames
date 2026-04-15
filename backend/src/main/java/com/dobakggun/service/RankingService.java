@@ -29,8 +29,11 @@ public class RankingService {
     private final BlockfallRankingRepository blockfallRepo;
     private final SolitaireRankingRepository solitaireRepo;
     private final AppleRankingRepository appleRepo;
-    private final HmacService hmacService;
     private final SessionService sessionService;
+    private final BaseballSessionService baseballSessionService;
+    private final SolitaireMoveService solitaireMoveService;
+    private final AppleValidationService appleValidationService;
+    private final BlockfallValidationService blockfallValidationService;
     private final IpHashUtil ipHashUtil;
 
     public List<RankingResponse> getWeeklyRankings(String game, String level) {
@@ -61,15 +64,19 @@ public class RankingService {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "잠시 후 다시 시도해주세요.");
         }
 
-        // 세션 기반 검증 (Phase 1) 또는 레거시 HMAC 검증
-        if (req.getSessionId() != null) {
-            sessionService.validateAndConsume(req.getSessionId(), game, httpReq);
-        } else {
-            String value = extractValue(game, req);
-            if (req.getTimestamp() == null || req.getToken() == null
-                    || !hmacService.verify(game, req.getLevel(), value, req.getTimestamp(), req.getToken())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 요청입니다.");
-            }
+        // 세션 기반 검증
+        if (req.getSessionId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 요청입니다.");
+        }
+        GameSession session = "baseball".equals(game)
+            ? baseballSessionService.validateWinAndConsume(req.getSessionId(), httpReq)
+            : sessionService.validateAndConsume(req.getSessionId(), game, httpReq);
+
+        // Phase 2: 게임별 서버 검증
+        switch (game) {
+            case "solitaire" -> solitaireMoveService.validateMoves(session, req);
+            case "apple"     -> appleValidationService.validate(session, req);
+            case "blockfall" -> blockfallValidationService.validate(session, req);
         }
 
         // 점수 범위 검증
@@ -130,18 +137,6 @@ public class RankingService {
                     .level(req.getLevel()).name(req.getName().trim())
                     .score(req.getScore()).ipHash(ipHash).build());
             default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다.");
-        };
-    }
-
-    private String extractValue(String game, RankingRequest req) {
-        return switch (game) {
-            // 클라이언트가 toFixed(2) 문자열로 서명하므로 서버도 동일 포맷으로 비교
-            case "minesweeper" -> String.format("%.2f", req.getTime());
-            // 클라이언트가 정수로 서명하므로 소수점 없이 비교
-            case "solitaire"   -> String.valueOf(req.getTime().longValue());
-            case "baseball"    -> String.valueOf(req.getAttempts());
-            case "blockfall", "apple" -> String.valueOf(req.getScore());
-            default -> "";
         };
     }
 
