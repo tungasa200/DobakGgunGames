@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMinesweeperGame, type Level } from './useMinesweeperGame';
-import { rankingsApi, startSession, type RankingEntry } from '../../api/rankings';
+import { startMinesweeperSession } from '../../api/minesweeper';
+import { rankingsApi, type RankingEntry } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './MinesweeperBoard.module.css';
@@ -40,7 +41,7 @@ interface Props { excel?: boolean }
 
 export default function MinesweeperBoard({ excel = false }: Props) {
   const [level, setLevel] = useState<Level>('beginner');
-  const { state, reset, resetCustom, revealCell, chordClick, toggleMark } = useMinesweeperGame('beginner');
+  const { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark } = useMinesweeperGame('beginner');
 
   // 커스텀 패널
   const [showCustom, setShowCustom] = useState(false);
@@ -66,12 +67,31 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   const sessionIdRef = useRef<string>('');
 
   // 첫 클릭 시 세션 발급
-  function handleRevealCell(r: number, c: number) {
-    if (state.status === 'idle') {
-      const rankLv = level === 'custom' ? 'beginner' : level;
-      startSession('minesweeper', rankLv).then(id => { sessionIdRef.current = id; }).catch(() => { sessionIdRef.current = ''; });
+  async function handleRevealCell(r: number, c: number) {
+    if (state.status !== 'idle') {
+      revealCell(r, c);
+      return;
     }
-    revealCell(r, c);
+
+    const rankLv = level === 'custom' ? 'beginner' : level as Exclude<typeof level, 'custom'>;
+
+    if (level === 'custom') {
+      // 커스텀 난이도: 서버 보드 없이 클라이언트 placeMines 사용, 세션은 fire-and-forget
+      startMinesweeperSession(rankLv).then(res => { sessionIdRef.current = res.sessionId; }).catch(() => { sessionIdRef.current = ''; });
+      revealCell(r, c);
+      return;
+    }
+
+    // 프리셋 난이도: 서버에서 보드를 받아 적용 후 오픈 (Phase 3)
+    try {
+      const res = await startMinesweeperSession(rankLv, { r, c });
+      sessionIdRef.current = res.sessionId;
+      revealFirstCellWithServerBoard(res.adjMines, r, c);
+    } catch {
+      // 서버 오류 시 클라이언트 placeMines 로 폴백
+      sessionIdRef.current = '';
+      revealCell(r, c);
+    }
   }
 
   // 양클릭 추적

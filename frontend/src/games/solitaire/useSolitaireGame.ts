@@ -41,6 +41,11 @@ interface State {
 
 type Action =
   | { type: 'START'; drawMode: DrawMode }
+  /**
+   * Phase 3: 서버가 생성한 덱 순서("A♠", "10♥" …)를 사용해 게임 초기화.
+   * 클라이언트 Fisher-Yates 셔플을 건너뜀.
+   */
+  | { type: 'START_WITH_DECK'; drawMode: DrawMode; deck: string[] }
   | { type: 'SET_GAME'; game: GameState; saveHistory?: boolean }
   | { type: 'UNDO' }
   | { type: 'TICK' }
@@ -66,6 +71,31 @@ function buildDeck(): Card[] {
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   return deck;
+}
+
+/** 서버 덱 문자열 ("A♠", "10♥" …) → Card 배열 */
+function parseDeckStrings(deckStrings: string[]): Card[] {
+  return deckStrings.map((s) => {
+    // 마지막 문자가 suit
+    const suit = s.slice(-1) as Suit;
+    const val  = s.slice(0, -1);
+    const num  = VALUES.indexOf(val) + 1;  // 1=A … 13=K
+    return { suit, val, num, color: REDS.has(suit) ? 'red' : 'black', faceUp: false };
+  });
+}
+
+/** Phase 3: 서버 덱 순서를 그대로 사용해 초기 게임 구성 (셔플 없음) */
+function buildInitialGameFromDeck(deckStrings: string[]): GameState {
+  const deck     = parseDeckStrings(deckStrings);
+  const tableaus: Card[][] = Array.from({ length: 7 }, () => []);
+  for (let i = 0; i < 7; i++) {
+    for (let j = 0; j <= i; j++) {
+      const card = deck.pop()!;
+      if (j === i) card.faceUp = true;
+      tableaus[i].push(card);
+    }
+  }
+  return { stock: deck, waste: [], foundations: [[], [], [], []], tableaus, selected: null };
 }
 
 function buildInitialGame(drawMode: DrawMode): GameState {
@@ -105,6 +135,18 @@ function reducer(state: State, action: Action): State {
       return {
         drawMode: action.drawMode,
         game: buildInitialGame(action.drawMode),
+        history: [],
+        elapsed: 0,
+        moves: 0,
+        status: 'idle',
+        timerRunning: false,
+        autoCompleting: false,
+      };
+
+    case 'START_WITH_DECK':
+      return {
+        drawMode: action.drawMode,
+        game: buildInitialGameFromDeck(action.deck),
         history: [],
         elapsed: 0,
         moves: 0,
@@ -207,6 +249,12 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
     if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
     dispatch({ type: 'START', drawMode });
   }, [state.drawMode]);
+
+  /** Phase 3: 서버가 제공한 덱 순서로 게임 시작 (클라이언트 셔플 제거) */
+  const startGameWithDeck = useCallback((drawMode: DrawMode, deck: string[]) => {
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    dispatch({ type: 'START_WITH_DECK', drawMode, deck });
+  }, []);
 
   // ── 스톡 드로우 ────────────────────────────────────────────────
   const drawStock = useCallback(() => {
@@ -432,6 +480,7 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
   return {
     state,
     startGame,
+    startGameWithDeck,
     drawStock,
     selectOrMove,
     clickWaste,

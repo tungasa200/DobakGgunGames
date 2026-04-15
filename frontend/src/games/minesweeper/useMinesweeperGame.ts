@@ -29,6 +29,8 @@ interface State {
   status: GameStatus;
   elapsed: number;
   timerRunning: boolean;
+  /** Phase 3: 서버에서 받은 보드인 경우 true → 첫 클릭에서 placeMines 생략 */
+  boardFromServer: boolean;
 }
 
 type Action =
@@ -37,7 +39,12 @@ type Action =
   | { type: 'MARK'; r: number; c: number; mark: CellMark; flagDelta: number }
   | { type: 'WIN'; elapsed: number }
   | { type: 'LOSE'; newBoard: Cell[][] }
-  | { type: 'TICK'; elapsed: number };
+  | { type: 'TICK'; elapsed: number }
+  /**
+   * Phase 3: 서버 adjMines 보드를 적용한 뒤 firstClick 셀을 즉시 오픈.
+   * adjMines[r][c] === -1 → 지뢰 셀 (서버가 firstClick 안전 보장).
+   */
+  | { type: 'FIRST_REVEAL_SERVER'; adjMines: number[][]; firstR: number; firstC: number };
 
 function emptyBoard(rows: number, cols: number): Cell[][] {
   return Array.from({ length: rows }, () =>
@@ -67,6 +74,7 @@ function reducer(state: State, action: Action): State {
         status: 'idle',
         elapsed: 0,
         timerRunning: false,
+        boardFromServer: false,
       };
     }
     case 'REVEAL':
@@ -88,6 +96,41 @@ function reducer(state: State, action: Action): State {
       return { ...state, board: action.newBoard, status: 'lost', timerRunning: false };
     case 'TICK':
       return { ...state, elapsed: action.elapsed };
+
+    case 'FIRST_REVEAL_SERVER': {
+      // Phase 3: adjMines 배열로 보드를 구성한 뒤 firstClick 셀 즉시 오픈
+      const { adjMines, firstR, firstC } = action;
+      const rows = adjMines.length;
+      const cols = adjMines[0]?.length ?? 0;
+
+      const newBoard: Cell[][] = adjMines.map((row) =>
+        row.map((val) => ({
+          isMine:     val === -1,
+          isRevealed: false,
+          mark:       'none' as CellMark,
+          adjMines:   val === -1 ? 0 : val,
+        }))
+      );
+
+      // 서버가 firstClick 안전을 보장하므로 지뢰 셀 클릭은 발생하지 않아야 함
+      if (newBoard[firstR]?.[firstC]?.isMine) {
+        return { ...state, board: revealAllMines(newBoard), status: 'lost', timerRunning: false, boardFromServer: true };
+      }
+
+      const { board: revealed, revealed: count } = revealCells(newBoard, rows, cols, firstR, firstC);
+      const won = count === rows * cols - state.totalMines;
+
+      return {
+        ...state,
+        board:         revealed,
+        revealedCount: count,
+        status:        won ? 'won' : 'playing',
+        timerRunning:  !won,
+        elapsed:       0,
+        boardFromServer: true,
+      };
+    }
+
     default:
       return state;
   }
@@ -167,6 +210,7 @@ function initState(level: Exclude<Level, 'custom'>): State {
     status: 'idle',
     elapsed: 0,
     timerRunning: false,
+    boardFromServer: false,
   };
 }
 
@@ -197,14 +241,22 @@ export function useMinesweeperGame(initialLevel: Exclude<Level, 'custom'> = 'beg
     dispatch({ type: 'RESET', level: 'custom', customRows: rows, customCols: cols, customMines: mines });
   }, []);
 
+  /**
+   * Phase 3: 서버 adjMines 보드를 적용하고 첫 셀을 오픈.
+   * 단일 dispatch 로 처리해 React 상태 타이밍 문제를 회피.
+   */
+  const revealFirstCellWithServerBoard = useCallback((adjMines: number[][], r: number, c: number) => {
+    dispatch({ type: 'FIRST_REVEAL_SERVER', adjMines, firstR: r, firstC: c });
+  }, []);
+
   const revealCell = useCallback((r: number, c: number) => {
     if (state.status === 'won' || state.status === 'lost') return;
     const cell = state.board[r][c];
     if (cell.isRevealed || cell.mark === 'flag') return;
 
-    // 첫 클릭 — 지뢰 배치
+    // 첫 클릭 — 서버 보드가 없을 때만 클라이언트에서 지뢰 배치
     let board = state.board;
-    if (state.status === 'idle') {
+    if (state.status === 'idle' && !state.boardFromServer) {
       board = placeMines(board, state.rows, state.cols, state.totalMines, r, c);
     }
 
@@ -282,5 +334,5 @@ export function useMinesweeperGame(initialLevel: Exclude<Level, 'custom'> = 'beg
     dispatch({ type: 'MARK', r, c, mark, flagDelta });
   }, [state.status, state.board]);
 
-  return { state, reset, resetCustom, revealCell, chordClick, toggleMark };
+  return { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark };
 }

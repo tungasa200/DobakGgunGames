@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppleGame } from './useAppleGame';
-import { rankingsApi, startSession } from '../../api/rankings';
+import { rankingsApi } from '../../api/rankings';
+import { startAppleSession } from '../../api/apple';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './AppleCanvas.module.css';
@@ -114,7 +115,7 @@ function formatTime(s: number) {
 }
 
 export default function AppleCanvas({ excel = false }: Props) {
-  const { state, init, start, end, removeApples, eventsRef } = useAppleGame();
+  const { state, init, start, startWithBoard, end, removeApples, eventsRef } = useAppleGame();
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const wrapRef      = useRef<HTMLDivElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
@@ -441,17 +442,21 @@ export default function AppleCanvas({ excel = false }: Props) {
   }, [layout, state.apples, state.status, draw, removeApples]);
 
   async function handleStart() {
-    const l = (excel ? layout : calcLayout()) ?? layout;
-    start(l.rows, l.cols);
     setMsg('사과를 드래그하세요!');
     setModalOpen(false);
     setPlayerName('');
     setSubmitState('idle');
     setDragSum(null);
     try {
-      sessionIdRef.current = await startSession('apple', 'normal');
+      // Phase 3: 서버 보드로 게임 시작 (클라이언트 randomApple 제거)
+      const res = await startAppleSession();
+      sessionIdRef.current = res.sessionId;
+      startWithBoard(res.board);
     } catch {
+      // 서버 오류 시 클라이언트 난수로 폴백
       sessionIdRef.current = '';
+      const l = (excel ? layout : calcLayout()) ?? layout;
+      start(l.rows, l.cols);
     }
   }
 

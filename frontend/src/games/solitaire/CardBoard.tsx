@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useSolitaireGame, type DrawMode, type Card, type Selection } from './useSolitaireGame';
-import { rankingsApi, startSession } from '../../api/rankings';
-import { sendMovesBatch } from '../../api/solitaire';
+import { rankingsApi } from '../../api/rankings';
+import { sendMovesBatch, startSolitaireSession } from '../../api/solitaire';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './CardBoard.module.css';
@@ -131,7 +131,7 @@ function CardEl({
 export default function CardBoard({ excel = false }: Props) {
   const [drawMode, setDrawMode] = useState<DrawMode>('draw1');
   const {
-    state, startGame, drawStock,
+    state, startGame, startGameWithDeck, drawStock,
     selectOrMove, clickWaste, clickFoundation, clickTableau,
     autoMoveToFoundation, undo,
   } = useSolitaireGame(drawMode);
@@ -275,11 +275,19 @@ export default function CardBoard({ excel = false }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [excel, activeSheet]);
 
-  function handleStartGame(dm: DrawMode) {
+  async function handleStartGame(dm: DrawMode) {
     lastSentMovesRef.current = 0;
     if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
-    startGame(dm);
-    startSession('solitaire', dm).then(id => { sessionIdRef.current = id; }).catch(() => { sessionIdRef.current = ''; });
+    try {
+      // Phase 3: 서버 덱으로 게임 초기화 (클라이언트 셔플 제거)
+      const res = await startSolitaireSession(dm);
+      sessionIdRef.current = res.sessionId;
+      startGameWithDeck(dm, res.deck);
+    } catch {
+      // 서버 오류 시 클라이언트 셔플로 폴백
+      sessionIdRef.current = '';
+      startGame(dm);
+    }
   }
 
   // ── 데이터 ──────────────────────────────────────────────────────────

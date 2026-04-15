@@ -32,7 +32,11 @@ interface State {
 
 type Action =
   | { type: 'INIT'; rows: number; cols: number }
+  /** Phase 3: 서버가 생성한 보드로 초기화 (클라이언트 randomApple 제거) */
+  | { type: 'INIT_WITH_BOARD'; board: number[][] }
   | { type: 'START'; rows: number; cols: number }
+  /** Phase 3: 서버 보드로 게임 시작 */
+  | { type: 'START_WITH_BOARD'; board: number[][] }
   | { type: 'TICK' }
   | { type: 'REMOVE'; coords: { r: number; c: number }[] }
   | { type: 'END' };
@@ -54,11 +58,29 @@ function reducer(state: State, action: Action): State {
         timeLeft: TIME_LIMIT,
         status: 'idle',
       };
+    case 'INIT_WITH_BOARD':
+      return {
+        apples: action.board as Apple[][],
+        rows: action.board.length,
+        cols: action.board[0]?.length ?? 0,
+        score: 0,
+        timeLeft: TIME_LIMIT,
+        status: 'idle',
+      };
     case 'START':
       return {
         apples: makeApples(action.rows, action.cols),
         rows: action.rows,
         cols: action.cols,
+        score: 0,
+        timeLeft: TIME_LIMIT,
+        status: 'playing',
+      };
+    case 'START_WITH_BOARD':
+      return {
+        apples: action.board as Apple[][],
+        rows: action.board.length,
+        cols: action.board[0]?.length ?? 0,
         score: 0,
         timeLeft: TIME_LIMIT,
         status: 'playing',
@@ -109,6 +131,17 @@ export function useAppleGame() {
     }, 1000);
   }, []);
 
+  /** Phase 3: 서버 보드로 게임 시작 (클라이언트 randomApple 제거) */
+  const startWithBoard = useCallback((board: number[][]) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    gameStartTimeRef.current = Date.now();
+    eventsRef.current = [];
+    dispatch({ type: 'START_WITH_BOARD', board });
+    timerRef.current = setInterval(() => {
+      dispatch({ type: 'TICK' });
+    }, 1000);
+  }, []);
+
   // END 처리는 컴포넌트에서 timeLeft === 0 감지 후 호출
   const end = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -122,5 +155,5 @@ export function useAppleGame() {
     dispatch({ type: 'REMOVE', coords });
   }, []);
 
-  return { state, init, start, end, removeApples, eventsRef };
+  return { state, init, start, startWithBoard, end, removeApples, eventsRef };
 }

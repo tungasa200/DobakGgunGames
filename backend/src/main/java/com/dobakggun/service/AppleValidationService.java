@@ -2,17 +2,23 @@ package com.dobakggun.service;
 
 import com.dobakggun.dto.RankingRequest;
 import com.dobakggun.entity.GameSession;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppleValidationService {
+
+    private final ObjectMapper objectMapper;
 
     // 사과게임 고정 제한 시간 120초 + 여유 5초
     private static final long MAX_GAME_MS = 125_000L;
@@ -65,6 +71,66 @@ public class AppleValidationService {
             } else {
                 rapidCount = 0;
             }
+        }
+
+        // 5. Phase 3 — 서버 보드가 있을 때 좌표 및 합 완전 검증
+        int[][] board = extractBoard(session.getExtra());
+        if (board != null) {
+            validateWithBoard(events, board);
+        }
+    }
+
+    /**
+     * 서버 보드 기반 이벤트 완전 검증.
+     * 각 이벤트의 좌표가 보드 범위 내에 있고, 해당 셀들의 합이 10인지 검증.
+     */
+    private void validateWithBoard(List<RankingRequest.AppleEvent> events, int[][] board) {
+        int rows = board.length;
+        int cols = rows > 0 ? board[0].length : 0;
+
+        for (RankingRequest.AppleEvent event : events) {
+            List<List<Integer>> cells = event.getCells();
+            if (cells == null) continue;
+
+            int sum = 0;
+            for (List<Integer> coord : cells) {
+                if (coord == null || coord.size() < 2) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "이벤트 좌표 형식이 잘못되었습니다.");
+                }
+                int r = coord.get(0), c = coord.get(1);
+                if (r < 0 || r >= rows || c < 0 || c >= cols) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "이벤트 좌표가 보드 범위를 벗어났습니다.");
+                }
+                sum += board[r][c];
+            }
+            if (sum != 10) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "이벤트 셀의 합이 10이 아닙니다.");
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private int[][] extractBoard(String extra) {
+        if (extra == null) return null;
+        try {
+            Map<String, Object> map = objectMapper.readValue(extra, new TypeReference<>() {});
+            Object boardObj = map.get("board");
+            if (!(boardObj instanceof List)) return null;
+            List<List<Integer>> raw = (List<List<Integer>>) boardObj;
+            int rows = raw.size();
+            if (rows == 0) return null;
+            int cols = raw.get(0).size();
+            int[][] board = new int[rows][cols];
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    board[r][c] = ((Number) raw.get(r).get(c)).intValue();
+            return board;
+        } catch (Exception e) {
+            log.warn("Apple board extraction failed: {}", e.getMessage());
+            return null;
         }
     }
 }
