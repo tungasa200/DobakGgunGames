@@ -212,7 +212,7 @@ export default function AppleCanvas({ excel = false }: Props) {
   }, [state.timeLeft, state.status, end]);
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
 
   // 일반 모드: 최초 로딩 시 자동 로드
   useEffect(() => {
@@ -460,6 +460,14 @@ export default function AppleCanvas({ excel = false }: Props) {
     }
   }
 
+  // 엑셀모드 플러스 버튼 새 게임 콜백 등록
+  const handleStartRef = useRef(handleStart);
+  handleStartRef.current = handleStart;
+  useEffect(() => {
+    if (excel) registerNewGame(() => handleStartRef.current());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, registerNewGame]);
+
   // 리본 게임 그룹 등록 — 원본 ribbonGroupHtml에 대응
   useEffect(() => {
     if (!excel) {
@@ -499,6 +507,8 @@ export default function AppleCanvas({ excel = false }: Props) {
         events: eventsRef.current,
       });
       setModalOpen(false);
+      setPlayerName('');
+      setSubmitState('idle');
       if (excel) {
         loadExcelRanking();
       } else {

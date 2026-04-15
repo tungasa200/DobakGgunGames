@@ -209,7 +209,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const COLORS = excel ? COLORS_EXCEL : COLORS_NORMAL;
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     const colLabel = (n: number) => String.fromCharCode(65 + n);
@@ -795,6 +795,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
         sessionId: sessionIdRef.current,
       });
       setModalOpen(false);
+      setPlayerName('');
+      setSubmitState('idle');
       loadRanking(difficulty);
       loadAlltime(difficulty);
     } catch {
@@ -849,6 +851,14 @@ export default function BlockfallBoard({ excel = false }: Props) {
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [excel, difficulty, gameStatus, setRibbonGameGroup]);
+
+  // 엑셀모드 플러스 버튼 새 게임 콜백 등록
+  const newGameFnRef = useRef<() => void>(() => {});
+  newGameFnRef.current = () => startGame();
+  useEffect(() => {
+    if (excel) registerNewGame(() => newGameFnRef.current());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, registerNewGame]);
 
   // ===== 엑셀 모드: ranking 시트 활성 시 랭킹 로드 =====
   useEffect(() => {

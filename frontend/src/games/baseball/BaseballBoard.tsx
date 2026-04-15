@@ -80,7 +80,7 @@ export default function BaseballBoard({ excel = false }: Props) {
   }, [state.gameOver, state.revealedAnswer]);
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
   useEffect(() => {
     if (!excel) return;
     setFormula('A1', `=BASEBALL_TRY(attempt,${state.attempts})`);
@@ -124,6 +124,14 @@ export default function BaseballBoard({ excel = false }: Props) {
     );
   }, [excel, level, handleLevelChange, reset, setRibbonGameGroup]);
 
+  // 엑셀모드 플러스 버튼 새 게임 콜백 등록
+  const newGameFnRef = useRef<() => void>(() => {});
+  newGameFnRef.current = () => { reset(level); setInput(''); setHint(''); initSession(level); };
+  useEffect(() => {
+    if (excel) registerNewGame(() => newGameFnRef.current());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, registerNewGame]);
+
   // 일반 모드: 최초 로딩 시 자동 로드
   useEffect(() => {
     if (excel) return;
@@ -164,6 +172,8 @@ export default function BaseballBoard({ excel = false }: Props) {
       setSubmitState('error');
     }
     setModalOpen(false);
+    setPlayerName('');
+    setSubmitState('idle');
     loadRanking(level);
   }
 

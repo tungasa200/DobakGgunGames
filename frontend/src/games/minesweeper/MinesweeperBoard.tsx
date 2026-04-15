@@ -108,7 +108,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   }, [state.status]);
 
   // ===== Excel Shell 연동 =====
-  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
 
   // 일반 모드: 최초 로딩 시 자동 로드
   useEffect(() => {
@@ -169,6 +169,14 @@ export default function MinesweeperBoard({ excel = false }: Props) {
       </div>
     );
   }, [excel, level, handleLevelChange, reset, setRibbonGameGroup]);
+
+  // 엑셀모드 플러스 버튼 새 게임 콜백 등록
+  const newGameFnRef = useRef<() => void>(() => {});
+  newGameFnRef.current = () => reset(level);
+  useEffect(() => {
+    if (excel) registerNewGame(() => newGameFnRef.current());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, registerNewGame]);
 
   // 셀 크기: 엑셀 모드는 30px 고정, 일반 모드는 30px 고정 (원본과 동일)
   const CELL_SIZE = 30;
@@ -234,6 +242,8 @@ export default function MinesweeperBoard({ excel = false }: Props) {
       const roundedTime = parseFloat(state.elapsed.toFixed(2));
       await rankingsApi.submit('minesweeper', { level: rankLv, name, time: roundedTime, sessionId: sessionIdRef.current });
       setModalOpen(false);
+      setPlayerName('');
+      setSubmitState('idle');
       loadRanking(rankLv);
     } catch {
       setSubmitState('error');

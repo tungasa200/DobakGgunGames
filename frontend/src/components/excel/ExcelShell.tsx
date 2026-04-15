@@ -37,7 +37,7 @@ export interface ExcelShellProps {
 // ===== 내부: 크롬 렌더러 (Context 소비) =====
 function ExcelShellInner({ game, gameName, fileTitle, cellSize = 96, rowHeight, children }: ExcelShellProps) {
   const rh = rowHeight ?? cellSize;
-  const { formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet, ribbonGameGroup, setSheetSize } = useExcelShell();
+  const { formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet, ribbonGameGroup, setSheetSize, triggerNewGame } = useExcelShell();
   const navigate = useNavigate();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -280,7 +280,7 @@ function ExcelShellInner({ game, gameName, fileTitle, cellSize = 96, rowHeight, 
         <button
           className={styles.sheetAddBtn}
           title="새 게임"
-          onClick={() => setActiveSheet('game')}
+          onClick={() => { setActiveSheet('game'); triggerNewGame(); }}
         >＋</button>
         {SHEET_TABS.map(tab => (
           <div

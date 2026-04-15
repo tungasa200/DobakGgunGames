@@ -27,6 +27,9 @@ interface ExcelShellContextValue {
   // 시트 영역 크기 (게임 컴포넌트에서 extra cols/rows 계산용)
   sheetSize: { width: number; height: number };
   setSheetSize: (size: { width: number; height: number }) => void;
+  // 새 게임 콜백 (플러스 버튼용)
+  registerNewGame: (cb: () => void) => void;
+  triggerNewGame: () => void;
 }
 
 const noop = () => {};
@@ -43,6 +46,8 @@ const defaultValue: ExcelShellContextValue = {
   setStatusItems: noop,
   sheetSize: { width: 0, height: 0 },
   setSheetSize: noop,
+  registerNewGame: noop,
+  triggerNewGame: noop,
 };
 
 export const ExcelShellContext = createContext<ExcelShellContextValue>(defaultValue);
@@ -69,8 +74,17 @@ export function ExcelShellProvider({ children }: { children: ReactNode }) {
     setStatusItemsState(items);
   }, []);
 
+  // 새 게임 콜백 (게임 컴포넌트가 등록, 플러스 버튼이 호출)
+  const newGameCallbackRef = useRef<(() => void) | null>(null);
+  const registerNewGame = useCallback((cb: () => void) => {
+    newGameCallbackRef.current = cb;
+  }, []);
+  const triggerNewGame = useCallback(() => {
+    newGameCallbackRef.current?.();
+  }, []);
+
   return (
-    <ExcelShellContext.Provider value={{ formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet, ribbonGameGroup, setRibbonGameGroup, setFormula, setStatusItems, sheetSize, setSheetSize }}>
+    <ExcelShellContext.Provider value={{ formulaCell, formulaContent, statusItems, activeSheet, setActiveSheet, ribbonGameGroup, setRibbonGameGroup, setFormula, setStatusItems, sheetSize, setSheetSize, registerNewGame, triggerNewGame }}>
       {children}
     </ExcelShellContext.Provider>
   );

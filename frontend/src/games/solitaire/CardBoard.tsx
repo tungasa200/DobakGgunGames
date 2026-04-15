@@ -194,7 +194,7 @@ export default function CardBoard({ excel = false }: Props) {
   }, [state.status]);
 
   // ── Excel Shell 연동 ──────────────────────────────────────────────
-  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize } = useExcelShell();
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
 
   // 상태바 업데이트
   useEffect(() => {
@@ -261,6 +261,14 @@ export default function CardBoard({ excel = false }: Props) {
     );
   }, [excel, drawMode, state.history.length, setRibbonGameGroup, startGame, undo]);
 
+  // 엑셀모드 플러스 버튼 새 게임 콜백 등록
+  const newGameFnRef = useRef<() => void>(() => {});
+  newGameFnRef.current = () => handleStartGame(drawMode);
+  useEffect(() => {
+    if (excel) registerNewGame(() => newGameFnRef.current());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [excel, registerNewGame]);
+
   // 일반 모드: 최초 로딩 시 자동 로드
   useEffect(() => {
     if (excel) return;
@@ -323,6 +331,8 @@ export default function CardBoard({ excel = false }: Props) {
         sessionId: sessionIdRef.current,
       });
       setModalOpen(false);
+      setPlayerName('');
+      setSubmitState('idle');
       loadRanking(drawMode);
     } catch {
       setSubmitState('error');
