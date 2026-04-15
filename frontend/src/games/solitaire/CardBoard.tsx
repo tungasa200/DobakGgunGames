@@ -513,7 +513,6 @@ export default function CardBoard({ excel = false }: Props) {
             ))}
           </div>
           <button className={styles.startBtn} onClick={() => handleStartGame(drawMode)}>새 게임</button>
-          <button className={styles.undoBtn} disabled={!state.history.length} onClick={undo}>↩ 되돌리기</button>
         </div>
       )}
 
@@ -523,6 +522,7 @@ export default function CardBoard({ excel = false }: Props) {
           <span className={styles.statusText}>{statusText}</span>
           <span className={styles.timer}>⏱ {formatTime(state.elapsed)}</span>
           <span className={styles.moves}>🃏 {state.moves}수</span>
+          <button className={styles.undoBtn} disabled={!state.history.length} onClick={undo}>↩ 되돌리기</button>
         </div>
       )}
 
