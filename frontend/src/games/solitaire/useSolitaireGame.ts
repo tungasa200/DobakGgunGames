@@ -351,6 +351,8 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
     const stack = getStack(g, zone, col);
     const card = stack[index];
     if (!card || !card.faceUp) return;
+    // 타블로에서는 최상단 카드만 파운데이션으로 이동 가능
+    if (zone === 'tableau' && index !== stack.length - 1) return;
 
     const withSel = { ...g, selected: { zone, col, index } };
     for (let fi = 0; fi < 4; fi++) {

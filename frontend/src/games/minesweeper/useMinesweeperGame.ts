@@ -192,7 +192,7 @@ function revealCells(board: Cell[][], rows: number, cols: number, startR: number
 function revealAllMines(board: Cell[][]): Cell[][] {
   return board.map((row) =>
     row.map((cell) =>
-      cell.isMine && !cell.isRevealed ? { ...cell, isRevealed: true } : cell
+      cell.isMine && !cell.isRevealed && cell.mark !== 'flag' ? { ...cell, isRevealed: true } : cell
     )
   );
 }

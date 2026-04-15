@@ -92,10 +92,19 @@
 }
 
 /* Zone — 원본: .zone { border: 2px dashed rgba(255,255,255,0.3); border-radius: 6px; } */
+/* iOS Safari는 border-style:dashed 를 다르게 렌더링하므로 background-image로 직접 그림 */
 .zone {
   position: relative;
-  border: 2px dashed rgba(255,255,255,0.3);
+  border: none;
   border-radius: 6px;
+  background-image:
+    repeating-linear-gradient(0deg,   rgba(255,255,255,0.3) 0, rgba(255,255,255,0.3) 5px, transparent 5px, transparent 10px),
+    repeating-linear-gradient(90deg,  rgba(255,255,255,0.3) 0, rgba(255,255,255,0.3) 5px, transparent 5px, transparent 10px),
+    repeating-linear-gradient(180deg, rgba(255,255,255,0.3) 0, rgba(255,255,255,0.3) 5px, transparent 5px, transparent 10px),
+    repeating-linear-gradient(270deg, rgba(255,255,255,0.3) 0, rgba(255,255,255,0.3) 5px, transparent 5px, transparent 10px);
+  background-size: 2px 100%, 100% 2px, 2px 100%, 100% 2px;
+  background-position: 0 0, 0 0, 100% 0, 0 100%;
+  background-repeat: no-repeat;
   box-sizing: border-box;
   cursor: pointer;
   flex-shrink: 0;
@@ -125,11 +134,20 @@
 }
 
 /* 태블로 칸 — 원본: .tableau-zone { border: 2px dashed rgba(255,255,255,0.2) } */
+/* iOS Safari는 border-style:dashed 를 다르게 렌더링하므로 background-image로 직접 그림 */
 .tableauCol {
   position: relative;
   flex-shrink: 0;
   border-radius: 6px;
-  border: 2px dashed rgba(255,255,255,0.2);
+  border: none;
+  background-image:
+    repeating-linear-gradient(0deg,   rgba(255,255,255,0.2) 0, rgba(255,255,255,0.2) 5px, transparent 5px, transparent 10px),
+    repeating-linear-gradient(90deg,  rgba(255,255,255,0.2) 0, rgba(255,255,255,0.2) 5px, transparent 5px, transparent 10px),
+    repeating-linear-gradient(180deg, rgba(255,255,255,0.2) 0, rgba(255,255,255,0.2) 5px, transparent 5px, transparent 10px),
+    repeating-linear-gradient(270deg, rgba(255,255,255,0.2) 0, rgba(255,255,255,0.2) 5px, transparent 5px, transparent 10px);
+  background-size: 2px 100%, 100% 2px, 2px 100%, 100% 2px;
+  background-position: 0 0, 0 0, 100% 0, 0 100%;
+  background-repeat: no-repeat;
   box-sizing: border-box;
   cursor: pointer;
 }
@@ -148,6 +166,8 @@
   overflow: hidden;
   box-sizing: border-box;
   padding: 2px 3px;
+  /* iOS Safari에서 ♥♦ 등을 컬러 이모지 대신 텍스트로 렌더링 */
+  font-variant-emoji: text;
 }
 
 /* 카드 뒷면 — 원본: .card.back { background: #1565c0; border: 2px solid #64b5f6; } */

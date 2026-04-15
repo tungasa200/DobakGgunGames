@@ -7,7 +7,8 @@ import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import styles from './CardBoard.module.css';
 
 // ── 일반 모드 상수 ──────────────────────────────────────────────────
-const SUIT_HINTS = ['♠', '♣', '♥', '♦'];
+// \uFE0E = text variation selector: iOS Safari에서 컬러 이모지 대신 텍스트로 렌더링
+const SUIT_HINTS = ['♠\uFE0E', '♣\uFE0E', '♥\uFE0E', '♦\uFE0E'];
 
 // ── 엑셀 모드 상수 ──────────────────────────────────────────────────
 const XCW = 96;          // cell width (원본: --xcw: 96px)
@@ -120,9 +121,9 @@ function CardEl({
       onClick={(e) => { e.stopPropagation(); onSelect(zone, col, index); }}
       onDoubleClick={(e) => { e.stopPropagation(); onDblClick(zone, col, index); }}
     >
-      <div className={styles.cardTl}>{card.val}<br />{card.suit}</div>
-      <div className={styles.cardCenter}>{card.suit}</div>
-      <div className={styles.cardBr}>{card.val}<br />{card.suit}</div>
+      <div className={styles.cardTl}>{card.val}<br />{card.suit + '\uFE0E'}</div>
+      <div className={styles.cardCenter}>{card.suit + '\uFE0E'}</div>
+      <div className={styles.cardBr}>{card.val}<br />{card.suit + '\uFE0E'}</div>
     </div>
   );
 }
@@ -143,15 +144,22 @@ export default function CardBoard({ excel = false }: Props) {
   const [dims, setDims] = useState<Dims>({ cw: 70, ch: 98, gap: 8 });
 
   // 반응형 치수 — clientWidth 에서 padding(20px×2) 제거해 카드가 wrap 안에 맞게 수정
+  // iOS Safari에서 초기 마운트 시 clientWidth가 0을 반환하는 문제를 방지하기 위해
+  // ?? 대신 || 를 사용하고 ResizeObserver로 레이아웃 확정 후 재계산
   useEffect(() => {
     function update() {
-      const raw = wrapRef.current?.clientWidth ?? window.innerWidth;
+      const raw = wrapRef.current?.clientWidth || window.innerWidth;
       const vw = raw - 40; // wrap padding: 20px 양쪽
       setDims(calcDimensions(Math.min(Math.max(vw, 200), 760)));
     }
     update();
+    const ro = new ResizeObserver(update);
+    if (wrapRef.current) ro.observe(wrapRef.current);
     window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
   }, []);
 
   // ── 모달 ──
