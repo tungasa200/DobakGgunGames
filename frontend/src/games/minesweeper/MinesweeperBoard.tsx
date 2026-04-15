@@ -399,6 +399,14 @@ export default function MinesweeperBoard({ excel = false }: Props) {
       {!excel && showRankingArea && (
         <div className={styles.rankSection}>
           <h3 className={styles.rankTitle}>주간 RANK</h3>
+          {activeTab !== 'rules' && alltime && (
+            <div className={styles.alltimeBanner}>
+              <span className={styles.atLabel}>👑 역대 1위</span>
+              <span className={styles.atContent}>
+                {`${alltime.name} · ${(alltime.time ?? 0).toFixed(2)}초 · ${new Date(alltime.createdAt).toLocaleDateString('ko-KR')}`}
+              </span>
+            </div>
+          )}
           <div className={styles.rankTabs}>
             {RANK_TABS.map((tab) => (
               <button
@@ -444,32 +452,22 @@ export default function MinesweeperBoard({ excel = false }: Props) {
           ) : rankLoading ? (
             <p className={styles.placeholder}>불러오는 중...</p>
           ) : (
-            <>
-              <table className={styles.table}>
-                <thead><tr><th>순위</th><th>이름</th><th>시간</th><th>날짜</th></tr></thead>
-                <tbody>
-                  {(rankings as Array<{ id: number; name: string; time: number; createdAt: string }>).length === 0 ? (
-                    <tr><td colSpan={4} className={styles.placeholder}>기록 없음</td></tr>
-                  ) : (
-                    (rankings as Array<{ id: number; name: string; time: number; createdAt: string }>).map((row, i) => (
-                      <tr key={row.id}>
-                        <td>{i + 1}</td><td>{row.name}</td>
-                        <td>{row.time.toFixed(2)}초</td>
-                        <td>{new Date(row.createdAt).toLocaleDateString('ko-KR')}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-              <div className={styles.alltimeBanner}>
-                <span className={styles.atLabel}>👑 역대 1위</span>
-                <span className={styles.atContent}>
-                  {alltime
-                    ? `${alltime.name} · ${(alltime.time ?? 0).toFixed(2)}초 · ${new Date(alltime.createdAt).toLocaleDateString('ko-KR')}`
-                    : '기록 없음'}
-                </span>
-              </div>
-            </>
+            <table className={styles.table}>
+              <thead><tr><th>순위</th><th>이름</th><th>시간</th><th>날짜</th></tr></thead>
+              <tbody>
+                {(rankings as Array<{ id: number; name: string; time: number; createdAt: string }>).length === 0 ? (
+                  <tr><td colSpan={4} className={styles.placeholder}>기록 없음</td></tr>
+                ) : (
+                  (rankings as Array<{ id: number; name: string; time: number; createdAt: string }>).map((row, i) => (
+                    <tr key={row.id}>
+                      <td>{i + 1}</td><td>{row.name}</td>
+                      <td>{row.time.toFixed(2)}초</td>
+                      <td>{new Date(row.createdAt).toLocaleDateString('ko-KR')}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           )}
         </div>
       )}

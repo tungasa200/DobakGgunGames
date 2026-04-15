@@ -184,9 +184,9 @@
 .placeholder { color: #aaa; font-style: italic; text-align: center; padding: 12px; }
 
 /* 원본: #alltime-banner */
-.alltimeBanner { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #e8f4fd, #d0e8f8); border: 1px solid #85c1e9; border-radius: 8px; padding: 8px 12px; margin-top: 10px; font-size: 0.88em; }
-.atLabel { font-weight: bold; color: #2471a3; white-space: nowrap; }
-.atContent { color: #1a5276; }
+.alltimeBanner { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #fef9e7, #fdebd0); border: 1px solid #f0b27a; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 0.88em; }
+.atLabel { font-weight: bold; color: #b7950b; white-space: nowrap; }
+.atContent { color: #784212; }
 
 /* 룰 패널 — 원본: #rules-panel */
 .rulesPanel {
