@@ -14,6 +14,8 @@ public class BlockfallValidationService {
     // 4줄 동시 제거(테트리스) 기준 최대 점수: 800 * gameLevel
     // T-스핀까지 감안하면 1600 * gameLevel, 콤보 보너스 포함 여유값으로 ×3 적용
     private static final int MAX_SCORE_MULTIPLIER = 3;
+    // 소프트·하드 드롭 보너스 최대치: BOARD_H(20) × BOARD_W(10) × 2(하드드롭) = 400
+    private static final int MAX_DROP_BONUS = 400;
 
     public void validate(GameSession session, RankingRequest req) {
         Integer score = req.getScore();
@@ -31,7 +33,7 @@ public class BlockfallValidationService {
 
         // 2. 점수 상한: linesCleared × 800 × gameLevel × MAX_SCORE_MULTIPLIER
         //    (T-스핀, 콤보 포함 매우 관대한 상한)
-        long maxScore = (long) linesCleared * 800 * gameLevel * MAX_SCORE_MULTIPLIER;
+        long maxScore = (long) linesCleared * 800 * gameLevel * MAX_SCORE_MULTIPLIER + MAX_DROP_BONUS;
         if (score > maxScore) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "점수가 유효 범위를 초과했습니다.");

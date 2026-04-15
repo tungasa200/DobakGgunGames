@@ -241,9 +241,11 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
   }, [state.timerRunning]);
 
   // 타이머 시작 (첫 액션)
+  // state.status는 SET_GAME에서 첫 선택 시 'idle'→'playing'으로 바뀌므로
+  // timerRunning 플래그를 직접 확인해야 함
   const ensureTimer = useCallback(() => {
-    if (state.status === 'idle') dispatch({ type: 'START_TIMER' });
-  }, [state.status]);
+    if (!state.timerRunning && state.status !== 'won') dispatch({ type: 'START_TIMER' });
+  }, [state.timerRunning, state.status]);
 
   const startGame = useCallback((drawMode: DrawMode = state.drawMode) => {
     if (autoTimerRef.current) clearTimeout(autoTimerRef.current);

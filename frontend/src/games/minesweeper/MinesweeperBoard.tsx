@@ -66,6 +66,9 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   // 세션 ID
   const sessionIdRef = useRef<string>('');
 
+  // 최초 클릭 서버 요청 중 로딩 표시
+  const [firstClickLoading, setFirstClickLoading] = useState(false);
+
   // 첫 클릭 시 세션 발급
   async function handleRevealCell(r: number, c: number) {
     if (state.status !== 'idle') {
@@ -83,6 +86,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
     }
 
     // 프리셋 난이도: 서버에서 보드를 받아 적용 후 오픈 (Phase 3)
+    setFirstClickLoading(true);
     try {
       const res = await startMinesweeperSession(rankLv, { r, c });
       sessionIdRef.current = res.sessionId;
@@ -91,6 +95,8 @@ export default function MinesweeperBoard({ excel = false }: Props) {
       // 서버 오류 시 클라이언트 placeMines 로 폴백
       sessionIdRef.current = '';
       revealCell(r, c);
+    } finally {
+      setFirstClickLoading(false);
     }
   }
 
@@ -320,6 +326,9 @@ export default function MinesweeperBoard({ excel = false }: Props) {
       {/* ── 보드 ── */}
       {showGameArea && (
         <div className={styles.boardWrapper}>
+          {firstClickLoading && (
+            <div className={styles.boardLoadingOverlay}>지뢰 배치 중...</div>
+          )}
           <div
             className={styles.board}
             style={{
