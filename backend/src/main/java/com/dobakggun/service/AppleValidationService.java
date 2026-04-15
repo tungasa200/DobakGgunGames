@@ -42,7 +42,6 @@ public class AppleValidationService {
         }
 
         // 2. 이벤트 타임스탬프 범위 검증
-        Instant startedAt = session.getStartedAt();
         for (RankingRequest.AppleEvent event : events) {
             if (event.getT() < 0 || event.getT() > MAX_GAME_MS) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
