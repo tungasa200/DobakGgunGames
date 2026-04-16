@@ -18,6 +18,9 @@ export default function SignupPage() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
 
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+
   const [submitError, setSubmitError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -71,6 +74,10 @@ export default function SignupPage() {
     }
     if (password !== passwordConfirm) {
       setSubmitError('비밀번호가 일치하지 않습니다');
+      return;
+    }
+    if (!agreePrivacy || !agreeTerms) {
+      setSubmitError('필수 약관에 모두 동의해 주세요');
       return;
     }
 
@@ -217,7 +224,45 @@ export default function SignupPage() {
             )}
           </div>
 
-          <button className={s.btn} type="submit" disabled={loading}>
+          {/* 약관 동의 */}
+          <div className={ss.agreeSection}>
+            <label className={ss.agreeRow}>
+              <input
+                type="checkbox"
+                className={ss.checkbox}
+                checked={agreePrivacy && agreeTerms}
+                onChange={e => { setAgreePrivacy(e.target.checked); setAgreeTerms(e.target.checked); }}
+              />
+              <span className={ss.agreeAll}>전체 동의</span>
+            </label>
+            <div className={ss.agreeDivider} />
+            <label className={ss.agreeRow}>
+              <input
+                type="checkbox"
+                className={ss.checkbox}
+                checked={agreeTerms}
+                onChange={e => setAgreeTerms(e.target.checked)}
+              />
+              <span className={ss.agreeText}>
+                <span className={ss.required}>[필수]</span>{' '}
+                <Link className={ss.agreeLink} to="/terms" target="_blank">이용약관</Link> 동의
+              </span>
+            </label>
+            <label className={ss.agreeRow}>
+              <input
+                type="checkbox"
+                className={ss.checkbox}
+                checked={agreePrivacy}
+                onChange={e => setAgreePrivacy(e.target.checked)}
+              />
+              <span className={ss.agreeText}>
+                <span className={ss.required}>[필수]</span>{' '}
+                <Link className={ss.agreeLink} to="/privacy" target="_blank">개인정보 처리방침</Link> 동의
+              </span>
+            </label>
+          </div>
+
+          <button className={s.btn} type="submit" disabled={loading || !agreePrivacy || !agreeTerms}>
             {loading ? '처리 중...' : '가입하기'}
           </button>
         </form>
