@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import styles from './NormalHeader.module.css';
 
 const GAMES = [
@@ -21,6 +22,8 @@ export default function NormalHeader({ currentGame, gameName, accentColor }: Pro
   const [open, setOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
   const btnRef  = useRef<HTMLButtonElement>(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -81,6 +84,24 @@ export default function NormalHeader({ currentGame, gameName, accentColor }: Pro
         style={{ color: accentColor }}
         to={currentGame ? `/${currentGame}/excel` : '/excel'}
       >📊 엑셀 모드</Link>
+
+      {user ? (
+        <div className={styles.authArea}>
+          <Link className={styles.profileBtn} to="/profile" title="내 정보">
+            {user.profileImage
+              ? <img className={styles.avatar} src={user.profileImage} alt="" />
+              : <span className={styles.avatarLetter}>{user.nickname[0]}</span>
+            }
+            <span className={styles.nickname}>{user.nickname}</span>
+          </Link>
+          <button
+            className={styles.logoutBtn}
+            onClick={async () => { await logout(); navigate('/'); }}
+          >로그아웃</button>
+        </div>
+      ) : (
+        <Link className={styles.loginBtn} to="/login">로그인</Link>
+      )}
     </div>
   );
 }

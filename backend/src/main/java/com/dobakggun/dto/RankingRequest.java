@@ -33,9 +33,6 @@ public class RankingRequest {
 
     private String sessionId;  // Phase 1: 세션 기반 검증
 
-    private String token;      // 레거시 HMAC (정리 예정)
-    private Long timestamp;    // 레거시 HMAC (정리 예정)
-
     @Getter @Setter
     public static class AppleEvent {
         private long t;                    // 게임 시작 이후 경과 ms

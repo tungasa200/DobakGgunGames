@@ -8,6 +8,8 @@ import com.dobakggun.util.IpHashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -82,7 +84,8 @@ public class RankingService {
         // 점수 범위 검증
         validateScoreBounds(game, req);
 
-        Ranking saved = saveRanking(game, req, ipHash);
+        Long userId = extractUserId();
+        Ranking saved = saveRanking(game, req, ipHash, userId);
         return new RankingResponse(saved);
     }
 
@@ -119,25 +122,34 @@ public class RankingService {
         };
     }
 
-    private Ranking saveRanking(String game, RankingRequest req, String ipHash) {
+    private Ranking saveRanking(String game, RankingRequest req, String ipHash, Long userId) {
         return switch (game) {
             case "minesweeper" -> minesweeperRepo.save(MinesweeperRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
-                    .time(req.getTime()).ipHash(ipHash).build());
+                    .time(req.getTime()).ipHash(ipHash).userId(userId).build());
             case "baseball" -> baseballRepo.save(BaseballRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
-                    .attempts(req.getAttempts()).time(req.getTime()).ipHash(ipHash).build());
+                    .attempts(req.getAttempts()).time(req.getTime()).ipHash(ipHash).userId(userId).build());
             case "blockfall" -> blockfallRepo.save(BlockfallRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
-                    .score(req.getScore()).gameLevel(req.getGameLevel()).ipHash(ipHash).build());
+                    .score(req.getScore()).gameLevel(req.getGameLevel()).ipHash(ipHash).userId(userId).build());
             case "solitaire" -> solitaireRepo.save(SolitaireRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
-                    .time(req.getTime()).moves(req.getMoves()).ipHash(ipHash).build());
+                    .time(req.getTime()).moves(req.getMoves()).ipHash(ipHash).userId(userId).build());
             case "apple" -> appleRepo.save(AppleRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
-                    .score(req.getScore()).ipHash(ipHash).build());
+                    .score(req.getScore()).ipHash(ipHash).userId(userId).build());
             default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다.");
         };
+    }
+
+    // SecurityContext에서 userId 추출 — 비로그인이면 null
+    private Long extractUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof Long userId) {
+            return userId;
+        }
+        return null;
     }
 
     private void validateScoreBounds(String game, RankingRequest req) {
