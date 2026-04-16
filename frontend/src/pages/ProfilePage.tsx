@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { userApi, UserProfile } from '../api/user';
+import { userApi } from '../api/user';
+import type { UserProfile } from '../api/user';
 import s from './auth.module.css';
 import ps from './ProfilePage.module.css';
 
 export default function ProfilePage() {
-  const { user, accessToken, logout } = useAuth();
+  const { accessToken, logout } = useAuth();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
