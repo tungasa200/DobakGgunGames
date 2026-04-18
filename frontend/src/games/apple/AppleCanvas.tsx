@@ -435,14 +435,18 @@ export default function AppleCanvas({ excel = false }: Props) {
         dragRef.current.cx, dragRef.current.cy,
         rows, cols, state.apples, pad, size
       );
+      dragRef.current.active = false;
+      setDragSum(null);
       if (sum === 10 && selected.length > 0) {
+        // removeApples가 상태 업데이트를 트리거하므로 draw()를 따로 호출하지 않음
+        // (여기서 draw() 호출 시 구 상태로 잠깐 렌더되는 플리커 발생)
         removeApples(selected);
         setMsg(`✅ +${selected.length}점!`);
         setTimeout(() => { if (state.status === 'playing') setMsg('사과를 드래그하세요!'); }, 700);
+      } else {
+        // 제거 없을 때만 수동으로 draw() 호출해 드래그 선택 박스를 지움
+        draw();
       }
-      dragRef.current.active = false;
-      setDragSum(null);
-      draw();
     }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
