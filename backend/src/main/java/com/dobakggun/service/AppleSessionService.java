@@ -27,7 +27,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AppleSessionService {
 
-    private static final long  EXPIRE_SECONDS = 130L;
+    private static final long  EXPIRE_SECONDS = 300L;   // 게임 120초 + 순위 등록 여유 시간
     private static final int   ROWS           = 10;
     private static final int   COLS           = 17;
     /** 1~9 각 숫자의 가중치 (프론트엔드 APPLE_WEIGHTS 와 동일) */

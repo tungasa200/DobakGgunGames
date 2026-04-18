@@ -388,30 +388,38 @@ export default function AppleCanvas({ excel = false }: Props) {
     };
   }
 
-  function handlePointerDown(e: React.MouseEvent | React.TouchEvent) {
+  function handlePointerDown(e: React.MouseEvent | React.TouchEvent | TouchEvent) {
     if (state.status !== 'playing') return;
-    const p = getPos(e);
+    const p = getPos(e as React.MouseEvent | React.TouchEvent);
     dragRef.current = { active: true, sx: p.x, sy: p.y, cx: p.x, cy: p.y };
     setDragSum(0);
-    draw();
+    // draw() 호출 제거: stale closure로 인해 제거된 사과가 순간 다시 보이는 버그 방지.
+    // onMove가 즉시 이어서 호출되므로 별도 draw 불필요.
   }
 
+  // handlePointerDown을 항상 최신 버전으로 유지하는 ref
+  const handlePointerDownRef = useRef(handlePointerDown);
+  handlePointerDownRef.current = handlePointerDown;
+
   // touchstart를 non-passive로 등록 (React JSX onTouchStart는 passive라 preventDefault 불가)
+  // 마운트 시 한 번만 등록하되, ref를 통해 항상 최신 핸들러를 호출
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     function onTouchStart(e: TouchEvent) {
       e.preventDefault();
-      handlePointerDown(e as unknown as React.TouchEvent);
+      handlePointerDownRef.current(e);
     }
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
     return () => canvas.removeEventListener('touchstart', onTouchStart);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.status]);
+  }, []);
 
   useEffect(() => {
     function onMove(e: MouseEvent | TouchEvent) {
       if (!dragRef.current.active) return;
+      // 터치 드래그 중 페이지 스크롤 방지
+      if ('touches' in e) e.preventDefault();
       const p = getPos(e);
       dragRef.current.cx = p.x;
       dragRef.current.cy = p.y;
@@ -493,6 +501,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     } catch {
       // 서버 오류 시 클라이언트 난수로 폴백
       sessionIdRef.current = '';
+      boardTransposedRef.current = false;
       const l = (excel ? layout : calcLayout()) ?? layout;
       start(l.rows, l.cols);
     }
