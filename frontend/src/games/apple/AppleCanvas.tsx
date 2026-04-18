@@ -130,6 +130,9 @@ export default function AppleCanvas({ excel = false }: Props) {
   // 세션 ID
   const sessionIdRef = useRef<string>('');
 
+  // 세로 모드로 보드를 전치했는지 여부 (순위 등록 시 좌표 역전치에 사용)
+  const boardTransposedRef = useRef(false);
+
   // 드래그 상태
   const dragRef = useRef({ active: false, sx: 0, sy: 0, cx: 0, cy: 0 });
 
@@ -393,6 +396,19 @@ export default function AppleCanvas({ excel = false }: Props) {
     draw();
   }
 
+  // touchstart를 non-passive로 등록 (React JSX onTouchStart는 passive라 preventDefault 불가)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    function onTouchStart(e: TouchEvent) {
+      e.preventDefault();
+      handlePointerDown(e as unknown as React.TouchEvent);
+    }
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    return () => canvas.removeEventListener('touchstart', onTouchStart);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
   useEffect(() => {
     function onMove(e: MouseEvent | TouchEvent) {
       if (!dragRef.current.active) return;
@@ -456,11 +472,13 @@ export default function AppleCanvas({ excel = false }: Props) {
       // 세로 모드일 때 서버의 가로형(10×17) 보드를 전치해 세로형(17×10)으로 변환
       let board = res.board;
       const isPortrait = !excel && base.rows > base.cols;
-      if (isPortrait && board.length < (board[0]?.length ?? 0)) {
+      const needsTranspose = isPortrait && board.length < (board[0]?.length ?? 0);
+      if (needsTranspose) {
         board = Array.from({ length: board[0].length }, (_, c) =>
           Array.from({ length: board.length }, (_, r) => board[r][c])
         );
       }
+      boardTransposedRef.current = needsTranspose;
 
       const syncedLayout = { rows: board.length, cols: board[0]?.length ?? base.cols, size: base.size, pad: base.pad };
       setLayout(syncedLayout);
@@ -515,12 +533,16 @@ export default function AppleCanvas({ excel = false }: Props) {
     setNameBanned(false);
     setSubmitState('loading');
     try {
+      // 세로 모드로 보드를 전치한 경우 서버 원본 좌표(r↔c 교환)로 역변환
+      const submittedEvents = boardTransposedRef.current
+        ? eventsRef.current.map(e => ({ ...e, cells: e.cells.map(([r, c]) => [c, r]) }))
+        : eventsRef.current;
       await rankingsApi.submit('apple', {
         level: 'normal',
         name,
         score: state.score,
         sessionId: sessionIdRef.current,
-        events: eventsRef.current,
+        events: submittedEvents,
       });
       setModalOpen(false);
       setPlayerName('');
@@ -621,7 +643,6 @@ export default function AppleCanvas({ excel = false }: Props) {
             ref={canvasRef}
             className={`${styles.canvas} ${excel ? styles.canvasExcel : ''}`}
             onMouseDown={handlePointerDown}
-            onTouchStart={(e) => { e.preventDefault(); handlePointerDown(e); }}
           />
         </div>
       )}
