@@ -300,7 +300,7 @@ export default function AppleCanvas({ excel = false }: Props) {
         const isSelected = selSet.has(`${r},${c}`);
 
         if (excel) {
-          if (apples[r][c] === null) {
+          if (!apples[r] || apples[r][c] === null) {
             ctx.strokeStyle = '#E0E0E0'; ctx.lineWidth = 1; ctx.setLineDash([]);
             ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
             continue;
@@ -321,7 +321,7 @@ export default function AppleCanvas({ excel = false }: Props) {
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(String(apples[r][c]), x + size / 2, y + size / 2);
         } else {
-          if (apples[r][c] === null) continue;
+          if (!apples[r] || apples[r][c] === null) continue;
           let bodyColor = '#e74c3c';
           let borderColor: string | null = null;
           if (isSelected) {
@@ -451,6 +451,16 @@ export default function AppleCanvas({ excel = false }: Props) {
       // Phase 3: 서버 보드로 게임 시작 (클라이언트 randomApple 제거)
       const res = await startAppleSession();
       sessionIdRef.current = res.sessionId;
+      // 서버 보드의 실제 크기에 맞춰 레이아웃을 동기화
+      // (모바일 세로 모드에서 layout.rows≠board.length 로 인한 크래시 방지)
+      const boardRows = res.board.length;
+      const boardCols = res.board[0]?.length ?? 17;
+      const base = (excel ? layout : calcLayout()) ?? layout;
+      const syncedLayout = { rows: boardRows, cols: boardCols, size: base.size, pad: base.pad };
+      setLayout(syncedLayout);
+      if (canvasWrapRef.current) {
+        canvasWrapRef.current.style.maxWidth = `${syncedLayout.pad * 2 + syncedLayout.cols * syncedLayout.size}px`;
+      }
       startWithBoard(res.board);
     } catch {
       // 서버 오류 시 클라이언트 난수로 폴백
