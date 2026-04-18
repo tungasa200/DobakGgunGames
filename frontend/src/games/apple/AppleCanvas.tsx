@@ -451,17 +451,23 @@ export default function AppleCanvas({ excel = false }: Props) {
       // Phase 3: 서버 보드로 게임 시작 (클라이언트 randomApple 제거)
       const res = await startAppleSession();
       sessionIdRef.current = res.sessionId;
-      // 서버 보드의 실제 크기에 맞춰 레이아웃을 동기화
-      // (모바일 세로 모드에서 layout.rows≠board.length 로 인한 크래시 방지)
-      const boardRows = res.board.length;
-      const boardCols = res.board[0]?.length ?? 17;
       const base = (excel ? layout : calcLayout()) ?? layout;
-      const syncedLayout = { rows: boardRows, cols: boardCols, size: base.size, pad: base.pad };
+
+      // 세로 모드일 때 서버의 가로형(10×17) 보드를 전치해 세로형(17×10)으로 변환
+      let board = res.board;
+      const isPortrait = !excel && base.rows > base.cols;
+      if (isPortrait && board.length < (board[0]?.length ?? 0)) {
+        board = Array.from({ length: board[0].length }, (_, c) =>
+          Array.from({ length: board.length }, (_, r) => board[r][c])
+        );
+      }
+
+      const syncedLayout = { rows: board.length, cols: board[0]?.length ?? base.cols, size: base.size, pad: base.pad };
       setLayout(syncedLayout);
       if (canvasWrapRef.current) {
         canvasWrapRef.current.style.maxWidth = `${syncedLayout.pad * 2 + syncedLayout.cols * syncedLayout.size}px`;
       }
-      startWithBoard(res.board);
+      startWithBoard(board);
     } catch {
       // 서버 오류 시 클라이언트 난수로 폴백
       sessionIdRef.current = '';
