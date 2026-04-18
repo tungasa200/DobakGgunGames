@@ -1,4 +1,4 @@
-import badwordsData from './badwords.json';
+import badwordsData from '../../../shared/badwords.json';
 
 const BADWORDS: string[] = badwordsData.badwords;
 

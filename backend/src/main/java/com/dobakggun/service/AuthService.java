@@ -25,6 +25,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final RedisTokenService redisTokenService;
     private final EmailService emailService;
+    private final ProfanityService profanityService;
 
     @Value("${app.mail.verification-token-expiry}")
     private long verificationTokenExpiry;
@@ -173,12 +174,15 @@ public class AuthService {
     }
 
     private void validateNickname(String nickname) {
-        String[] forbidden = {"admin", "관리자", "운영자", "시발", "씨발", "병신", "개새끼", "좆"};
+        String[] reservedWords = {"admin", "관리자", "운영자"};
         String lower = nickname.toLowerCase();
-        for (String word : forbidden) {
+        for (String word : reservedWords) {
             if (lower.contains(word)) {
                 throw new IllegalArgumentException("사용할 수 없는 닉네임입니다");
             }
+        }
+        if (profanityService.containsProfanity(nickname)) {
+            throw new IllegalArgumentException("사용할 수 없는 닉네임입니다");
         }
     }
 }

@@ -51,6 +51,14 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 }
 
+sourceSets {
+	main {
+		resources {
+			srcDirs = ['src/main/resources', '../shared']
+		}
+	}
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 }

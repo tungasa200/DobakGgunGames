@@ -20,24 +20,26 @@ interface Props {
 
 export default function NormalHeader({ currentGame, gameName, accentColor }: Props) {
   const [open, setOpen] = useState(false);
-  const dropRef = useRef<HTMLDivElement>(null);
-  const btnRef  = useRef<HTMLButtonElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const dropRef        = useRef<HTMLDivElement>(null);
+  const btnRef         = useRef<HTMLButtonElement>(null);
+  const profileDropRef = useRef<HTMLDivElement>(null);
+  const profileBtnRef  = useRef<HTMLButtonElement>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (
-        open &&
-        !dropRef.current?.contains(e.target as Node) &&
-        !btnRef.current?.contains(e.target as Node)
-      ) {
+      if (open && !dropRef.current?.contains(e.target as Node) && !btnRef.current?.contains(e.target as Node)) {
         setOpen(false);
+      }
+      if (profileOpen && !profileDropRef.current?.contains(e.target as Node) && !profileBtnRef.current?.contains(e.target as Node)) {
+        setProfileOpen(false);
       }
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  }, [open, profileOpen]);
 
   return (
     <div className={styles.header} style={{ background: accentColor }}>
@@ -87,17 +89,36 @@ export default function NormalHeader({ currentGame, gameName, accentColor }: Pro
 
       {user ? (
         <div className={styles.authArea}>
-          <Link className={styles.profileBtn} to="/profile" title="내 정보">
+          <button
+            ref={profileBtnRef}
+            className={styles.profileBtn}
+            onClick={() => setProfileOpen(o => !o)}
+          >
             {user.profileImage
               ? <img className={styles.avatar} src={user.profileImage} alt="" />
               : <span className={styles.avatarLetter}>{user.nickname[0]}</span>
             }
             <span className={styles.nickname}>{user.nickname}</span>
-          </Link>
-          <button
-            className={styles.logoutBtn}
-            onClick={async () => { await logout(); navigate('/'); }}
-          >로그아웃</button>
+            <span className={styles.profileCaret}>{profileOpen ? '▴' : '▾'}</span>
+          </button>
+
+          {profileOpen && (
+            <div ref={profileDropRef} className={styles.profileDrop}>
+              <Link
+                className={styles.profileDropItem}
+                to="/profile"
+                onClick={() => setProfileOpen(false)}
+              >
+                <span>👤</span> 내 정보
+              </Link>
+              <button
+                className={`${styles.profileDropItem} ${styles.profileDropLogout}`}
+                onClick={async () => { setProfileOpen(false); await logout(); navigate('/'); }}
+              >
+                <span>🚪</span> 로그아웃
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <Link className={styles.loginBtn} to="/login">로그인</Link>
