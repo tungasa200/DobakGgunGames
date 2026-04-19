@@ -77,7 +77,11 @@ public class UserService {
                 RequestBody.fromBytes(resized)
         );
 
-        String imageUrl = r2Properties.getPublicUrl() + "/" + key;
+        String publicUrl = r2Properties.getPublicUrl();
+        if (publicUrl == null || publicUrl.isBlank()) {
+            throw new IllegalStateException("R2_PUBLIC_URL 환경변수가 설정되지 않았습니다");
+        }
+        String imageUrl = publicUrl + "/" + key;
         user.setProfileImage(imageUrl);
         return UserProfileResponse.from(user);
     }

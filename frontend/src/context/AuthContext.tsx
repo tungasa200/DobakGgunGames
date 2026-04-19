@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../api/auth';
 import type { AuthUser } from '../api/auth';
@@ -19,10 +19,29 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const STORAGE_KEY_RT = 'dbg_rt';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>(() => {
-    // 페이지 로드 시 RT로 자동 복원은 필요시 별도 처리
-    return { user: null, accessToken: null };
-  });
+  const [state, setState] = useState<AuthState>({ user: null, accessToken: null });
+  const [initialized, setInitialized] = useState(false);
+
+  // 페이지 로드 시 localStorage의 RT로 세션 복원
+  useEffect(() => {
+    const rt = localStorage.getItem(STORAGE_KEY_RT);
+    if (!rt) {
+      setInitialized(true);
+      return;
+    }
+    authApi.refresh(rt)
+      .then(res => {
+        localStorage.setItem(STORAGE_KEY_RT, res.refreshToken);
+        setState({ user: res.user, accessToken: res.accessToken });
+      })
+      .catch(() => {
+        // RT 만료 또는 유효하지 않으면 제거
+        localStorage.removeItem(STORAGE_KEY_RT);
+      })
+      .finally(() => {
+        setInitialized(true);
+      });
+  }, []);
 
   const setAuth = useCallback((user: AuthUser, accessToken: string, refreshToken: string) => {
     localStorage.setItem(STORAGE_KEY_RT, refreshToken);
@@ -41,6 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY_RT);
     setState({ user: null, accessToken: null });
   }, [state.accessToken]);
+
+  if (!initialized) return null;
 
   return (
     <AuthContext.Provider value={{ ...state, login, logout, setAuth }}>
