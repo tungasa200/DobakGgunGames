@@ -67,7 +67,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 110px;
+  width: 120px;  /* miniCanvas 120px에 맞춤 (기존 110px → 120px) */
   flex-shrink: 0;
 }
 
@@ -174,8 +174,74 @@
   .hintsBox { display: none; }
 }
 
+/* ===== 모바일 반응형: 480px 미만 (일반 스마트폰 세로 모드) ===== */
+/* gameArea 기본 너비: 120px(side) + 12px(gap) + 330px(board) = 462px */
+/* 480px 이하 화면에서 보드·사이드패널 축소 (약 0.67 배율) */
+@media (max-width: 479px) {
+  .wrap {
+    padding: 10px 6px;
+  }
+
+  .gameArea {
+    gap: 6px;
+  }
+
+  /* 사이드 패널 */
+  .sidePanel {
+    width: 82px;
+    gap: 6px;
+  }
+
+  .sideBox {
+    padding: 6px;
+  }
+
+  .sideTitle {
+    font-size: 0.65em;
+    margin-bottom: 4px;
+  }
+
+  /* NEXT / HOLD 캔버스: 120px → 82px */
+  .miniCanvas {
+    width: 82px;
+    height: 82px;
+  }
+
+  /* 메인 보드: 330px→220px, 630px→420px (11:21 비율 유지) */
+  .board {
+    width: 220px;
+    height: 420px;
+  }
+
+  /* 키 안내 텍스트 */
+  .hints {
+    font-size: 0.68em;
+    line-height: 1.8;
+  }
+
+  /* 정보바 아이템 최소 너비 축소 */
+  .infoItem {
+    min-width: 58px;
+    padding: 5px 8px;
+  }
+}
+
+/* ===== 360px 미만 초소형 화면 추가 축소 ===== */
+@media (max-width: 359px) {
+  .sidePanel { width: 70px; }
+  .miniCanvas { width: 70px; height: 70px; }
+
+  /* 보드: 330px→198px, 630px→378px */
+  .board {
+    width: 198px;
+    height: 378px;
+  }
+
+  .gameArea { gap: 4px; }
+}
+
 /* 랭킹 */
-.rankSection { margin-top: 28px; width: 100%; max-width: min(560px, 100%); }
+.rankSection { margin-top: 28px; width: 100%; max-width: min(560px, 100%); overflow-x: auto; }
 .rankTitle   { text-align: center; margin: 0 0 10px; color: #2c3e50; font-size: 1rem; font-weight: bold; }
 
 .alltimeBanner {
