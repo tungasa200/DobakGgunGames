@@ -368,7 +368,22 @@ export default function MinesweeperBoard({ excel = false }: Props) {
                     className={cls}
                     style={{ color: numColor }}
                     onClick={() => handleRevealCell(r, c)}
-                    onContextMenu={(e) => { e.preventDefault(); toggleMark(r, c); }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      // 모바일: 꾹 터치 시 브라우저가 contextmenu를 별도로 발생시킴.
+                      // 타이머가 이미 toggleMark를 실행했으면 → 중복 방지
+                      if (lpFiredRef.current) return;
+                      // 타이머가 아직 실행 중이면 → 타이머 취소 후 여기서 처리
+                      if (lpRef.current !== null) {
+                        clearTimeout(lpRef.current);
+                        lpRef.current = null;
+                        lpFiredRef.current = true;
+                        toggleMark(r, c);
+                        return;
+                      }
+                      // 데스크탑 우클릭
+                      toggleMark(r, c);
+                    }}
                     onMouseDown={(e) => {
                       mouseButtonsRef.current[cellKey] = (mouseButtonsRef.current[cellKey] ?? 0) | e.buttons;
                       if ((mouseButtonsRef.current[cellKey] & 3) === 3) chordClick(r, c);
