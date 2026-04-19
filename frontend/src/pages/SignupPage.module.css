@@ -4,8 +4,9 @@
 
 .inlineRow {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: stretch;
+  flex-wrap: wrap;
 }
 
 .inputFlex {
@@ -136,3 +137,15 @@
   font-weight: 500;
 }
 .agreeLink:hover { color: #9428e8; }
+
+.verifiedBanner {
+  font-size: 13px;
+  font-weight: 600;
+  color: #27ae60;
+  background: #f0fff4;
+  border: 1px solid #b7ebc8;
+  border-radius: 7px;
+  padding: 8px 12px;
+  text-align: center;
+  margin-top: -4px;
+}

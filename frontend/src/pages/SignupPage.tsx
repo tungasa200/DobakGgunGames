@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
@@ -9,41 +9,58 @@ import ss from './SignupPage.module.css';
 export default function SignupPage() {
   const navigate = useNavigate();
 
+  // 이메일
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [emailChecked, setEmailChecked] = useState<'idle' | 'checking' | 'ok' | 'taken'>('idle');
 
+  // 이메일 OTP
+  const [codeSending, setCodeSending] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [emailCode, setEmailCode] = useState('');
+  const [emailVerified, setEmailVerified] = useState<'idle' | 'verifying' | 'ok' | 'fail'>('idle');
+
+  // 닉네임
   const [nickname, setNickname] = useState('');
+  const [nicknameChecked, setNicknameChecked] = useState<'idle' | 'checking' | 'ok' | 'taken'>('idle');
+  const [nicknameError, setNicknameError] = useState('');
+
+  // 비밀번호
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
 
+  // 약관
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
 
+  // 제출
   const [submitError, setSubmitError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const strength = getPasswordStrength(password);
 
+  useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, []);
+
+  // ── 이메일 ──────────────────────────────────────────────
   function handleEmailChange(v: string) {
     setEmail(v);
     setEmailChecked('idle');
     setEmailError(v ? validateEmail(v) : '');
+    resetOtp();
   }
 
-  function handleEmailBlur() {
-    setEmailError(validateEmail(email));
-  }
-
-  function handlePasswordChange(v: string) {
-    setPassword(v);
-    setPasswordError(v ? validatePassword(v) : '');
-  }
-
-  function handlePasswordBlur() {
-    setPasswordError(validatePassword(password));
+  function resetOtp() {
+    setCodeSent(false);
+    setEmailCode('');
+    setEmailVerified('idle');
+    setCooldown(0);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
   }
 
   async function handleCheckEmail() {
@@ -54,38 +71,116 @@ export default function SignupPage() {
     try {
       const { taken } = await authApi.checkEmail(email);
       setEmailChecked(taken ? 'taken' : 'ok');
+      if (taken) resetOtp();
     } catch {
       setEmailChecked('idle');
       setEmailError('중복 확인 중 오류가 발생했습니다');
     }
   }
 
+  async function handleSendCode() {
+    setCodeSending(true);
+    setEmailVerified('idle');
+    setEmailCode('');
+    try {
+      await authApi.sendEmailCode(email);
+      setCodeSent(true);
+      startCooldown(60);
+    } catch (err: unknown) {
+      setEmailError(err instanceof Error ? err.message : '인증 코드 발송에 실패했습니다');
+    } finally {
+      setCodeSending(false);
+    }
+  }
+
+  function startCooldown(seconds: number) {
+    setCooldown(seconds);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) { clearInterval(cooldownRef.current!); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  async function handleVerifyCode() {
+    if (emailCode.length !== 6) return;
+    setEmailVerified('verifying');
+    try {
+      await authApi.verifyEmailCode(email, emailCode);
+      setEmailVerified('ok');
+    } catch {
+      setEmailVerified('fail');
+    }
+  }
+
+  // ── 닉네임 ─────────────────────────────────────────────
+  function handleNicknameChange(v: string) {
+    setNickname(v);
+    setNicknameChecked('idle');
+    setNicknameError('');
+  }
+
+  function validateNicknameFormat(v: string): string {
+    if (!v) return '닉네임을 입력해 주세요';
+    if (v.length < 2) return '닉네임은 2자 이상이어야 합니다';
+    if (!/^[가-힣a-zA-Z0-9_]+$/.test(v)) return '한글, 영문, 숫자, 밑줄만 사용 가능합니다';
+    return '';
+  }
+
+  async function handleCheckNickname() {
+    const err = validateNicknameFormat(nickname);
+    if (err) { setNicknameError(err); return; }
+    setNicknameError('');
+    setNicknameChecked('checking');
+    try {
+      const { taken } = await authApi.checkNickname(nickname);
+      setNicknameChecked(taken ? 'taken' : 'ok');
+    } catch {
+      setNicknameChecked('idle');
+      setNicknameError('중복 확인 중 오류가 발생했습니다');
+    }
+  }
+
+  // ── 비밀번호 ────────────────────────────────────────────
+  function handlePasswordChange(v: string) {
+    setPassword(v);
+    setPasswordError(v ? validatePassword(v) : '');
+  }
+
+  // ── 제출 ───────────────────────────────────────────────
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitError('');
 
     const eErr = validateEmail(email);
-    const pErr = validatePassword(password);
     if (eErr) { setEmailError(eErr); return; }
-    if (pErr) { setPasswordError(pErr); return; }
     if (emailChecked !== 'ok') {
-      setSubmitError('이메일 중복 확인을 완료해 주세요');
-      return;
+      setSubmitError('이메일 중복 확인을 완료해 주세요'); return;
     }
+    if (emailVerified !== 'ok') {
+      setSubmitError('이메일 인증을 완료해 주세요'); return;
+    }
+    const nErr = validateNicknameFormat(nickname);
+    if (nErr) { setNicknameError(nErr); return; }
+    if (nicknameChecked !== 'ok') {
+      setSubmitError('닉네임 중복 확인을 완료해 주세요'); return;
+    }
+    const pErr = validatePassword(password);
+    if (pErr) { setPasswordError(pErr); return; }
     if (password !== passwordConfirm) {
-      setSubmitError('비밀번호가 일치하지 않습니다');
-      return;
+      setSubmitError('비밀번호가 일치하지 않습니다'); return;
     }
     if (!agreePrivacy || !agreeTerms) {
-      setSubmitError('필수 약관에 모두 동의해 주세요');
-      return;
+      setSubmitError('필수 약관에 모두 동의해 주세요'); return;
     }
 
     setLoading(true);
     try {
-      await authApi.signup(email, nickname, password);
-      setSuccess('가입이 완료되었습니다! 이메일을 확인해 인증을 완료해 주세요.');
-      setTimeout(() => navigate('/login'), 3000);
+      await authApi.signup(email, nickname, password, emailCode);
+      setSuccess(true);
+      setTimeout(() => navigate('/login'), 2000);
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : '회원가입에 실패했습니다');
     } finally {
@@ -93,14 +188,14 @@ export default function SignupPage() {
     }
   }
 
+  // ── 성공 화면 ───────────────────────────────────────────
   if (success) {
     return (
       <div className={s.page}>
         <div className={s.card}>
-          <div className={s.logo}>✉️</div>
-          <h1 className={s.title}>인증 메일 발송</h1>
-          <p className={s.subtitle}>{email} 으로 인증 링크를 보냈습니다</p>
-          <div className={s.success}>{success}</div>
+          <div className={s.logo}>🎉</div>
+          <h1 className={s.title}>가입 완료!</h1>
+          <p className={s.subtitle}>잠시 후 로그인 페이지로 이동합니다</p>
           <div className={s.links}>
             <Link className={s.link} to="/login">로그인 페이지로 이동</Link>
           </div>
@@ -120,7 +215,7 @@ export default function SignupPage() {
 
         <form className={s.form} onSubmit={handleSubmit}>
 
-          {/* 이메일 + 중복확인 */}
+          {/* 이메일 */}
           <div className={s.field}>
             <label className={s.label}>이메일 <span className={ss.required}>*</span></label>
             <div className={ss.inlineRow}>
@@ -130,7 +225,7 @@ export default function SignupPage() {
                 placeholder="example@email.com"
                 value={email}
                 onChange={e => handleEmailChange(e.target.value)}
-                onBlur={handleEmailBlur}
+                onBlur={() => setEmailError(validateEmail(email))}
                 required
                 autoFocus
               />
@@ -142,30 +237,108 @@ export default function SignupPage() {
               >
                 {emailChecked === 'checking' ? '확인 중' : emailChecked === 'ok' ? '사용 가능 ✓' : '중복 확인'}
               </button>
+              <button
+                type="button"
+                className={`${ss.checkBtn} ${emailVerified === 'ok' ? ss.checkBtnOk : ''}`}
+                onClick={handleSendCode}
+                disabled={
+                  emailChecked !== 'ok' ||
+                  codeSending ||
+                  emailVerified === 'ok' ||
+                  cooldown > 0
+                }
+              >
+                {codeSending
+                  ? '발송 중'
+                  : emailVerified === 'ok'
+                    ? '인증 완료 ✓'
+                    : cooldown > 0
+                      ? `재발송 (${cooldown}s)`
+                      : codeSent ? '재발송' : '인증메일 발송'}
+              </button>
             </div>
             {emailError && <span className={ss.fieldError}>{emailError}</span>}
             {!emailError && emailChecked === 'taken' && (
               <span className={ss.fieldError}>이미 사용 중인 이메일입니다</span>
             )}
-            {!emailError && emailChecked === 'ok' && (
-              <span className={ss.fieldOk}>사용 가능한 이메일입니다</span>
+            {!emailError && emailChecked === 'ok' && !codeSent && emailVerified !== 'ok' && (
+              <span className={ss.fieldOk}>사용 가능한 이메일입니다. 인증메일을 발송해 주세요</span>
+            )}
+            {codeSent && emailVerified !== 'ok' && (
+              <span className={ss.fieldOk}>인증 코드가 발송되었습니다. 이메일을 확인해 주세요</span>
             )}
           </div>
 
+          {/* 인증 코드 입력 — 발송 후 표시 */}
+          {codeSent && emailVerified !== 'ok' && (
+            <div className={s.field}>
+              <label className={s.label}>인증 코드 <span className={ss.required}>*</span></label>
+              <div className={ss.inlineRow}>
+                <input
+                  className={`${s.input} ${ss.inputFlex} ${emailVerified === 'fail' ? ss.inputError : ''}`}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="6자리 숫자 입력"
+                  value={emailCode}
+                  onChange={e => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setEmailCode(v);
+                    setEmailVerified('idle');
+                  }}
+                  maxLength={6}
+                />
+                <button
+                  type="button"
+                  className={ss.checkBtn}
+                  onClick={handleVerifyCode}
+                  disabled={emailCode.length !== 6 || emailVerified === 'verifying'}
+                >
+                  {emailVerified === 'verifying' ? '확인 중' : '인증 확인'}
+                </button>
+              </div>
+              {emailVerified === 'fail' && (
+                <span className={ss.fieldError}>인증 코드가 올바르지 않거나 만료되었습니다</span>
+              )}
+            </div>
+          )}
+
+          {/* 이메일 인증 완료 표시 */}
+          {emailVerified === 'ok' && (
+            <div className={ss.verifiedBanner}>이메일 인증 완료 ✓</div>
+          )}
+
           {/* 닉네임 */}
           <div className={s.field}>
-            <label className={s.label}>닉네임</label>
-            <input
-              className={s.input}
-              type="text"
-              placeholder="2~12자, 한글/영문/숫자/_"
-              value={nickname}
-              onChange={e => setNickname(e.target.value)}
-              minLength={2}
-              maxLength={12}
-              required
-            />
-            <span className={s.hint}>랭킹에 표시될 이름입니다</span>
+            <label className={s.label}>닉네임 <span className={ss.required}>*</span></label>
+            <div className={ss.inlineRow}>
+              <input
+                className={`${s.input} ${ss.inputFlex} ${nicknameError ? ss.inputError : ''}`}
+                type="text"
+                placeholder="2~12자, 한글/영문/숫자/_"
+                value={nickname}
+                onChange={e => handleNicknameChange(e.target.value)}
+                maxLength={12}
+                required
+              />
+              <button
+                type="button"
+                className={`${ss.checkBtn} ${nicknameChecked === 'ok' ? ss.checkBtnOk : ''}`}
+                onClick={handleCheckNickname}
+                disabled={nicknameChecked === 'checking' || nicknameChecked === 'ok'}
+              >
+                {nicknameChecked === 'checking' ? '확인 중' : nicknameChecked === 'ok' ? '사용 가능 ✓' : '중복 확인'}
+              </button>
+            </div>
+            {nicknameError && <span className={ss.fieldError}>{nicknameError}</span>}
+            {!nicknameError && nicknameChecked === 'taken' && (
+              <span className={ss.fieldError}>이미 사용 중인 닉네임입니다</span>
+            )}
+            {!nicknameError && nicknameChecked === 'ok' && (
+              <span className={ss.fieldOk}>사용 가능한 닉네임입니다</span>
+            )}
+            {nicknameChecked === 'idle' && !nicknameError && (
+              <span className={s.hint}>랭킹에 표시될 이름입니다</span>
+            )}
           </div>
 
           {/* 비밀번호 */}
@@ -177,10 +350,9 @@ export default function SignupPage() {
               placeholder="영문 + 숫자 + 특수문자 8자 이상"
               value={password}
               onChange={e => handlePasswordChange(e.target.value)}
-              onBlur={handlePasswordBlur}
+              onBlur={() => setPasswordError(validatePassword(password))}
               required
             />
-            {/* 강도 표시바 */}
             {password && (
               <div className={ss.strengthWrap}>
                 <div className={ss.strengthBar}>

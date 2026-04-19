@@ -26,4 +26,8 @@ public class SignupRequest {
         message = "비밀번호는 영문, 숫자, 특수문자를 각각 1자 이상 포함해야 합니다"
     )
     private String password;
+
+    @NotBlank(message = "이메일 인증이 필요합니다")
+    @Pattern(regexp = "^[0-9]{6}$", message = "인증 코드는 6자리 숫자입니다")
+    private String emailCode;
 }

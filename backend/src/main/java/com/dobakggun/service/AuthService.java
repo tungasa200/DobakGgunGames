@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -30,14 +31,60 @@ public class AuthService {
     @Value("${app.mail.verification-token-expiry}")
     private long verificationTokenExpiry;
 
-    // 이메일 중복 확인
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    // 이메일 중복 확인 (PENDING은 재가입 허용이므로 taken=false 반환)
     public boolean isEmailTaken(String email) {
-        return userRepository.existsByEmail(email);
+        return userRepository.findByEmail(email)
+                .map(u -> u.getStatus() != User.Status.PENDING)
+                .orElse(false);
     }
 
-    // 5-1. 회원가입
+    // 닉네임 중복 확인
+    public boolean isNicknameTaken(String nickname) {
+        return userRepository.existsByNickname(nickname);
+    }
+
+    // 이메일 OTP 발송
+    public void sendEmailOtp(String email) {
+        // ACTIVE/BANNED 계정이면 발송 거부
+        userRepository.findByEmail(email).ifPresent(existing -> {
+            if (existing.getStatus() == User.Status.BANNED) {
+                throw new IllegalArgumentException("정지된 계정입니다");
+            }
+            if (existing.getStatus() == User.Status.ACTIVE) {
+                throw new IllegalArgumentException("이미 사용 중인 이메일입니다");
+            }
+            // PENDING이면 이전 PENDING 레코드 삭제 후 재발송 허용
+            emailVerificationRepository.deleteByUser(existing);
+            userRepository.delete(existing);
+            userRepository.flush();
+        });
+
+        String code = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+        redisTokenService.saveEmailOtp(email, code);
+        emailService.sendEmailOtp(email, code);
+    }
+
+    // 이메일 OTP 확인 (소비하지 않음 — 실제 소비는 signup에서)
+    public boolean checkEmailOtp(String email, String code) {
+        String stored = redisTokenService.getEmailOtp(email);
+        return stored != null && stored.equals(code);
+    }
+
+    // 5-1. 회원가입 (OTP 인증 필수 → 가입 즉시 ACTIVE)
     @Transactional
     public void signup(SignupRequest req) {
+        // OTP 검증
+        String storedOtp = redisTokenService.getEmailOtp(req.getEmail());
+        if (storedOtp == null) {
+            throw new IllegalArgumentException("이메일 인증 코드가 만료되었습니다. 다시 인증해 주세요");
+        }
+        if (!storedOtp.equals(req.getEmailCode())) {
+            throw new IllegalArgumentException("인증 코드가 올바르지 않습니다");
+        }
+
+        // 이메일 중복 검사 (OTP 발송 후 다른 사람이 먼저 가입한 경우 대비)
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다");
         }
@@ -51,22 +98,14 @@ public class AuthService {
                 .nickname(req.getNickname())
                 .password(passwordEncoder.encode(req.getPassword()))
                 .provider(User.Provider.LOCAL)
-                .status(User.Status.PENDING)
+                .status(User.Status.ACTIVE) // OTP 인증 완료 → 즉시 ACTIVE
                 .build();
         userRepository.save(user);
 
-        String token = UUID.randomUUID().toString();
-        EmailVerification verification = EmailVerification.builder()
-                .user(user)
-                .token(token)
-                .expiresAt(LocalDateTime.now().plusSeconds(verificationTokenExpiry))
-                .build();
-        emailVerificationRepository.save(verification);
-
-        emailService.sendVerificationEmail(user.getEmail(), token);
+        redisTokenService.deleteEmailOtp(req.getEmail()); // OTP 소비
     }
 
-    // 5-2. 이메일 인증
+    // 5-2. 이메일 인증 (기존 PENDING 계정용 레거시 링크 처리)
     @Transactional
     public void verifyEmail(String token) {
         EmailVerification verification = emailVerificationRepository.findByToken(token)

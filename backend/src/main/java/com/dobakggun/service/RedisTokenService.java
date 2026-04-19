@@ -13,6 +13,7 @@ public class RedisTokenService {
 
     private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
     private static final String PASSWORD_RESET_PREFIX = "pw_reset:";
+    private static final String EMAIL_OTP_PREFIX = "email_otp:";
 
     private final StringRedisTemplate redisTemplate;
 
@@ -61,5 +62,21 @@ public class RedisTokenService {
 
     public void deletePasswordResetToken(String token) {
         redisTemplate.delete(PASSWORD_RESET_PREFIX + token);
+    }
+
+    // Email OTP (TTL 10분)
+
+    public void saveEmailOtp(String email, String code) {
+        redisTemplate.opsForValue().set(
+                EMAIL_OTP_PREFIX + email, code, 10, TimeUnit.MINUTES
+        );
+    }
+
+    public String getEmailOtp(String email) {
+        return redisTemplate.opsForValue().get(EMAIL_OTP_PREFIX + email);
+    }
+
+    public void deleteEmailOtp(String email) {
+        redisTemplate.delete(EMAIL_OTP_PREFIX + email);
     }
 }

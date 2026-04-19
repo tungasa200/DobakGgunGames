@@ -29,6 +29,20 @@ public class EmailService {
         send(to, "[도박꾼게임즈] 이메일 인증", html);
     }
 
+    public void sendEmailOtp(String to, String code) {
+        String html = "<div style=\"font-family:sans-serif;max-width:480px;margin:0 auto\">"
+                + "<h2 style=\"color:#111\">도박꾼게임즈 이메일 인증</h2>"
+                + "<p style=\"color:#444\">아래 6자리 인증 코드를 입력해 주세요.</p>"
+                + "<div style=\"font-size:36px;font-weight:bold;letter-spacing:10px;"
+                + "text-align:center;padding:24px 0;background:#f3f4f6;"
+                + "border-radius:10px;margin:20px 0;color:#111\">"
+                + code + "</div>"
+                + "<p style=\"color:#888;font-size:13px\">10분 이내에 입력해 주세요.</p>"
+                + "<p style=\"color:#bbb;font-size:12px\">본인이 요청하지 않은 경우 이 메일을 무시해 주세요.</p>"
+                + "</div>";
+        send(to, "[도박꾼게임즈] 이메일 인증 코드: " + code, html);
+    }
+
     public void sendPasswordResetEmail(String to, String token) {
         String link = baseUrl + "/reset-password?token=" + token;
         String html = "<h2>도박꾼게임즈 비밀번호 재설정</h2>"

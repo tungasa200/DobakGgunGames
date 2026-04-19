@@ -24,10 +24,22 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const authApi = {
-  signup: (email: string, nickname: string, password: string) =>
+  signup: (email: string, nickname: string, password: string, emailCode: string) =>
     request<{ message: string }>(`${BASE}/signup`, {
       method: 'POST',
-      body: JSON.stringify({ email, nickname, password }),
+      body: JSON.stringify({ email, nickname, password, emailCode }),
+    }),
+
+  sendEmailCode: (email: string) =>
+    request<{ message: string }>(`${BASE}/send-email-code`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyEmailCode: (email: string, code: string) =>
+    request<{ verified: boolean }>(`${BASE}/verify-email-code`, {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
     }),
 
   login: (email: string, password: string) =>
@@ -56,6 +68,9 @@ export const authApi = {
 
   checkEmail: (email: string) =>
     request<{ taken: boolean }>(`${BASE}/check-email?email=${encodeURIComponent(email)}`),
+
+  checkNickname: (nickname: string) =>
+    request<{ taken: boolean }>(`${BASE}/check-nickname?nickname=${encodeURIComponent(nickname)}`),
 
   verifyEmail: (token: string) =>
     request<{ message: string }>(`${BASE}/verify?token=${encodeURIComponent(token)}`),

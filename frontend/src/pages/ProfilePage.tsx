@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { userApi } from '../api/user';
+import { authApi } from '../api/auth';
 import type { UserProfile } from '../api/user';
 import s from './auth.module.css';
 import ps from './ProfilePage.module.css';
@@ -13,6 +14,8 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [nickname, setNickname] = useState('');
+  const [nicknameChecked, setNicknameChecked] = useState<'idle' | 'checking' | 'ok' | 'taken'>('idle');
+  const [nicknameCheckError, setNicknameCheckError] = useState('');
   const [nicknameMsg, setNicknameMsg] = useState('');
   const [nicknameError, setNicknameError] = useState('');
   const [nicknameLoading, setNicknameLoading] = useState(false);
@@ -28,14 +31,48 @@ export default function ProfilePage() {
       .catch(() => navigate('/login', { replace: true }));
   }, [accessToken, navigate]);
 
+  function handleNicknameChange(v: string) {
+    setNickname(v);
+    setNicknameChecked('idle');
+    setNicknameCheckError('');
+    setNicknameMsg('');
+    setNicknameError('');
+  }
+
+  async function handleCheckNickname() {
+    if (!nickname || nickname.length < 2) {
+      setNicknameCheckError('닉네임을 2자 이상 입력해 주세요');
+      return;
+    }
+    if (!/^[가-힣a-zA-Z0-9_]+$/.test(nickname)) {
+      setNicknameCheckError('한글, 영문, 숫자, 밑줄만 사용 가능합니다');
+      return;
+    }
+    setNicknameCheckError('');
+    setNicknameChecked('checking');
+    try {
+      const { taken } = await authApi.checkNickname(nickname);
+      setNicknameChecked(taken ? 'taken' : 'ok');
+    } catch {
+      setNicknameChecked('idle');
+      setNicknameCheckError('중복 확인 중 오류가 발생했습니다');
+    }
+  }
+
   async function handleNickname(e: FormEvent) {
     e.preventDefault();
-    if (!accessToken) return;
+    if (!accessToken || !profile) return;
+    // 본인 닉네임 그대로면 중복확인 없이 통과
+    if (nickname !== profile.nickname && nicknameChecked !== 'ok') {
+      setNicknameError('닉네임 중복 확인을 완료해 주세요');
+      return;
+    }
     setNicknameError(''); setNicknameMsg('');
     setNicknameLoading(true);
     try {
       const updated = await userApi.updateNickname(accessToken, nickname);
       setProfile(updated);
+      setNicknameChecked('idle');
       setNicknameMsg('닉네임이 변경되었습니다');
     } catch (err: unknown) {
       setNicknameError(err instanceof Error ? err.message : '변경 실패');
@@ -124,20 +161,50 @@ export default function ProfilePage() {
         <form className={s.form} onSubmit={handleNickname}>
           <div className={s.field}>
             <label className={s.label}>닉네임 변경</label>
-            <input
-              className={s.input}
-              type="text"
-              value={nickname}
-              onChange={e => setNickname(e.target.value)}
-              minLength={2}
-              maxLength={12}
-              required
-            />
-            <span className={s.hint}>2~12자, 한글/영문/숫자/_</span>
+            <div className={ps.inlineRow}>
+              <input
+                className={`${s.input} ${ps.inputFlex}`}
+                type="text"
+                value={nickname}
+                onChange={e => handleNicknameChange(e.target.value)}
+                maxLength={12}
+                required
+              />
+              <button
+                type="button"
+                className={`${ps.checkBtn} ${nicknameChecked === 'ok' ? ps.checkBtnOk : ''}`}
+                onClick={handleCheckNickname}
+                disabled={
+                  nicknameChecked === 'checking' ||
+                  nicknameChecked === 'ok' ||
+                  nickname === profile.nickname
+                }
+              >
+                {nicknameChecked === 'checking' ? '확인 중' : nicknameChecked === 'ok' ? '사용 가능 ✓' : '중복 확인'}
+              </button>
+            </div>
+            {nicknameCheckError && <span className={ps.fieldError}>{nicknameCheckError}</span>}
+            {!nicknameCheckError && nicknameChecked === 'taken' && (
+              <span className={ps.fieldError}>이미 사용 중인 닉네임입니다</span>
+            )}
+            {!nicknameCheckError && nicknameChecked === 'ok' && (
+              <span className={ps.fieldOk}>사용 가능한 닉네임입니다</span>
+            )}
+            {nickname === profile.nickname && (
+              <span className={s.hint}>2~12자, 한글/영문/숫자/_</span>
+            )}
           </div>
           {nicknameMsg && <div className={s.success}>{nicknameMsg}</div>}
           {nicknameError && <div className={s.error}>{nicknameError}</div>}
-          <button className={s.btn} type="submit" disabled={nicknameLoading || nickname === profile.nickname}>
+          <button
+            className={s.btn}
+            type="submit"
+            disabled={
+              nicknameLoading ||
+              !nickname ||
+              (nickname !== profile.nickname && nicknameChecked !== 'ok')
+            }
+          >
             {nicknameLoading ? '변경 중...' : '닉네임 변경'}
           </button>
         </form>

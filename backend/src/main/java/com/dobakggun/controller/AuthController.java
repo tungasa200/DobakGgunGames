@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -22,6 +23,38 @@ public class AuthController {
     public ResponseEntity<?> checkEmail(@RequestParam String email) {
         boolean taken = authService.isEmailTaken(email);
         return ResponseEntity.ok(Map.of("taken", taken));
+    }
+
+    // 닉네임 중복 확인
+    @GetMapping("/check-nickname")
+    public ResponseEntity<?> checkNickname(@RequestParam String nickname) {
+        boolean taken = authService.isNicknameTaken(nickname);
+        return ResponseEntity.ok(Map.of("taken", taken));
+    }
+
+    // 이메일 OTP 발송
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
+    @PostMapping("/send-email-code")
+    public ResponseEntity<?> sendEmailCode(@RequestBody Map<String, String> body) {
+        String email = body.getOrDefault("email", "").trim();
+        if (email.isEmpty() || !EMAIL_PATTERN.matcher(email).matches()) {
+            throw new IllegalArgumentException("올바른 이메일 형식이 아닙니다");
+        }
+        authService.sendEmailOtp(email);
+        return ResponseEntity.ok(Map.of("message", "인증 코드를 발송했습니다"));
+    }
+
+    // 이메일 OTP 확인 (소비 없음)
+    @PostMapping("/verify-email-code")
+    public ResponseEntity<?> verifyEmailCode(@RequestBody Map<String, String> body) {
+        String email = body.getOrDefault("email", "").trim();
+        String code  = body.getOrDefault("code", "").trim();
+        boolean verified = authService.checkEmailOtp(email, code);
+        if (!verified) {
+            throw new IllegalArgumentException("인증 코드가 올바르지 않거나 만료되었습니다");
+        }
+        return ResponseEntity.ok(Map.of("verified", true));
     }
 
     // 5-1. 회원가입
