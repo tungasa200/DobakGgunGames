@@ -96,7 +96,7 @@ export default function NormalHeader({ currentGame, gameName, accentColor }: Pro
           >
             {user.profileImage
               ? <img className={styles.avatar} src={user.profileImage} alt="" />
-              : <span className={styles.avatarLetter}>{user.nickname[0]}</span>
+              : <span className={styles.avatarLetter}>{user.nickname?.[0] ?? '?'}</span>
             }
             <span className={styles.nickname}>{user.nickname}</span>
             <span className={styles.profileCaret}>{profileOpen ? '▴' : '▾'}</span>

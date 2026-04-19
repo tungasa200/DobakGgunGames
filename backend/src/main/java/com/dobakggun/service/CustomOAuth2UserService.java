@@ -29,6 +29,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         String email;
         String name;
+        String picture;
         String providerId;
         User.Provider provider;
 
@@ -36,6 +37,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             case "google" -> {
                 email = oAuth2User.getAttribute("email");
                 name = oAuth2User.getAttribute("name");
+                picture = oAuth2User.getAttribute("picture");
                 providerId = oAuth2User.getAttribute("sub");
                 provider = User.Provider.GOOGLE;
             }
@@ -45,6 +47,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                         ? (Map<String, Object>) kakaoAccount.get("profile") : Collections.emptyMap();
                 email = kakaoAccount != null ? (String) kakaoAccount.get("email") : null;
                 name = profile != null ? (String) profile.get("nickname") : null;
+                picture = profile != null ? (String) profile.get("profile_image_url") : null;
                 providerId = String.valueOf(oAuth2User.getAttribute("id"));
                 provider = User.Provider.KAKAO;
             }
@@ -52,6 +55,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 Map<String, Object> response = oAuth2User.getAttribute("response");
                 email = response != null ? (String) response.get("email") : null;
                 name = response != null ? (String) response.get("name") : null;
+                picture = response != null ? (String) response.get("profile_image") : null;
                 providerId = response != null ? (String) response.get("id") : null;
                 provider = User.Provider.NAVER;
             }
@@ -66,6 +70,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         final String finalProviderId = providerId;
         final String finalEmail = email;
         final String finalName = name;
+        final String finalPicture = picture;
 
         User user = userRepository.findByEmail(finalEmail)
                 .map(existing -> {
@@ -74,14 +79,19 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                         existing.setProvider(finalProvider);
                         existing.setProviderId(finalProviderId);
                     }
+                    // 프로필 사진 업데이트 (OAuth 제공자 사진으로 동기화)
+                    if (finalPicture != null) {
+                        existing.setProfileImage(finalPicture);
+                    }
                     return existing;
                 })
                 .orElseGet(() -> {
-                    // 자동 가입
+                    // 자동 가입 — 닉네임 및 프로필 사진 설정
                     String nickname = generateUniqueNickname(finalName);
                     return userRepository.save(User.builder()
                             .email(finalEmail)
                             .nickname(nickname)
+                            .profileImage(finalPicture)
                             .provider(finalProvider)
                             .providerId(finalProviderId)
                             .status(User.Status.ACTIVE)
@@ -96,7 +106,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     private String generateUniqueNickname(String base) {
-        String candidate = base != null ? base.replaceAll("[^가-힣a-zA-Z0-9_]", "").substring(0, Math.min(base.length(), 10)) : "";
+        String stripped = base != null ? base.replaceAll("[^가-힣a-zA-Z0-9_]", "") : "";
+        String candidate = stripped.substring(0, Math.min(stripped.length(), 10));
         if (candidate.isEmpty()) candidate = "user";
 
         String nickname = candidate;

@@ -197,6 +197,17 @@ export default function HomePage() {
               }}
             />
           ))}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={styles.icon}>🧪</span>
+              <div className={styles.title}>
+                <div className={styles.nameKo}>Test Lab</div>
+              </div>
+            </div>
+            <div className={styles.cardRanking}>
+  
+            </div>
+          </div>
         </div>
       </div>
       <Footer />
