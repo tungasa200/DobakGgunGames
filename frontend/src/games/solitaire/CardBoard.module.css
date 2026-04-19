@@ -168,6 +168,8 @@
   padding: 2px 3px;
   /* iOS Safari에서 ♥♦ 등을 컬러 이모지 대신 텍스트로 렌더링 */
   font-variant-emoji: text;
+  /* 더블탭 시 페이지 줌 대신 dblclick 이벤트 발생 (재단 자동이동) */
+  touch-action: manipulation;
 }
 
 /* 카드 뒷면 — 원본: .card.back { background: #1565c0; border: 2px solid #64b5f6; } */
@@ -180,6 +182,7 @@
   user-select: none;
   box-sizing: border-box;
   position: relative;
+  touch-action: manipulation;
 }
 /* 원본: .card.back::after { content: ''; position: absolute; inset: 4px; border: 1.5px solid rgba(255,255,255,0.2); background: repeating-linear-gradient(...) } */
 .cardBack::after {

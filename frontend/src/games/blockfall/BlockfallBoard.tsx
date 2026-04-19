@@ -741,10 +741,14 @@ export default function BlockfallBoard({ excel = false }: Props) {
         playerHardDrop();
       }
     }
+    // touchmove: 스와이프 제스처 중 페이지 스크롤 방지
+    function onMove(e: TouchEvent) { e.preventDefault(); }
     canvas.addEventListener('touchstart', onStart, { passive: false });
+    canvas.addEventListener('touchmove', onMove,  { passive: false });
     canvas.addEventListener('touchend', onEnd, { passive: false });
     return () => {
       canvas.removeEventListener('touchstart', onStart);
+      canvas.removeEventListener('touchmove', onMove);
       canvas.removeEventListener('touchend', onEnd);
     };
   }, [gameStatus, playerMove, playerRotate, playerHardDrop]);
