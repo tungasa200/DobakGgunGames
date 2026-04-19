@@ -37,7 +37,7 @@ export default function EmailVerifyPage() {
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'auto', background: '#f0f0f0', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
       <NormalHeader accentColor="#2c3e50" />
-      <div className={s.page}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: 'max-content' }}>
         <div className={s.card} style={{ textAlign: 'center' }}>
           {status === 'loading' && (
             <>

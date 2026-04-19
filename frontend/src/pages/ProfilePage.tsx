@@ -130,7 +130,7 @@ export default function ProfilePage() {
     return (
       <div style={outerStyle}>
         <NormalHeader accentColor="#2c3e50" />
-        <div className={s.page}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: 'max-content' }}>
           <div className={ps.loading}>불러오는 중...</div>
         </div>
         <Footer />
@@ -141,7 +141,7 @@ export default function ProfilePage() {
   return (
     <div style={outerStyle}>
       <NormalHeader accentColor="#2c3e50" />
-      <div className={s.page}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: 'max-content' }}>
       <div className={ps.card}>
         <div className={ps.header}>
           <div className={ps.avatarWrap} onClick={() => fileRef.current?.click()}>
