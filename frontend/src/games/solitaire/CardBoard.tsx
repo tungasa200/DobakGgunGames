@@ -169,6 +169,7 @@ export default function CardBoard({ excel = false }: Props) {
   const [playerName, setPlayerName] = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [nameBanned, setNameBanned] = useState(false);
+  const [sessionFailed, setSessionFailed] = useState(false);
 
   // 모달이 열릴 때 로그인된 닉네임 자동 완성
   useEffect(() => {
@@ -204,10 +205,10 @@ export default function CardBoard({ excel = false }: Props) {
   }, [state.moves, state.status]);
 
   useEffect(() => {
-    if (state.status === 'won') {
+    if (state.status === 'won' && !sessionFailed) {
       setTimeout(() => setModalOpen(true), 400);
     }
-  }, [state.status]);
+  }, [state.status, sessionFailed]);
 
   // ── Excel Shell 연동 ──────────────────────────────────────────────
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
@@ -302,14 +303,26 @@ export default function CardBoard({ excel = false }: Props) {
   async function handleStartGame(dm: DrawMode) {
     lastSentMovesRef.current = 0;
     if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
-    try {
-      // Phase 3: 서버 덱으로 게임 초기화 (클라이언트 셔플 제거)
-      const res = await startSolitaireSession(dm);
+
+    // 세션 생성 최대 3회 재시도
+    let res = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        res = await startSolitaireSession(dm);
+        break;
+      } catch {
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    if (res) {
       sessionIdRef.current = res.sessionId;
+      setSessionFailed(false);
       startGameWithDeck(dm, res.deck);
-    } catch {
-      // 서버 오류 시 클라이언트 셔플로 폴백
+    } else {
+      // 3회 모두 실패 → 랭킹 등록 불가 상태로 클라이언트 셔플 폴백
       sessionIdRef.current = '';
+      setSessionFailed(true);
       startGame(dm);
     }
   }
@@ -539,6 +552,13 @@ export default function CardBoard({ excel = false }: Props) {
           <span className={styles.timer}>⏱ {formatTime(state.elapsed)}</span>
           <span className={styles.moves}>🃏 {state.moves}수</span>
           <button className={styles.undoBtn} disabled={!state.history.length} onClick={undo}>↩ 되돌리기</button>
+        </div>
+      )}
+
+      {/* ── 세션 생성 실패 경고 배너 ── */}
+      {!excel && sessionFailed && state.status !== 'idle' && (
+        <div className={styles.sessionFailBanner}>
+          네트워크 오류로 이 게임은 랭킹에 등록되지 않습니다
         </div>
       )}
 

@@ -131,6 +131,7 @@ export default function AppleCanvas({ excel = false }: Props) {
 
   // 세션 ID
   const sessionIdRef = useRef<string>('');
+  const [sessionFailed, setSessionFailed] = useState(false);
 
   // 세로 모드로 보드를 전치했는지 여부 (순위 등록 시 좌표 역전치에 사용)
   const boardTransposedRef = useRef(false);
@@ -255,7 +256,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     if (state.status === 'ended') {
       setMsg('GAME OVER');
       draw();
-      setTimeout(() => setModalOpen(true), 300);
+      if (!sessionFailed) setTimeout(() => setModalOpen(true), 300);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
@@ -483,10 +484,20 @@ export default function AppleCanvas({ excel = false }: Props) {
     setPlayerName('');
     setSubmitState('idle');
     setDragSum(null);
-    try {
-      // Phase 3: 서버 보드로 게임 시작 (클라이언트 randomApple 제거)
-      const res = await startAppleSession();
+    // 세션 생성 최대 3회 재시도
+    let res = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        res = await startAppleSession();
+        break;
+      } catch {
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    if (res) {
       sessionIdRef.current = res.sessionId;
+      setSessionFailed(false);
       const base = (excel ? layout : calcLayout()) ?? layout;
 
       // 세로 모드일 때 서버의 가로형(10×17) 보드를 전치해 세로형(17×10)으로 변환
@@ -506,9 +517,10 @@ export default function AppleCanvas({ excel = false }: Props) {
         canvasWrapRef.current.style.maxWidth = `${syncedLayout.pad * 2 + syncedLayout.cols * syncedLayout.size}px`;
       }
       startWithBoard(board);
-    } catch {
-      // 서버 오류 시 클라이언트 난수로 폴백
+    } else {
+      // 3회 모두 실패 → 클라이언트 난수로 폴백
       sessionIdRef.current = '';
+      setSessionFailed(true);
       boardTransposedRef.current = false;
       const l = (excel ? layout : calcLayout()) ?? layout;
       start(l.rows, l.cols);
@@ -656,6 +668,13 @@ export default function AppleCanvas({ excel = false }: Props) {
 
       {/* 상태 메시지 — 일반 모드 */}
       {!excel && <div className={styles.statusMsg}>{msg}</div>}
+
+      {/* 세션 생성 실패 경고 배너 */}
+      {!excel && sessionFailed && state.status === 'playing' && (
+        <div className={styles.sessionFailBanner}>
+          네트워크 오류로 이 게임은 랭킹에 등록되지 않습니다
+        </div>
+      )}
 
       {/* 캔버스 — 게임 시트 */}
       {showGameArea && (

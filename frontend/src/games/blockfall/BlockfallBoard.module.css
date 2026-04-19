@@ -633,3 +633,5 @@
   padding: 12px 8px;
   background: white;
 }
+
+.sessionFailBanner { width: 100%; padding: 8px 12px; margin-bottom: 8px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 6px; color: #f1948a; font-size: 0.85em; text-align: center; }

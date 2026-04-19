@@ -73,6 +73,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
 
   // 세션 ID
   const sessionIdRef = useRef<string>('');
+  const [sessionFailed, setSessionFailed] = useState(false);
 
   // 최초 클릭 서버 요청 중 로딩 표시
   const [firstClickLoading, setFirstClickLoading] = useState(false);
@@ -87,33 +88,55 @@ export default function MinesweeperBoard({ excel = false }: Props) {
     const rankLv = level === 'custom' ? 'beginner' : level as Exclude<typeof level, 'custom'>;
 
     if (level === 'custom') {
-      // 커스텀 난이도: 서버 보드 없이 클라이언트 placeMines 사용, 세션은 fire-and-forget
-      startMinesweeperSession(rankLv).then(res => { sessionIdRef.current = res.sessionId; }).catch(() => { sessionIdRef.current = ''; });
+      // 커스텀 난이도: 서버 보드 없이 클라이언트 placeMines 사용
+      // 세션은 백그라운드 재시도 (첫 클릭 즉시 반응)
       revealCell(r, c);
+      (async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const res = await startMinesweeperSession(rankLv);
+            sessionIdRef.current = res.sessionId;
+            setSessionFailed(false);
+            return;
+          } catch {
+            if (attempt < 2) await new Promise(r2 => setTimeout(r2, 1000));
+          }
+        }
+        sessionIdRef.current = '';
+        setSessionFailed(true);
+      })();
       return;
     }
 
     // 프리셋 난이도: 서버에서 보드를 받아 적용 후 오픈 (Phase 3)
     setFirstClickLoading(true);
-    try {
-      const res = await startMinesweeperSession(rankLv, { r, c });
-      sessionIdRef.current = res.sessionId;
-      revealFirstCellWithServerBoard(res.adjMines, r, c);
-    } catch {
-      // 서버 오류 시 클라이언트 placeMines 로 폴백
-      sessionIdRef.current = '';
-      revealCell(r, c);
-    } finally {
-      setFirstClickLoading(false);
+    let succeeded = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await startMinesweeperSession(rankLv, { r, c });
+        sessionIdRef.current = res.sessionId;
+        setSessionFailed(false);
+        revealFirstCellWithServerBoard(res.adjMines, r, c);
+        succeeded = true;
+        break;
+      } catch {
+        if (attempt < 2) await new Promise(r2 => setTimeout(r2, 1000));
+      }
     }
+    if (!succeeded) {
+      sessionIdRef.current = '';
+      setSessionFailed(true);
+      revealCell(r, c);
+    }
+    setFirstClickLoading(false);
   }
 
   // 양클릭 추적
   const mouseButtonsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    if (state.status === 'won') setModalOpen(true);
-  }, [state.status]);
+    if (state.status === 'won' && !sessionFailed) setModalOpen(true);
+  }, [state.status, sessionFailed]);
 
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
@@ -339,6 +362,13 @@ export default function MinesweeperBoard({ excel = false }: Props) {
             {statusText}
           </div>
         </>
+      )}
+
+      {/* 세션 생성 실패 경고 배너 */}
+      {!excel && sessionFailed && state.status !== 'idle' && state.status !== 'won' && state.status !== 'lost' && (
+        <div className={styles.sessionFailBanner}>
+          네트워크 오류로 이 게임은 랭킹에 등록되지 않습니다
+        </div>
       )}
 
       {/* ── 보드 ── */}

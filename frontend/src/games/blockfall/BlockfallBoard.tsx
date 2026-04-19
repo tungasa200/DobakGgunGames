@@ -187,6 +187,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
 
   // 세션 ID
   const sessionIdRef = useRef<string>('');
+  const sessionFailedRef = useRef<boolean>(false);
+  const [sessionFailed, setSessionFailed] = useState(false);
 
   // ===== React 상태 (UI 표시용) =====
   const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
@@ -507,7 +509,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
     if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
     setGameStatus('over');
     draw();
-    setTimeout(() => setModalOpen(true), 100);
+    if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
   }
 
   // ===== 게임 루프 =====
@@ -674,7 +676,23 @@ export default function BlockfallBoard({ excel = false }: Props) {
     setGameStatus('playing');
     lastTime.current = 0;
     animId.current = requestAnimationFrame(gameLoop);
-    startSession('blockfall', level).then(id => { sessionIdRef.current = id; }).catch(() => { sessionIdRef.current = ''; });
+    // 세션 생성 최대 3회 재시도
+    (async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const id = await startSession('blockfall', level);
+          sessionIdRef.current = id;
+          sessionFailedRef.current = false;
+          setSessionFailed(false);
+          return;
+        } catch {
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      sessionIdRef.current = '';
+      sessionFailedRef.current = true;
+      setSessionFailed(true);
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameLoop]);
 
@@ -930,6 +948,13 @@ export default function BlockfallBoard({ excel = false }: Props) {
       )}
 
       {!excel && statusText && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
+
+      {/* 세션 생성 실패 경고 배너 */}
+      {!excel && sessionFailed && gameStatus === 'playing' && (
+        <div className={styles.sessionFailBanner}>
+          네트워크 오류로 이 게임은 랭킹에 등록되지 않습니다
+        </div>
+      )}
 
       {/* 게임 영역 — 게임 시트 활성 시 */}
       {showGameArea && (

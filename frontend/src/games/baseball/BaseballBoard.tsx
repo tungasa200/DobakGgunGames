@@ -47,13 +47,21 @@ export default function BaseballBoard({ excel = false }: Props) {
   const [hint, setHint] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [sessionFailed, setSessionFailed] = useState(false);
+
   async function initSession(lv: Level) {
-    try {
-      const res = await startBaseballSession(lv);
-      sessionIdRef.current = res.sessionId;
-    } catch {
-      sessionIdRef.current = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await startBaseballSession(lv);
+        sessionIdRef.current = res.sessionId;
+        setSessionFailed(false);
+        return;
+      } catch {
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+      }
     }
+    sessionIdRef.current = '';
+    setSessionFailed(true);
   }
 
   // 클리어 모달
@@ -79,7 +87,7 @@ export default function BaseballBoard({ excel = false }: Props) {
   // 마운트 시 최초 세션 발급
   useEffect(() => { initSession(level); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { if (state.won) setModalOpen(true); }, [state.won]);
+  useEffect(() => { if (state.won && !sessionFailed) setModalOpen(true); }, [state.won, sessionFailed]);
   useEffect(() => {
     if (state.gameOver) {
       const answerStr = state.revealedAnswer ? ` 정답은 ${state.revealedAnswer} 였습니다.` : '';
@@ -243,6 +251,13 @@ export default function BaseballBoard({ excel = false }: Props) {
         <div className={styles.statusBar}>
           <span className={styles.attempts}>{state.attempts}번째 시도</span>
           <span className={styles.timer}>⏱ {state.elapsed.toFixed(1)}초</span>
+        </div>
+      )}
+
+      {/* 세션 생성 실패 경고 배너 */}
+      {!excel && sessionFailed && !state.won && !state.gameOver && (
+        <div className={styles.sessionFailBanner}>
+          네트워크 오류로 이 게임은 랭킹에 등록되지 않습니다
         </div>
       )}
 

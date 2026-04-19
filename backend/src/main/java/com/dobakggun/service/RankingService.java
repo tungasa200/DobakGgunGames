@@ -67,7 +67,7 @@ public class RankingService {
         }
 
         // 세션 기반 검증
-        if (req.getSessionId() == null) {
+        if (req.getSessionId() == null || req.getSessionId().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 요청입니다.");
         }
         GameSession session = "baseball".equals(game)

@@ -514,3 +514,5 @@
 
 /* 원본: .xrb.xdiff-active */
 .xrbActive { background: #c8e6c9 !important; border-color: #4caf50 !important; }
+
+.sessionFailBanner { width: 100%; padding: 8px 12px; margin-bottom: 8px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 6px; color: #f1948a; font-size: 0.85em; text-align: center; }
