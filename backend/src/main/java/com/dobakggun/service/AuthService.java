@@ -62,8 +62,8 @@ public class AuthService {
         });
 
         String code = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-        redisTokenService.saveEmailOtp(email, code);
-        emailService.sendEmailOtp(email, code);
+        emailService.sendEmailOtp(email, code);      // 발송 성공 후에
+        redisTokenService.saveEmailOtp(email, code); // Redis 저장
     }
 
     // 이메일 OTP 확인 (소비하지 않음 — 실제 소비는 signup에서)
