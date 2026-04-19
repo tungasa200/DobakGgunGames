@@ -1,4 +1,5 @@
-const BASE = '/api/auth';
+const API_ORIGIN = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '');
+const BASE = `${API_ORIGIN}/api/auth`;
 
 export interface AuthUser {
   id: number;

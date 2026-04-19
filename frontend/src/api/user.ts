@@ -1,4 +1,5 @@
-const BASE = '/api/users/me';
+const API_ORIGIN = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '');
+const BASE = `${API_ORIGIN}/api/users/me`;
 
 export interface UserProfile {
   id: number;
