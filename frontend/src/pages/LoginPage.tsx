@@ -8,6 +8,18 @@ import s from './auth.module.css';
 
 const BACKEND = import.meta.env.VITE_API_URL ?? '';
 
+function isInAppBrowser(): boolean {
+  const ua = navigator.userAgent;
+  if (/KAKAOTALK/i.test(ua)) return true;
+  if (/Instagram/i.test(ua)) return true;
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return true;
+  if (/Line\//i.test(ua)) return true;
+  if (/NAVER/i.test(ua)) return true;
+  if (/Android/i.test(ua) && /wv\)/i.test(ua)) return true;
+  if (/iPhone|iPad/i.test(ua) && !/Safari/i.test(ua)) return true;
+  return false;
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -16,6 +28,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showInAppWarning, setShowInAppWarning] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,6 +42,31 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : '로그인에 실패했습니다');
     } finally {
       setLoading(false);
+    }
+  }
+
+  const oauthUrl = `${BACKEND}/oauth2/authorization/google`;
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
+  function handleGoogleLogin(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (isInAppBrowser()) {
+      e.preventDefault();
+      setShowInAppWarning(true);
+    }
+  }
+
+  function openInChrome() {
+    const intentUrl = `intent://${oauthUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+    window.location.href = intentUrl;
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(oauthUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('아래 링크를 복사하세요:', oauthUrl);
     }
   }
 
@@ -77,7 +116,8 @@ export default function LoginPage() {
 
           <a
             className={s.googleBtn}
-            href={`${BACKEND}/oauth2/authorization/google`}
+            href={oauthUrl}
+            onClick={handleGoogleLogin}
           >
             <svg className={s.googleIcon} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -95,6 +135,33 @@ export default function LoginPage() {
         </div>
       </div>
       <Footer />
+
+      {showInAppWarning && (
+        <div className={s.inAppOverlay} onClick={() => setShowInAppWarning(false)}>
+          <div className={s.inAppModal} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+            <h3 className={s.inAppTitle}>구글 로그인 불가</h3>
+            <p className={s.inAppDesc}>
+              카카오톡·인스타그램 등 인앱 브라우저에서는<br />
+              구글 로그인이 지원되지 않습니다.<br />
+              {isAndroid ? 'Chrome' : 'Safari'}에서 접속해 주세요.
+            </p>
+            <div className={s.inAppBtns}>
+              {isAndroid && (
+                <button className={s.btn} onClick={openInChrome}>
+                  Chrome으로 열기
+                </button>
+              )}
+              <button className={s.btnSecondary} onClick={copyLink}>
+                {copied ? '복사됨!' : '링크 복사'}
+              </button>
+              <button className={s.btnSecondary} onClick={() => setShowInAppWarning(false)}>
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
