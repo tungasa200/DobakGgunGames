@@ -363,8 +363,13 @@ export default function MinesweeperBoard({ excel = false }: Props) {
                   cls += ' ' + styles.revealed;
                   if (cell.isMine) { content = '💣'; cls += ' ' + styles.mine; }
                   else if (cell.adjMines > 0) content = String(cell.adjMines);
-                } else if (cell.mark === 'flag')     { content = '🚩'; cls += ' ' + styles.flag; }
-                else if (cell.mark === 'question')   { content = '?';  cls += ' ' + styles.question; }
+                } else if (cell.mark === 'flag') {
+                  if (state.status === 'lost' && !cell.isMine) {
+                    content = '💣'; cls += ' ' + styles.mine;
+                  } else {
+                    content = '🚩'; cls += ' ' + styles.flag;
+                  }
+                } else if (cell.mark === 'question')   { content = '?';  cls += ' ' + styles.question; }
 
                 const numColor = !excel && cell.isRevealed && cell.adjMines > 0 && !cell.isMine
                   ? NUM_COLORS[cell.adjMines] : undefined;
