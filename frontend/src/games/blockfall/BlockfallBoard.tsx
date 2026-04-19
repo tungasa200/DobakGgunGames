@@ -509,7 +509,12 @@ export default function BlockfallBoard({ excel = false }: Props) {
 
     if (isLanding.current) {
       lockCounter.current += dt;
-      if (lockCounter.current >= LOCK_DELAY) lockPiece();
+      if (lockCounter.current >= LOCK_DELAY) {
+        lockPiece();
+        // doGameOver() 가 호출된 경우 animId 가 null 로 초기화됨.
+        // 이 경우 requestAnimationFrame 재등록 없이 즉시 종료.
+        if (animId.current === null) return;
+      }
     }
 
     if (dropCounter.current > dropInterval.current) {
