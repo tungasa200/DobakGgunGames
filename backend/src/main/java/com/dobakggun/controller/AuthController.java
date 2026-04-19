@@ -61,7 +61,7 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest req) {
         authService.signup(req);
-        return ResponseEntity.ok(Map.of("message", "가입이 완료되었습니다. 이메일을 확인해 인증을 완료해 주세요."));
+        return ResponseEntity.ok(Map.of("message", "가입이 완료되었습니다."));
     }
 
     // 5-2. 이메일 인증

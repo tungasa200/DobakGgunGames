@@ -62,7 +62,8 @@ public class EmailService {
             helper.setSubject(subject);
             helper.setText(html, true);
             mailSender.send(message);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
+            // MailSendException(RuntimeException) 포함 모든 예외를 통일된 메시지로 래핑
             throw new RuntimeException("이메일 발송 실패: " + e.getMessage(), e);
         }
     }
