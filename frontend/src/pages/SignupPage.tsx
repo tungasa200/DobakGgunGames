@@ -3,6 +3,8 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { validateEmail, validatePassword, getPasswordStrength } from '../utils/validate';
+import NormalHeader from '../components/normal/NormalHeader';
+import Footer from '../components/normal/Footer';
 import s from './auth.module.css';
 import ss from './SignupPage.module.css';
 
@@ -188,25 +190,34 @@ export default function SignupPage() {
     }
   }
 
-  // ── 성공 화면 ───────────────────────────────────────────
-  if (success) {
-    return (
+  const layout = (content: React.ReactNode) => (
+    <div style={{ position: 'fixed', inset: 0, overflow: 'auto', background: '#f0f0f0', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <NormalHeader accentColor="#2c3e50" />
       <div className={s.page}>
         <div className={s.card}>
-          <div className={s.logo}>🎉</div>
-          <h1 className={s.title}>가입 완료!</h1>
-          <p className={s.subtitle}>잠시 후 로그인 페이지로 이동합니다</p>
-          <div className={s.links}>
-            <Link className={s.link} to="/login">로그인 페이지로 이동</Link>
-          </div>
+          {content}
         </div>
       </div>
+      <Footer />
+    </div>
+  );
+
+  // ── 성공 화면 ───────────────────────────────────────────
+  if (success) {
+    return layout(
+      <>
+        <div className={s.logo}>🎉</div>
+        <h1 className={s.title}>가입 완료!</h1>
+        <p className={s.subtitle}>잠시 후 로그인 페이지로 이동합니다</p>
+        <div className={s.links}>
+          <Link className={s.link} to="/login">로그인 페이지로 이동</Link>
+        </div>
+      </>
     );
   }
 
-  return (
-    <div className={s.page}>
-      <div className={s.card}>
+  return layout(
+    <>
         <div className={s.logo}>🎮</div>
         <h1 className={s.title}>회원가입</h1>
         <p className={s.subtitle}>무료로 가입하고 기록을 남겨보세요</p>
@@ -442,7 +453,6 @@ export default function SignupPage() {
         <div className={s.links}>
           <span>이미 계정이 있으신가요? <Link className={s.link} to="/login">로그인</Link></span>
         </div>
-      </div>
-    </div>
+      </>
   );
 }

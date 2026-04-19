@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { userApi } from '../api/user';
 import { authApi } from '../api/auth';
 import type { UserProfile } from '../api/user';
+import NormalHeader from '../components/normal/NormalHeader';
+import Footer from '../components/normal/Footer';
 import s from './auth.module.css';
 import ps from './ProfilePage.module.css';
 
@@ -118,16 +120,28 @@ export default function ProfilePage() {
     navigate('/', { replace: true });
   }
 
+  const outerStyle: React.CSSProperties = {
+    position: 'fixed', inset: 0, overflow: 'auto',
+    background: '#f0f0f0', fontFamily: 'sans-serif',
+    display: 'flex', flexDirection: 'column',
+  };
+
   if (!profile) {
     return (
-      <div className={s.page}>
-        <div className={ps.loading}>불러오는 중...</div>
+      <div style={outerStyle}>
+        <NormalHeader accentColor="#2c3e50" />
+        <div className={s.page}>
+          <div className={ps.loading}>불러오는 중...</div>
+        </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className={s.page}>
+    <div style={outerStyle}>
+      <NormalHeader accentColor="#2c3e50" />
+      <div className={s.page}>
       <div className={ps.card}>
         <div className={ps.header}>
           <div className={ps.avatarWrap} onClick={() => fileRef.current?.click()}>
@@ -216,6 +230,8 @@ export default function ProfilePage() {
           <button className={ps.logoutBtn} onClick={handleLogout}>로그아웃</button>
         </div>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

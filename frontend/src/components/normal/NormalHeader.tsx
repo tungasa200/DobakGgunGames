@@ -13,12 +13,12 @@ const GAMES = [
 ];
 
 interface Props {
-  currentGame: string;
-  gameName: string;
-  accentColor: string;
+  currentGame?: string;
+  gameName?: string;
+  accentColor?: string;
 }
 
-export default function NormalHeader({ currentGame, gameName, accentColor }: Props) {
+export default function NormalHeader({ currentGame = '', gameName = '', accentColor = '#2c3e50' }: Props) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const dropRef        = useRef<HTMLDivElement>(null);
@@ -79,13 +79,15 @@ export default function NormalHeader({ currentGame, gameName, accentColor }: Pro
         </div>
       )}
 
-      <div className={styles.center}>도박꾼 {gameName}</div>
+      <div className={styles.center}>{gameName ? `도박꾼 ${gameName}` : ''}</div>
 
-      <Link
-        className={styles.excelBtn}
-        style={{ color: accentColor }}
-        to={currentGame ? `/${currentGame}/excel` : '/excel'}
-      >📊 엑셀 모드</Link>
+      {gameName && (
+        <Link
+          className={styles.excelBtn}
+          style={{ color: accentColor }}
+          to={currentGame ? `/${currentGame}/excel` : '/excel'}
+        >📊 엑셀 모드</Link>
+      )}
 
       {user ? (
         <div className={styles.authArea}>
