@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
@@ -21,8 +21,10 @@ function isInAppBrowser(): boolean {
 }
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  if (user) return <Navigate to="/profile" replace />;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
