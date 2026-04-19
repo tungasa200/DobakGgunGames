@@ -4,6 +4,7 @@ import { startMinesweeperSession } from '../../api/minesweeper';
 import { rankingsApi, type RankingEntry } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
+import { useAuth } from '../../context/AuthContext';
 import styles from './MinesweeperBoard.module.css';
 
 // 열 라벨 헬퍼 (A, B, C, ..., AA, ...)
@@ -40,6 +41,7 @@ const NUM_COLORS = ['', '#0000ff','#007b00','#ff0000','#00007b','#7b0000','#007b
 interface Props { excel?: boolean }
 
 export default function MinesweeperBoard({ excel = false }: Props) {
+  const { user } = useAuth();
   const [level, setLevel] = useState<Level>('beginner');
   const { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark } = useMinesweeperGame('beginner');
 
@@ -55,6 +57,12 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   const [playerName, setPlayerName] = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [nameBanned, setNameBanned] = useState(false);
+
+  // 모달이 열릴 때 로그인된 닉네임 자동 완성
+  useEffect(() => {
+    if (modalOpen) setPlayerName(user?.nickname ?? '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen]);
 
   // 랭킹
   const [rankLevel, setRankLevel] = useState<Exclude<Level, 'custom'>>('beginner');

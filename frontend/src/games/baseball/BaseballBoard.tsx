@@ -4,6 +4,7 @@ import { startBaseballSession } from '../../api/baseball';
 import { rankingsApi } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
+import { useAuth } from '../../context/AuthContext';
 import styles from './BaseballBoard.module.css';
 
 // 열 라벨 헬퍼 (A, B, C, ..., AA, ...)
@@ -38,6 +39,7 @@ const LEVELS: { value: Level; label: string; shortLabel: string; icon: string }[
 interface Props { excel?: boolean }
 
 export default function BaseballBoard({ excel = false }: Props) {
+  const { user } = useAuth();
   const [level, setLevel] = useState<Level>('easy');
   const { state, reset, guess } = useBaseballGame(level);
   const sessionIdRef = useRef<string>('');
@@ -59,6 +61,12 @@ export default function BaseballBoard({ excel = false }: Props) {
   const [playerName, setPlayerName] = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [nameBanned, setNameBanned] = useState(false);
+
+  // 모달이 열릴 때 로그인된 닉네임 자동 완성
+  useEffect(() => {
+    if (modalOpen) setPlayerName(user?.nickname ?? '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen]);
 
   // 랭킹 패널
   const [rankLevel, setRankLevel] = useState<Level>('easy');

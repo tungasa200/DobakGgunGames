@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
+import { useAuth } from '../../context/AuthContext';
 import styles from './BlockfallBoard.module.css';
 
 // ===== 엑셀 랭킹/룰 시트 상수 (원본 blockfall/excel.html 동일) =====
@@ -149,6 +150,8 @@ type RankEntry = { id: number; name: string; score: number; gameLevel?: number; 
 interface Props { excel?: boolean }
 
 export default function BlockfallBoard({ excel = false }: Props) {
+  const { user } = useAuth();
+
   // ===== 캔버스 refs =====
   const boardRef = useRef<HTMLCanvasElement>(null);
   const nextRef  = useRef<HTMLCanvasElement>(null);
@@ -205,6 +208,12 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const [playerName, setPlayerName]   = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [nameBanned, setNameBanned]   = useState(false);
+
+  // 모달이 열릴 때 로그인된 닉네임 자동 완성
+  useEffect(() => {
+    if (modalOpen) setPlayerName(user?.nickname ?? '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen]);
 
   const COLORS = excel ? COLORS_EXCEL : COLORS_NORMAL;
 

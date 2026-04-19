@@ -4,6 +4,7 @@ import { rankingsApi } from '../../api/rankings';
 import { sendMovesBatch, startSolitaireSession } from '../../api/solitaire';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
+import { useAuth } from '../../context/AuthContext';
 import styles from './CardBoard.module.css';
 
 // ── 일반 모드 상수 ──────────────────────────────────────────────────
@@ -130,6 +131,7 @@ function CardEl({
 
 // ══════════════════════════════════════════════════════════════════════
 export default function CardBoard({ excel = false }: Props) {
+  const { user } = useAuth();
   const [drawMode, setDrawMode] = useState<DrawMode>('draw1');
   const {
     state, startGame, startGameWithDeck, drawStock,
@@ -167,6 +169,12 @@ export default function CardBoard({ excel = false }: Props) {
   const [playerName, setPlayerName] = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [nameBanned, setNameBanned] = useState(false);
+
+  // 모달이 열릴 때 로그인된 닉네임 자동 완성
+  useEffect(() => {
+    if (modalOpen) setPlayerName(user?.nickname ?? '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen]);
 
   // ── 랭킹 ──
   const [rankLevel, setRankLevel] = useState<DrawMode>('draw1');

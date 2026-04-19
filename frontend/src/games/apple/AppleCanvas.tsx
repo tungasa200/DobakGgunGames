@@ -4,6 +4,7 @@ import { rankingsApi } from '../../api/rankings';
 import { startAppleSession } from '../../api/apple';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
+import { useAuth } from '../../context/AuthContext';
 import styles from './AppleCanvas.module.css';
 
 interface Props { excel?: boolean }
@@ -115,6 +116,7 @@ function formatTime(s: number) {
 }
 
 export default function AppleCanvas({ excel = false }: Props) {
+  const { user } = useAuth();
   const { state, init, start, startWithBoard, end, removeApples, eventsRef } = useAppleGame();
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const wrapRef      = useRef<HTMLDivElement>(null);
@@ -147,6 +149,12 @@ export default function AppleCanvas({ excel = false }: Props) {
   const [playerName, setPlayerName] = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [nameBanned, setNameBanned] = useState(false);
+
+  // 모달이 열릴 때 로그인된 닉네임 자동 완성
+  useEffect(() => {
+    if (modalOpen) setPlayerName(user?.nickname ?? '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen]);
 
   // 일반 모드 랭킹
   const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({ weekly: [], alltime: null });
