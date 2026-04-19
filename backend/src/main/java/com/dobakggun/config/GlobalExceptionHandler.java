@@ -1,5 +1,7 @@
 package com.dobakggun.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -11,6 +13,8 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleStatus(ResponseStatusException e) {
@@ -41,9 +45,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleRuntime(RuntimeException e) {
         String msg = e.getMessage();
         if (msg != null && msg.startsWith("이메일 발송 실패")) {
+            log.error("[EmailService] {}", msg, e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(Map.of("error", "이메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요"));
         }
+        log.error("[RuntimeException] {}", msg, e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "서버 오류가 발생했습니다"));
     }
