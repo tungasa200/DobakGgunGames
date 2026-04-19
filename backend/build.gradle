@@ -39,8 +39,8 @@ dependencies {
 	// Redis (Lettuce)
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
-	// Spring Mail
-	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	// Resend (HTTP 기반 이메일 발송)
+	implementation 'com.resend:resend-java:3.1.0'
 
 	// OAuth2 Client
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
