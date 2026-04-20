@@ -1,23 +1,59 @@
+/* ══════════════════════════════════════
+   페이지 기본 레이아웃
+══════════════════════════════════════ */
+.pageBody {
+  flex: 1;
+  padding: 32px 24px 48px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* 데스크톱: 두 컬럼 그리드 */
+.contentGrid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.infoPanel,
+.contactsPanel {
+  min-width: 0;
+}
+
+/* ══════════════════════════════════════
+   카드
+══════════════════════════════════════ */
 .card {
   background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  padding: 36px 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: 32px 36px;
   width: 100%;
-  max-width: 460px;
+  box-sizing: border-box;
 }
 
-@media (max-width: 480px) {
-  .card { padding: 28px 20px; }
+.panelTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 24px;
+  letter-spacing: -0.2px;
 }
 
-.loading {
-  color: #888;
-  padding: 60px;
-  font-size: 15px;
+/* ══════════════════════════════════════
+   모바일 탭 (기본 숨김 → 860px 미만 표시)
+══════════════════════════════════════ */
+.mobileTabs {
+  display: none;
 }
 
+/* ══════════════════════════════════════
+   프로필 헤더
+══════════════════════════════════════ */
 .header {
   display: flex;
   align-items: center;
@@ -27,30 +63,30 @@
 
 .avatarWrap {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .avatar {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #e2e8f0;
 }
 
 .avatarDefault {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background: linear-gradient(135deg, #aa3bff, #7b2bd4);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   color: white;
   text-transform: uppercase;
@@ -60,11 +96,11 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 18px;
   opacity: 0;
   transition: opacity 0.15s;
 }
@@ -74,7 +110,7 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: rgba(255,255,255,0.6);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .headerInfo {
@@ -85,9 +121,9 @@
 }
 
 .name {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  color: #111;
+  color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -95,7 +131,7 @@
 
 .email {
   font-size: 13px;
-  color: #888;
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -107,28 +143,31 @@
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 20px;
-  background: rgba(170,59,255,0.1);
+  background: rgba(170, 59, 255, 0.1);
   color: #aa3bff;
   width: fit-content;
 }
 
+/* ══════════════════════════════════════
+   버튼들
+══════════════════════════════════════ */
 .deleteImageBtn {
   font-size: 12px;
-  color: #e74c3c;
+  color: #ef4444;
   background: none;
-  border: 1px solid #e74c3c;
-  border-radius: 5px;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
   padding: 4px 10px;
   cursor: pointer;
   margin-bottom: 12px;
-  transition: background 0.1s;
+  transition: background 0.1s, border-color 0.1s;
 }
-.deleteImageBtn:hover:not(:disabled) { background: #fff0f0; }
+.deleteImageBtn:hover:not(:disabled) { background: #fff5f5; border-color: #ef4444; }
 .deleteImageBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .divider {
   border: none;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid #f1f5f9;
   margin: 20px 0;
 }
 
@@ -143,14 +182,30 @@
 .logoutBtn {
   background: none;
   border: none;
-  color: #e74c3c;
+  color: #ef4444;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   padding: 0;
+  font-family: inherit;
+  min-height: 44px; /* 모바일 터치 타겟 */
+  display: flex;
+  align-items: center;
 }
 .logoutBtn:hover { text-decoration: underline; }
 
+/* 문의 내역 패널 하단 (로그아웃) */
+.contactsFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ══════════════════════════════════════
+   닉네임 인라인 행
+══════════════════════════════════════ */
 .inlineRow {
   display: flex;
   gap: 8px;
@@ -175,24 +230,20 @@
   white-space: nowrap;
   transition: all 0.15s;
   font-family: inherit;
+  min-height: 40px;
 }
-.checkBtn:hover:not(:disabled) {
-  background: rgba(170,59,255,0.08);
-}
-.checkBtn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
+.checkBtn:hover:not(:disabled) { background: rgba(170, 59, 255, 0.06); }
+.checkBtn:disabled { cursor: not-allowed; opacity: 0.6; }
 
 .checkBtnOk {
-  background: #f0fff4;
-  border-color: #27ae60;
-  color: #27ae60;
+  background: #f0fdf4;
+  border-color: #22c55e;
+  color: #16a34a;
 }
 
 .fieldOk {
   font-size: 12px;
-  color: #27ae60;
+  color: #16a34a;
   font-weight: 500;
   margin-top: 4px;
   display: block;
@@ -200,8 +251,270 @@
 
 .fieldError {
   font-size: 12px;
-  color: #e74c3c;
+  color: #ef4444;
   font-weight: 500;
   margin-top: 4px;
   display: block;
+}
+
+/* ══════════════════════════════════════
+   문의 내역 아이템
+══════════════════════════════════════ */
+.contactItem {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color 0.12s;
+}
+.contactItem:hover { border-color: #c7d2fe; }
+
+.contactHeader {
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  transition: background 0.1s;
+}
+.contactHeader:hover { background: #f8fafc; }
+
+.contactTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.contactCategory {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.contactSubject {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contactMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.contactDate {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.contactChevron {
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.contactBody {
+  padding: 14px 16px;
+  border-top: 1px solid #f1f5f9;
+  background: #fafafa;
+}
+
+.contactText {
+  font-size: 13.5px;
+  color: #475569;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.contactReply {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #eff6ff;
+  border-radius: 8px;
+  border-left: 3px solid #3b82f6;
+}
+
+.contactReplyLabel {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1d4ed8;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.contactReplyText {
+  font-size: 13.5px;
+  color: #1e3a5f;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.moreBtn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #64748b;
+  font-family: inherit;
+  transition: background 0.1s, border-color 0.1s;
+  min-height: 44px;
+}
+.moreBtn:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; }
+.moreBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ══════════════════════════════════════
+   로딩
+══════════════════════════════════════ */
+.loading {
+  color: #94a3b8;
+  padding: 60px;
+  font-size: 15px;
+}
+
+/* ══════════════════════════════════════
+   반응형 — 태블릿/모바일 공통 (< 860px)
+══════════════════════════════════════ */
+@media (max-width: 860px) {
+  .pageBody {
+    padding: 0 0 40px;
+    max-width: 100%;
+  }
+
+  /* 탭 바 표시 + 스크롤 시 상단 고정 */
+  .mobileTabs {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  .mobileTab {
+    flex: 1;
+    padding: 14px 0;
+    border: none;
+    background: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #94a3b8;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    font-family: inherit;
+    transition: color 0.12s;
+  }
+  .mobileTabActive {
+    color: #aa3bff;
+    border-bottom-color: #aa3bff;
+  }
+
+  /* 비활성 패널 숨김 */
+  .mobileHide {
+    display: none !important;
+  }
+
+  /* 두 컬럼 → 단일 컬럼 */
+  .contentGrid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* 카드: 모서리 제거, 테두리 상하만, 패딩 축소 */
+  .card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    box-shadow: none;
+    padding: 24px 20px;
+  }
+
+  /* 패널 타이틀 숨김 (탭이 역할 대신) */
+  .panelTitle {
+    display: none;
+  }
+
+  /* 문의 내역 하단 로그아웃: 모바일에서도 표시 */
+  .contactsFooter {
+    justify-content: center;
+    margin-top: 24px;
+  }
+}
+
+/* ══════════════════════════════════════
+   반응형 — 소형 모바일 (< 480px)
+══════════════════════════════════════ */
+@media (max-width: 479px) {
+  .card {
+    padding: 20px 16px;
+  }
+
+  /* 닉네임 행: 좁을 때 세로 스택 */
+  .inlineRow {
+    flex-wrap: wrap;
+  }
+
+  .inputFlex {
+    width: 100%;
+    flex: none;
+  }
+
+  .checkBtn {
+    width: 100%;
+    padding: 10px;
+    justify-content: center;
+  }
+
+  /* 문의 제목과 메타 정보: 세로 배치 */
+  .contactHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 14px;
+  }
+
+  .contactTitle {
+    width: 100%;
+  }
+
+  .contactMeta {
+    gap: 6px;
+  }
+
+  /* 날짜 숨기기 (너무 좁을 때) */
+  .contactDate {
+    display: none;
+  }
+
+  /* 프로필 아바타 크기 축소 */
+  .avatarWrap,
+  .avatar,
+  .avatarDefault {
+    width: 60px;
+    height: 60px;
+  }
+
+  .avatarDefault {
+    font-size: 22px;
+  }
+
+  .name {
+    font-size: 16px;
+  }
 }
