@@ -62,6 +62,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/*/moves-batch").permitAll()
                 // 사용자 프로필 — 로그인 필수
                 .requestMatchers("/api/users/me/**").authenticated()
+                // 문의/피드백 — 로그인 필수
+                .requestMatchers("/api/contact").authenticated()
                 // 나머지 허용
                 .anyRequest().permitAll()
             )

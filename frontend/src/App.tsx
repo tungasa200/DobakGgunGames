@@ -10,6 +10,7 @@ import PasswordResetPage from './pages/PasswordResetPage';
 import ProfilePage from './pages/ProfilePage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import EmailVerifyPage from './pages/EmailVerifyPage';
+import ContactPage from './pages/ContactPage';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/verify-email" element={<EmailVerifyPage />} />
+        <Route path="/contact" element={<ContactPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
