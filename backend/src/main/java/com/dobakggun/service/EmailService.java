@@ -101,7 +101,7 @@ public class EmailService {
                 try {
                     String encoded = Base64.getEncoder().encodeToString(file.getBytes());
                     attachments.add(Attachment.builder()
-                            .filename(file.getOriginalFilename())
+                            .fileName(file.getOriginalFilename())
                             .content(encoded)
                             .build());
                 } catch (IOException e) {

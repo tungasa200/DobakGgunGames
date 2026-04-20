@@ -92,7 +92,7 @@ export default function ContactPage() {
 
     setLoading(true);
     try {
-      await sendContact({ category, subject: subject.trim(), body: body.trim() }, files, accessToken);
+      await sendContact({ category, subject: subject.trim(), body: body.trim() }, files, accessToken!);
       setSuccess(true);
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : '문의 발송에 실패했습니다');
