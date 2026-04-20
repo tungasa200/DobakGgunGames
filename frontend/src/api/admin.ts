@@ -149,6 +149,7 @@ export interface AdminPatchNote {
   title: string;
   content: string;
   version: string;
+  game: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -156,9 +157,11 @@ export interface AdminPatchNote {
 export const adminPatchNoteApi = {
   list: (token: string) =>
     req<{ content: AdminPatchNote[] }>(`${BASE}/patch-notes`, token).then(r => r.content),
-  create: (token: string, data: { title: string; content: string; version: string }) =>
+  get: (token: string, id: number) =>
+    req<AdminPatchNote>(`${BASE}/patch-notes/${id}`, token),
+  create: (token: string, data: { title: string; content: string; version: string; game: string }) =>
     req<AdminPatchNote>(`${BASE}/patch-notes`, token, { method: 'POST', body: JSON.stringify(data) }),
-  update: (token: string, id: number, data: { title: string; content: string; version: string }) =>
+  update: (token: string, id: number, data: { title: string; content: string; version: string; game: string }) =>
     req<AdminPatchNote>(`${BASE}/patch-notes/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (token: string, id: number) =>
     req(`${BASE}/patch-notes/${id}`, token, { method: 'DELETE' }),

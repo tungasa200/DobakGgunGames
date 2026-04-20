@@ -44,17 +44,18 @@ export default function AdminPatchNotesPage() {
       <div className={s.tableWrap}>
         <table className={s.table}>
           <thead>
-            <tr><th>ID</th><th>버전</th><th>제목</th><th>작성일</th><th>액션</th></tr>
+            <tr><th>ID</th><th>버전</th><th>게임</th><th>제목</th><th>작성일</th><th>액션</th></tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className={s.empty}>불러오는 중...</td></tr>
+              <tr><td colSpan={6} className={s.empty}>불러오는 중...</td></tr>
             ) : notes.length === 0 ? (
-              <tr><td colSpan={5} className={s.empty}>패치노트가 없습니다</td></tr>
+              <tr><td colSpan={6} className={s.empty}>패치노트가 없습니다</td></tr>
             ) : notes.map(n => (
               <tr key={n.id}>
                 <td>{n.id}</td>
                 <td><span className={`${s.badge} ${s.badgeBlue}`}>v{n.version}</span></td>
+                <td style={{ fontSize: 12, color: '#888' }}>{n.game ?? '-'}</td>
                 <td>{n.title}</td>
                 <td style={{ fontSize: 12, color: '#888' }}>{n.createdAt?.slice(0, 10)}</td>
                 <td>
