@@ -82,7 +82,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className={s.page}>
-      <div className={s.heading}>유저 관리 <span style={{ fontSize: 13, fontWeight: 400, color: '#444' }}>({total}명)</span></div>
+      <div className={s.heading}>유저 관리 <span style={{ fontSize: 13, fontWeight: 400, color: '#aaa' }}>({total}명)</span></div>
 
       <div className={s.toolbar}>
         <input
@@ -167,7 +167,7 @@ export default function AdminUsersPage() {
       {(page > 0 || hasNext) && (
         <div className={s.pagination}>
           <button className={s.pageBtn} onClick={() => setPage(p => p - 1)} disabled={page === 0}>이전</button>
-          <span style={{ padding: '0 12px', fontSize: 12, color: '#444' }}>{page + 1} 페이지</span>
+          <span style={{ padding: '0 12px', fontSize: 12, color: '#aaa' }}>{page + 1} 페이지</span>
           <button className={s.pageBtn} onClick={() => setPage(p => p + 1)} disabled={!hasNext}>다음</button>
         </div>
       )}
@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
                 ? `역할을 "${ROLE_LABELS[confirm.value]}"으로 변경하시겠습니까?`
                 : `상태를 "${STATUS_LABELS[confirm.value]}"으로 변경하시겠습니까?`}
             </div>
-            <div style={{ fontSize: 13, color: '#666' }}>
+            <div style={{ fontSize: 13, color: '#888' }}>
               대상: {confirm.user.nickname} ({confirm.user.email})
             </div>
             <div className={s.modalActions}>
