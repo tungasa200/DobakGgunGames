@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
       .finally(() => setLoading(false));
   }, [accessToken]);
 
-  if (loading) return <div style={{ padding: 40, color: '#2a2a2a', fontSize: 12, letterSpacing: '1px' }}>LOADING...</div>;
+  if (loading) return <div style={{ padding: 40, color: '#bbb', fontSize: 12, letterSpacing: '1px' }}>LOADING...</div>;
   if (error) return <div className={s.error} style={{ padding: 20 }}>{error}</div>;
   if (!summary) return null;
 
@@ -47,22 +47,22 @@ export default function AdminDashboardPage() {
       {/* 지표 카드 6개 */}
       <div className={s.cardGrid}>
         <StatCard label="전체 유저" value={summary.totalUsers} />
-        <StatCard label="활성 유저" value={summary.activeUsers} color="#3a9a50" />
-        <StatCard label="대기 유저" value={summary.pendingUsers} color="#a08040" />
-        <StatCard label="차단 유저" value={summary.bannedUsers} color="#c05050" />
+        <StatCard label="활성 유저" value={summary.activeUsers} color="#16a34a" />
+        <StatCard label="대기 유저" value={summary.pendingUsers} color="#d97706" />
+        <StatCard label="차단 유저" value={summary.bannedUsers} color="#dc2626" />
         <StatCard label="전체 세션" value={summary.totalSessions} />
         <StatCard
           label="미답변 문의"
           value={summary.unreadContacts}
-          color={summary.unreadContacts > 0 ? '#c05050' : undefined}
+          color={summary.unreadContacts > 0 ? '#dc2626' : undefined}
         />
       </div>
 
       {/* 하단 2패널 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid #141414' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid #e8e8e8', gap: 1, background: '#e8e8e8' }}>
 
         {/* 게임별 세션 */}
-        <div style={{ padding: '20px', background: '#050505', borderRight: '1px solid #141414' }}>
+        <div style={{ padding: '20px', background: '#fff' }}>
           <div style={{ marginBottom: 20 }}>
             <div className={s.sectionTitle}>게임별 전체 세션</div>
           </div>
@@ -71,16 +71,14 @@ export default function AdminDashboardPage() {
             : games.map(g => (
               <div key={g.game} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, color: '#888', fontWeight: 500 }}>{GAME_LABELS[g.game] ?? g.game}</span>
-                  <span style={{ fontSize: 11, color: '#333', fontVariantNumeric: 'tabular-nums' }}>{Number(g.count).toLocaleString()}</span>
+                  <span style={{ fontSize: 12, color: '#333', fontWeight: 500 }}>{GAME_LABELS[g.game] ?? g.game}</span>
+                  <span style={{ fontSize: 11, color: '#aaa', fontVariantNumeric: 'tabular-nums' }}>{Number(g.count).toLocaleString()}</span>
                 </div>
-                <div style={{ background: '#0f0f0f', height: 1, position: 'relative' }}>
+                <div style={{ background: '#f0f0f0', height: 2 }}>
                   <div style={{
-                    position: 'absolute',
-                    left: 0, top: 0,
                     width: `${(Number(g.count) / maxGame) * 100}%`,
                     height: '100%',
-                    background: '#e8e8e8',
+                    background: '#111',
                     transition: 'width 0.6s ease',
                   }} />
                 </div>
@@ -90,10 +88,10 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* 30일 세션 추이 */}
-        <div style={{ padding: '20px', background: '#050505' }}>
+        <div style={{ padding: '20px', background: '#fff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div className={s.sectionTitle}>최근 30일 세션 추이</div>
-            <span style={{ fontSize: 11, color: '#2a2a2a', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 11, color: '#bbb', fontVariantNumeric: 'tabular-nums' }}>
               합계 {totalSessions.toLocaleString()}
             </span>
           </div>
@@ -111,13 +109,13 @@ export default function AdminDashboardPage() {
                       <div style={{
                         width: '100%',
                         height: `${Math.max((Number(item.count) / maxCount) * 100, 2)}%`,
-                        background: Number(item.count) === maxCount ? '#e8e8e8' : '#222',
+                        background: Number(item.count) === maxCount ? '#111' : '#e0e0e0',
                         transition: 'height 0.4s ease',
                       }} />
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: '#222', letterSpacing: '0.5px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: '#ccc', letterSpacing: '0.5px' }}>
                   <span>{sessions[0]?.date?.slice(5)}</span>
                   <span>{sessions[sessions.length - 1]?.date?.slice(5)}</span>
                 </div>

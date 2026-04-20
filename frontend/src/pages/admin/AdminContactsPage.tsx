@@ -103,7 +103,7 @@ export default function AdminContactsPage() {
                 <td><span className={`${s.badge} ${s.badgeGray}`}>{c.category}</span></td>
                 <td style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.subject}</td>
                 <td><span className={`${s.badge} ${STATUS_BADGE[c.status]}`}>{STATUS_LABEL[c.status]}</span></td>
-                <td style={{ fontSize: 12, color: '#444' }}>{c.createdAt?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#aaa' }}>{c.createdAt?.slice(0, 10)}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className={`${s.btn} ${s.btnPrimary}`} style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => openDetail(c)}>상세/답변</button>
@@ -119,7 +119,7 @@ export default function AdminContactsPage() {
       {(page > 0 || hasNext) && (
         <div className={s.pagination}>
           <button className={s.pageBtn} onClick={() => setPage(p => p - 1)} disabled={page === 0}>이전</button>
-          <span style={{ padding: '0 12px', fontSize: 12, color: '#444' }}>{page + 1} 페이지</span>
+          <span style={{ padding: '0 12px', fontSize: 12, color: '#aaa' }}>{page + 1} 페이지</span>
           <button className={s.pageBtn} onClick={() => setPage(p => p + 1)} disabled={!hasNext}>다음</button>
         </div>
       )}
@@ -130,20 +130,20 @@ export default function AdminContactsPage() {
             <div className={s.panelHeader}>
               <div>
                 <span className={`${s.badge} ${s.badgeGray}`} style={{ marginRight: 8 }}>{selected.category}</span>
-                <strong style={{ fontSize: 13, color: '#ccc', fontWeight: 600 }}>{selected.subject}</strong>
+                <strong style={{ fontSize: 13, color: '#111', fontWeight: 600 }}>{selected.subject}</strong>
               </div>
               <button className={s.panelClose} onClick={() => setSelected(null)}>✕</button>
             </div>
             <div className={s.panelBody}>
               <div className={s.section}>
                 <div className={s.label}>유저: {selected.userNickname} · {selected.createdAt?.slice(0, 10)}</div>
-                <div style={{ marginTop: 10, fontSize: 13, color: '#888', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{selected.body}</div>
+                <div style={{ marginTop: 10, fontSize: 13, color: '#555', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{selected.body}</div>
               </div>
 
               {selected.reply && (
-                <div style={{ padding: '12px 16px', background: '#050505', border: '1px solid #141414', borderLeft: '2px solid #3a3a3a', marginBottom: 20 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#2a2a2a', marginBottom: 8, letterSpacing: '1.5px', textTransform: 'uppercase' }}>기존 답변</div>
-                  <div style={{ fontSize: 13, color: '#666', whiteSpace: 'pre-wrap' }}>{selected.reply}</div>
+                <div style={{ padding: '12px 16px', background: '#f8f8f8', border: '1px solid #e8e8e8', borderLeft: '2px solid #999', marginBottom: 20 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#bbb', marginBottom: 8, letterSpacing: '1.5px', textTransform: 'uppercase' }}>기존 답변</div>
+                  <div style={{ fontSize: 13, color: '#555', whiteSpace: 'pre-wrap' }}>{selected.reply}</div>
                 </div>
               )}
 

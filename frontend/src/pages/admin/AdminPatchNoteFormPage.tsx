@@ -48,7 +48,7 @@ export default function AdminPatchNoteFormPage() {
     <div className={s.page}>
       <div className={s.heading}>{isEdit ? '패치노트 수정' : '패치노트 작성'}</div>
 
-      <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 4, padding: 24, maxWidth: 700 }}>
+      <div style={{ background: '#fff', border: '1px solid #e8e8e8', padding: 24, maxWidth: 700 }}>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
             <div style={{ flex: 1 }}>
