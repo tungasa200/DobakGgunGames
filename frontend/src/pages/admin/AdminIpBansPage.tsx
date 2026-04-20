@@ -98,7 +98,7 @@ export default function AdminIpBansPage() {
               <tr key={b.id}>
                 <td style={{ fontFamily: 'monospace' }}>{b.ip}</td>
                 <td style={{ color: '#888', fontSize: 13 }}>{b.reason || '-'}</td>
-                <td style={{ fontSize: 12, color: '#aaa' }}>{b.bannedAt?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#888' }}>{b.bannedAt?.slice(0, 10)}</td>
                 <td>
                   <button className={`${s.btn} ${s.btnGhost}`} style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => handleUnban(b.id)}>해제</button>
                 </td>

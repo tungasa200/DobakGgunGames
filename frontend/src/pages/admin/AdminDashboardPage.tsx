@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
       .finally(() => setLoading(false));
   }, [accessToken]);
 
-  if (loading) return <div style={{ padding: 40, color: '#bbb', fontSize: 12, letterSpacing: '1px' }}>LOADING...</div>;
+  if (loading) return <div style={{ padding: 40, color: '#999', fontSize: 12, letterSpacing: '1px' }}>LOADING...</div>;
   if (error) return <div className={s.error} style={{ padding: 20 }}>{error}</div>;
   if (!summary) return null;
 
@@ -72,9 +72,9 @@ export default function AdminDashboardPage() {
               <div key={g.game} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <span style={{ fontSize: 12, color: '#333', fontWeight: 500 }}>{GAME_LABELS[g.game] ?? g.game}</span>
-                  <span style={{ fontSize: 11, color: '#aaa', fontVariantNumeric: 'tabular-nums' }}>{Number(g.count).toLocaleString()}</span>
+                  <span style={{ fontSize: 11, color: '#888', fontVariantNumeric: 'tabular-nums' }}>{Number(g.count).toLocaleString()}</span>
                 </div>
-                <div style={{ background: '#f0f0f0', height: 2 }}>
+                <div style={{ background: '#e0e0e0', height: 2 }}>
                   <div style={{
                     width: `${(Number(g.count) / maxGame) * 100}%`,
                     height: '100%',
@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
         <div style={{ padding: '20px', background: '#fff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div className={s.sectionTitle}>최근 30일 세션 추이</div>
-            <span style={{ fontSize: 11, color: '#bbb', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 11, color: '#888', fontVariantNumeric: 'tabular-nums' }}>
               합계 {totalSessions.toLocaleString()}
             </span>
           </div>
@@ -115,7 +115,7 @@ export default function AdminDashboardPage() {
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: '#ccc', letterSpacing: '0.5px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: '#aaa', letterSpacing: '0.5px' }}>
                   <span>{sessions[0]?.date?.slice(5)}</span>
                   <span>{sessions[sessions.length - 1]?.date?.slice(5)}</span>
                 </div>

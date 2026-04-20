@@ -96,7 +96,7 @@ export default function AdminRankingsPage() {
                 <td>{i + 1}</td>
                 <td>{r.nickname}</td>
                 <td>{r.score}</td>
-                <td style={{ fontSize: 12, color: '#aaa' }}>{String(r.createdAt)?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#888' }}>{String(r.createdAt)?.slice(0, 10)}</td>
                 <td>
                   <button className={`${s.btn} ${s.btnDanger}`} style={{ fontSize: 12, padding: '4px 8px' }} onClick={() => handleDelete(r.id)}>삭제</button>
                 </td>

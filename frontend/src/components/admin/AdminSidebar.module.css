@@ -2,7 +2,7 @@
   width: 210px;
   height: 100vh;
   background: #fff;
-  border-right: 1px solid #e8e8e8;
+  border-right: 1px solid #d4d4d4;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -12,7 +12,7 @@
 /* ── 로고 ── */
 .logo {
   padding: 20px 18px 18px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid #d4d4d4;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -31,7 +31,7 @@
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 2.5px;
-  color: #bbb;
+  color: #999;
   text-transform: uppercase;
 }
 
@@ -45,7 +45,7 @@
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: #ccc;
+  color: #aaa;
   text-transform: uppercase;
   padding: 0 18px;
   margin-bottom: 6px;
@@ -57,7 +57,7 @@
   align-items: center;
   gap: 10px;
   padding: 9px 18px;
-  color: #999;
+  color: #777;
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
@@ -87,7 +87,7 @@
 /* ── 하단 상태 ── */
 .bottom {
   padding: 14px 18px;
-  border-top: 1px solid #e8e8e8;
+  border-top: 1px solid #d4d4d4;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -103,6 +103,6 @@
 
 .bottomText {
   font-size: 11px;
-  color: #bbb;
+  color: #999;
   letter-spacing: 0.3px;
 }

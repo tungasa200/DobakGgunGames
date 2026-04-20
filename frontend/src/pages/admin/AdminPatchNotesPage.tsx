@@ -56,7 +56,7 @@ export default function AdminPatchNotesPage() {
                 <td>{n.id}</td>
                 <td><span className={`${s.badge} ${s.badgeBlue}`}>v{n.version}</span></td>
                 <td>{n.title}</td>
-                <td style={{ fontSize: 12, color: '#aaa' }}>{n.createdAt?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#888' }}>{n.createdAt?.slice(0, 10)}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Link to={`/admin/patch-notes/${n.id}/edit`}>
