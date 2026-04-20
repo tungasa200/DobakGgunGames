@@ -2,12 +2,13 @@
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background: #f8fafc;
+  background: #0a0a0a;
 }
 
 .main {
   flex: 1;
-  padding: 36px 40px;
+  padding: 24px 28px;
   overflow-y: auto;
   min-width: 0;
+  background: #0a0a0a;
 }

@@ -57,7 +57,7 @@ export default function AdminIpBansPage() {
       <div className={s.heading}>IP 차단 관리</div>
 
       {/* IP 등록 폼 */}
-      <div style={{ background: '#fff', borderRadius: 10, padding: '20px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: 24, maxWidth: 560 }}>
+      <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 4, padding: '18px 20px', marginBottom: 16, maxWidth: 560 }}>
         <div className={s.sectionTitle}>IP 차단 등록</div>
         <form onSubmit={handleAdd}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -97,8 +97,8 @@ export default function AdminIpBansPage() {
             ) : bans.map(b => (
               <tr key={b.id}>
                 <td style={{ fontFamily: 'monospace' }}>{b.ip}</td>
-                <td style={{ color: '#6b7280', fontSize: 13 }}>{b.reason || '-'}</td>
-                <td style={{ fontSize: 12, color: '#9ca3af' }}>{b.bannedAt?.slice(0, 10)}</td>
+                <td style={{ color: '#555', fontSize: 13 }}>{b.reason || '-'}</td>
+                <td style={{ fontSize: 12, color: '#444' }}>{b.bannedAt?.slice(0, 10)}</td>
                 <td>
                   <button className={`${s.btn} ${s.btnGhost}`} style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => handleUnban(b.id)}>해제</button>
                 </td>

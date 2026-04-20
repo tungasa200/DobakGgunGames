@@ -82,7 +82,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className={s.page}>
-      <div className={s.heading}>유저 관리 <span style={{ fontSize: 15, fontWeight: 400, color: '#6b7280' }}>({total}명)</span></div>
+      <div className={s.heading}>유저 관리 <span style={{ fontSize: 13, fontWeight: 400, color: '#444' }}>({total}명)</span></div>
 
       <div className={s.toolbar}>
         <input
@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
                 <td>{u.id}</td>
                 <td>{u.nickname}</td>
                 <td style={{ fontSize: 13 }}>{u.email}</td>
-                <td style={{ fontSize: 12, color: '#9ca3af' }}>{u.createdAt?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#444' }}>{u.createdAt?.slice(0, 10)}</td>
                 <td>{u.provider ?? 'LOCAL'}</td>
                 <td><span className={`${s.badge} ${ROLE_BADGE[u.role]}`}>{ROLE_LABELS[u.role]}</span></td>
                 <td><span className={`${s.badge} ${STATUS_BADGE[u.status]}`}>{STATUS_LABELS[u.status]}</span></td>
@@ -167,7 +167,7 @@ export default function AdminUsersPage() {
       {(page > 0 || hasNext) && (
         <div className={s.pagination}>
           <button className={s.pageBtn} onClick={() => setPage(p => p - 1)} disabled={page === 0}>이전</button>
-          <span style={{ padding: '0 12px', fontSize: 14, color: '#6b7280' }}>{page + 1} 페이지</span>
+          <span style={{ padding: '0 12px', fontSize: 12, color: '#444' }}>{page + 1} 페이지</span>
           <button className={s.pageBtn} onClick={() => setPage(p => p + 1)} disabled={!hasNext}>다음</button>
         </div>
       )}
@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
                 ? `역할을 "${ROLE_LABELS[confirm.value]}"으로 변경하시겠습니까?`
                 : `상태를 "${STATUS_LABELS[confirm.value]}"으로 변경하시겠습니까?`}
             </div>
-            <div style={{ fontSize: 14, color: '#6b7280' }}>
+            <div style={{ fontSize: 13, color: '#666' }}>
               대상: {confirm.user.nickname} ({confirm.user.email})
             </div>
             <div className={s.modalActions}>

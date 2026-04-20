@@ -96,7 +96,7 @@ export default function AdminRankingsPage() {
                 <td>{i + 1}</td>
                 <td>{r.nickname}</td>
                 <td>{r.score}</td>
-                <td style={{ fontSize: 12, color: '#9ca3af' }}>{String(r.createdAt)?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#444' }}>{String(r.createdAt)?.slice(0, 10)}</td>
                 <td>
                   <button className={`${s.btn} ${s.btnDanger}`} style={{ fontSize: 12, padding: '4px 8px' }} onClick={() => handleDelete(r.id)}>삭제</button>
                 </td>
@@ -110,7 +110,7 @@ export default function AdminRankingsPage() {
         <div className={s.overlay} onClick={() => setResetConfirm(false)}>
           <div className={s.modal} onClick={e => e.stopPropagation()}>
             <div className={s.modalTitle}>{gameLabel} 랭킹 전체 초기화</div>
-            <div style={{ fontSize: 14, color: '#6b7280' }}>
+            <div style={{ fontSize: 13, color: '#666' }}>
               {gameLabel} 랭킹 {rankings.length}개를 모두 삭제합니다. 복구할 수 없습니다.
             </div>
             <div className={s.modalActions}>
