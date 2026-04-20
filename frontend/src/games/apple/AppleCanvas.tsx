@@ -334,7 +334,7 @@ export default function AppleCanvas({ excel = false }: Props) {
           ctx.fillText(String(apples[r][c]), x + size / 2, y + size / 2);
         } else {
           if (!apples[r] || apples[r][c] === null) continue;
-          let bodyColor = '#e74c3c';
+          let bodyColor = '#e03a27';
           let borderColor: string | null = null;
           if (isSelected) {
             if (selSum === 10)     { bodyColor = '#27ae60'; borderColor = '#1a8a4a'; }
