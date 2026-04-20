@@ -103,7 +103,7 @@ export default function AdminContactsPage() {
                 <td><span className={`${s.badge} ${s.badgeGray}`}>{c.category}</span></td>
                 <td style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.subject}</td>
                 <td><span className={`${s.badge} ${STATUS_BADGE[c.status]}`}>{STATUS_LABEL[c.status]}</span></td>
-                <td style={{ fontSize: 12, color: '#aaa' }}>{c.createdAt?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#888' }}>{c.createdAt?.slice(0, 10)}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className={`${s.btn} ${s.btnPrimary}`} style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => openDetail(c)}>상세/답변</button>
@@ -119,7 +119,7 @@ export default function AdminContactsPage() {
       {(page > 0 || hasNext) && (
         <div className={s.pagination}>
           <button className={s.pageBtn} onClick={() => setPage(p => p - 1)} disabled={page === 0}>이전</button>
-          <span style={{ padding: '0 12px', fontSize: 12, color: '#aaa' }}>{page + 1} 페이지</span>
+          <span style={{ padding: '0 12px', fontSize: 12, color: '#888' }}>{page + 1} 페이지</span>
           <button className={s.pageBtn} onClick={() => setPage(p => p + 1)} disabled={!hasNext}>다음</button>
         </div>
       )}

@@ -82,7 +82,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className={s.page}>
-      <div className={s.heading}>유저 관리 <span style={{ fontSize: 13, fontWeight: 400, color: '#aaa' }}>({total}명)</span></div>
+      <div className={s.heading}>유저 관리 <span style={{ fontSize: 13, fontWeight: 400, color: '#888' }}>({total}명)</span></div>
 
       <div className={s.toolbar}>
         <input
@@ -167,7 +167,7 @@ export default function AdminUsersPage() {
       {(page > 0 || hasNext) && (
         <div className={s.pagination}>
           <button className={s.pageBtn} onClick={() => setPage(p => p - 1)} disabled={page === 0}>이전</button>
-          <span style={{ padding: '0 12px', fontSize: 12, color: '#aaa' }}>{page + 1} 페이지</span>
+          <span style={{ padding: '0 12px', fontSize: 12, color: '#888' }}>{page + 1} 페이지</span>
           <button className={s.pageBtn} onClick={() => setPage(p => p + 1)} disabled={!hasNext}>다음</button>
         </div>
       )}

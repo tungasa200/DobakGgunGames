@@ -9,7 +9,7 @@
   justify-content: space-between;
   margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid #d4d4d4;
 }
 
 .heading {
@@ -19,7 +19,7 @@
   letter-spacing: -0.2px;
   margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid #d4d4d4;
 }
 
 /* ── 필터 / 툴바 ── */
@@ -33,7 +33,7 @@
 
 .searchInput {
   padding: 7px 11px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #ccc;
   border-radius: 3px;
   font-size: 12.5px;
   width: 200px;
@@ -47,7 +47,7 @@
 
 .select {
   padding: 7px 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #ccc;
   border-radius: 3px;
   font-size: 12.5px;
   background: #fff;
@@ -61,7 +61,7 @@
 /* ── 테이블 ── */
 .tableWrap {
   overflow-x: auto;
-  border: 1px solid #e8e8e8;
+  border: 1px solid #d4d4d4;
   background: #fff;
 }
 
@@ -72,12 +72,12 @@
 }
 
 .table th {
-  background: #fafafa;
-  color: #999;
+  background: #f4f4f4;
+  color: #777;
   font-weight: 700;
   padding: 9px 14px;
   text-align: left;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid #d4d4d4;
   white-space: nowrap;
   font-size: 10px;
   letter-spacing: 1.2px;
@@ -86,7 +86,7 @@
 
 .table td {
   padding: 11px 14px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #e8e8e8;
   color: #444;
   vertical-align: middle;
 }
@@ -135,7 +135,7 @@
 .btnGhost {
   background: transparent;
   color: #666;
-  border-color: #e0e0e0;
+  border-color: #ccc;
 }
 .btnGhost:not(:disabled):hover {
   background: #f5f5f5;
@@ -170,7 +170,7 @@
 
 .pageBtn {
   padding: 5px 12px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #ccc;
   border-radius: 3px;
   background: #fff;
   font-size: 12px;
@@ -186,7 +186,7 @@
 .tabs {
   display: flex;
   margin-bottom: 16px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid #d4d4d4;
 }
 
 .tab {
@@ -195,7 +195,7 @@
   background: none;
   font-size: 12.5px;
   cursor: pointer;
-  color: #bbb;
+  color: #999;
   border-bottom: 1px solid transparent;
   margin-bottom: -1px;
   font-weight: 500;
@@ -224,7 +224,7 @@
 
 .modal {
   background: #fff;
-  border: 1px solid #e8e8e8;
+  border: 1px solid #d4d4d4;
   border-radius: 4px;
   padding: 24px;
   width: 380px;
@@ -251,9 +251,9 @@
 .cardGrid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  border: 1px solid #e8e8e8;
+  border: 1px solid #d4d4d4;
   margin-bottom: 16px;
-  background: #e8e8e8;
+  background: #d4d4d4;
   gap: 1px;
 }
 
@@ -265,7 +265,7 @@
 .cardLabel {
   font-size: 9px;
   font-weight: 700;
-  color: #bbb;
+  color: #999;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   margin-bottom: 12px;
@@ -284,7 +284,7 @@
 .empty {
   text-align: center;
   padding: 48px 0;
-  color: #ccc;
+  color: #aaa;
   font-size: 12.5px;
 }
 
@@ -307,7 +307,7 @@
 
 .panelHeader {
   padding: 16px 20px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid #d4d4d4;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -322,7 +322,7 @@
 
 .panelClose {
   background: transparent;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #ccc;
   font-size: 14px;
   cursor: pointer;
   color: #aaa;
@@ -338,7 +338,7 @@
   width: 100%;
   min-height: 110px;
   padding: 9px 11px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #ccc;
   border-radius: 3px;
   font-size: 13px;
   resize: vertical;
@@ -355,7 +355,7 @@
   display: block;
   font-size: 9px;
   font-weight: 700;
-  color: #bbb;
+  color: #888;
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -364,7 +364,7 @@
 .input {
   width: 100%;
   padding: 8px 11px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #ccc;
   border-radius: 3px;
   font-size: 13px;
   box-sizing: border-box;
@@ -383,7 +383,7 @@
 .sectionTitle {
   font-size: 9px;
   font-weight: 700;
-  color: #bbb;
+  color: #999;
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
