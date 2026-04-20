@@ -395,7 +395,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
                   else if (cell.adjMines > 0) content = String(cell.adjMines);
                 } else if (cell.mark === 'flag') {
                   if (state.status === 'lost' && !cell.isMine) {
-                    content = '💣'; cls += ' ' + styles.mine;
+                    content = '🚩❌'; cls += ' ' + styles.wrongFlag;
                   } else {
                     content = '🚩'; cls += ' ' + styles.flag;
                   }
@@ -420,7 +420,6 @@ export default function MinesweeperBoard({ excel = false }: Props) {
                       if (lpRef.current !== null) {
                         clearTimeout(lpRef.current);
                         lpRef.current = null;
-                        lpFiredRef.current = true;
                         toggleMark(r, c);
                         return;
                       }

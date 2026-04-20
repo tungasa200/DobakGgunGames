@@ -138,6 +138,9 @@
 /* 지뢰(게임오버) — 원본: background: #e74c3c; color: white */
 .mine { background-color: #e74c3c; color: white; }
 
+/* 잘못 놓인 깃발(게임오버) — 지뢰가 아닌 곳에 깃발을 놓은 경우 */
+.wrongFlag { background-color: #fff; color: #e74c3c; font-size: 0.75em; }
+
 /* 리셋 버튼 — 원본: #reset-btn { margin-top: 15px; } */
 .resetBtn {
   margin-top: 15px;
@@ -313,7 +316,8 @@
 .excelMode .question { background: white; color: #7b00c7; }
 
 /* 원본 excel: .cell.mine { background: #ffc7ce; color: #9c0006 } */
-.excelMode .mine     { background: #ffc7ce; color: #9c0006; }
+.excelMode .mine      { background: #ffc7ce; color: #9c0006; }
+.excelMode .wrongFlag { background: white; color: #9c0006; font-size: 0.75em; }
 
 /* 랭킹/룰 시트 (엑셀 모드) */
 .excelMode .rankSection   { padding: 12px 8px; background: white; width: auto; max-width: none; margin-top: 0; }
