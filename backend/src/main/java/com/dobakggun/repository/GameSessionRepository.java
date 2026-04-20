@@ -29,4 +29,11 @@ public interface GameSessionRepository extends JpaRepository<GameSession, String
            "WHERE s.startedAt >= :since GROUP BY CAST(s.startedAt AS localdate) " +
            "ORDER BY CAST(s.startedAt AS localdate)")
     List<Object[]> countByDaySince(@Param("since") Instant since);
+
+    // 특정 주(월~일) 일별 세션 수
+    @Query("SELECT CAST(s.startedAt AS localdate), COUNT(s) FROM GameSession s " +
+           "WHERE s.startedAt >= :weekStart AND s.startedAt < :weekEnd " +
+           "GROUP BY CAST(s.startedAt AS localdate) " +
+           "ORDER BY CAST(s.startedAt AS localdate)")
+    List<Object[]> countByDayInWeek(@Param("weekStart") Instant weekStart, @Param("weekEnd") Instant weekEnd);
 }

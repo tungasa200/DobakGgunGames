@@ -25,7 +25,7 @@ export default function AdminDashboardPage() {
     setLoading(true);
     Promise.all([
       adminStatsApi.summary(accessToken),
-      adminStatsApi.sessions(accessToken, 30),
+      adminStatsApi.weeklySessions(accessToken),
       adminStatsApi.games(accessToken),
     ])
       .then(([s, sess, g]) => { setSummary(s); setSessions(sess); setGames(g); })
@@ -87,10 +87,10 @@ export default function AdminDashboardPage() {
           }
         </div>
 
-        {/* 30일 세션 추이 */}
+        {/* 이번 주 세션 추이 (월~일) */}
         <div style={{ padding: '20px', background: '#fff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <div className={s.sectionTitle}>최근 30일 세션 추이</div>
+            <div className={s.sectionTitle}>이번 주 세션 추이 (월~일)</div>
             <span style={{ fontSize: 11, color: '#888', fontVariantNumeric: 'tabular-nums' }}>
               합계 {totalSessions.toLocaleString()}
             </span>
@@ -99,25 +99,31 @@ export default function AdminDashboardPage() {
             ? <div className={s.empty}>데이터 없음</div>
             : (
               <>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 90 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 90 }}>
                   {sessions.map(item => (
                     <div
                       key={item.date}
-                      title={`${item.date}: ${item.count}`}
+                      title={`${item.date}: ${item.count}세션`}
                       style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}
                     >
                       <div style={{
                         width: '100%',
-                        height: `${Math.max((Number(item.count) / maxCount) * 100, 2)}%`,
-                        background: Number(item.count) === maxCount ? '#111' : '#e0e0e0',
+                        height: `${Math.max((Number(item.count) / maxCount) * 100, maxCount > 0 ? 2 : 0)}%`,
+                        background: Number(item.count) === maxCount && maxCount > 0 ? '#111' : '#e0e0e0',
                         transition: 'height 0.4s ease',
                       }} />
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: '#aaa', letterSpacing: '0.5px' }}>
-                  <span>{sessions[0]?.date?.slice(5)}</span>
-                  <span>{sessions[sessions.length - 1]?.date?.slice(5)}</span>
+                <div style={{ display: 'flex', marginTop: 8, fontSize: 10, color: '#aaa' }}>
+                  {['월', '화', '수', '목', '금', '토', '일'].map((day, i) => (
+                    <div key={day} style={{ flex: 1, textAlign: 'center' }}>
+                      <div>{day}</div>
+                      <div style={{ fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
+                        {sessions[i] ? Number(sessions[i].count).toLocaleString() : 0}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </>
             )

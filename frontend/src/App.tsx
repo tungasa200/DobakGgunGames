@@ -19,6 +19,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminContactsPage from './pages/admin/AdminContactsPage';
 import AdminRankingsPage from './pages/admin/AdminRankingsPage';
+import AdminLeaderboardPage from './pages/admin/AdminLeaderboardPage';
 import AdminPatchNotesPage from './pages/admin/AdminPatchNotesPage';
 import AdminPatchNoteFormPage from './pages/admin/AdminPatchNoteFormPage';
 import AdminIpBansPage from './pages/admin/AdminIpBansPage';
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="contacts" element={<AdminContactsPage />} />
           <Route path="rankings" element={<AdminRankingsPage />} />
+          <Route path="leaderboard" element={<AdminLeaderboardPage />} />
           <Route path="patch-notes" element={<AdminPatchNotesPage />} />
           <Route path="patch-notes/new" element={<AdminPatchNoteFormPage />} />
           <Route path="patch-notes/:id/edit" element={<AdminPatchNoteFormPage />} />

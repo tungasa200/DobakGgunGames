@@ -19,4 +19,16 @@ public interface SolitaireRankingRepository extends RankingRepository<SolitaireR
 
     @Query("SELECT r FROM SolitaireRanking r WHERE r.level = :level ORDER BY r.time ASC, r.moves ASC LIMIT 1")
     SolitaireRanking findAlltimeBest(@Param("level") String level);
+
+    @Query("""
+        SELECT r FROM SolitaireRanking r
+        WHERE r.level = :level AND r.createdAt >= :weekStart AND r.createdAt < :weekEnd
+        ORDER BY r.time ASC, r.moves ASC
+        LIMIT 3
+    """)
+    List<SolitaireRanking> findPreviousWeekTop3(
+            @Param("level") String level,
+            @Param("weekStart") LocalDateTime weekStart,
+            @Param("weekEnd") LocalDateTime weekEnd
+    );
 }
