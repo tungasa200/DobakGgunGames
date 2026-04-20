@@ -1,0 +1,106 @@
+.wide {
+  max-width: 560px !important;
+}
+
+.categoryRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.catBtn {
+  padding: 7px 16px;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 20px;
+  background: white;
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.catBtn:hover {
+  border-color: #aa3bff;
+  color: #aa3bff;
+}
+.catBtnActive {
+  border-color: #aa3bff;
+  background: #aa3bff;
+  color: white;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 160px;
+  line-height: 1.6;
+}
+
+.uploadBtn {
+  align-self: flex-start;
+  padding: 8px 16px;
+  background: white;
+  border: 1.5px solid #aa3bff;
+  border-radius: 7px;
+  color: #aa3bff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.uploadBtn:hover:not(:disabled) {
+  background: rgba(170, 59, 255, 0.08);
+}
+.uploadBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fileList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f7f7f7;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.fileName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #333;
+}
+
+.fileSize {
+  color: #999;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.fileRemove {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.fileRemove:hover {
+  color: #e74c3c;
+}

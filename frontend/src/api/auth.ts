@@ -5,6 +5,7 @@ export interface AuthUser {
   id: number;
   nickname: string;
   profileImage: string | null;
+  role: 'USER' | 'ADMIN';
 }
 
 export interface AuthResponse {

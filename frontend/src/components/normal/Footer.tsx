@@ -10,7 +10,9 @@ export default function Footer() {
           <span className={styles.divider}>|</span>
           <Link to="/privacy" className={styles.link}>개인정보 처리방침</Link>
           <span className={styles.divider}>|</span>
-          <a href="mailto:ksoung140w@gmail.com" className={styles.link}>문의 / 피드백</a>
+          <Link to="/contact" className={styles.link}>문의 / 피드백</Link>
+          <span className={styles.divider}>|</span>
+          <Link to="/patch-notes" className={styles.link}>패치노트</Link>
         </div>
         <p className={styles.copy}>
           © {new Date().getFullYear()} DobakGgun. All rights reserved.
