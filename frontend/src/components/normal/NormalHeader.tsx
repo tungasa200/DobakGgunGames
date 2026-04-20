@@ -61,11 +61,29 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
 
   /* ── 스크롤 / 마우스 인터렉션 ── */
   useEffect(() => {
-    lastScrollY.current = window.scrollY;
+    if (!headerRef.current) return;
+
+    // 헤더 부모를 올라가며 실제 스크롤 컨테이너 탐색
+    function findScrollContainer(el: HTMLElement): Element | Window {
+      let node: HTMLElement | null = el.parentElement;
+      while (node && node !== document.documentElement) {
+        const { overflow, overflowY } = getComputedStyle(node);
+        if (/auto|scroll/.test(overflow) || /auto|scroll/.test(overflowY)) return node;
+        node = node.parentElement;
+      }
+      return window;
+    }
+
+    function getScrollTop(container: Element | Window): number {
+      return container instanceof Window ? container.scrollY : container.scrollTop;
+    }
+
+    const container = findScrollContainer(headerRef.current);
+    lastScrollY.current = getScrollTop(container);
 
     function onScroll() {
-      if (mouseForced.current) return;          // 마우스가 상단에 있으면 스크롤 무시
-      const currentY = window.scrollY;
+      if (mouseForced.current) return;
+      const currentY = getScrollTop(container);
       const diff     = currentY - lastScrollY.current;
 
       if (currentY < SCROLL_TOP_THRESHOLD) {
@@ -87,10 +105,10 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
       }
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true });
+    container.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('mousemove', onMouseMove, { passive: true });
     return () => {
-      window.removeEventListener('scroll', onScroll);
+      container.removeEventListener('scroll', onScroll);
       window.removeEventListener('mousemove', onMouseMove);
     };
   }, []);
