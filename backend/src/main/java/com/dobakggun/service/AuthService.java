@@ -208,6 +208,7 @@ public class AuthService {
                         .id(user.getId())
                         .nickname(user.getNickname())
                         .profileImage(user.getProfileImage())
+                        .role(user.getRole().name())
                         .build())
                 .build();
     }

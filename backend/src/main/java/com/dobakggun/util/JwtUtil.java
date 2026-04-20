@@ -60,6 +60,11 @@ public class JwtUtil {
         return Long.valueOf(parseClaims(token).getSubject());
     }
 
+    public String getRoleFromToken(String token) {
+        Object role = parseClaims(token).get("role");
+        return role != null ? role.toString() : "USER";
+    }
+
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(key)

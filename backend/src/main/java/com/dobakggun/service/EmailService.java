@@ -64,6 +64,20 @@ public class EmailService {
         send(to, "[도박꾼게임즈] 비밀번호 재설정", html);
     }
 
+    public void sendContactReplyEmail(String toEmail, String originalSubject, String replyContent) {
+        String html = "<div style=\"font-family:sans-serif;max-width:600px;margin:0 auto\">"
+                + "<h2 style=\"color:#111;border-bottom:2px solid #aa3bff;padding-bottom:8px\">"
+                + "[도박꾼게임즈] 문의 답변 안내</h2>"
+                + "<p style=\"color:#444\">안녕하세요, <strong>" + escapeHtml(originalSubject) + "</strong> 문의에 대한 답변입니다.</p>"
+                + "<div style=\"background:#f9f9f9;border-radius:8px;padding:16px;"
+                + "white-space:pre-wrap;color:#222;line-height:1.7;margin:16px 0\">"
+                + escapeHtml(replyContent)
+                + "</div>"
+                + "<p style=\"color:#888;font-size:13px\">추가 문의가 있으시면 도박꾼게임즈 문의 페이지를 이용해 주세요.</p>"
+                + "</div>";
+        send(toEmail, "[도박꾼게임즈] 문의 답변: " + originalSubject, html);
+    }
+
     public void sendContactEmail(String fromUserEmail, String category, String subject, String body, List<MultipartFile> files) {
         String html = "<div style=\"font-family:sans-serif;max-width:600px;margin:0 auto\">"
                 + "<h2 style=\"color:#111;border-bottom:2px solid #aa3bff;padding-bottom:8px\">"
