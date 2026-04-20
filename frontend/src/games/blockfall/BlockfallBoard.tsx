@@ -47,7 +47,7 @@ const COLORS_NORMAL = [
   '#f4b0c6', // 2: O
   '#ABEE62', // 3: L
   '#0DC2FF', // 4: J
-  '#0d00af', // 5: I
+  '#F7597C', // 5: I
   '#FFE138', // 6: S
   '#CA41D9', // 7: Z
 ];
