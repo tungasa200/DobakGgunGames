@@ -9,11 +9,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +49,30 @@ public class AdminStatsService {
             m.put("count", row[1]);
             return m;
         }).toList();
+    }
+
+    public List<Map<String, Object>> getWeeklySessionTrend() {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate monday = today.with(DayOfWeek.MONDAY);
+        LocalDate nextMonday = monday.plusWeeks(1);
+        Instant weekStart = monday.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant weekEnd = nextMonday.atStartOfDay(ZoneOffset.UTC).toInstant();
+
+        List<Object[]> rows = gameSessionRepository.countByDayInWeek(weekStart, weekEnd);
+        Map<LocalDate, Long> countMap = rows.stream()
+                .collect(Collectors.toMap(
+                        row -> LocalDate.parse(row[0].toString()),
+                        row -> ((Number) row[1]).longValue()
+                ));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (LocalDate d = monday; d.isBefore(nextMonday); d = d.plusDays(1)) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date", d.toString());
+            m.put("count", countMap.getOrDefault(d, 0L));
+            result.add(m);
+        }
+        return result;
     }
 
     public List<Map<String, Object>> getGameCounts() {

@@ -19,4 +19,16 @@ public interface BlockfallRankingRepository extends RankingRepository<BlockfallR
 
     @Query("SELECT r FROM BlockfallRanking r WHERE r.level = :level ORDER BY r.score DESC LIMIT 1")
     BlockfallRanking findAlltimeBest(@Param("level") String level);
+
+    @Query("""
+        SELECT r FROM BlockfallRanking r
+        WHERE r.level = :level AND r.createdAt >= :weekStart AND r.createdAt < :weekEnd
+        ORDER BY r.score DESC
+        LIMIT 3
+    """)
+    List<BlockfallRanking> findPreviousWeekTop3(
+            @Param("level") String level,
+            @Param("weekStart") LocalDateTime weekStart,
+            @Param("weekEnd") LocalDateTime weekEnd
+    );
 }

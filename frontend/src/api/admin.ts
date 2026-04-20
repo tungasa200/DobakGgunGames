@@ -93,15 +93,49 @@ export const adminContactApi = {
 
 export interface AdminRanking {
   id: number;
-  nickname: string;
-  score: number;
+  name: string;
+  level: string;
   createdAt: string;
+  // game-specific fields
+  time?: number;
+  attempts?: number;
+  moves?: number;
+  score?: number;
+  gameLevel?: number;
   [key: string]: unknown;
 }
 
+export interface AdminLeaderboardEntry {
+  id: number;
+  name: string;
+  level: string;
+  createdAt: string;
+  time?: number;
+  attempts?: number;
+  moves?: number;
+  score?: number;
+  gameLevel?: number;
+}
+
+export interface AdminLeaderboard {
+  weekly: Record<string, AdminLeaderboardEntry[]>;
+  alltime: Record<string, AdminLeaderboardEntry | null>;
+  levels: string[];
+}
+
 export const adminRankingApi = {
-  list: (token: string, game: string) =>
-    req<{ content: AdminRanking[] }>(`${BASE}/rankings/${game}`, token).then(r => r.content),
+  list: (token: string, game: string, params?: { level?: string; from?: string; to?: string; page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.level) q.set('level', params.level);
+    if (params?.from)  q.set('from',  params.from);
+    if (params?.to)    q.set('to',    params.to);
+    q.set('page', String(params?.page ?? 0));
+    return req<{ content: AdminRanking[]; hasNext: boolean; totalCount: number }>(
+      `${BASE}/rankings/${game}?${q}`, token
+    );
+  },
+  leaderboard: (token: string, game: string) =>
+    req<AdminLeaderboard>(`${BASE}/rankings/${game}/leaderboard`, token),
   deleteOne: (token: string, game: string, id: number) =>
     req(`${BASE}/rankings/${game}/${id}`, token, { method: 'DELETE' }),
   deleteAll: (token: string, game: string) =>
@@ -165,6 +199,8 @@ export const adminStatsApi = {
     req<StatsSummary>(`${BASE}/stats/summary`, token),
   sessions: (token: string, days = 30) =>
     req<{ date: string; count: number }[]>(`${BASE}/stats/sessions?days=${days}`, token),
+  weeklySessions: (token: string) =>
+    req<{ date: string; count: number }[]>(`${BASE}/stats/sessions/weekly`, token),
   games: (token: string) =>
     req<{ game: string; count: number }[]>(`${BASE}/stats/games`, token),
 };

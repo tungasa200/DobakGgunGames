@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
@@ -21,16 +22,26 @@ public class AdminRankingController {
     @GetMapping("/{game}")
     public ResponseEntity<Map<String, Object>> getList(
             @PathVariable String game,
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "50") int size
     ) {
-        Page<? extends Ranking> result = adminRankingService.getList(game,
+        LocalDate fromDate = from != null ? LocalDate.parse(from) : null;
+        LocalDate toDate   = to   != null ? LocalDate.parse(to)   : null;
+        Page<? extends Ranking> result = adminRankingService.getList(game, level, fromDate, toDate,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return ResponseEntity.ok(Map.of(
                 "content", result.getContent(),
                 "hasNext", !result.isLast(),
                 "totalCount", result.getTotalElements()
         ));
+    }
+
+    @GetMapping("/{game}/leaderboard")
+    public ResponseEntity<Map<String, Object>> getLeaderboard(@PathVariable String game) {
+        return ResponseEntity.ok(adminRankingService.getLeaderboard(game));
     }
 
     @DeleteMapping("/{game}/{id}")

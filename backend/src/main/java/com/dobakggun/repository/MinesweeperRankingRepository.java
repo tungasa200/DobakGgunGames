@@ -19,4 +19,16 @@ public interface MinesweeperRankingRepository extends RankingRepository<Mineswee
 
     @Query("SELECT r FROM MinesweeperRanking r WHERE r.level = :level ORDER BY r.time ASC LIMIT 1")
     MinesweeperRanking findAlltimeBest(@Param("level") String level);
+
+    @Query("""
+        SELECT r FROM MinesweeperRanking r
+        WHERE r.level = :level AND r.createdAt >= :weekStart AND r.createdAt < :weekEnd
+        ORDER BY r.time ASC
+        LIMIT 3
+    """)
+    List<MinesweeperRanking> findPreviousWeekTop3(
+            @Param("level") String level,
+            @Param("weekStart") LocalDateTime weekStart,
+            @Param("weekEnd") LocalDateTime weekEnd
+    );
 }

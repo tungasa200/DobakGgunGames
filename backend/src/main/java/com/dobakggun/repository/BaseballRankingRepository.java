@@ -19,4 +19,16 @@ public interface BaseballRankingRepository extends RankingRepository<BaseballRan
 
     @Query("SELECT r FROM BaseballRanking r WHERE r.level = :level ORDER BY r.attempts ASC, r.time ASC LIMIT 1")
     BaseballRanking findAlltimeBest(@Param("level") String level);
+
+    @Query("""
+        SELECT r FROM BaseballRanking r
+        WHERE r.level = :level AND r.createdAt >= :weekStart AND r.createdAt < :weekEnd
+        ORDER BY r.attempts ASC, r.time ASC
+        LIMIT 3
+    """)
+    List<BaseballRanking> findPreviousWeekTop3(
+            @Param("level") String level,
+            @Param("weekStart") LocalDateTime weekStart,
+            @Param("weekEnd") LocalDateTime weekEnd
+    );
 }

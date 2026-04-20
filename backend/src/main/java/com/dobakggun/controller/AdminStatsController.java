@@ -26,6 +26,11 @@ public class AdminStatsController {
         return ResponseEntity.ok(adminStatsService.getSessionTrend(days));
     }
 
+    @GetMapping("/sessions/weekly")
+    public ResponseEntity<List<Map<String, Object>>> getWeeklySessionTrend() {
+        return ResponseEntity.ok(adminStatsService.getWeeklySessionTrend());
+    }
+
     @GetMapping("/games")
     public ResponseEntity<List<Map<String, Object>>> getGameCounts() {
         return ResponseEntity.ok(adminStatsService.getGameCounts());
