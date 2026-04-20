@@ -32,8 +32,8 @@ export default function AdminPatchNotesPage() {
 
   return (
     <div className={s.page}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div className={s.heading} style={{ marginBottom: 0 }}>패치노트 관리</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #1c1c1c' }}>
+        <div className={s.heading} style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>패치노트 관리</div>
         <Link to="/admin/patch-notes/new">
           <button className={`${s.btn} ${s.btnPrimary}`}>+ 새 패치노트</button>
         </Link>
@@ -56,7 +56,7 @@ export default function AdminPatchNotesPage() {
                 <td>{n.id}</td>
                 <td><span className={`${s.badge} ${s.badgeBlue}`}>v{n.version}</span></td>
                 <td>{n.title}</td>
-                <td style={{ fontSize: 12, color: '#9ca3af' }}>{n.createdAt?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#444' }}>{n.createdAt?.slice(0, 10)}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Link to={`/admin/patch-notes/${n.id}/edit`}>

@@ -103,7 +103,7 @@ export default function AdminContactsPage() {
                 <td><span className={`${s.badge} ${s.badgeGray}`}>{c.category}</span></td>
                 <td style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.subject}</td>
                 <td><span className={`${s.badge} ${STATUS_BADGE[c.status]}`}>{STATUS_LABEL[c.status]}</span></td>
-                <td style={{ fontSize: 12, color: '#9ca3af' }}>{c.createdAt?.slice(0, 10)}</td>
+                <td style={{ fontSize: 12, color: '#444' }}>{c.createdAt?.slice(0, 10)}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className={`${s.btn} ${s.btnPrimary}`} style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => openDetail(c)}>상세/답변</button>
@@ -119,7 +119,7 @@ export default function AdminContactsPage() {
       {(page > 0 || hasNext) && (
         <div className={s.pagination}>
           <button className={s.pageBtn} onClick={() => setPage(p => p - 1)} disabled={page === 0}>이전</button>
-          <span style={{ padding: '0 12px', fontSize: 14, color: '#6b7280' }}>{page + 1} 페이지</span>
+          <span style={{ padding: '0 12px', fontSize: 12, color: '#444' }}>{page + 1} 페이지</span>
           <button className={s.pageBtn} onClick={() => setPage(p => p + 1)} disabled={!hasNext}>다음</button>
         </div>
       )}
@@ -137,13 +137,13 @@ export default function AdminContactsPage() {
             <div className={s.panelBody}>
               <div className={s.section}>
                 <div className={s.label}>유저: {selected.userNickname} · {selected.createdAt?.slice(0, 10)}</div>
-                <div style={{ marginTop: 10, fontSize: 14, color: '#374151', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{selected.body}</div>
+                <div style={{ marginTop: 10, fontSize: 13.5, color: '#bbb', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{selected.body}</div>
               </div>
 
               {selected.reply && (
-                <div style={{ padding: '12px 16px', background: '#eff6ff', borderRadius: 8, marginBottom: 20, borderLeft: '3px solid #3b82f6' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', marginBottom: 6 }}>기존 답변</div>
-                  <div style={{ fontSize: 14, color: '#1e3a5f', whiteSpace: 'pre-wrap' }}>{selected.reply}</div>
+                <div style={{ padding: '12px 16px', background: '#0d1520', border: '1px solid #1a2a3a', borderLeft: '2px solid #60a5fa', borderRadius: 3, marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#3a5a7a', marginBottom: 6, letterSpacing: '0.8px', textTransform: 'uppercase' }}>기존 답변</div>
+                  <div style={{ fontSize: 13.5, color: '#7aa0c0', whiteSpace: 'pre-wrap' }}>{selected.reply}</div>
                 </div>
               )}
 

@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
       .finally(() => setLoading(false));
   }, [accessToken]);
 
-  if (loading) return <div style={{ padding: 40, color: '#9ca3af' }}>불러오는 중...</div>;
+  if (loading) return <div style={{ padding: 32, color: '#333', fontSize: 13 }}>불러오는 중...</div>;
   if (error) return <div className={s.error} style={{ padding: 20 }}>{error}</div>;
   if (!summary) return null;
 
@@ -53,15 +53,15 @@ export default function AdminDashboardPage() {
         </div>
         <div className={s.card}>
           <div className={s.cardLabel}>활성 유저</div>
-          <div className={s.cardValue} style={{ color: '#10b981' }}>{summary.activeUsers.toLocaleString()}</div>
+          <div className={s.cardValue} style={{ color: '#4ade80' }}>{summary.activeUsers.toLocaleString()}</div>
         </div>
         <div className={s.card}>
           <div className={s.cardLabel}>대기 유저</div>
-          <div className={s.cardValue} style={{ color: '#f59e0b' }}>{summary.pendingUsers.toLocaleString()}</div>
+          <div className={s.cardValue} style={{ color: '#fbbf24' }}>{summary.pendingUsers.toLocaleString()}</div>
         </div>
         <div className={s.card}>
           <div className={s.cardLabel}>차단 유저</div>
-          <div className={s.cardValue} style={{ color: '#ef4444' }}>{summary.bannedUsers.toLocaleString()}</div>
+          <div className={s.cardValue} style={{ color: '#f87171' }}>{summary.bannedUsers.toLocaleString()}</div>
         </div>
         <div className={s.card}>
           <div className={s.cardLabel}>전체 세션</div>
@@ -69,63 +69,63 @@ export default function AdminDashboardPage() {
         </div>
         <div className={s.card}>
           <div className={s.cardLabel}>미답변 문의</div>
-          <div className={s.cardValue} style={{ color: summary.unreadContacts > 0 ? '#ef4444' : '#1f2937' }}>
+          <div className={s.cardValue} style={{ color: summary.unreadContacts > 0 ? '#f87171' : '#fff' }}>
             {summary.unreadContacts}
           </div>
         </div>
       </div>
 
-      {/* 게임별 플레이 수 */}
-      {games.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 10, padding: '20px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: 28 }}>
-          <div className={s.sectionTitle}>게임별 전체 세션</div>
-          {games.map(g => (
-            <div key={g.game} style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13 }}>
-                <span style={{ color: '#374151', fontWeight: 500 }}>{GAME_LABELS[g.game] ?? g.game}</span>
-                <span style={{ color: '#6b7280' }}>{Number(g.count).toLocaleString()}</span>
-              </div>
-              <div style={{ background: '#f3f4f6', borderRadius: 4, height: 10, overflow: 'hidden' }}>
-                <div style={{
-                  width: `${(Number(g.count) / maxGame) * 100}%`,
-                  height: '100%',
-                  background: '#6366f1',
-                  borderRadius: 4,
-                  transition: 'width 0.5s',
-                }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 최근 30일 세션 추이 */}
-      {sessions.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 10, padding: '20px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div className={s.sectionTitle} style={{ marginBottom: 0 }}>최근 30일 세션 추이</div>
-            <span style={{ fontSize: 13, color: '#6b7280' }}>합계: {totalSessions.toLocaleString()}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 100, overflowX: 'auto' }}>
-            {sessions.map(item => (
-              <div key={item.date} title={`${item.date}: ${item.count}`} style={{ flex: '0 0 auto', width: 20 }}>
-                <div style={{
-                  width: '100%',
-                  height: `${(Number(item.count) / maxCount) * 100}%`,
-                  minHeight: 2,
-                  background: '#6366f1',
-                  borderRadius: '2px 2px 0 0',
-                  opacity: 0.8,
-                }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: '#1c1c1c', border: '1px solid #1c1c1c', borderRadius: 4, overflow: 'hidden', marginTop: 16 }}>
+        {/* 게임별 플레이 수 */}
+        {games.length > 0 && (
+          <div style={{ background: '#111', padding: '18px 20px' }}>
+            <div className={s.sectionTitle}>게임별 전체 세션</div>
+            {games.map(g => (
+              <div key={g.game} style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 12 }}>
+                  <span style={{ color: '#aaa', fontWeight: 500 }}>{GAME_LABELS[g.game] ?? g.game}</span>
+                  <span style={{ color: '#444' }}>{Number(g.count).toLocaleString()}</span>
+                </div>
+                <div style={{ background: '#1a1a1a', height: 2, overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${(Number(g.count) / maxGame) * 100}%`,
+                    height: '100%',
+                    background: '#fff',
+                    transition: 'width 0.5s',
+                  }} />
+                </div>
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11, color: '#9ca3af' }}>
-            <span>{sessions[0]?.date?.slice(5)}</span>
-            <span>{sessions[sessions.length - 1]?.date?.slice(5)}</span>
+        )}
+
+        {/* 최근 30일 세션 추이 */}
+        {sessions.length > 0 && (
+          <div style={{ background: '#111', padding: '18px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div className={s.sectionTitle} style={{ marginBottom: 0 }}>최근 30일 세션 추이</div>
+              <span style={{ fontSize: 11, color: '#333', letterSpacing: '0.5px' }}>합계: {totalSessions.toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 80, overflowX: 'auto' }}>
+              {sessions.map(item => (
+                <div key={item.date} title={`${item.date}: ${item.count}`} style={{ flex: '0 0 auto', width: 16 }}>
+                  <div style={{
+                    width: '100%',
+                    height: `${(Number(item.count) / maxCount) * 100}%`,
+                    minHeight: 1,
+                    background: '#fff',
+                    opacity: 0.6,
+                  }} />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: '#2a2a2a', letterSpacing: '0.5px' }}>
+              <span>{sessions[0]?.date?.slice(5)}</span>
+              <span>{sessions[sessions.length - 1]?.date?.slice(5)}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {sessions.length === 0 && games.length === 0 && (
         <div className={s.empty}>세션 데이터가 없습니다</div>
