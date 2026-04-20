@@ -621,7 +621,7 @@ export default function CardBoard({ excel = false }: Props) {
           </div>
 
           {/* Tableau */}
-          <div className={styles.tableauRow} style={{ gap }}>
+          <div className={styles.tableauRow} style={{ gap, minHeight: ch * 10 }}>
             {g.tableaus.map((pile, ti) => {
               const h = pile.length ? getTopOffset(pile, pile.length - 1) + ch : ch;
               return (
