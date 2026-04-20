@@ -32,8 +32,8 @@ export default function AdminPatchNotesPage() {
 
   return (
     <div className={s.page}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #1c1c1c' }}>
-        <div className={s.heading} style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>패치노트 관리</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #141414' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#e8e8e8', letterSpacing: '-0.2px' }}>패치노트 관리</div>
         <Link to="/admin/patch-notes/new">
           <button className={`${s.btn} ${s.btnPrimary}`}>+ 새 패치노트</button>
         </Link>
