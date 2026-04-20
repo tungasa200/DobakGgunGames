@@ -7,10 +7,15 @@
   color: white;
   font-family: sans-serif;
   font-size: 14px;
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
   border-bottom: 1px solid rgba(0,0,0,0.15);
-  flex-shrink: 0;
   box-sizing: border-box;
+  transition: transform 0.28s ease;
+  will-change: transform;
 }
 
 /* 로고 */
@@ -20,6 +25,11 @@
   white-space: nowrap;
   color: white;
   flex-shrink: 0;
+  text-decoration: none;
+  cursor: pointer;
+}
+.logo:hover {
+  opacity: 0.8;
 }
 
 /* 게임 목록 버튼 */
@@ -47,7 +57,7 @@
   border-top: none;
   border-radius: 0 0 6px 6px;
   box-shadow: 0 4px 14px rgba(0,0,0,0.16);
-  z-index: 1000;
+  z-index: 501;
   min-width: 290px;
   color: black;
 }
@@ -199,7 +209,7 @@
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-  z-index: 1000;
+  z-index: 501;
   min-width: 140px;
   overflow: hidden;
 }
