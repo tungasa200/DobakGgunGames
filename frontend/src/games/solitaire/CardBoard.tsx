@@ -194,11 +194,12 @@ export default function CardBoard({ excel = false }: Props) {
       const sid = sessionIdRef.current;
       const d = state.moves - lastSentMovesRef.current;
       if (sid && d > 0) {
+        lastSentMovesRef.current = state.moves;  // 낙관적 업데이트: flush와 중복 전송 방지
         try {
           await sendMovesBatch(sid, d);
-          lastSentMovesRef.current = state.moves;
         } catch {
-          // 네트워크 오류 시 조용히 무시 (다음 배치에서 누적)
+          // 네트워크 오류 시 롤백 후 다음 배치에서 재전송
+          lastSentMovesRef.current -= d;
         }
       }
     }, 500);
