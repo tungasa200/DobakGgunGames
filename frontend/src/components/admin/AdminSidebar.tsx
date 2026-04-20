@@ -13,17 +13,22 @@ const MENU = [
 export default function AdminSidebar() {
   return (
     <nav className={s.sidebar}>
-      <div className={s.logo}>어드민</div>
-      {MENU.map(m => (
-        <NavLink
-          key={m.to}
-          to={m.to}
-          end={m.end}
-          className={({ isActive }) => `${s.item} ${isActive ? s.active : ''}`}
-        >
-          {m.label}
-        </NavLink>
-      ))}
+      <div className={s.logo}>
+        <div className={s.logoSub}>ADMIN PANEL</div>
+        <div className={s.logoBrand}>DBK</div>
+      </div>
+      <div className={s.menu}>
+        {MENU.map(m => (
+          <NavLink
+            key={m.to}
+            to={m.to}
+            end={m.end}
+            className={({ isActive }) => `${s.item} ${isActive ? s.active : ''}`}
+          >
+            {m.label}
+          </NavLink>
+        ))}
+      </div>
     </nav>
   );
 }
