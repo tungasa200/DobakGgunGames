@@ -18,6 +18,17 @@ const DIFF_ICONS: Record<Difficulty, string> = {
   hard: '📉',
 };
 
+function colLabel(i: number): string {
+  let label = '';
+  let n = i + 1;
+  while (n > 0) {
+    n--;
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26);
+  }
+  return label;
+}
+
 function formatTime(elapsed: number): string {
   const total = Math.floor(elapsed);
   const m = Math.floor(total / 60);
@@ -91,7 +102,7 @@ export default function SudokuBoard({ excel = false }: Props) {
   const [rankLoading, setRankLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<Difficulty | 'rules'>('easy');
 
-  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, registerNewGame } =
+  const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } =
     useExcelShell();
 
   /* ── 자동완성 ── */
@@ -502,66 +513,240 @@ export default function SudokuBoard({ excel = false }: Props) {
       )}
 
       {/* ── 엑셀 모드: 랭킹 시트 ── */}
-      {excel && showRankingArea && (
-        <div className={styles.xRankWrap}>
-          <div className={styles.xRankHeader}>
-            <span>{weekRange()}</span>
-            <div>
-              {(['easy', 'normal', 'hard'] as Difficulty[]).map(d => (
-                <button
-                  key={d}
-                  className={`${styles.xRankTab} ${rankLevel === d ? styles.xRankTabActive : ''}`}
-                  onClick={() => { setRankLevel(d); loadRanking(d); }}
-                >
-                  {DIFF_LABELS[d]}
-                </button>
+      {excel && showRankingArea && (() => {
+        const CELL = 30;
+        const RANK_COLS = [
+          { label: '순위', span: 2 },
+          { label: '이름', span: 5 },
+          { label: '점수', span: 3 },
+          { label: '날짜', span: 3 },
+        ];
+        const RANK_TOTAL = RANK_COLS.reduce((s, c) => s + c.span, 0); // 13
+        const extraCols  = Math.max(10, Math.ceil(sheetSize.width / CELL));
+        const totalHeaderCols = RANK_TOTAL + extraCols;
+
+        const dataRowCount = rankings.length > 0 ? rankings.length : 1;
+        const contentRows  = 3 + dataRowCount + 1;
+        const extraRows    = Math.max(20, Math.ceil(sheetSize.height / CELL));
+        const totalRows    = contentRows + extraRows;
+
+        const RankCell = (
+          text: string,
+          colStart: number,
+          span: number,
+          cls: string[],
+          extraStyle?: React.CSSProperties,
+          key?: string | number,
+          children?: React.ReactNode,
+        ) => (
+          <div
+            key={key ?? `${colStart}-${text}`}
+            className={[styles.xrankCell, ...cls.map(c => styles[c as keyof typeof styles])].filter(Boolean).join(' ')}
+            style={{ gridColumn: `${colStart} / span ${span}`, ...extraStyle }}
+            title={text}
+          >
+            {children ?? text}
+          </div>
+        );
+
+        return (
+          <div className={styles.xSheetWrapper}>
+            <div className={styles.xColHeaderRow}>
+              <div className={styles.xcorner} />
+              {Array.from({ length: totalHeaderCols }, (_, i) => (
+                <div key={i} className={styles.xch} style={{ width: CELL, minWidth: CELL }}>
+                  {colLabel(i)}
+                </div>
               ))}
             </div>
-          </div>
-          {rankLoading ? (
-            <p className={styles.placeholder}>불러오는 중...</p>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr><th>순위</th><th>이름</th><th>점수</th><th>날짜</th></tr>
-              </thead>
-              <tbody>
-                {rankings.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className={styles.placeholder}>기록 없음</td>
-                  </tr>
+            <div className={styles.xBodyArea}>
+              <div className={styles.xRowNums}>
+                {Array.from({ length: totalRows }, (_, i) => (
+                  <div key={i} className={styles.xrn} style={{ height: CELL }}>{i + 1}</div>
+                ))}
+              </div>
+              <div
+                className={styles.xRankGrid}
+                style={{ gridTemplateColumns: `repeat(${RANK_TOTAL}, ${CELL}px)`, gridAutoRows: `${CELL}px` }}
+              >
+                {/* 1행: 주간 랭킹 타이틀 */}
+                {RankCell(weekRange(), 1, RANK_TOTAL, ['xrcWeekTitle'], { fontWeight: 'bold' }, 'title')}
+
+                {/* 2행: 난이도 필터 */}
+                <div
+                  key="filter"
+                  className={`${styles.xrankCell} ${styles.xrcFilter}`}
+                  style={{ gridColumn: `1 / span ${RANK_TOTAL}` }}
+                >
+                  {(['easy', 'normal', 'hard'] as Difficulty[]).map(d => (
+                    <button
+                      key={d}
+                      className={`${styles.xrankFilterBtn} ${rankLevel === d ? styles.xrankFilterBtnActive : ''}`}
+                      onClick={() => { setRankLevel(d); loadRanking(d); }}
+                    >
+                      {DIFF_LABELS[d]}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 3행: 컬럼 헤더 */}
+                {(() => {
+                  let cs = 1;
+                  return RANK_COLS.map(col => {
+                    const start = cs; cs += col.span;
+                    return RankCell(col.label, start, col.span, ['xrcHeader'], undefined, `h-${col.label}`);
+                  });
+                })()}
+
+                {/* 데이터 행 */}
+                {rankLoading ? (
+                  RankCell('불러오는 중...', 1, RANK_TOTAL, [], { color: '#888' }, 'loading')
+                ) : rankings.length === 0 ? (
+                  RankCell('기록 없음', 1, RANK_TOTAL, [], { color: '#aaa' }, 'empty')
                 ) : (
-                  rankings.map((row, i) => (
-                    <tr key={row.id}>
-                      <td>{i + 1}</td>
-                      <td>{row.name}</td>
-                      <td>{(row.score ?? 0).toLocaleString()}점</td>
-                      <td>{new Date(row.createdAt).toLocaleDateString('ko-KR')}</td>
-                    </tr>
-                  ))
+                  rankings.map((row, i) => {
+                    const alt = i % 2 === 1 ? styles.xrcAlt : '';
+                    const top = i === 0 ? styles.xrcTop : '';
+                    const date = new Date(row.createdAt).toLocaleDateString('ko-KR');
+                    const values = [String(i + 1), row.name, `${(row.score ?? 0).toLocaleString()}점`, date];
+                    let cs = 1;
+                    return RANK_COLS.map(col => {
+                      const start = cs; cs += col.span;
+                      return (
+                        <div
+                          key={`${row.id}-${col.label}`}
+                          className={[styles.xrankCell, alt, top].filter(Boolean).join(' ')}
+                          style={{ gridColumn: `${start} / span ${col.span}` }}
+                        >
+                          {values[RANK_COLS.indexOf(col)]}
+                        </div>
+                      );
+                    });
+                  })
                 )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+
+                {/* 역대 1위 */}
+                {alltime
+                  ? RankCell(
+                      `👑 역대 1위  ${alltime.name} · ${(alltime.score ?? 0).toLocaleString()}점 · ${new Date(alltime.createdAt).toLocaleDateString('ko-KR')}`,
+                      1, RANK_TOTAL, ['xrcWeekTitle'], { paddingLeft: 8 }, 'alltime'
+                    )
+                  : RankCell('👑 역대 1위  기록 없음', 1, RANK_TOTAL, [], { color: '#aaa', paddingLeft: 8 }, 'alltime-empty')
+                }
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── 엑셀 모드: 룰 시트 ── */}
-      {excel && showRulesArea && (
-        <div className={styles.xRulesWrap}>
-          <h4>스도쿠 규칙</h4>
-          <ul>
-            <li>빈 칸에 1~9를 채워 모든 행·열·3×3 박스에 각 숫자가 한 번씩 나타나게 만들기</li>
-            <li>중복 숫자 입력 시 빨간색 표시</li>
-            <li>힌트는 게임당 3회 (랭킹 점수에 영향 없음)</li>
-          </ul>
-          <h4>점수</h4>
-          <ul>
-            <li>초급 최대 1,000점 / 중급 2,000점 / 고급 3,500점</li>
-            <li>풀이 시간이 빠를수록 높은 점수</li>
-          </ul>
-        </div>
-      )}
+      {excel && showRulesArea && (() => {
+        const CELL = 30;
+        const RULES_TOTAL = 12;
+        const extraCols   = Math.max(10, Math.ceil(sheetSize.width / CELL));
+        const totalHeaderCols = RULES_TOTAL + extraCols;
+        const contentRows = 18;
+        const extraRows   = Math.max(20, Math.ceil(sheetSize.height / CELL));
+        const totalRows   = contentRows + extraRows;
+
+        type CellDef = { text: string; colStart: number; span: number; cls: string[]; style?: React.CSSProperties };
+        const rows: CellDef[][] = [];
+
+        function addRow(...cells: CellDef[]) { rows.push(cells); }
+        function fullCell(text: string, cls: string[], style?: React.CSSProperties): CellDef {
+          return { text, colStart: 1, span: RULES_TOTAL, cls, style };
+        }
+        function sectionRow(title: string): CellDef[] {
+          return [fullCell(title, [], {
+            background: '#e8f5e9', color: '#1a5c38', fontWeight: 'bold',
+            borderTop: '1px solid #a5d6a7',
+          })];
+        }
+        function emptyRow(): CellDef[] { return [fullCell('', [])]; }
+
+        // 1행: 타이틀
+        addRow(fullCell('도박꾼 스도쿠  —  게임 규칙', ['xrcHeader'], { justifyContent: 'center', fontSize: 14, letterSpacing: 1 }));
+        addRow(...emptyRow());
+        // 기본 규칙
+        addRow(...sectionRow('■  기본 규칙'));
+        [
+          ['①', '빈 칸에 1~9를 채워 모든 행·열·3×3 박스에 각 숫자가 한 번씩 나타나게 만들기'],
+          ['②', '같은 행, 열, 박스에 중복 숫자 입력 시 빨간색으로 표시'],
+          ['③', '메모 모드: 후보 숫자를 작게 기록 (단축키: N)'],
+          ['④', '키보드: 숫자 1~9 입력, 방향키 이동, Del/Backspace 삭제'],
+        ].forEach(([num, text], i) => {
+          const alt = i % 2 === 1 ? ['xrcAlt'] : [] as string[];
+          addRow(
+            { text: num, colStart: 1, span: 1, cls: alt, style: { justifyContent: 'center', color: '#888' } },
+            { text, colStart: 2, span: RULES_TOTAL - 1, cls: alt },
+          );
+        });
+        addRow(...emptyRow());
+        // 힌트
+        addRow(...sectionRow('■  힌트'));
+        [
+          ['①', '게임당 최대 3회 사용 가능'],
+          ['②', '선택한 빈 칸에 정답을 채워줌 (랭킹 점수에 영향 없음)'],
+        ].forEach(([num, text], i) => {
+          const alt = i % 2 === 1 ? ['xrcAlt'] : [] as string[];
+          addRow(
+            { text: num, colStart: 1, span: 1, cls: alt, style: { justifyContent: 'center', color: '#888' } },
+            { text, colStart: 2, span: RULES_TOTAL - 1, cls: alt },
+          );
+        });
+        addRow(...emptyRow());
+        // 점수
+        addRow(...sectionRow('■  점수 계산'));
+        addRow(
+          { text: '난이도', colStart: 1, span: 3, cls: ['xrcHeader'] },
+          { text: '최대 점수', colStart: 4, span: 4, cls: ['xrcHeader'], style: { justifyContent: 'center' } },
+          { text: '기준 시간', colStart: 8, span: 5, cls: ['xrcHeader'], style: { justifyContent: 'center' } },
+        );
+        [['초급', '1,000점', '10분'], ['중급', '2,000점', '15분'], ['고급', '3,500점', '20분']].forEach(([d, s, t], i) => {
+          const alt = i % 2 === 1 ? ['xrcAlt'] : [] as string[];
+          addRow(
+            { text: d, colStart: 1, span: 3, cls: alt },
+            { text: s, colStart: 4, span: 4, cls: alt, style: { justifyContent: 'center' } },
+            { text: t, colStart: 8, span: 5, cls: alt, style: { justifyContent: 'center' } },
+          );
+        });
+
+        return (
+          <div className={styles.xSheetWrapper}>
+            <div className={styles.xColHeaderRow}>
+              <div className={styles.xcorner} />
+              {Array.from({ length: totalHeaderCols }, (_, i) => (
+                <div key={i} className={styles.xch} style={{ width: CELL, minWidth: CELL }}>
+                  {colLabel(i)}
+                </div>
+              ))}
+            </div>
+            <div className={styles.xBodyArea}>
+              <div className={styles.xRowNums}>
+                {Array.from({ length: totalRows }, (_, i) => (
+                  <div key={i} className={styles.xrn} style={{ height: CELL }}>{i + 1}</div>
+                ))}
+              </div>
+              <div
+                className={styles.xRankGrid}
+                style={{ gridTemplateColumns: `repeat(${RULES_TOTAL}, ${CELL}px)`, gridAutoRows: `${CELL}px` }}
+              >
+                {rows.map((rowCells, ri) =>
+                  rowCells.map((cell, ci) => (
+                    <div
+                      key={`${ri}-${ci}`}
+                      className={[styles.xrankCell, ...cell.cls.map(c => styles[c as keyof typeof styles])].filter(Boolean).join(' ')}
+                      style={{ gridColumn: `${cell.colStart} / span ${cell.span}`, ...cell.style }}
+                    >
+                      {cell.text}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── 클리어 모달 ── */}
       {modalOpen && (

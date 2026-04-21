@@ -23,8 +23,8 @@
 .excelMode .resetBtn { display: none; }
 .excelMode .sessionFailBanner { display: none; }
 
-/* 보드 영역 */
-.excelMode .boardArea { gap: 4px; }
+/* 보드 영역 — gap 0으로 컨트롤이 보드에 딱 붙도록 */
+.excelMode .boardArea { gap: 0; }
 
 /* idle 상태 투명도 해제 */
 .excelMode .boardIdle { opacity: 1; pointer-events: auto; }
@@ -38,65 +38,100 @@
   box-shadow: none;
 }
 
-/* 시작 버튼 — 엑셀 스타일 */
+/* 시작 버튼 — 보드 너비(360px) 전체를 채우는 엑셀 셀 스타일 */
 .excelMode .startBtn {
-  padding: 5px 20px;
+  width: 360px;
+  height: 34px;
+  padding: 0;
   background: #217346;
-  border-color: #217346;
-  border-radius: 2px;
+  border: 1px solid #217346;
+  border-top: none;
+  border-radius: 0;
   font-family: 'Calibri', sans-serif;
   font-size: 13px;
-  font-weight: normal;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.excelMode .startBtn:hover:not(:disabled) { background: #1a6636; }
+.excelMode .startBtn:hover:not(:disabled) { background: #1a5c38; border-color: #1a5c38; }
 
-/* 컨트롤 (숫자 패드 + 액션) — 엑셀 스타일 */
+/* 컨트롤 (숫자 패드 + 액션) — 보드 너비에 딱 맞게 */
 .excelMode .controls {
-  gap: 6px;
-  padding: 6px 0 2px;
-  border-top: 1px solid #e0e0e0;
+  gap: 0;
+  padding: 0;
+  border-top: none;
   width: 360px;
 }
+
+/* 숫자 패드 — 10칸 엑셀 셀 그리드 */
 .excelMode .numPad {
-  grid-template-columns: repeat(5, 36px);
-  gap: 3px;
+  grid-template-columns: repeat(10, 36px);
+  gap: 0;
+  width: 360px;
+  border-left: 1px solid #d0d0d0;
+  border-top: 2px solid #bbb;
 }
 .excelMode .numBtn {
   width: 36px;
-  height: 26px;
-  background: #f2f2f2;
-  border: 1px solid #d0d0d0;
-  border-radius: 2px;
+  height: 36px;
+  background: #f7f7f7;
+  border: none;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
+  border-radius: 0;
   gap: 0;
 }
-.excelMode .numBtn:hover:not(:disabled) { background: #e8f4fd; border-color: #c8dff5; }
-.excelMode .numBtnDigit { font-size: 13px; font-family: 'Calibri', sans-serif; }
+.excelMode .numBtn:hover:not(:disabled) { background: #e3f2fd; }
+.excelMode .numBtnDigit { font-size: 13px; font-family: 'Calibri', sans-serif; color: #1f1f1f; }
 .excelMode .numBtnCount { display: none; }
 .excelMode .deleteBtn {
   width: 36px;
-  height: 26px;
-  background: #f2f2f2;
-  border: 1px solid #d0d0d0;
-  border-radius: 2px;
+  height: 36px;
+  background: #fff2cc;
+  border: none;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
+  border-radius: 0;
   font-size: 13px;
-  color: #333;
+  color: #7f6000;
 }
-.excelMode .deleteBtn:hover { background: #e8f4fd; }
+.excelMode .deleteBtn:hover { background: #ffe699; }
+
+/* 액션 로우 — 보드 너비에 딱 맞는 2분할 셀 */
+.excelMode .actionRow {
+  width: 360px;
+  gap: 0;
+  border-left: 1px solid #d0d0d0;
+}
 .excelMode .actionBtn {
-  padding: 4px 10px;
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
   font-size: 12px;
   background: #f2f2f2;
-  border: 1px solid #d0d0d0;
-  border-radius: 2px;
+  border: none;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
+  border-radius: 0;
   color: #333;
   font-family: 'Calibri', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.excelMode .actionBtn:hover:not(:disabled) { background: #e3f2fd; }
 .excelMode .actionBtnActive {
-  background: #c6efce;
-  border-color: #217346;
-  color: #217346;
+  background: #e2efda;
+  border-color: #d0d0d0;
+  color: #375623;
+  font-weight: 600;
 }
-.excelMode .actionBtnActive:hover:not(:disabled) { background: #a9dfbf; }
+.excelMode .actionBtnActive:hover:not(:disabled) { background: #c6efce; }
 
 /* 셀 */
 .excelMode .cell {
@@ -530,6 +565,100 @@
   transition: background 0.15s;
 }
 .secondaryBtn:hover { background: #d0e8f5; }
+
+/* ── Excel Mode: Spreadsheet Sheet (랭킹·룰) ── */
+.xSheetWrapper {
+  display: inline-flex;
+  flex-direction: column;
+}
+.xColHeaderRow {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.xcorner {
+  width: 40px;
+  min-width: 40px;
+  height: 24px;
+  background: #f2f2f2;
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #aaa;
+  flex-shrink: 0;
+}
+.xch {
+  background: #f2f2f2;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #444;
+  user-select: none;
+  height: 24px;
+  flex-shrink: 0;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xch:hover { background: #d9e9ff; }
+.xBodyArea {
+  display: flex;
+  align-items: flex-start;
+}
+.xRowNums {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+.xrn {
+  background: #f2f2f2;
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #444;
+  width: 40px;
+  min-width: 40px;
+  user-select: none;
+  flex-shrink: 0;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xrn:hover { background: #d9e9ff; }
+.xRankGrid { display: grid; }
+.xrankCell {
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 14px;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  overflow: hidden;
+  white-space: nowrap;
+  background: white;
+  align-self: stretch;
+}
+.xrcHeader { background: #217346; color: white; font-weight: bold; }
+.xrcWeekTitle { background: #fef9e7; color: #b7950b; font-weight: bold; }
+.xrcFilter { background: #f2f2f2; gap: 4px; }
+.xrcAlt { background: #f5f5f5; }
+.xrcTop { color: #c65000; font-weight: bold; }
+.xrankFilterBtn {
+  padding: 1px 10px;
+  font-size: 14px;
+  border: 1px solid #d0d0d0;
+  background: white;
+  cursor: pointer;
+  border-radius: 2px;
+  color: #333;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+}
+.xrankFilterBtn:hover { background: #e8e8e8; }
+.xrankFilterBtnActive { background: #217346; color: white; border-color: #217346; }
 
 /* ── Excel Mode: Ribbon Game Group ── */
 .xrgGame {
