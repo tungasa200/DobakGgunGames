@@ -317,9 +317,11 @@ export default function SudokuBoard({ excel = false }: Props) {
                   }
                   if (isFixed) cls += ' ' + styles.cellFixed;
 
+                  const boxBorder  = excel ? '2px solid #999' : '2px solid #2c3e50';
+                  const cellBorder = excel ? '1px solid #d0d0d0' : '1px solid #bdc3c7';
                   const borderStyle: React.CSSProperties = {
-                    borderRight:  (c + 1) % 3 === 0 ? '2px solid #2c3e50' : '1px solid #bdc3c7',
-                    borderBottom: (r + 1) % 3 === 0 ? '2px solid #2c3e50' : '1px solid #bdc3c7',
+                    borderRight:  (c + 1) % 3 === 0 ? boxBorder : cellBorder,
+                    borderBottom: (r + 1) % 3 === 0 ? boxBorder : cellBorder,
                   };
 
                   return (

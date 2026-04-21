@@ -9,9 +9,80 @@
   gap: 12px;
 }
 .excelMode {
-  padding: 8px;
-  gap: 8px;
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  padding: 0;
+  max-width: none;
+  margin: 0;
+  gap: 0;
+  align-items: flex-start;
 }
+
+/* 일반 UI 숨김 — 리본/상태바로 대체 */
+.excelMode .diffRow  { display: none; }
+.excelMode .infoBar  { display: none; }
+.excelMode .controls { display: none; }
+.excelMode .resetBtn { display: none; }
+.excelMode .startBtn { display: none; }
+.excelMode .sessionFailBanner { display: none; }
+
+/* 보드 영역 */
+.excelMode .boardArea { gap: 0; }
+
+/* idle 상태 투명도 해제 (리본 버튼으로 시작하므로 안내 필요 없음) */
+.excelMode .boardIdle { opacity: 1; pointer-events: auto; }
+
+/* 보드 */
+.excelMode .board {
+  grid-template-columns: repeat(9, 40px);
+  grid-template-rows:    repeat(9, 40px);
+  border-left: 2px solid #999;
+  border-top:  2px solid #999;
+  box-shadow: none;
+}
+
+/* 셀 */
+.excelMode .cell {
+  background: white;
+  border-radius: 0;
+  cursor: default;
+  font-family: 'Calibri', sans-serif;
+  transition: none;
+}
+.excelMode .cell:hover {
+  background: white;
+  outline: 2px solid #1a73e8;
+  outline-offset: -2px;
+  z-index: 1;
+  position: relative;
+}
+.excelMode .cellFixed       { background: #f2f2f2; }
+.excelMode .cellFixed:hover { background: #f2f2f2; }
+.excelMode .cellSelected    { background: #c6efce !important; outline: 2px solid #217346; outline-offset: -2px; }
+.excelMode .cellHighlighted { background: #f2f2f2; }
+.excelMode .cellSameNum     { background: #e2efda; }
+
+/* 셀 값 */
+.excelMode .cellVal    { font-size: 14px; font-weight: normal; font-family: 'Calibri', sans-serif; }
+.excelMode .valFixed   { color: #2c3e50; font-weight: bold; }
+.excelMode .valUser    { color: #375623; }
+.excelMode .valConflict { color: #9c0006; }
+
+/* 메모 */
+.excelMode .noteNum { font-size: 7px; color: #595959; }
+
+/* 랭킹 — 엑셀 그린 */
+.excelMode .rankSection   { padding: 12px 8px; background: white; width: auto; max-width: none; margin-top: 0; }
+.excelMode .rankTab       { border-color: #217346; color: #217346; }
+.excelMode .rankTab:hover { background: #217346; color: white; }
+.excelMode .rankTabActive { background: #217346; color: white; border-color: #217346; }
+.excelMode .table th      { background: #217346; }
+
+/* 모달 */
+.excelMode .modal h2          { color: #217346; }
+.excelMode .nameInput:focus   { border-color: #217346; }
+.excelMode .primaryBtn        { background: #217346; }
+.excelMode .primaryBtn:hover  { background: #1a6636; }
+
 
 /* ── Difficulty Tabs ── */
 .diffRow {
@@ -437,9 +508,9 @@
 }
 .xRankTab:hover { background: #f0f3f7; }
 .xRankTabActive {
-  background: #2980b9;
+  background: #217346;
   color: #fff;
-  border-color: #2980b9;
+  border-color: #217346;
 }
 .xRulesWrap { font-size: 13px; color: #2c3e50; line-height: 1.6; }
 .xRulesWrap h4 { margin: 8px 0 4px; font-size: 13px; color: #1a5276; }

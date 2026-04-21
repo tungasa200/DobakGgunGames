@@ -15,6 +15,7 @@ export interface SudokuState {
   timerRunning: boolean;
   difficulty: Difficulty;
   sessionId: string | null;
+  gameKey: number;
 }
 
 type Action =
@@ -46,6 +47,7 @@ function initState(difficulty: Difficulty): SudokuState {
     timerRunning: false,
     difficulty,
     sessionId: null,
+    gameKey: 0,
   };
 }
 
@@ -85,6 +87,7 @@ function reducer(state: SudokuState, action: Action): SudokuState {
         sessionId: action.sessionId,
         status: 'playing',
         timerRunning: true,
+        gameKey: state.gameKey + 1,
       };
     }
     case 'SELECT':
@@ -171,7 +174,7 @@ export function useSudokuGame(initialDifficulty: Difficulty = 'easy') {
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.timerRunning]);
+  }, [state.timerRunning, state.gameKey]);
 
   const startGame = useCallback((puzzle: number[][], sessionId: string, difficulty: Difficulty) => {
     dispatch({ type: 'START', puzzle, sessionId, difficulty });
