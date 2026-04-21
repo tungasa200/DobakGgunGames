@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class PatchNote {
 
     public enum Game {
-        ALL, COMMON, MINESWEEPER, BASEBALL, BLOCKFALL, SOLITAIRE, APPLE
+        ALL, COMMON, MINESWEEPER, BASEBALL, BLOCKFALL, SOLITAIRE, APPLE, SUDOKU
     }
 
     @Id

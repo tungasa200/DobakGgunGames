@@ -6,16 +6,22 @@ import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
 
 export const GAME_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-  ALL:         { label: '전체',     icon: '🎮', color: '#4b5563', bg: '#f3f4f6' },
+  ALL:         { label: '공용',     icon: '📢', color: '#4b5563', bg: '#f3f4f6' },
   COMMON:      { label: '공통',     icon: '⚙️',  color: '#4b5563', bg: '#f3f4f6' },
   MINESWEEPER: { label: '지뢰찾기', icon: '💣', color: '#dc2626', bg: '#fee2e2' },
   BASEBALL:    { label: '숫자야구', icon: '⚾', color: '#2563eb', bg: '#dbeafe' },
   BLOCKFALL:   { label: '블록폴',   icon: '🟦', color: '#7c3aed', bg: '#ede9fe' },
   SOLITAIRE:   { label: '솔리테어', icon: '🃏', color: '#059669', bg: '#d1fae5' },
   APPLE:       { label: '사과게임', icon: '🍎', color: '#ea580c', bg: '#ffedd5' },
+  SUDOKU:      { label: '스도쿠',   icon: '🔢', color: '#0891b2', bg: '#cffafe' },
 };
 
-const FILTER_TABS: PatchNoteGame[] = ['ALL', 'MINESWEEPER', 'BASEBALL', 'BLOCKFALL', 'SOLITAIRE', 'APPLE'];
+type FilterTab = PatchNoteGame | 'TOTAL';
+const FILTER_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  TOTAL: { label: '전체', icon: '🎮', color: '#4b5563', bg: '#f3f4f6' },
+  ...GAME_META,
+};
+const FILTER_TABS: FilterTab[] = ['TOTAL', 'ALL', 'MINESWEEPER', 'BASEBALL', 'BLOCKFALL', 'SOLITAIRE', 'APPLE', 'SUDOKU'];
 
 export default function PatchNotesPage() {
   const [notes, setNotes] = useState<PatchNote[]>([]);
@@ -23,14 +29,15 @@ export default function PatchNotesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasNext, setHasNext] = useState(false);
   const [page, setPage] = useState(0);
-  const [filter, setFilter] = useState<PatchNoteGame>('ALL');
+  const [filter, setFilter] = useState<FilterTab>('TOTAL');
   const [error, setError] = useState('');
 
-  const load = useCallback(async (game: PatchNoteGame, nextPage: number, append: boolean) => {
+  const load = useCallback(async (game: FilterTab, nextPage: number, append: boolean) => {
     append ? setLoadingMore(true) : setLoading(true);
     setError('');
     try {
-      const res = await patchNoteApi.list(game, nextPage);
+      const apiGame = game === 'TOTAL' ? undefined : game;
+      const res = await patchNoteApi.list(apiGame, nextPage);
       setNotes(prev => append ? [...prev, ...res.content] : res.content);
       setHasNext(res.hasNext);
       setPage(nextPage);
@@ -45,7 +52,7 @@ export default function PatchNotesPage() {
     load(filter, 0, false);
   }, [filter, load]);
 
-  function handleFilterChange(game: PatchNoteGame) {
+  function handleFilterChange(game: FilterTab) {
     if (game === filter) return;
     setFilter(game);
   }
@@ -75,7 +82,7 @@ export default function PatchNotesPage() {
           boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
         }}>
           {FILTER_TABS.map(game => {
-            const meta = GAME_META[game];
+            const meta = FILTER_META[game];
             const active = filter === game;
             return (
               <button

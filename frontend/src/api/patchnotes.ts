@@ -2,7 +2,7 @@ const API_ORIGIN = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '
 const BASE = `${API_ORIGIN}/api/patch-notes`;
 
 export type PatchNoteGame =
-  | 'ALL' | 'COMMON' | 'MINESWEEPER' | 'BASEBALL' | 'BLOCKFALL' | 'SOLITAIRE' | 'APPLE';
+  | 'ALL' | 'COMMON' | 'MINESWEEPER' | 'BASEBALL' | 'BLOCKFALL' | 'SOLITAIRE' | 'APPLE' | 'SUDOKU';
 
 export interface PatchNote {
   id: number;
@@ -28,9 +28,9 @@ async function get<T>(url: string): Promise<T> {
 }
 
 export const patchNoteApi = {
-  list: (game?: PatchNoteGame | 'ALL', page = 0, size = 10) => {
+  list: (game?: PatchNoteGame, page = 0, size = 10) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
-    if (game && game !== 'ALL') params.set('game', game);
+    if (game) params.set('game', game);
     return get<PatchNoteListResult>(`${BASE}?${params}`);
   },
   get: (id: number) => get<PatchNote>(`${BASE}/${id}`),

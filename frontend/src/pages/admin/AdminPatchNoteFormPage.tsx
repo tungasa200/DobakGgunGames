@@ -12,6 +12,7 @@ const GAME_OPTIONS = [
   { value: 'BLOCKFALL',   label: '🟦 블록폴' },
   { value: 'SOLITAIRE',   label: '🃏 솔리테어' },
   { value: 'APPLE',       label: '🍎 사과게임' },
+  { value: 'SUDOKU',      label: '🔢 스도쿠' },
 ];
 
 export default function AdminPatchNoteFormPage() {
