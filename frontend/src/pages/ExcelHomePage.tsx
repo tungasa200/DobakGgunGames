@@ -58,7 +58,11 @@ const RANK_COLS = [
     key: 'su', game: 'sudoku', label: '스도쿠',
     levels: ['easy', 'normal', 'hard'],
     levelLabels: ['초급', '중급', '고급'],
-    fmt: (r: RankingEntry) => `${r.score!.toLocaleString()}점`,
+    fmt: (r: RankingEntry) => {
+      const t = Math.round(r.time!);
+      const m = Math.floor(t / 60), s = t % 60;
+      return m > 0 ? `${m}분 ${String(s).padStart(2, '0')}초` : `${t}초`;
+    },
   },
 ];
 
