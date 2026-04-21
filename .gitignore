@@ -20,3 +20,8 @@ backend/.env
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code local state (Git 제외 — PC마다 다름)
+.claude/settings.local.json
+.claude/logs/
+.claude/cache/
