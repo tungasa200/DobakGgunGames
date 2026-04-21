@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls *.md)"
+      "Bash(ls *.md)",
+      "Bash(./gradlew test *)"
     ]
   }
 }
