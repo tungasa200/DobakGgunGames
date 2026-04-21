@@ -5,6 +5,7 @@ import { rankingsApi, type RankingEntry } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminTest } from '../../context/AdminTestContext';
 import styles from './MinesweeperBoard.module.css';
 
 // 열 라벨 헬퍼 (A, B, C, ..., AA, ...)
@@ -137,6 +138,22 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   useEffect(() => {
     if (state.status === 'won' && !sessionFailed) setModalOpen(true);
   }, [state.status, sessionFailed]);
+
+  // 어드민 강제 클리어
+  const { register } = useAdminTest();
+  const forceClearRef = useRef<() => void>(() => {});
+  forceClearRef.current = async () => {
+    const lv = level === 'custom' ? 'beginner' : level as Exclude<typeof level, 'custom'>;
+    try {
+      const res = await startMinesweeperSession(lv);
+      sessionIdRef.current = res.sessionId;
+    } catch { /* ignore */ }
+    setModalOpen(true);
+  };
+  useEffect(() => {
+    register(() => forceClearRef.current());
+    return () => register(() => {});
+  }, [register]);
 
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();

@@ -25,9 +25,11 @@ import AdminPatchNoteFormPage from './pages/admin/AdminPatchNoteFormPage';
 import AdminIpBansPage from './pages/admin/AdminIpBansPage';
 import AdminGamesPage from './pages/admin/AdminGamesPage';
 import AdminClearButton from './components/admin/AdminClearButton';
+import { AdminTestProvider } from './context/AdminTestContext';
 
 export default function App() {
   return (
+    <AdminTestProvider>
     <BrowserRouter>
       <Routes>
         {/* 기존 라우트 */}
@@ -77,5 +79,6 @@ export default function App() {
       </Routes>
       <AdminClearButton />
     </BrowserRouter>
+    </AdminTestProvider>
   );
 }

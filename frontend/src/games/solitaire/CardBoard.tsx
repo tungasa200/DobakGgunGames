@@ -5,6 +5,7 @@ import { sendMovesBatch, startSolitaireSession } from '../../api/solitaire';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminTest } from '../../context/AdminTestContext';
 import styles from './CardBoard.module.css';
 
 // ── 일반 모드 상수 ──────────────────────────────────────────────────
@@ -210,6 +211,21 @@ export default function CardBoard({ excel = false }: Props) {
       setTimeout(() => setModalOpen(true), 400);
     }
   }, [state.status, sessionFailed]);
+
+  // 어드민 강제 클리어
+  const { register } = useAdminTest();
+  const forceClearRef = useRef<() => void>(() => {});
+  forceClearRef.current = async () => {
+    try {
+      const res = await startSolitaireSession(drawMode);
+      sessionIdRef.current = res.sessionId;
+    } catch { /* ignore */ }
+    setModalOpen(true);
+  };
+  useEffect(() => {
+    register(() => forceClearRef.current());
+    return () => register(() => {});
+  }, [register]);
 
   // ── Excel Shell 연동 ──────────────────────────────────────────────
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();

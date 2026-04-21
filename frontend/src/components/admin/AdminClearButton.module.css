@@ -1,124 +1,28 @@
-.wrapper {
+.fab {
   position: fixed;
   bottom: 24px;
   right: 24px;
   z-index: 99999;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-/* FAB 버튼 */
-.fab {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: none;
   background: #1a1a2e;
   color: #fff;
-  font-size: 20px;
+  font-size: 22px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.15s, transform 0.15s;
-  flex-shrink: 0;
 }
 
 .fab:hover {
-  background: #16213e;
-  transform: scale(1.08);
-}
-
-.fabOpen {
   background: #e53e3e;
+  transform: scale(1.1);
 }
 
-.fabOpen:hover {
-  background: #c53030;
-}
-
-/* 패널 */
-.panel {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-  width: 230px;
-  overflow: hidden;
-}
-
-.panelHeader {
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #555;
-  background: #f7f8fa;
-  border-bottom: 1px solid #eee;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.msg {
-  padding: 6px 14px;
-  font-size: 12px;
-}
-
-.msgOk {
-  color: #2f855a;
-  background: #f0fff4;
-}
-
-.msgErr {
-  color: #c53030;
-  background: #fff5f5;
-}
-
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 4px 0;
-}
-
-.item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 14px;
-  gap: 8px;
-}
-
-.item:hover {
-  background: #f7f8fa;
-}
-
-.gameLabel {
-  font-size: 13px;
-  color: #333;
-  flex: 1;
-}
-
-.clearBtn {
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  border: 1px solid #fc8181;
-  border-radius: 4px;
-  background: transparent;
-  color: #e53e3e;
-  cursor: pointer;
-  transition: background 0.1s, color 0.1s;
-  white-space: nowrap;
-}
-
-.clearBtn:hover:not(:disabled) {
-  background: #e53e3e;
-  color: #fff;
-}
-
-.clearBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.fab:active {
+  transform: scale(0.96);
 }

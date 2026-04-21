@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminTest } from '../../context/AdminTestContext';
 import styles from './BlockfallInsaneBoard.module.css';
 
 // ===== 타입 =====
@@ -866,6 +867,21 @@ export default function BlockfallInsaneBoard() {
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
   }
+
+  // 어드민 강제 클리어
+  const { register } = useAdminTest();
+  const forceClearRef = useRef<() => void>(() => {});
+  forceClearRef.current = async () => {
+    try {
+      const id = await startSession('blockfall-insane', currentLevelRef.current);
+      sessionIdRef.current = id;
+    } catch { /* ignore */ }
+    setModalOpen(true);
+  };
+  useEffect(() => {
+    register(() => forceClearRef.current());
+    return () => register(() => {});
+  }, [register]);
 
   // ===== 캔버스 그리기 =====
   const draw = useCallback(() => {

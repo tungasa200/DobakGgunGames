@@ -5,6 +5,7 @@ import { startAppleSession } from '../../api/apple';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminTest } from '../../context/AdminTestContext';
 import styles from './AppleCanvas.module.css';
 
 interface Props { excel?: boolean }
@@ -260,6 +261,21 @@ export default function AppleCanvas({ excel = false }: Props) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
+
+  // 어드민 강제 클리어
+  const { register } = useAdminTest();
+  const forceClearRef = useRef<() => void>(() => {});
+  forceClearRef.current = async () => {
+    try {
+      const res = await startAppleSession();
+      sessionIdRef.current = res.sessionId;
+    } catch { /* ignore */ }
+    setModalOpen(true);
+  };
+  useEffect(() => {
+    register(() => forceClearRef.current());
+    return () => register(() => {});
+  }, [register]);
 
   // draw
   const draw = useCallback(() => {

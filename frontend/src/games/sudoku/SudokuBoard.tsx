@@ -5,6 +5,7 @@ import { rankingsApi, type RankingEntry } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminTest } from '../../context/AdminTestContext';
 import styles from './SudokuBoard.module.css';
 
 const DIFF_LABELS: Record<Difficulty, string> = {
@@ -113,6 +114,21 @@ export default function SudokuBoard({ excel = false }: Props) {
   useEffect(() => {
     if (state.status === 'won') setModalOpen(true);
   }, [state.status]);
+
+  // 어드민 강제 클리어
+  const { register } = useAdminTest();
+  const forceClearRef = useRef<() => void>(() => {});
+  forceClearRef.current = async () => {
+    try {
+      const res = await startSudokuSession(difficulty);
+      sessionIdRef.current = res.sessionId;
+    } catch { /* ignore */ }
+    setModalOpen(true);
+  };
+  useEffect(() => {
+    register(() => forceClearRef.current());
+    return () => register(() => {});
+  }, [register]);
 
   /* ── 초기 랭킹 로드 ── */
   useEffect(() => {

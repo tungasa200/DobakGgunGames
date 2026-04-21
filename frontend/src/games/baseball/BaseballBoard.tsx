@@ -5,6 +5,7 @@ import { rankingsApi } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminTest } from '../../context/AdminTestContext';
 import styles from './BaseballBoard.module.css';
 
 // 열 라벨 헬퍼 (A, B, C, ..., AA, ...)
@@ -88,6 +89,21 @@ export default function BaseballBoard({ excel = false }: Props) {
   useEffect(() => { initSession(level); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (state.won && !sessionFailed) setModalOpen(true); }, [state.won, sessionFailed]);
+
+  // 어드민 강제 클리어
+  const { register } = useAdminTest();
+  const forceClearRef = useRef<() => void>(() => {});
+  forceClearRef.current = async () => {
+    try {
+      const res = await startBaseballSession(level);
+      sessionIdRef.current = res.sessionId;
+    } catch { /* ignore */ }
+    setModalOpen(true);
+  };
+  useEffect(() => {
+    register(() => forceClearRef.current());
+    return () => register(() => {});
+  }, [register]);
   useEffect(() => {
     if (state.gameOver) {
       const answerStr = state.revealedAnswer ? ` 정답은 ${state.revealedAnswer} 였습니다.` : '';
