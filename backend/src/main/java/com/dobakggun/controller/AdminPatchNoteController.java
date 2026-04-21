@@ -36,6 +36,11 @@ public class AdminPatchNoteController {
         ));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<PatchNoteResponse> getOne(@PathVariable Long id) {
+        return ResponseEntity.ok(PatchNoteResponse.from(patchNoteService.getDetail(id)));
+    }
+
     @PostMapping
     public ResponseEntity<PatchNoteResponse> create(@RequestBody @Valid PatchNoteRequest req) {
         return ResponseEntity.ok(PatchNoteResponse.from(patchNoteService.create(req)));
