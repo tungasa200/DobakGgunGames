@@ -645,13 +645,6 @@
 }
 .xrcHeader { background: #217346; color: white; font-weight: bold; }
 .xrcWeekTitle { background: #fef9e7; color: #b7950b; font-weight: bold; }
-.xrcAlltime {
-  background: linear-gradient(90deg, #fef3cd, #fde8a0);
-  color: #7d5000;
-  font-weight: bold;
-  border-top: 1px solid #e6b800;
-  border-bottom: 1px solid #e6b800;
-}
 .xrcFilter { background: #f2f2f2; gap: 4px; }
 .xrcAlt { background: #f5f5f5; }
 .xrcTop { color: #c65000; font-weight: bold; }
