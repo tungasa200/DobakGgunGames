@@ -299,7 +299,10 @@ export default function SudokuBoard({ excel = false }: Props) {
           <div className={styles.boardArea}>
             {/* ── 9×9 보드 — 항상 표시 (idle 시 빈 보드) ── */}
             <div className={`${styles.board} ${state.status === 'idle' ? styles.boardIdle : ''}`}>
-              {Array.from({ length: 9 }, (_, r) =>
+              {(() => {
+                const boxBorder  = excel ? '2px solid #bbb' : '2px solid #2c3e50';
+                const cellBorder = excel ? '1px solid #d0d0d0' : '1px solid #bdc3c7';
+                return Array.from({ length: 9 }, (_, r) =>
                 Array.from({ length: 9 }, (_, c) => {
                   const val      = state.board[r][c];
                   const isFixed  = state.fixed[r][c];
@@ -317,8 +320,6 @@ export default function SudokuBoard({ excel = false }: Props) {
                   }
                   if (isFixed) cls += ' ' + styles.cellFixed;
 
-                  const boxBorder  = excel ? '2px solid #999' : '2px solid #2c3e50';
-                  const cellBorder = excel ? '1px solid #d0d0d0' : '1px solid #bdc3c7';
                   const borderStyle: React.CSSProperties = {
                     borderRight:  (c + 1) % 3 === 0 ? boxBorder : cellBorder,
                     borderBottom: (r + 1) % 3 === 0 ? boxBorder : cellBorder,
@@ -351,7 +352,8 @@ export default function SudokuBoard({ excel = false }: Props) {
                     </div>
                   );
                 })
-              )}
+                );
+              })()}
             </div>
 
             {/* ── idle: 게임 시작 버튼 ── */}
