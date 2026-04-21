@@ -10,6 +10,7 @@ const GAME_LABELS: Record<string, { name: string; icon: string }> = {
   blockfall:   { name: '블록폴',   icon: '🟦' },
   apple:       { name: '사과게임', icon: '🍎' },
   solitaire:   { name: '솔리테어', icon: '🃏' },
+  sudoku:      { name: '스도쿠',   icon: '🔢' },
 };
 
 export default function AdminGamesPage() {

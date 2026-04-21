@@ -14,7 +14,7 @@ import java.util.List;
 public class GameStatusService {
 
     private static final List<String> DEFAULT_GAMES = List.of(
-            "minesweeper", "baseball", "blockfall", "apple", "solitaire"
+            "minesweeper", "baseball", "blockfall", "apple", "solitaire", "sudoku"
     );
 
     private final GameStatusRepository repo;
