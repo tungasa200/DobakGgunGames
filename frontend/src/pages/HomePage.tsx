@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getCachedWeekly, type RankingEntry } from '../api/rankings';
+import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
 import styles from './HomePage.module.css';
@@ -142,6 +143,7 @@ function GameCard({ game, rankings, activeLevel, onLevelChange }: {
 }
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [cache, setCache] = useState<RankCache>({});
   const [activeLevels, setActiveLevels] = useState<Record<string, string>>(
     Object.fromEntries(GAMES.map((g) => [g.key, g.defaultLevel]))
@@ -205,7 +207,11 @@ export default function HomePage() {
               </div>
             </div>
             <div className={styles.cardRanking}>
-  
+              {user?.role === 'ADMIN' && (
+                <Link className={styles.btn} to="/blockfall-insane">
+                  🔥 블록폴: 인세인 (테스트)
+                </Link>
+              )}
             </div>
           </div>
         </div>

@@ -1,0 +1,442 @@
+/* ===== 블록폴 인세인 모드 스타일 =====
+   기존 BlockfallBoard.module.css를 베이스로 인세인 테마 적용
+   주요 변경: accent #8e44ad → #ff2d55, 배경 어두운 계열
+*/
+
+.wrap {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px 16px;
+  font-family: 'Segoe UI', sans-serif;
+  color: #e0e0e0;
+}
+
+/* 난이도 */
+.diffRow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+
+.diffBtn {
+  padding: 7px 16px;
+  border: 2px solid #ff2d55;
+  border-radius: 5px;
+  background: transparent;
+  color: #ff2d55;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+}
+.diffBtn:hover { background: #ff2d55; color: #fff; }
+.diffActive    { background: #ff2d55; color: #fff; }
+
+/* 정보 바 */
+.infoBar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  justify-content: center;
+}
+
+.infoItem {
+  text-align: center;
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 6px 14px;
+  border: 1px solid #333;
+  min-width: 70px;
+}
+.infoLabel { font-size: 0.72em; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.infoValue { font-size: 1.4em; font-weight: bold; color: #e0e0e0; }
+
+/* 상태 */
+.status {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #e0e0e0;
+  min-height: 1.5em;
+  margin: 4px 0 8px;
+}
+.statusOver { color: #ff2d55; }
+
+/* 이벤트 배너 */
+.eventBanner {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #ff2d55;
+  background: rgba(255, 45, 85, 0.12);
+  border: 1px solid rgba(255, 45, 85, 0.4);
+  border-radius: 6px;
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+  animation: eventPulse 0.5s ease-out;
+}
+
+@keyframes eventPulse {
+  0%   { transform: scale(1.04); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 이벤트 타이머 바 */
+.eventTimerBar {
+  height: 4px;
+  background: rgba(255, 45, 85, 0.2);
+  border-radius: 2px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.eventTimerFill {
+  height: 100%;
+  background: #ff2d55;
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+/* 게임 영역 */
+.gameArea {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+/* 사이드 패널 */
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.sideBox {
+  background: #1a1a2e;
+  border-radius: 8px;
+  border: 1px solid #333;
+  padding: 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sideTitle {
+  font-size: 0.72em;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+.miniCanvas {
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #0a0a0a;
+  display: block;
+  width: 120px;
+  height: 120px;
+}
+
+.hintsBox { }
+.hints {
+  font-size: 0.76em;
+  color: #888;
+  text-align: left;
+  line-height: 2;
+}
+
+/* 보드 */
+.board {
+  border: 2px solid #444;
+  border-radius: 2px;
+  display: block;
+  flex-shrink: 0;
+  touch-action: none;
+}
+
+/* 버튼 */
+.controls { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+
+.startBtn {
+  padding: 10px 22px;
+  background: #ff2d55;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.startBtn:hover { background: #e0244a; }
+
+.pauseBtn {
+  padding: 10px 22px;
+  background: #f39c12;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pauseBtn:hover:not(:disabled) { background: #d68910; }
+.pauseBtn:disabled { background: #444; cursor: default; }
+
+/* 모바일 컨트롤 */
+.mobileControls { display: none; margin-top: 10px; }
+.mobileRow { display: flex; gap: 8px; justify-content: center; margin: 4px 0; }
+.mobileBtn {
+  width: 56px;
+  height: 56px;
+  font-size: 1.5em;
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  touch-action: manipulation;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mobileBtn:active { background: #0a0a1e; transform: scale(0.95); }
+.mobileDrop { width: 130px; font-size: 0.85em; }
+
+@media (hover: none) and (pointer: coarse) {
+  .mobileControls { display: block; }
+  .hintsBox { display: none; }
+}
+
+/* ===== 모바일 반응형: 480px 미만 ===== */
+@media (max-width: 479px) {
+  .wrap { padding: 10px 6px; }
+  .gameArea { gap: 6px; }
+  .sidePanel { width: 82px; gap: 6px; }
+  .sideBox { padding: 6px; }
+  .sideTitle { font-size: 0.65em; margin-bottom: 4px; }
+  .miniCanvas { width: 82px; height: 82px; }
+  .board { width: 220px; height: 420px; }
+  .hints { font-size: 0.68em; line-height: 1.8; }
+  .infoItem { min-width: 58px; padding: 5px 8px; }
+}
+
+/* ===== 360px 미만 ===== */
+@media (max-width: 359px) {
+  .sidePanel { width: 70px; }
+  .miniCanvas { width: 70px; height: 70px; }
+  .board { width: 198px; height: 378px; }
+  .gameArea { gap: 4px; }
+}
+
+/* 랭킹 */
+.rankSection { margin-top: 28px; width: 100%; max-width: min(560px, 100%); overflow-x: auto; }
+.rankTitle   { text-align: center; margin: 0 0 10px; color: #e0e0e0; font-size: 1rem; font-weight: bold; }
+
+.alltimeBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 45, 85, 0.08);
+  border: 1px solid rgba(255, 45, 85, 0.3);
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.atLabel   { font-weight: bold; color: #ff2d55; white-space: nowrap; }
+.atContent { color: #bbb; }
+
+.rankTabs { display: flex; gap: 4px; margin-bottom: 6px; }
+
+.rankTab {
+  flex: 1;
+  padding: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 2px solid #ff2d55;
+  border-radius: 5px;
+  background: transparent;
+  color: #ff2d55;
+  font-weight: bold;
+  transition: all 0.15s;
+}
+.rankTab:hover     { background: #ff2d55; color: #fff; }
+.rankTabActive     { background: #ff2d55; color: #fff; }
+
+/* 테이블 */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+.table th {
+  background: #ff2d55;
+  color: #fff;
+  padding: 6px 10px;
+}
+.table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #222;
+  text-align: center;
+  color: #ccc;
+}
+.table tr:nth-child(even) td { background: #111; }
+.table tr:first-child td     { color: #ff8c00; font-weight: bold; }
+
+.placeholder { color: #666; font-style: italic; text-align: center; }
+
+/* 룰 패널 */
+.rulesPanel {
+  background: #1a1a2e;
+  border-radius: 8px;
+  border: 1px solid #333;
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: #ccc;
+}
+.rulesPanel h4 { margin: 0 0 6px; color: #e0e0e0; font-size: 0.9rem; border-bottom: 1px solid #333; padding-bottom: 4px; }
+.rulesPanel ul { margin: 2px 0 10px; padding-left: 18px; }
+.rulesPanel li { margin-bottom: 2px; }
+
+/* 모달 */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 28px 20px;
+  text-align: center;
+  width: 90%;
+  max-width: 340px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  border: 1px solid #333;
+  color: #e0e0e0;
+}
+.modal h3 { margin: 0 0 6px; font-size: 1.4rem; color: #ff2d55; }
+.modal p  { color: #aaa; margin: 0 0 16px; }
+
+.nameInput {
+  padding: 8px 12px;
+  font-size: 1rem;
+  border: 1px solid #444;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+  background: #0a0a0a;
+  color: #e0e0e0;
+}
+.nameInput:focus { outline: none; border-color: #ff2d55; }
+
+.modalBtns { display: flex; gap: 8px; justify-content: center; }
+
+.primaryBtn {
+  padding: 10px 22px;
+  background: #ff2d55;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+.primaryBtn:hover    { background: #e0244a; }
+.primaryBtn:disabled { opacity: 0.4; cursor: default; }
+
+.secondaryBtn {
+  padding: 10px 22px;
+  background: #333;
+  color: #ccc;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.secondaryBtn:hover { background: #444; }
+
+.hint { color: #ff2d55; font-size: 0.85rem; margin: 4px 0 8px; }
+.ipNotice { color: #666; font-size: 0.75em; margin: 4px 0 8px; }
+
+/* ===== 이벤트 수동 테스트 패널 ===== */
+.debugToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 14px;
+  margin-top: 8px;
+  background: #1a1a2e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #888;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: left;
+  letter-spacing: 0.03em;
+  transition: border-color 0.15s;
+}
+.debugToggle:hover { border-color: #ff2d55; color: #ccc; }
+.debugToggleOpen   { border-color: #ff2d55; color: #ff2d55; }
+
+.debugPanel {
+  background: #111;
+  border: 1px solid #333;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.debugGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.debugEventBtn {
+  padding: 6px 4px;
+  font-size: 0.75rem;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 5px;
+  color: #ccc;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.4;
+  transition: all 0.12s;
+}
+.debugEventBtn:hover  { background: rgba(255, 45, 85, 0.2); border-color: #ff2d55; color: #fff; }
+.debugEventBtn:active { transform: scale(0.96); }
+.debugEventBtn:disabled { opacity: 0.35; cursor: default; }
+
+.sessionFailBanner {
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(255, 45, 85, 0.1);
+  border: 1px solid rgba(255, 45, 85, 0.4);
+  border-radius: 6px;
+  color: #ff6b8a;
+  font-size: 0.85em;
+  text-align: center;
+}

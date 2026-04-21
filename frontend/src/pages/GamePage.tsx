@@ -8,31 +8,35 @@ const BaseballBoard    = lazy(() => import('../games/baseball/BaseballBoard'));
 const MinesweeperBoard = lazy(() => import('../games/minesweeper/MinesweeperBoard'));
 const AppleCanvas      = lazy(() => import('../games/apple/AppleCanvas'));
 const CardBoard        = lazy(() => import('../games/solitaire/CardBoard'));
-const BlockfallBoard   = lazy(() => import('../games/blockfall/BlockfallBoard'));
+const BlockfallBoard         = lazy(() => import('../games/blockfall/BlockfallBoard'));
+const BlockfallInsaneBoard   = lazy(() => import('../games/blockfall/BlockfallInsaneBoard'));
 
 const GAME_NAMES: Record<string, string> = {
-  minesweeper: '지뢰찾기',
-  baseball:    '숫자야구',
-  blockfall:   '블록폴',
-  solitaire:   '솔리테어',
-  apple:       '사과게임',
+  minesweeper:       '지뢰찾기',
+  baseball:          '숫자야구',
+  blockfall:         '블록폴',
+  solitaire:         '솔리테어',
+  apple:             '사과게임',
+  'blockfall-insane': '블록폴: 인세인',
 };
 
 const FILE_TITLES: Record<string, string> = {
-  minesweeper: 'minesweeper_score.xlsx',
-  baseball:    'baseball_score.xlsx',
-  blockfall:   'blockfall_score.xlsx',
-  solitaire:   'solitaire_score.xlsx',
-  apple:       'apple_game.xlsx',
+  minesweeper:       'minesweeper_score.xlsx',
+  baseball:          'baseball_score.xlsx',
+  blockfall:         'blockfall_score.xlsx',
+  solitaire:         'solitaire_score.xlsx',
+  apple:             'apple_game.xlsx',
+  'blockfall-insane': 'blockfall_insane.xlsx',
 };
 
 // 게임별 그리드 셀 크기 (엑셀 모드) — 열 너비
 const CELL_SIZES: Record<string, number> = {
-  blockfall:   30,
-  minesweeper: 30,
-  baseball:    96,
-  apple:       30, // 원본: SIZE=30, PAD=SIZE (고정)
-  solitaire:   96, // 원본: --xcw: 96px
+  blockfall:         30,
+  minesweeper:       30,
+  baseball:          96,
+  apple:             30, // 원본: SIZE=30, PAD=SIZE (고정)
+  solitaire:         96, // 원본: --xcw: 96px
+  'blockfall-insane': 30,
 };
 
 // 게임별 행 높이 (열 너비와 다른 경우만 명시)
@@ -43,20 +47,22 @@ const ROW_HEIGHTS: Record<string, number> = {
 
 // 게임별 배경색 — 원본 body { background-color } 와 동일
 const BG_COLORS: Record<string, string> = {
-  minesweeper: '#f0f0f0',
-  baseball:    '#e8ecf4',
-  blockfall:   '#f0f0f0',
-  solitaire:   '#0b5e20',
-  apple:       '#f0f0f0',
+  minesweeper:       '#f0f0f0',
+  baseball:          '#e8ecf4',
+  blockfall:         '#f0f0f0',
+  solitaire:         '#0b5e20',
+  apple:             '#f0f0f0',
+  'blockfall-insane': '#0a0a0a',
 };
 
 // 게임별 강조색 — 원본 NORMAL_GAME_CONFIG.accentColor 와 동일
 const ACCENT_COLORS: Record<string, string> = {
-  minesweeper: '#3498db',
-  baseball:    '#1e3a6e',
-  blockfall:   '#8e44ad',
-  solitaire:   '#27ae60',
-  apple:       '#f18064',
+  minesweeper:       '#3498db',
+  baseball:          '#1e3a6e',
+  blockfall:         '#8e44ad',
+  solitaire:         '#27ae60',
+  apple:             '#f18064',
+  'blockfall-insane': '#ff2d55',
 };
 
 export default function GamePage({ excel }: { excel: boolean }) {
@@ -78,11 +84,12 @@ export default function GamePage({ excel }: { excel: boolean }) {
   }
 
   const board =
-    game === 'baseball'    ? <BaseballBoard    excel={excel} /> :
-    game === 'minesweeper' ? <MinesweeperBoard excel={excel} /> :
-    game === 'apple'       ? <AppleCanvas      excel={excel} /> :
-    game === 'solitaire'   ? <CardBoard        excel={excel} /> :
-    game === 'blockfall'   ? <BlockfallBoard   excel={excel} /> :
+    game === 'baseball'         ? <BaseballBoard       excel={excel} /> :
+    game === 'minesweeper'      ? <MinesweeperBoard    excel={excel} /> :
+    game === 'apple'            ? <AppleCanvas         excel={excel} /> :
+    game === 'solitaire'        ? <CardBoard           excel={excel} /> :
+    game === 'blockfall'        ? <BlockfallBoard      excel={excel} /> :
+    game === 'blockfall-insane' ? <BlockfallInsaneBoard /> :
     null;
 
   if (excel) {
