@@ -297,109 +297,109 @@ export default function SudokuBoard({ excel = false }: Props) {
           )}
 
           <div className={styles.boardArea}>
-            {state.status === 'idle' ? (
-              <div className={styles.startOverlay}>
-                <p className={styles.startMsg}>난이도를 선택하고 게임을 시작하세요</p>
-                <button
-                  className={styles.startBtn}
-                  disabled={isLoading}
-                  onClick={() => handleStart(difficulty)}
-                >
-                  {isLoading ? '로딩 중...' : '게임 시작'}
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* ── 9×9 보드 ── */}
-                <div className={styles.board}>
-                  {Array.from({ length: 9 }, (_, r) =>
-                    Array.from({ length: 9 }, (_, c) => {
-                      const val      = state.board[r][c];
-                      const isFixed  = state.fixed[r][c];
-                      const isSel    = state.selected?.[0] === r && state.selected?.[1] === c;
-                      const isHL     = !isSel && isInSameGroup(r, c, state.selected);
-                      const isSameN  = !isSel && val !== 0 && val === selectedVal && selectedVal !== 0;
-                      const conflict = !isFixed && hasConflict(state.board, r, c);
-                      const notes    = state.notes[r][c];
+            {/* ── 9×9 보드 — 항상 표시 (idle 시 빈 보드) ── */}
+            <div className={`${styles.board} ${state.status === 'idle' ? styles.boardIdle : ''}`}>
+              {Array.from({ length: 9 }, (_, r) =>
+                Array.from({ length: 9 }, (_, c) => {
+                  const val      = state.board[r][c];
+                  const isFixed  = state.fixed[r][c];
+                  const isSel    = state.selected?.[0] === r && state.selected?.[1] === c;
+                  const isHL     = !isSel && isInSameGroup(r, c, state.selected);
+                  const isSameN  = !isSel && val !== 0 && val === selectedVal && selectedVal !== 0;
+                  const conflict = !isFixed && hasConflict(state.board, r, c);
+                  const notes    = state.notes[r][c];
 
-                      let cls = styles.cell;
-                      if (isSel)       cls += ' ' + styles.cellSelected;
-                      else if (isSameN) cls += ' ' + styles.cellSameNum;
-                      else if (isHL)    cls += ' ' + styles.cellHighlighted;
-                      if (isFixed)     cls += ' ' + styles.cellFixed;
+                  let cls = styles.cell;
+                  if (state.status !== 'idle') {
+                    if (isSel)        cls += ' ' + styles.cellSelected;
+                    else if (isSameN) cls += ' ' + styles.cellSameNum;
+                    else if (isHL)    cls += ' ' + styles.cellHighlighted;
+                  }
+                  if (isFixed) cls += ' ' + styles.cellFixed;
 
-                      const borderStyle: React.CSSProperties = {
-                        borderRight:  (c + 1) % 3 === 0 ? '2px solid #2c3e50' : '1px solid #bdc3c7',
-                        borderBottom: (r + 1) % 3 === 0 ? '2px solid #2c3e50' : '1px solid #bdc3c7',
-                      };
+                  const borderStyle: React.CSSProperties = {
+                    borderRight:  (c + 1) % 3 === 0 ? '2px solid #2c3e50' : '1px solid #bdc3c7',
+                    borderBottom: (r + 1) % 3 === 0 ? '2px solid #2c3e50' : '1px solid #bdc3c7',
+                  };
 
-                      return (
-                        <div
-                          key={`${r}-${c}`}
-                          className={cls}
-                          style={borderStyle}
-                          onClick={() => selectCell(r, c)}
+                  return (
+                    <div
+                      key={`${r}-${c}`}
+                      className={cls}
+                      style={borderStyle}
+                      onClick={() => state.status !== 'idle' && selectCell(r, c)}
+                    >
+                      {val !== 0 ? (
+                        <span
+                          className={`${styles.cellVal} ${
+                            isFixed ? styles.valFixed : conflict ? styles.valConflict : styles.valUser
+                          }`}
                         >
-                          {val !== 0 ? (
-                            <span
-                              className={`${styles.cellVal} ${
-                                isFixed ? styles.valFixed : conflict ? styles.valConflict : styles.valUser
-                              }`}
-                            >
-                              {val}
+                          {val}
+                        </span>
+                      ) : notes.size > 0 ? (
+                        <div className={styles.noteGrid}>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                            <span key={n} className={styles.noteNum}>
+                              {notes.has(n) ? n : ''}
                             </span>
-                          ) : notes.size > 0 ? (
-                            <div className={styles.noteGrid}>
-                              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                                <span key={n} className={styles.noteNum}>
-                                  {notes.has(n) ? n : ''}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
+                          ))}
                         </div>
-                      );
-                    })
-                  )}
-                </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </div>
 
-                {/* ── 컨트롤 ── */}
-                <div className={styles.controls}>
-                  <div className={styles.numPad}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
-                      const placed = countInBoard(state.board, n);
-                      const done   = placed >= 9;
-                      return (
-                        <button
-                          key={n}
-                          className={`${styles.numBtn} ${done ? styles.numBtnDone : ''}`}
-                          onClick={() => inputNumber(n)}
-                          disabled={done}
-                        >
-                          <span className={styles.numBtnDigit}>{n}</span>
-                          {!done && <span className={styles.numBtnCount}>{9 - placed}</span>}
-                        </button>
-                      );
-                    })}
-                    <button className={styles.deleteBtn} onClick={deleteCell}>⌫</button>
-                  </div>
-                  <div className={styles.actionRow}>
-                    <button
-                      className={`${styles.actionBtn} ${state.isNoteMode ? styles.actionBtnActive : ''}`}
-                      onClick={toggleNote}
-                    >
-                      ✏️ 메모 {state.isNoteMode ? 'ON' : 'OFF'}
-                    </button>
-                    <button
-                      className={styles.actionBtn}
-                      disabled={state.hintsLeft <= 0 || !solutionRef.current}
-                      onClick={handleHint}
-                    >
-                      💡 힌트 ({state.hintsLeft})
-                    </button>
-                  </div>
+            {/* ── idle: 게임 시작 버튼 ── */}
+            {state.status === 'idle' && (
+              <button
+                className={styles.startBtn}
+                disabled={isLoading}
+                onClick={() => handleStart(difficulty)}
+              >
+                {isLoading ? '로딩 중...' : '게임 시작'}
+              </button>
+            )}
+
+            {/* ── playing/won: 컨트롤 ── */}
+            {state.status !== 'idle' && (
+              <div className={styles.controls}>
+                <div className={styles.numPad}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
+                    const placed = countInBoard(state.board, n);
+                    const done   = placed >= 9;
+                    return (
+                      <button
+                        key={n}
+                        className={`${styles.numBtn} ${done ? styles.numBtnDone : ''}`}
+                        onClick={() => inputNumber(n)}
+                        disabled={done}
+                      >
+                        <span className={styles.numBtnDigit}>{n}</span>
+                        {!done && <span className={styles.numBtnCount}>{9 - placed}</span>}
+                      </button>
+                    );
+                  })}
+                  <button className={styles.deleteBtn} onClick={deleteCell}>⌫</button>
                 </div>
-              </>
+                <div className={styles.actionRow}>
+                  <button
+                    className={`${styles.actionBtn} ${state.isNoteMode ? styles.actionBtnActive : ''}`}
+                    onClick={toggleNote}
+                  >
+                    ✏️ 메모 {state.isNoteMode ? 'ON' : 'OFF'}
+                  </button>
+                  <button
+                    className={styles.actionBtn}
+                    disabled={state.hintsLeft <= 0 || !solutionRef.current}
+                    onClick={handleHint}
+                  >
+                    💡 힌트 ({state.hintsLeft})
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

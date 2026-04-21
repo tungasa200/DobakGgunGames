@@ -19,20 +19,21 @@
   gap: 8px;
 }
 .diffBtn {
-  padding: 6px 20px;
-  border: 1px solid #bdc3c7;
-  border-radius: 4px;
+  padding: 8px 16px;
+  border: 2px solid #2980b9;
+  border-radius: 5px;
   background: #fff;
-  color: #2c3e50;
-  font-size: 14px;
+  color: #2980b9;
+  font-size: 0.95em;
+  font-weight: bold;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.15s;
+  touch-action: manipulation;
 }
-.diffBtn:hover { background: #d0e8f5; }
+.diffBtn:hover { background: #2980b9; color: #fff; }
 .diffActive {
   background: #2980b9;
   color: #fff;
-  border-color: #2980b9;
 }
 
 /* ── Info Bar ── */
@@ -54,15 +55,10 @@
   gap: 12px;
 }
 
-/* ── Start Overlay ── */
-.startOverlay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 40px 20px;
-}
-.startMsg { color: #7f8c8d; font-size: 15px; }
+/* ── Idle Board ── */
+.boardIdle { opacity: 0.35; pointer-events: none; }
+
+/* ── Start Button ── */
 .startBtn {
   padding: 10px 36px;
   background: #2980b9;
@@ -266,50 +262,25 @@
 }
 
 /* ── Ranking Section ── */
-.rankSection {
-  width: 100%;
-  max-width: 480px;
-  margin-top: 4px;
-}
-.rankTitle {
-  font-size: 14px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0 0 8px;
-}
-.alltimeBanner {
-  display: flex;
-  gap: 8px;
-  background: #eaf4fb;
-  border: 1px solid #aed6f1;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #1a5276;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-.rankTabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-}
+.rankSection { margin-top: 28px; width: 100%; max-width: min(420px, 100%); }
+.rankTitle { text-align: center; margin: 0 0 10px; color: #2c3e50; }
+.alltimeBanner { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #fef9e7, #fdebd0); border: 1px solid #f0b27a; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 0.88em; }
+.rankTabs { display: flex; gap: 4px; margin-bottom: 8px; }
 .rankTab {
-  padding: 4px 12px;
-  border: 1px solid #bdc3c7;
-  border-radius: 4px;
-  background: #fff;
-  font-size: 13px;
+  flex: 1;
+  padding: 7px;
+  font-size: 0.9em;
   cursor: pointer;
-  color: #2c3e50;
-  transition: background 0.12s;
+  border: 2px solid #2980b9;
+  border-radius: 5px;
+  background: white;
+  color: #2980b9;
+  font-weight: bold;
+  transition: all 0.15s;
+  touch-action: manipulation;
 }
-.rankTab:hover { background: #f0f3f7; }
-.rankTabActive {
-  background: #2980b9;
-  color: #fff;
-  border-color: #2980b9;
-}
+.rankTab:hover  { background: #2980b9; color: white; }
+.rankTabActive  { background: #2980b9; color: white; }
 
 /* ── Rules Panel ── */
 .rulesPanel {
@@ -334,28 +305,12 @@
 .rulesPanel li { margin-bottom: 2px; }
 
 /* ── Ranking Table ── */
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.table th, .table td {
-  padding: 6px 10px;
-  text-align: left;
-  border-bottom: 1px solid #ecf0f1;
-}
-.table th {
-  background: #f8f9fa;
-  font-weight: 600;
-  color: #2c3e50;
-}
-.table tr:hover td { background: #f8f9fa; }
-.placeholder {
-  color: #95a5a6;
-  text-align: center;
-  padding: 12px 0;
-  font-size: 13px;
-}
+.table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.table th { background: #2980b9; color: white; padding: 7px 8px; }
+.table td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: center; }
+.table tr:nth-child(even) td { background: #f9f9f9; }
+.table tr:first-child td { color: #e67e22; font-weight: bold; }
+.placeholder { color: #aaa; font-style: italic; text-align: center; padding: 12px; }
 
 /* ── Modal ── */
 .modalOverlay {
@@ -489,3 +444,24 @@
 .xRulesWrap { font-size: 13px; color: #2c3e50; line-height: 1.6; }
 .xRulesWrap h4 { margin: 8px 0 4px; font-size: 13px; color: #1a5276; }
 .xRulesWrap ul { margin: 0 0 8px; padding-left: 20px; }
+
+/* ── 모바일 반응형 (일반 모드) ── */
+/* wrap 좌우 패딩 24px 기준: 셀 크기 = (100vw - 24px) / 9 */
+@media (max-width: 499px) {
+  .board {
+    grid-template-columns: repeat(9, clamp(33px, calc((100vw - 24px) / 9), 52px));
+    grid-template-rows:    repeat(9, clamp(33px, calc((100vw - 24px) / 9), 52px));
+  }
+  .cellVal { font-size: clamp(14px, 4.2vw, 22px); }
+  .noteNum { font-size: 7px; }
+  .numPad {
+    grid-template-columns: repeat(5, clamp(36px, calc((100vw - 24px) / 9), 52px));
+  }
+  .numBtn, .deleteBtn {
+    width:  clamp(36px, calc((100vw - 24px) / 9), 52px);
+    height: clamp(36px, calc((100vw - 24px) / 9), 52px);
+  }
+  .numBtnDigit { font-size: clamp(14px, 4.2vw, 20px); }
+  .numBtnCount { font-size: 9px; }
+  .deleteBtn   { font-size: clamp(14px, 4.2vw, 20px); }
+}
