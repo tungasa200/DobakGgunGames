@@ -404,14 +404,14 @@ export default function SudokuBoard({ excel = false }: Props) {
                     className={`${styles.actionBtn} ${state.isNoteMode ? styles.actionBtnActive : ''}`}
                     onClick={toggleNote}
                   >
-                    ✏️ 메모 {state.isNoteMode ? 'ON' : 'OFF'}
+                    {excel ? '' : '✏️ '}메모 {state.isNoteMode ? 'ON' : 'OFF'}
                   </button>
                   <button
                     className={styles.actionBtn}
                     disabled={state.hintsLeft <= 0 || !solutionRef.current}
                     onClick={handleHint}
                   >
-                    💡 힌트 ({state.hintsLeft})
+                    {excel ? '' : '💡 '}힌트 ({state.hintsLeft})
                   </button>
                 </div>
               </div>
@@ -441,7 +441,7 @@ export default function SudokuBoard({ excel = false }: Props) {
             <div className={styles.alltimeBanner}>
               <span>👑 역대 1위</span>
               <span>
-                {alltime.name} · {(alltime.score ?? 0).toLocaleString()}점 ·{' '}
+                {alltime.name} · {formatTime(alltime.time ?? 0)} ·{' '}
                 {new Date(alltime.createdAt).toLocaleDateString('ko-KR')}
               </span>
             </div>
@@ -476,12 +476,10 @@ export default function SudokuBoard({ excel = false }: Props) {
                 <li>선택한 빈 칸에 정답을 채워줌</li>
                 <li>힌트 사용은 랭킹 점수에 영향 없음</li>
               </ul>
-              <h4>점수 계산</h4>
+              <h4>랭킹</h4>
               <ul>
-                <li>초급: 최대 1,000점 (기준 10분)</li>
-                <li>중급: 최대 2,000점 (기준 15분)</li>
-                <li>고급: 최대 3,500점 (기준 20분)</li>
-                <li>풀이 시간이 빠를수록 높은 점수 (최소 100점)</li>
+                <li>클리어 시간 기준으로 순위 결정 (빠른 순)</li>
+                <li>힌트 사용은 기록에 영향 없음</li>
               </ul>
             </div>
           ) : rankLoading ? (
@@ -489,7 +487,7 @@ export default function SudokuBoard({ excel = false }: Props) {
           ) : (
             <table className={styles.table}>
               <thead>
-                <tr><th>순위</th><th>이름</th><th>점수</th><th>날짜</th></tr>
+                <tr><th>순위</th><th>이름</th><th>기록</th><th>날짜</th></tr>
               </thead>
               <tbody>
                 {rankings.length === 0 ? (
@@ -501,7 +499,7 @@ export default function SudokuBoard({ excel = false }: Props) {
                     <tr key={row.id}>
                       <td>{i + 1}</td>
                       <td>{row.name}</td>
-                      <td>{(row.score ?? 0).toLocaleString()}점</td>
+                      <td>{formatTime(row.time ?? 0)}</td>
                       <td>{new Date(row.createdAt).toLocaleDateString('ko-KR')}</td>
                     </tr>
                   ))
@@ -518,7 +516,7 @@ export default function SudokuBoard({ excel = false }: Props) {
         const RANK_COLS = [
           { label: '순위', span: 2 },
           { label: '이름', span: 5 },
-          { label: '점수', span: 3 },
+          { label: '기록', span: 3 },
           { label: '날짜', span: 3 },
         ];
         const RANK_TOTAL = RANK_COLS.reduce((s, c) => s + c.span, 0); // 13
@@ -608,7 +606,7 @@ export default function SudokuBoard({ excel = false }: Props) {
                     const alt = i % 2 === 1 ? styles.xrcAlt : '';
                     const top = i === 0 ? styles.xrcTop : '';
                     const date = new Date(row.createdAt).toLocaleDateString('ko-KR');
-                    const values = [String(i + 1), row.name, `${(row.score ?? 0).toLocaleString()}점`, date];
+                    const values = [String(i + 1), row.name, formatTime(row.time ?? 0), date];
                     let cs = 1;
                     return RANK_COLS.map(col => {
                       const start = cs; cs += col.span;
@@ -628,7 +626,7 @@ export default function SudokuBoard({ excel = false }: Props) {
                 {/* 역대 1위 */}
                 {alltime
                   ? RankCell(
-                      `👑 역대 1위  ${alltime.name} · ${(alltime.score ?? 0).toLocaleString()}점 · ${new Date(alltime.createdAt).toLocaleDateString('ko-KR')}`,
+                      `👑 역대 1위  ${alltime.name} · ${formatTime(alltime.time ?? 0)} · ${new Date(alltime.createdAt).toLocaleDateString('ko-KR')}`,
                       1, RANK_TOTAL, ['xrcWeekTitle'], { paddingLeft: 8 }, 'alltime'
                     )
                   : RankCell('👑 역대 1위  기록 없음', 1, RANK_TOTAL, [], { color: '#aaa', paddingLeft: 8 }, 'alltime-empty')
@@ -695,19 +693,16 @@ export default function SudokuBoard({ excel = false }: Props) {
           );
         });
         addRow(...emptyRow());
-        // 점수
-        addRow(...sectionRow('■  점수 계산'));
-        addRow(
-          { text: '난이도', colStart: 1, span: 3, cls: ['xrcHeader'] },
-          { text: '최대 점수', colStart: 4, span: 4, cls: ['xrcHeader'], style: { justifyContent: 'center' } },
-          { text: '기준 시간', colStart: 8, span: 5, cls: ['xrcHeader'], style: { justifyContent: 'center' } },
-        );
-        [['초급', '1,000점', '10분'], ['중급', '2,000점', '15분'], ['고급', '3,500점', '20분']].forEach(([d, s, t], i) => {
+        // 랭킹
+        addRow(...sectionRow('■  랭킹'));
+        [
+          ['①', '클리어 시간 기준으로 순위 결정 (빠른 순)'],
+          ['②', '힌트 사용은 기록에 영향 없음'],
+        ].forEach(([num, text], i) => {
           const alt = i % 2 === 1 ? ['xrcAlt'] : [] as string[];
           addRow(
-            { text: d, colStart: 1, span: 3, cls: alt },
-            { text: s, colStart: 4, span: 4, cls: alt, style: { justifyContent: 'center' } },
-            { text: t, colStart: 8, span: 5, cls: alt, style: { justifyContent: 'center' } },
+            { text: num, colStart: 1, span: 1, cls: alt, style: { justifyContent: 'center', color: '#888' } },
+            { text, colStart: 2, span: RULES_TOTAL - 1, cls: alt },
           );
         });
 

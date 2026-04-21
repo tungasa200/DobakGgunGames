@@ -38,14 +38,14 @@
   box-shadow: none;
 }
 
-/* 시작 버튼 — 보드 너비(360px) 전체를 채우는 엑셀 셀 스타일 */
+/* 시작 버튼 — 4칸 너비(160px), 1칸 높이(40px), 보드와 1칸(40px) 간격 */
 .excelMode .startBtn {
-  width: 360px;
-  height: 34px;
+  width: 160px;
+  height: 40px;
+  margin-top: 40px;
   padding: 0;
   background: #217346;
-  border: 1px solid #217346;
-  border-top: none;
+  border: 2px solid #217346;
   border-radius: 0;
   font-family: 'Calibri', sans-serif;
   font-size: 13px;
@@ -77,8 +77,8 @@
 }
 .excelMode .numBtn {
   width: 36px;
-  height: 36px;
-  background: #f7f7f7;
+  height: 40px;
+  background: white;
   border: none;
   border-right: 1px solid #d0d0d0;
   border-bottom: 1px solid #d0d0d0;
@@ -90,16 +90,16 @@
 .excelMode .numBtnCount { display: none; }
 .excelMode .deleteBtn {
   width: 36px;
-  height: 36px;
-  background: #fff2cc;
+  height: 40px;
+  background: white;
   border: none;
   border-right: 1px solid #d0d0d0;
   border-bottom: 1px solid #d0d0d0;
   border-radius: 0;
   font-size: 13px;
-  color: #7f6000;
+  color: #595959;
 }
-.excelMode .deleteBtn:hover { background: #ffe699; }
+.excelMode .deleteBtn:hover { background: #e3f2fd; }
 
 /* 액션 로우 — 보드 너비에 딱 맞는 2분할 셀 */
 .excelMode .actionRow {
@@ -109,10 +109,10 @@
 }
 .excelMode .actionBtn {
   flex: 1;
-  height: 28px;
+  height: 40px;
   padding: 0 8px;
   font-size: 12px;
-  background: #f2f2f2;
+  background: white;
   border: none;
   border-right: 1px solid #d0d0d0;
   border-bottom: 1px solid #d0d0d0;

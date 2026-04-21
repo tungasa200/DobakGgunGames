@@ -37,7 +37,6 @@ public class RankingService {
     private final SolitaireMoveService solitaireMoveService;
     private final AppleValidationService appleValidationService;
     private final BlockfallValidationService blockfallValidationService;
-    private final SudokuService sudokuService;
     private final IpHashUtil ipHashUtil;
 
     public List<RankingResponse> getWeeklyRankings(String game, String level) {
@@ -148,7 +147,8 @@ public class RankingService {
                     .score(req.getScore()).ipHash(ipHash).userId(userId).build());
             case "sudoku" -> sudokuRepo.save(SudokuRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
-                    .score(sudokuService.calculateScore(session)).ipHash(ipHash).userId(userId).build());
+                    .clearTime((int) java.time.temporal.ChronoUnit.SECONDS.between(session.getStartedAt(), java.time.Instant.now()))
+                    .ipHash(ipHash).userId(userId).build());
             default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다.");
         };
     }

@@ -54,8 +54,8 @@ public class RankingResponse {
             this.moves = null;
             this.gameLevel = null;
         } else if (r instanceof SudokuRanking su) {
-            this.score = su.getScore();
-            this.time = null;
+            this.time = su.getClearTime() != null ? su.getClearTime().doubleValue() : null;
+            this.score = null;
             this.attempts = null;
             this.moves = null;
             this.gameLevel = null;

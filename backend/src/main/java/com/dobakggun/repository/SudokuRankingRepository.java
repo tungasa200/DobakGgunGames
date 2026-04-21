@@ -12,18 +12,18 @@ public interface SudokuRankingRepository extends RankingRepository<SudokuRanking
     @Query("""
         SELECT r FROM SudokuRanking r
         WHERE r.level = :level AND r.createdAt >= :weekStart
-        ORDER BY r.score DESC
+        ORDER BY r.clearTime ASC
         LIMIT 10
     """)
     List<SudokuRanking> findWeekly(@Param("level") String level, @Param("weekStart") LocalDateTime weekStart);
 
-    @Query("SELECT r FROM SudokuRanking r WHERE r.level = :level ORDER BY r.score DESC LIMIT 1")
+    @Query("SELECT r FROM SudokuRanking r WHERE r.level = :level ORDER BY r.clearTime ASC LIMIT 1")
     SudokuRanking findAlltimeBest(@Param("level") String level);
 
     @Query("""
         SELECT r FROM SudokuRanking r
         WHERE r.level = :level AND r.createdAt >= :weekStart AND r.createdAt < :weekEnd
-        ORDER BY r.score DESC
+        ORDER BY r.clearTime ASC
         LIMIT 3
     """)
     List<SudokuRanking> findPreviousWeekTop3(

@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Slf4j
@@ -24,13 +23,6 @@ public class SudokuService {
 
     private static final long EXPIRE_SECONDS  = 7200L;
     private static final Set<String> VALID_LEVELS = Set.of("easy", "normal", "hard");
-
-    // 난이도별 최대 점수 / 기준 시간(초)
-    private static final Map<String, int[]> SCORE_CONFIG = Map.of(
-            "easy",   new int[]{1000,  600},
-            "normal", new int[]{2000,  900},
-            "hard",   new int[]{3500, 1200}
-    );
 
     private final GameSessionRepository sessionRepo;
     private final IpHashUtil            ipHashUtil;
@@ -71,16 +63,6 @@ public class SudokuService {
                 .puzzle(puzzle)
                 .solution(solution)
                 .build();
-    }
-
-    /* ── 점수 계산 (RankingService에서 호출) ── */
-    public int calculateScore(GameSession session) {
-        int[] cfg     = SCORE_CONFIG.getOrDefault(session.getLevel(), SCORE_CONFIG.get("easy"));
-        int   basePts = cfg[0];
-        int   maxTime = cfg[1];
-        long  elapsed = ChronoUnit.SECONDS.between(session.getStartedAt(), Instant.now());
-        double ratio  = Math.max(0.0, 1.0 - (double) elapsed / maxTime);
-        return Math.max(100, (int) (basePts * (0.1 + 0.9 * ratio)));
     }
 
     public static void validateLevel(String level) {
