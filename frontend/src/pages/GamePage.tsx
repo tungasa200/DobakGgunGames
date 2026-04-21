@@ -65,8 +65,9 @@ const ACCENT_COLORS: Record<string, string> = {
   'blockfall-insane': '#ff2d55',
 };
 
-export default function GamePage({ excel }: { excel: boolean }) {
-  const { game } = useParams<{ game: string }>();
+export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?: string }) {
+  const { game: paramGame } = useParams<{ game: string }>();
+  const game = gameKey ?? paramGame;
   const name = game ? GAME_NAMES[game] : undefined;
 
   useEffect(() => {

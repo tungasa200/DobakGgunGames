@@ -63,7 +63,7 @@ export default function App() {
         {/* 인세인 모드 — /:game 보다 위에 선언해야 AdminRoute 보호가 동작 */}
         <Route
           path="/blockfall-insane"
-          element={<AdminRoute><GamePage excel={false} /></AdminRoute>}
+          element={<AdminRoute><GamePage excel={false} gameKey="blockfall-insane" /></AdminRoute>}
         />
 
         {/* 게임 라우트 (가장 마지막 — 다른 경로와 충돌 방지) */}
