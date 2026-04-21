@@ -25,7 +25,7 @@ public class SessionService {
 
     // 게임별 세션 만료 시간 (초)
     private static final Map<String, Long> EXPIRE_SECONDS = Map.of(
-        "apple",       300L,   // 게임 120초 + 순위 등록 여유 시간
+        "apple",       7200L,
         "minesweeper", 7200L,
         "baseball",    7200L,
         "solitaire",   7200L,
