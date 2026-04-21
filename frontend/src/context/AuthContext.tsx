@@ -61,7 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, accessToken: null });
   }, [state.accessToken]);
 
-  if (!initialized) return null;
+  if (!initialized) return (
+    <div style={{ minHeight: '100vh', background: '#f0f0f0' }} />
+  );
 
   return (
     <AuthContext.Provider value={{ ...state, login, logout, setAuth }}>

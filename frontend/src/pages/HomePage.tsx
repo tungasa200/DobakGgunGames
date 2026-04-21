@@ -54,7 +54,7 @@ const GAMES: GameConfig[] = [
       { value: 'hard', label: '어려움' },
     ],
     defaultLevel: 'normal',
-    fmt: (r) => `${r.score!.toLocaleString()}점`,
+    fmt: (r) => `${(r.score ?? 0).toLocaleString()}점`,
   },
   {
     key: 'apple',
@@ -62,7 +62,7 @@ const GAMES: GameConfig[] = [
     icon: '🍎',
     levels: [{ value: 'normal', label: '랭킹' }],
     defaultLevel: 'normal',
-    fmt: (r) => `${r.score!.toLocaleString()}점`,
+    fmt: (r) => `${(r.score ?? 0).toLocaleString()}점`,
   },
   {
     key: 'solitaire',
@@ -90,7 +90,7 @@ const GAMES: GameConfig[] = [
       { value: 'hard',   label: '고급' },
     ],
     defaultLevel: 'easy',
-    fmt: (r) => `${r.score!.toLocaleString()}점`,
+    fmt: (r) => `${r.time!.toFixed(2)}초`,
   },
 ];
 
