@@ -151,7 +151,7 @@
 .excelMode .cellFixed       { background: #f2f2f2; }
 .excelMode .cellFixed:hover { background: #f2f2f2; }
 .excelMode .cellSelected    { background: #c6efce !important; outline: 2px solid #217346; outline-offset: -2px; }
-.excelMode .cellHighlighted { background: #f2f2f2; }
+.excelMode .cellHighlighted { background: #e8f5e9; }
 .excelMode .cellSameNum     { background: #e2efda; }
 
 /* 셀 값 */
