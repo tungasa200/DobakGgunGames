@@ -188,7 +188,6 @@ export default function AdminDashboardPage() {
         {/* 미답변 문의 */}
         <ListModule
           title="미답변 문의"
-          count={unreadContacts.length}
           onMore={() => navigate('/admin/contacts')}
           empty={unreadContacts.length === 0}
           emptyText="미답변 문의 없음"
@@ -206,7 +205,6 @@ export default function AdminDashboardPage() {
         {/* 대기 중 유저 */}
         <ListModule
           title="가입 대기 유저"
-          count={pendingUsers.length}
           onMore={() => navigate('/admin/users?status=PENDING')}
           empty={pendingUsers.length === 0}
           emptyText="대기 유저 없음"
@@ -224,7 +222,6 @@ export default function AdminDashboardPage() {
         {/* 패치노트 */}
         <ListModule
           title="최근 패치노트"
-          count={recentPatchNotes.length}
           onMore={() => navigate('/admin/patch-notes')}
           empty={recentPatchNotes.length === 0}
           emptyText="패치노트 없음"
@@ -242,7 +239,6 @@ export default function AdminDashboardPage() {
         {/* IP 차단 */}
         <ListModule
           title="IP 차단 목록"
-          count={ipBans.length}
           onMore={() => navigate('/admin/ip-bans')}
           empty={ipBans.length === 0}
           emptyText="차단된 IP 없음"
@@ -308,10 +304,9 @@ function formatDate(iso: string) {
 }
 
 function ListModule({
-  title, count, onMore, empty, emptyText, children,
+  title, onMore, empty, emptyText, children,
 }: {
   title: string;
-  count: number;
   onMore: () => void;
   empty: boolean;
   emptyText: string;
