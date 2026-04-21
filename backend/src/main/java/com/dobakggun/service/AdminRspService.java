@@ -87,7 +87,7 @@ public class AdminRspService {
      * winRate: 0~1 소수 4자리 반올림, totalPlays=0이면 null (OQ-7 / EC-6 확정)
      */
     private RspStatsResponse buildStats(Long adminUserId) {
-        Object[] row = adminRspPlayRepository.aggregateStatsByAdminUserId(adminUserId);
+        Object[] row = adminRspPlayRepository.aggregateStatsByAdminUserId(adminUserId).get(0);
 
         long totalPlays = row[0] != null ? ((Number) row[0]).longValue() : 0L;
         long wins       = row[1] != null ? ((Number) row[1]).longValue() : 0L;
