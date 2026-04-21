@@ -90,7 +90,12 @@ const GAMES: GameConfig[] = [
       { value: 'hard',   label: '고급' },
     ],
     defaultLevel: 'easy',
-    fmt: (r) => `${r.time!.toFixed(2)}초`,
+    fmt: (r) => {
+      const t = Math.round(r.time!);
+      const m = Math.floor(t / 60);
+      const s = t % 60;
+      return m > 0 ? `${m}분 ${String(s).padStart(2, '0')}초` : `${t}초`;
+    },
   },
 ];
 
