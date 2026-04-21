@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminStatsApi, adminGameApi } from '../../api/admin';
-import type { StatsSummary, AdminGameStatus } from '../../api/admin';
+import { adminStatsApi, adminGameApi, adminContactApi, adminPatchNoteApi, adminIpBanApi, adminUserApi } from '../../api/admin';
+import type { StatsSummary, AdminGameStatus, AdminContact, AdminPatchNote, IpBan, AdminUser, AdminContactPage, AdminUserPage } from '../../api/admin';
 import s from './admin.module.css';
 
 const GAME_LABELS: Record<string, string> = {
@@ -23,6 +23,10 @@ export default function AdminDashboardPage() {
   const [rankings, setRankings] = useState<{ game: string; count: number }[]>([]);
   const [weeklyRankings, setWeeklyRankings] = useState<{ date: string; count: number }[]>([]);
   const [gameStatuses, setGameStatuses] = useState<AdminGameStatus[]>([]);
+  const [unreadContacts, setUnreadContacts] = useState<AdminContact[]>([]);
+  const [recentPatchNotes, setRecentPatchNotes] = useState<AdminPatchNote[]>([]);
+  const [ipBans, setIpBans] = useState<IpBan[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -34,12 +38,20 @@ export default function AdminDashboardPage() {
       adminStatsApi.rankings(accessToken),
       adminStatsApi.weeklyRankings(accessToken),
       adminGameApi.list(accessToken),
+      adminContactApi.list(accessToken, { status: 'UNREAD' }),
+      adminPatchNoteApi.list(accessToken),
+      adminIpBanApi.list(accessToken),
+      adminUserApi.list(accessToken, { status: 'PENDING' }),
     ])
-      .then(([sum, rank, weekly, games]) => {
+      .then(([sum, rank, weekly, games, contacts, patchNotes, bans, users]) => {
         setSummary(sum);
         setRankings(rank);
         setWeeklyRankings(weekly);
         setGameStatuses(games);
+        setUnreadContacts((contacts as AdminContactPage).content.slice(0, 5));
+        setRecentPatchNotes((patchNotes as AdminPatchNote[]).slice(0, 5));
+        setIpBans(bans as IpBan[]);
+        setPendingUsers((users as AdminUserPage).content.slice(0, 5));
       })
       .catch(() => setError('통계를 불러오지 못했습니다'))
       .finally(() => setLoading(false));
@@ -169,6 +181,84 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* ── 탭별 리스트 모듈 ── */}
+      <SectionLabel style={{ marginTop: 24 }}>탭별 현황</SectionLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: '#e8e8e8', border: '1px solid #e8e8e8', marginBottom: 1 }}>
+
+        {/* 미답변 문의 */}
+        <ListModule
+          title="미답변 문의"
+          count={unreadContacts.length}
+          onMore={() => navigate('/admin/contacts')}
+          empty={unreadContacts.length === 0}
+          emptyText="미답변 문의 없음"
+        >
+          {unreadContacts.map(c => (
+            <ListRow
+              key={c.id}
+              left={<><span className={s.badge + ' ' + s.badgeGray} style={{ marginRight: 6, fontSize: 9 }}>{c.category}</span>{c.subject}</>}
+              right={c.userNickname}
+              sub={formatDate(c.createdAt)}
+            />
+          ))}
+        </ListModule>
+
+        {/* 대기 중 유저 */}
+        <ListModule
+          title="가입 대기 유저"
+          count={pendingUsers.length}
+          onMore={() => navigate('/admin/users?status=PENDING')}
+          empty={pendingUsers.length === 0}
+          emptyText="대기 유저 없음"
+        >
+          {pendingUsers.map(u => (
+            <ListRow
+              key={u.id}
+              left={u.nickname}
+              right={u.email}
+              sub={formatDate(u.createdAt)}
+            />
+          ))}
+        </ListModule>
+
+        {/* 패치노트 */}
+        <ListModule
+          title="최근 패치노트"
+          count={recentPatchNotes.length}
+          onMore={() => navigate('/admin/patch-notes')}
+          empty={recentPatchNotes.length === 0}
+          emptyText="패치노트 없음"
+        >
+          {recentPatchNotes.map(p => (
+            <ListRow
+              key={p.id}
+              left={<><span className={s.badge + ' ' + s.badgeBlue} style={{ marginRight: 6, fontSize: 9 }}>{GAME_LABELS[p.game] ?? p.game}</span>{p.title}</>}
+              right={`v${p.version}`}
+              sub={formatDate(p.createdAt)}
+            />
+          ))}
+        </ListModule>
+
+        {/* IP 차단 */}
+        <ListModule
+          title="IP 차단 목록"
+          count={ipBans.length}
+          onMore={() => navigate('/admin/ip-bans')}
+          empty={ipBans.length === 0}
+          emptyText="차단된 IP 없음"
+        >
+          {ipBans.slice(0, 5).map(b => (
+            <ListRow
+              key={b.id}
+              left={b.ip}
+              right={b.reason ?? '-'}
+              sub={formatDate(b.bannedAt)}
+            />
+          ))}
+        </ListModule>
+
+      </div>
+
       {/* ── 게임 관리 현황 ── */}
       <SectionLabel style={{ marginTop: 24 }}>게임 관리</SectionLabel>
       <div style={{ border: '1px solid #e8e8e8', background: '#fff', padding: '16px 20px' }}>
@@ -208,6 +298,59 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+    </div>
+  );
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function ListModule({
+  title, count, onMore, empty, emptyText, children,
+}: {
+  title: string;
+  count: number;
+  onMore: () => void;
+  empty: boolean;
+  emptyText: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ background: '#fff', padding: '16px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <span className={s.sectionTitle}>{title}</span>
+        <button
+          onClick={onMore}
+          style={{ fontSize: 10, color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: 0, letterSpacing: '0.5px' }}
+        >
+          더보기 →
+        </button>
+      </div>
+      {empty
+        ? <div style={{ fontSize: 12, color: '#ccc', padding: '12px 0', textAlign: 'center' }}>{emptyText}</div>
+        : children
+      }
+    </div>
+  );
+}
+
+function ListRow({ left, right, sub }: { left: React.ReactNode; right: React.ReactNode; sub: string }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '7px 0', borderBottom: '1px solid #f0f0f0', gap: 8,
+    }}>
+      <span style={{ fontSize: 12, color: '#333', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {left}
+      </span>
+      <span style={{ fontSize: 11, color: '#888', flexShrink: 0, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {right}
+      </span>
+      <span style={{ fontSize: 10, color: '#bbb', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+        {sub}
+      </span>
     </div>
   );
 }
