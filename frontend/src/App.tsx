@@ -24,6 +24,7 @@ import AdminPatchNotesPage from './pages/admin/AdminPatchNotesPage';
 import AdminPatchNoteFormPage from './pages/admin/AdminPatchNoteFormPage';
 import AdminIpBansPage from './pages/admin/AdminIpBansPage';
 import AdminGamesPage from './pages/admin/AdminGamesPage';
+import AdminClearButton from './components/admin/AdminClearButton';
 
 export default function App() {
   return (
@@ -74,6 +75,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <AdminClearButton />
     </BrowserRouter>
   );
 }
