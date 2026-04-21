@@ -64,8 +64,7 @@ function hasConflict(board: number[][], r: number, c: number): boolean {
 function isInSameGroup(r: number, c: number, sel: [number, number] | null): boolean {
   if (!sel) return false;
   const [sr, sc] = sel;
-  if (r === sr || c === sc) return true;
-  return Math.floor(r / 3) === Math.floor(sr / 3) && Math.floor(c / 3) === Math.floor(sc / 3);
+  return r === sr || c === sc;
 }
 
 function countInBoard(board: number[][], n: number): number {
