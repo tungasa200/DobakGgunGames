@@ -86,6 +86,7 @@ export default function SudokuBoard({ excel = false }: Props) {
   const solutionRef  = useRef<number[][] | null>(null);
   const sessionIdRef = useRef<string>('');
   const handleStartRef = useRef<(diff: Difficulty) => void>(() => {});
+  const clearTimeRef = useRef<number>(0);
 
   const [difficulty, setDifficulty]     = useState<Difficulty>('easy');
   const [isLoading, setIsLoading]       = useState(false);
@@ -112,8 +113,11 @@ export default function SudokuBoard({ excel = false }: Props) {
   }, [modalOpen]);
 
   useEffect(() => {
-    if (state.status === 'won') setModalOpen(true);
-  }, [state.status]);
+    if (state.status === 'won') {
+      clearTimeRef.current = state.elapsed;
+      setModalOpen(true);
+    }
+  }, [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 어드민 강제 클리어
   const { register } = useAdminTest();
@@ -259,12 +263,14 @@ export default function SudokuBoard({ excel = false }: Props) {
       await rankingsApi.submit('sudoku', {
         level: state.difficulty,
         name,
-        score: 0, // 실제 점수는 서버에서 세션 시간 기반으로 계산
+        time: Math.round(clearTimeRef.current),
         sessionId: sessionIdRef.current,
       });
       setModalOpen(false);
       setPlayerName('');
       setSubmitState('idle');
+      setActiveTab(state.difficulty);
+      setRankLevel(state.difficulty);
       loadRanking(state.difficulty);
     } catch {
       setSubmitState('error');

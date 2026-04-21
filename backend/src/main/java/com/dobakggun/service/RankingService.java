@@ -145,10 +145,21 @@ public class RankingService {
             case "apple" -> appleRepo.save(AppleRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
                     .score(req.getScore()).ipHash(ipHash).userId(userId).build());
-            case "sudoku" -> sudokuRepo.save(SudokuRanking.builder()
-                    .level(req.getLevel()).name(req.getName().trim())
-                    .clearTime((int) java.time.temporal.ChronoUnit.SECONDS.between(session.getStartedAt(), java.time.Instant.now()))
-                    .ipHash(ipHash).userId(userId).build());
+            case "sudoku" -> {
+                    long sessionSeconds = java.time.temporal.ChronoUnit.SECONDS.between(session.getStartedAt(), java.time.Instant.now());
+                    // 클라이언트가 클리어 시점의 elapsed를 time 필드로 전송
+                    // 유효 범위: 5초 이상, 세션 경과 시간 + 10초 이내 (타이머 틱/네트워크 오차 허용)
+                    int clearTime;
+                    if (req.getTime() != null && req.getTime() >= 5 && req.getTime() <= sessionSeconds + 10) {
+                        clearTime = req.getTime().intValue();
+                    } else {
+                        clearTime = (int) sessionSeconds;
+                    }
+                    yield (Ranking) sudokuRepo.save(SudokuRanking.builder()
+                            .level(req.getLevel()).name(req.getName().trim())
+                            .clearTime(clearTime)
+                            .ipHash(ipHash).userId(userId).build());
+                    }
             default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다.");
         };
     }
