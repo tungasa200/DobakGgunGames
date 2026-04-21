@@ -212,6 +212,11 @@ export interface StatsSummary {
   bannedUsers: number;
   totalSessions: number;
   unreadContacts: number;
+  totalContacts: number;
+  ipBanCount: number;
+  patchNoteCount: number;
+  activeGames: number;
+  totalGames: number;
 }
 
 export const adminStatsApi = {
@@ -223,4 +228,8 @@ export const adminStatsApi = {
     req<{ date: string; count: number }[]>(`${BASE}/stats/sessions/weekly`, token),
   games: (token: string) =>
     req<{ game: string; count: number }[]>(`${BASE}/stats/games`, token),
+  rankings: (token: string) =>
+    req<{ game: string; count: number }[]>(`${BASE}/stats/rankings`, token),
+  weeklyRankings: (token: string) =>
+    req<{ date: string; count: number }[]>(`${BASE}/stats/rankings/weekly`, token),
 };

@@ -2,9 +2,7 @@ package com.dobakggun.service;
 
 import com.dobakggun.entity.Contact;
 import com.dobakggun.entity.User;
-import com.dobakggun.repository.ContactRepository;
-import com.dobakggun.repository.GameSessionRepository;
-import com.dobakggun.repository.UserRepository;
+import com.dobakggun.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -28,6 +27,15 @@ public class AdminStatsService {
     private final UserRepository userRepository;
     private final ContactRepository contactRepository;
     private final GameSessionRepository gameSessionRepository;
+    private final IpBanRepository ipBanRepository;
+    private final PatchNoteRepository patchNoteRepository;
+    private final GameStatusRepository gameStatusRepository;
+    private final MinesweeperRankingRepository minesweeperRankingRepository;
+    private final SolitaireRankingRepository solitaireRankingRepository;
+    private final AppleRankingRepository appleRankingRepository;
+    private final BaseballRankingRepository baseballRankingRepository;
+    private final BlockfallRankingRepository blockfallRankingRepository;
+    private final SudokuRankingRepository sudokuRankingRepository;
 
     public Map<String, Object> getSummary() {
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -37,6 +45,11 @@ public class AdminStatsService {
         summary.put("bannedUsers", userRepository.countByStatus(User.Status.BANNED));
         summary.put("totalSessions", gameSessionRepository.count());
         summary.put("unreadContacts", contactRepository.countByStatus(Contact.Status.UNREAD));
+        summary.put("totalContacts", contactRepository.count());
+        summary.put("ipBanCount", ipBanRepository.count());
+        summary.put("patchNoteCount", patchNoteRepository.count());
+        summary.put("activeGames", gameStatusRepository.countByActiveTrue());
+        summary.put("totalGames", gameStatusRepository.count());
         return summary;
     }
 
@@ -83,5 +96,50 @@ public class AdminStatsService {
             m.put("count", row[1]);
             return m;
         }).toList();
+    }
+
+    public List<Map<String, Object>> getRankingCounts() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        result.add(Map.of("game", "minesweeper", "count", minesweeperRankingRepository.count()));
+        result.add(Map.of("game", "solitaire",   "count", solitaireRankingRepository.count()));
+        result.add(Map.of("game", "apple",        "count", appleRankingRepository.count()));
+        result.add(Map.of("game", "baseball",     "count", baseballRankingRepository.count()));
+        result.add(Map.of("game", "blockfall",    "count", blockfallRankingRepository.count()));
+        result.add(Map.of("game", "sudoku",       "count", sudokuRankingRepository.count()));
+        return result;
+    }
+
+    public List<Map<String, Object>> getWeeklyRankingCounts() {
+        LocalDate today = LocalDate.now();
+        LocalDate monday = today.with(DayOfWeek.MONDAY);
+        LocalDateTime weekStart = monday.atStartOfDay();
+        LocalDateTime weekEnd = monday.plusWeeks(1).atStartOfDay();
+
+        Map<LocalDate, Long> countMap = new LinkedHashMap<>();
+        for (LocalDate d = monday; d.isBefore(monday.plusWeeks(1)); d = d.plusDays(1)) {
+            countMap.put(d, 0L);
+        }
+
+        mergeRankingDayCounts(countMap, minesweeperRankingRepository.countByDayInWeek(weekStart, weekEnd));
+        mergeRankingDayCounts(countMap, solitaireRankingRepository.countByDayInWeek(weekStart, weekEnd));
+        mergeRankingDayCounts(countMap, appleRankingRepository.countByDayInWeek(weekStart, weekEnd));
+        mergeRankingDayCounts(countMap, baseballRankingRepository.countByDayInWeek(weekStart, weekEnd));
+        mergeRankingDayCounts(countMap, blockfallRankingRepository.countByDayInWeek(weekStart, weekEnd));
+        mergeRankingDayCounts(countMap, sudokuRankingRepository.countByDayInWeek(weekStart, weekEnd));
+
+        return countMap.entrySet().stream().map(e -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date", e.getKey().toString());
+            m.put("count", e.getValue());
+            return m;
+        }).toList();
+    }
+
+    private void mergeRankingDayCounts(Map<LocalDate, Long> map, List<Object[]> rows) {
+        for (Object[] row : rows) {
+            LocalDate date = LocalDate.parse(row[0].toString());
+            long count = ((Number) row[1]).longValue();
+            map.merge(date, count, (a, b) -> a + b);
+        }
     }
 }

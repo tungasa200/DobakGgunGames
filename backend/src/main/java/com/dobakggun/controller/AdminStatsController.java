@@ -35,4 +35,14 @@ public class AdminStatsController {
     public ResponseEntity<List<Map<String, Object>>> getGameCounts() {
         return ResponseEntity.ok(adminStatsService.getGameCounts());
     }
+
+    @GetMapping("/rankings")
+    public ResponseEntity<List<Map<String, Object>>> getRankingCounts() {
+        return ResponseEntity.ok(adminStatsService.getRankingCounts());
+    }
+
+    @GetMapping("/rankings/weekly")
+    public ResponseEntity<List<Map<String, Object>>> getWeeklyRankingCounts() {
+        return ResponseEntity.ok(adminStatsService.getWeeklyRankingCounts());
+    }
 }
