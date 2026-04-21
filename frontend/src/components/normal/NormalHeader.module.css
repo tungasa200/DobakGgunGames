@@ -104,6 +104,18 @@
   pointer-events: none;
 }
 
+/* 비활성 게임 */
+.dropItemDisabled { opacity: 0.6; }
+.dropNameDisabled { color: #999; }
+.dropBtnDisabled {
+  color: #b71c1c !important;
+  border-color: #ef9a9a !important;
+  background: #ffebee !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  font-size: 11px;
+}
+
 /* 같은 게임의 엑셀 모드 버튼 */
 .dropExcelSame {
   background: #e8f5e9;

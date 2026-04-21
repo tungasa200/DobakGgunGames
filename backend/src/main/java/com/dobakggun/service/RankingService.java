@@ -23,7 +23,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RankingService {
 
-    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "solitaire", "apple");
+    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "solitaire", "apple", "sudoku");
     private static final int RATE_LIMIT_PER_MINUTE = 3;
 
     private final MinesweeperRankingRepository minesweeperRepo;
@@ -31,11 +31,13 @@ public class RankingService {
     private final BlockfallRankingRepository blockfallRepo;
     private final SolitaireRankingRepository solitaireRepo;
     private final AppleRankingRepository appleRepo;
+    private final SudokuRankingRepository sudokuRepo;
     private final SessionService sessionService;
     private final BaseballSessionService baseballSessionService;
     private final SolitaireMoveService solitaireMoveService;
     private final AppleValidationService appleValidationService;
     private final BlockfallValidationService blockfallValidationService;
+    private final SudokuService sudokuService;
     private final IpHashUtil ipHashUtil;
 
     public List<RankingResponse> getWeeklyRankings(String game, String level) {
@@ -81,11 +83,13 @@ public class RankingService {
             case "blockfall" -> blockfallValidationService.validate(session, req);
         }
 
-        // 점수 범위 검증
-        validateScoreBounds(game, req);
+        // 점수 범위 검증 (스도쿠는 서버 계산이므로 제외)
+        if (!"sudoku".equals(game)) {
+            validateScoreBounds(game, req);
+        }
 
         Long userId = extractUserId();
-        Ranking saved = saveRanking(game, req, ipHash, userId);
+        Ranking saved = saveRanking(game, req, ipHash, userId, session);
         return new RankingResponse(saved);
     }
 
@@ -93,9 +97,10 @@ public class RankingService {
         return switch (game) {
             case "minesweeper" -> minesweeperRepo.findWeekly(level, weekStart);
             case "baseball"    -> baseballRepo.findWeekly(level, weekStart);
-            case "blockfall"      -> blockfallRepo.findWeekly(level, weekStart);
+            case "blockfall"   -> blockfallRepo.findWeekly(level, weekStart);
             case "solitaire"   -> solitaireRepo.findWeekly(level, weekStart);
             case "apple"       -> appleRepo.findWeekly(level, weekStart);
+            case "sudoku"      -> sudokuRepo.findWeekly(level, weekStart);
             default -> List.of();
         };
     }
@@ -104,9 +109,10 @@ public class RankingService {
         return switch (game) {
             case "minesweeper" -> minesweeperRepo.findAlltimeBest(level);
             case "baseball"    -> baseballRepo.findAlltimeBest(level);
-            case "blockfall"      -> blockfallRepo.findAlltimeBest(level);
+            case "blockfall"   -> blockfallRepo.findAlltimeBest(level);
             case "solitaire"   -> solitaireRepo.findAlltimeBest(level);
             case "apple"       -> appleRepo.findAlltimeBest(level);
+            case "sudoku"      -> sudokuRepo.findAlltimeBest(level);
             default -> null;
         };
     }
@@ -115,14 +121,15 @@ public class RankingService {
         return switch (game) {
             case "minesweeper" -> minesweeperRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "baseball"    -> baseballRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
-            case "blockfall"      -> blockfallRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "blockfall"   -> blockfallRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "solitaire"   -> solitaireRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "apple"       -> appleRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "sudoku"      -> sudokuRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             default -> 0L;
         };
     }
 
-    private Ranking saveRanking(String game, RankingRequest req, String ipHash, Long userId) {
+    private Ranking saveRanking(String game, RankingRequest req, String ipHash, Long userId, GameSession session) {
         return switch (game) {
             case "minesweeper" -> minesweeperRepo.save(MinesweeperRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
@@ -139,6 +146,9 @@ public class RankingService {
             case "apple" -> appleRepo.save(AppleRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
                     .score(req.getScore()).ipHash(ipHash).userId(userId).build());
+            case "sudoku" -> sudokuRepo.save(SudokuRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .score(sudokuService.calculateScore(session)).ipHash(ipHash).userId(userId).build());
             default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다.");
         };
     }
@@ -176,9 +186,10 @@ public class RankingService {
         Set<String> valid = switch (game) {
             case "minesweeper" -> Set.of("beginner", "intermediate", "expert");
             case "baseball"    -> Set.of("easy", "normal", "hard");
-            case "blockfall"      -> Set.of("easy", "normal", "hard");
+            case "blockfall"   -> Set.of("easy", "normal", "hard");
             case "solitaire"   -> Set.of("draw1", "draw3");
             case "apple"       -> Set.of("normal");
+            case "sudoku"      -> Set.of("easy", "normal", "hard");
             default -> Set.of();
         };
         if (!valid.contains(level)) {

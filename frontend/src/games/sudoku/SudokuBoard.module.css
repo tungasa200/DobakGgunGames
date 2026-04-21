@@ -1,0 +1,491 @@
+/* ── Wrap ── */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px 32px;
+  min-height: 100%;
+  box-sizing: border-box;
+  gap: 12px;
+}
+.excelMode {
+  padding: 8px;
+  gap: 8px;
+}
+
+/* ── Difficulty Tabs ── */
+.diffRow {
+  display: flex;
+  gap: 8px;
+}
+.diffBtn {
+  padding: 6px 20px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.diffBtn:hover { background: #d0e8f5; }
+.diffActive {
+  background: #2980b9;
+  color: #fff;
+  border-color: #2980b9;
+}
+
+/* ── Info Bar ── */
+.infoBar {
+  display: flex;
+  gap: 24px;
+  font-size: 15px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+.timerDisplay { font-variant-numeric: tabular-nums; }
+.hintDisplay  { color: #e67e22; }
+
+/* ── Board Area ── */
+.boardArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Start Overlay ── */
+.startOverlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 20px;
+}
+.startMsg { color: #7f8c8d; font-size: 15px; }
+.startBtn {
+  padding: 10px 36px;
+  background: #2980b9;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.startBtn:hover:not(:disabled) { background: #1f6391; }
+.startBtn:disabled { opacity: 0.6; cursor: default; }
+
+/* ── 9×9 Board ── */
+.board {
+  display: grid;
+  grid-template-columns: repeat(9, 52px);
+  grid-template-rows: repeat(9, 52px);
+  border-left: 2px solid #2c3e50;
+  border-top: 2px solid #2c3e50;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  touch-action: manipulation;
+}
+.excelMode .board {
+  grid-template-columns: repeat(9, 40px);
+  grid-template-rows: repeat(9, 40px);
+}
+
+/* ── Cell ── */
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  box-sizing: border-box;
+  transition: background 0.08s;
+}
+.cell:hover { background: #eaf4fd; }
+.cellFixed    { background: #f0f3f7; }
+.cellFixed:hover { background: #e4eaf2; }
+.cellSelected { background: #bbdefb !important; }
+.cellHighlighted { background: #e3f2fd; }
+.cellSameNum  { background: #e8f5e9; }
+
+/* Selected + same-group = keep selected bg */
+.cellSelected.cellHighlighted { background: #bbdefb !important; }
+
+/* ── Cell Values ── */
+.cellVal {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+}
+.excelMode .cellVal { font-size: 16px; }
+.valFixed    { color: #2c3e50; }
+.valUser     { color: #1565c0; }
+.valConflict { color: #e74c3c; }
+
+/* ── Note Grid (3×3 inside cell) ── */
+.noteGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.noteNum {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #7f8c8d;
+  line-height: 1;
+}
+.excelMode .noteNum { font-size: 8px; }
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Number Pad ── */
+.numPad {
+  display: grid;
+  grid-template-columns: repeat(5, 52px);
+  gap: 6px;
+}
+.excelMode .numPad {
+  grid-template-columns: repeat(5, 44px);
+}
+.numBtn {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f0f3f7;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+  position: relative;
+  gap: 1px;
+}
+.excelMode .numBtn {
+  width: 44px;
+  height: 44px;
+}
+.numBtn:hover:not(:disabled) { background: #d0e8f5; }
+.numBtnDone {
+  opacity: 0.35;
+  cursor: default;
+}
+.numBtnDigit {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
+  line-height: 1;
+}
+.excelMode .numBtnDigit { font-size: 16px; }
+.numBtnCount {
+  font-size: 10px;
+  color: #7f8c8d;
+  line-height: 1;
+}
+.deleteBtn {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fef9f0;
+  border: 1px solid #f0c27e;
+  border-radius: 6px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.12s;
+  color: #e67e22;
+}
+.excelMode .deleteBtn { width: 44px; height: 44px; font-size: 16px; }
+.deleteBtn:hover { background: #fde7c0; }
+
+/* ── Action Row ── */
+.actionRow {
+  display: flex;
+  gap: 8px;
+}
+.actionBtn {
+  padding: 8px 16px;
+  background: #f0f3f7;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #2c3e50;
+  transition: background 0.12s;
+}
+.actionBtn:hover:not(:disabled) { background: #d0e8f5; }
+.actionBtn:disabled { opacity: 0.4; cursor: default; }
+.actionBtnActive {
+  background: #2980b9;
+  color: #fff;
+  border-color: #2980b9;
+}
+.actionBtnActive:hover:not(:disabled) { background: #1f6391; }
+
+/* ── Reset Button ── */
+.resetBtn {
+  padding: 8px 24px;
+  background: #fff;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #2c3e50;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.resetBtn:hover { background: #f0f3f7; }
+
+/* ── Session Fail Banner ── */
+.sessionFailBanner {
+  background: #fef2f2;
+  color: #e74c3c;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── Ranking Section ── */
+.rankSection {
+  width: 100%;
+  max-width: 480px;
+  margin-top: 4px;
+}
+.rankTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 8px;
+}
+.alltimeBanner {
+  display: flex;
+  gap: 8px;
+  background: #eaf4fb;
+  border: 1px solid #aed6f1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #1a5276;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.rankTabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.rankTab {
+  padding: 4px 12px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  color: #2c3e50;
+  transition: background 0.12s;
+}
+.rankTab:hover { background: #f0f3f7; }
+.rankTabActive {
+  background: #2980b9;
+  color: #fff;
+  border-color: #2980b9;
+}
+
+/* ── Rules Panel ── */
+.rulesPanel {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #2c3e50;
+  line-height: 1.6;
+}
+.rulesPanel h4 {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  color: #1a5276;
+}
+.rulesPanel h4:first-child { margin-top: 0; }
+.rulesPanel ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+.rulesPanel li { margin-bottom: 2px; }
+
+/* ── Ranking Table ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th, .table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid #ecf0f1;
+}
+.table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+.table tr:hover td { background: #f8f9fa; }
+.placeholder {
+  color: #95a5a6;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 13px;
+}
+
+/* ── Modal ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 28px 32px;
+  width: min(400px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+.modal h2 {
+  margin: 0;
+  font-size: 22px;
+  color: #2980b9;
+  text-align: center;
+}
+.modal p { margin: 0; font-size: 14px; color: #7f8c8d; text-align: center; }
+.nameInput {
+  padding: 10px 14px;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  font-size: 15px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.nameInput:focus { border-color: #2980b9; }
+.ipNotice { font-size: 11px !important; color: #95a5a6 !important; }
+.hint { color: #e74c3c !important; font-size: 13px !important; }
+.modalBtns { display: flex; gap: 8px; }
+.primaryBtn {
+  flex: 1;
+  padding: 10px;
+  background: #2980b9;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.primaryBtn:hover:not(:disabled) { background: #1f6391; }
+.primaryBtn:disabled { opacity: 0.6; cursor: default; }
+.primaryBtnExcel { background: #1d6a96; }
+.secondaryBtn {
+  padding: 10px 20px;
+  background: #f0f3f7;
+  color: #2c3e50;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.secondaryBtn:hover { background: #d0e8f5; }
+
+/* ── Excel Mode: Ribbon Game Group ── */
+.xrgGame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 140px;
+}
+.xrgBtns {
+  display: flex;
+  gap: 4px;
+}
+.xrb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #2c3e50;
+  transition: background 0.1s;
+}
+.xrb:hover { background: #d0e8f5; border-color: #aed6f1; }
+.xrbActive  { background: #bbdefb; border-color: #2980b9; font-weight: 600; }
+.xrbIcon    { font-size: 18px; line-height: 1; }
+.xrgLabel   { font-size: 10px; color: #7f8c8d; border-top: 1px solid #dee2e6; padding-top: 2px; width: 100%; text-align: center; }
+
+/* ── Excel Mode: Ranking / Rules wrap ── */
+.xRankWrap, .xRulesWrap {
+  width: 100%;
+  max-width: 520px;
+  padding: 8px;
+}
+.xRankHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+.xRankTab {
+  padding: 3px 10px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  color: #2c3e50;
+  margin-left: 4px;
+}
+.xRankTab:hover { background: #f0f3f7; }
+.xRankTabActive {
+  background: #2980b9;
+  color: #fff;
+  border-color: #2980b9;
+}
+.xRulesWrap { font-size: 13px; color: #2c3e50; line-height: 1.6; }
+.xRulesWrap h4 { margin: 8px 0 4px; font-size: 13px; color: #1a5276; }
+.xRulesWrap ul { margin: 0 0 8px; padding-left: 20px; }

@@ -29,7 +29,8 @@ public class SessionService {
         "minesweeper", 7200L,
         "baseball",    7200L,
         "solitaire",   7200L,
-        "blockfall",   7200L
+        "blockfall",   7200L,
+        "sudoku",      7200L
     );
 
     private final GameSessionRepository sessionRepo;

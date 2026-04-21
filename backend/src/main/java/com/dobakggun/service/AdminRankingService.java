@@ -26,6 +26,7 @@ public class AdminRankingService {
     private final MinesweeperRankingRepository minesweeperRepo;
     private final SolitaireRankingRepository solitaireRepo;
     private final BlockfallRankingRepository blockfallRepo;
+    private final SudokuRankingRepository sudokuRepo;
 
     public Page<? extends Ranking> getList(String game, String level, LocalDate from, LocalDate to, Pageable pageable) {
         LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
@@ -36,6 +37,7 @@ public class AdminRankingService {
             case "minesweeper" -> minesweeperRepo.findFiltered(level, fromDt, toDt, pageable);
             case "solitaire"   -> solitaireRepo.findFiltered(level, fromDt, toDt, pageable);
             case "blockfall"   -> blockfallRepo.findFiltered(level, fromDt, toDt, pageable);
+            case "sudoku"      -> sudokuRepo.findFiltered(level, fromDt, toDt, pageable);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         };
     }
@@ -48,6 +50,7 @@ public class AdminRankingService {
             case "minesweeper" -> deleteOrThrow(minesweeperRepo, id);
             case "solitaire"   -> deleteOrThrow(solitaireRepo, id);
             case "blockfall"   -> deleteOrThrow(blockfallRepo, id);
+            case "sudoku"      -> deleteOrThrow(sudokuRepo, id);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         }
     }
@@ -60,6 +63,7 @@ public class AdminRankingService {
             case "minesweeper" -> minesweeperRepo.deleteAll();
             case "solitaire"   -> solitaireRepo.deleteAll();
             case "blockfall"   -> blockfallRepo.deleteAll();
+            case "sudoku"      -> sudokuRepo.deleteAll();
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         }
     }
@@ -92,6 +96,7 @@ public class AdminRankingService {
             case "solitaire"   -> List.of("draw1", "draw3");
             case "apple"       -> List.of("normal");
             case "blockfall"   -> List.of("normal");
+            case "sudoku"      -> List.of("easy", "normal", "hard");
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         };
     }
@@ -104,6 +109,7 @@ public class AdminRankingService {
             case "minesweeper" -> minesweeperRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
             case "solitaire"   -> solitaireRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
             case "blockfall"   -> blockfallRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
+            case "sudoku"      -> sudokuRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         };
     }
@@ -115,6 +121,7 @@ public class AdminRankingService {
             case "minesweeper" -> minesweeperRepo.findAlltimeBest(level);
             case "solitaire"   -> solitaireRepo.findAlltimeBest(level);
             case "blockfall"   -> blockfallRepo.findAlltimeBest(level);
+            case "sudoku"      -> sudokuRepo.findAlltimeBest(level);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         };
     }
@@ -125,7 +132,8 @@ public class AdminRankingService {
                 "baseball",    baseballRepo.count(),
                 "minesweeper", minesweeperRepo.count(),
                 "solitaire",   solitaireRepo.count(),
-                "blockfall",   blockfallRepo.count()
+                "blockfall",   blockfallRepo.count(),
+                "sudoku",      sudokuRepo.count()
         );
     }
 

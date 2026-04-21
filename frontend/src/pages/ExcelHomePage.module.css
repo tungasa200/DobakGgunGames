@@ -107,6 +107,14 @@
 .linkNormal:hover { background: #ececec; }
 .linkExcel { color: white; border-color: #217346; background: #217346; }
 .linkExcel:hover { background: #1a5c38; }
+.linkDisabled {
+  color: #b71c1c;
+  border-color: #ef9a9a;
+  background: #ffebee;
+  cursor: not-allowed;
+  pointer-events: none;
+  font-style: italic;
+}
 
 /* 빈 구분 행 */
 .gap { background: #f4f4f4; border-color: #e0e0e0; }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getCachedWeekly, type RankingEntry } from '../api/rankings';
+import { fetchGameStatus } from '../api/games';
 import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
@@ -79,21 +80,35 @@ const GAMES: GameConfig[] = [
       return m > 0 ? `${m}분 ${String(s).padStart(2, '0')}초` : `${t}초`;
     },
   },
+  {
+    key: 'sudoku',
+    name: '스도쿠',
+    icon: '🔢',
+    levels: [
+      { value: 'easy',   label: '초급' },
+      { value: 'normal', label: '중급' },
+      { value: 'hard',   label: '고급' },
+    ],
+    defaultLevel: 'easy',
+    fmt: (r) => `${r.score!.toLocaleString()}점`,
+  },
 ];
 
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
 
-function GameCard({ game, rankings, activeLevel, onLevelChange }: {
+function GameCard({ game, rankings, activeLevel, onLevelChange, disabled }: {
   game: GameConfig;
   rankings: Record<string, RankingEntry[] | 'error'>;
   activeLevel: string;
   onLevelChange: (level: string) => void;
+  disabled?: boolean;
 }) {
   const data = rankings[activeLevel];
 
   return (
-    <div className={`${styles.card} ${game.comingSoon ? styles.cardComingSoon : ''}`}>
+    <div className={`${styles.card} ${game.comingSoon ? styles.cardComingSoon : ''} ${disabled ? styles.cardDisabled : ''}`}>
       {game.comingSoon && <div className={styles.comingSoonOverlay}><span>준비중</span></div>}
+      {disabled && <div className={styles.disabledOverlay}><span>🔧 점검 중</span></div>}
       <div className={styles.cardHeader}>
         <span className={styles.icon}>{game.icon}</span>
         <div className={styles.title}>
@@ -148,9 +163,14 @@ export default function HomePage() {
   const [activeLevels, setActiveLevels] = useState<Record<string, string>>(
     Object.fromEntries(GAMES.map((g) => [g.key, g.defaultLevel]))
   );
+  const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     document.title = '도박꾼게임즈';
+  }, []);
+
+  useEffect(() => {
+    fetchGameStatus().then(setGameStatus);
   }, []);
 
   const fetchLevel = (gameKey: string, level: string) => {
@@ -187,18 +207,22 @@ export default function HomePage() {
       <div className={styles.page}>
         <h1 className={styles.heading}>🎮 DobakGgun</h1>
         <div className={styles.grid}>
-          {GAMES.map((game) => (
-            <GameCard
-              key={game.key}
-              game={game}
-              rankings={cache[game.key] ?? {}}
-              activeLevel={activeLevels[game.key]}
-              onLevelChange={(lv) => {
-                setActiveLevels((prev) => ({ ...prev, [game.key]: lv }));
-                if (!cache[game.key]?.[lv]) fetchLevel(game.key, lv);
-              }}
-            />
-          ))}
+          {GAMES.map((game) => {
+            const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.key] === false;
+            return (
+              <GameCard
+                key={game.key}
+                game={game}
+                rankings={cache[game.key] ?? {}}
+                activeLevel={activeLevels[game.key]}
+                onLevelChange={(lv) => {
+                  setActiveLevels((prev) => ({ ...prev, [game.key]: lv }));
+                  if (!cache[game.key]?.[lv]) fetchLevel(game.key, lv);
+                }}
+                disabled={isDisabled}
+              />
+            );
+          })}
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <span className={styles.icon}>🧪</span>

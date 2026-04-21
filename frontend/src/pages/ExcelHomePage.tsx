@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import ExcelShell from '../components/excel/ExcelShell';
 import { useExcelShell } from '../components/excel/ExcelShellContext';
 import { getCachedWeekly, type RankingEntry } from '../api/rankings';
+import { fetchGameStatus } from '../api/games';
+import { useAuth } from '../context/AuthContext';
 import styles from './ExcelHomePage.module.css';
 
 const COL_A = 96;
@@ -14,6 +16,7 @@ const GAME_LIST = [
   { key: 'solitaire',   label: '솔리테어' },
   { key: 'blockfall',   label: '블록폴' },
   { key: 'apple',       label: '사과게임' },
+  { key: 'sudoku',      label: '스도쿠' },
 ];
 
 const RANK_COLS = [
@@ -51,27 +54,39 @@ const RANK_COLS = [
     levelLabels: ['랭킹'],
     fmt: (r: RankingEntry) => `${r.score!.toLocaleString()}점`,
   },
+  {
+    key: 'su', game: 'sudoku', label: '스도쿠',
+    levels: ['easy', 'normal', 'hard'],
+    levelLabels: ['초급', '중급', '고급'],
+    fmt: (r: RankingEntry) => `${r.score!.toLocaleString()}점`,
+  },
 ];
 
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
 
-// ── 행 전체 너비: A(96) + B~F(192×5) = 1056 ──
-const TOTAL_W = COL_A + COL_B * 5;
+// ── 행 전체 너비: A(96) + B~G(192×6) = 1248 ──
+const TOTAL_W = COL_A + COL_B * 6;
 // 열 주소 (B=66, C=67, ...)
-const COL_LETTERS = ['B', 'C', 'D', 'E', 'F'];
+const COL_LETTERS = ['B', 'C', 'D', 'E', 'F', 'G'];
 
 function HomeGrid() {
   const { setFormula, setStatusItems } = useExcelShell();
+  const { user } = useAuth();
   const [cache, setCache] = useState<RankCache>({});
   const [activeLevels, setActiveLevels] = useState<Record<string, string>>({
-    ms: 'beginner', nb: 'easy', sl: 'draw1', tt: 'easy', ap: 'normal',
+    ms: 'beginner', nb: 'easy', sl: 'draw1', tt: 'easy', ap: 'normal', su: 'easy',
   });
   const [selected, setSelected] = useState('B7');
+  const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    fetchGameStatus().then(setGameStatus);
+  }, []);
 
   // 초기 수식바 / 상태바
   useEffect(() => {
-    setFormula('B7', '=COUNTA(A3:A7)');
-    setStatusItems([{ label: '게임', value: '5개' }]);
+    setFormula('B8', '=COUNTA(A3:A8)');
+    setStatusItems([{ label: '게임', value: '6개' }]);
   }, [setFormula, setStatusItems]);
 
   const fetchLevel = (colKey: string, game: string, level: string) => {
@@ -120,6 +135,7 @@ function HomeGrid() {
           { addr: 'D2', label: '',          width: COL_B },
           { addr: 'E2', label: '',          width: COL_B },
           { addr: 'F2', label: '',          width: COL_B },
+          { addr: 'G2', label: '',          width: COL_B },
         ].map(({ addr, label, width }) => (
           <div
             key={addr}
@@ -132,14 +148,15 @@ function HomeGrid() {
         ))}
       </div>
 
-      {/* Rows 3-7: 게임 목록 */}
+      {/* Rows 3-8: 게임 목록 */}
       {GAME_LIST.map((game, idx) => {
         const row = idx + 3;
         const isEven = idx % 2 === 1;
         const addrA = `A${row}`;
         const addrB = `B${row}`;
         const addrC = `C${row}`;
-        const isLastGame = row === 7;
+        const isLastGame = row === 8;
+        const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.key] === false;
         return (
           <div key={game.key} className={styles.row}>
             <div
@@ -150,26 +167,34 @@ function HomeGrid() {
             <div
               className={`${styles.cell} ${isEven ? styles.even : ''} ${selected === addrB ? styles.selected : ''}`}
               style={{ width: COL_B }}
-              onClick={() => handleCell(addrB, '일반 모드', isLastGame ? '=COUNTA(A3:A7)' : undefined)}
+              onClick={() => handleCell(addrB, '일반 모드', isLastGame ? '=COUNTA(A3:A8)' : undefined)}
             >
-              <Link
-                className={`${styles.linkBtn} ${styles.linkNormal}`}
-                to={`/${game.key}`}
-                onClick={e => e.stopPropagation()}
-              >일반 모드</Link>
+              {isDisabled ? (
+                <span className={`${styles.linkBtn} ${styles.linkDisabled}`}>🔧 점검 중</span>
+              ) : (
+                <Link
+                  className={`${styles.linkBtn} ${styles.linkNormal}`}
+                  to={`/${game.key}`}
+                  onClick={e => e.stopPropagation()}
+                >일반 모드</Link>
+              )}
             </div>
             <div
               className={`${styles.cell} ${isEven ? styles.even : ''} ${selected === addrC ? styles.selected : ''}`}
               style={{ width: COL_B }}
               onClick={() => handleCell(addrC, '엑셀 모드')}
             >
-              <Link
-                className={`${styles.linkBtn} ${styles.linkExcel}`}
-                to={`/${game.key}/excel`}
-                onClick={e => e.stopPropagation()}
-              >엑셀 모드</Link>
+              {isDisabled ? (
+                <span className={`${styles.linkBtn} ${styles.linkDisabled}`}>🔧 점검 중</span>
+              ) : (
+                <Link
+                  className={`${styles.linkBtn} ${styles.linkExcel}`}
+                  to={`/${game.key}/excel`}
+                  onClick={e => e.stopPropagation()}
+                >엑셀 모드</Link>
+              )}
             </div>
-            {['D', 'E', 'F'].map(col => {
+            {['D', 'E', 'F', 'G'].map(col => {
               const addr = `${col}${row}`;
               return (
                 <div

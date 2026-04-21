@@ -23,6 +23,7 @@ import AdminLeaderboardPage from './pages/admin/AdminLeaderboardPage';
 import AdminPatchNotesPage from './pages/admin/AdminPatchNotesPage';
 import AdminPatchNoteFormPage from './pages/admin/AdminPatchNoteFormPage';
 import AdminIpBansPage from './pages/admin/AdminIpBansPage';
+import AdminGamesPage from './pages/admin/AdminGamesPage';
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="patch-notes/new" element={<AdminPatchNoteFormPage />} />
           <Route path="patch-notes/:id/edit" element={<AdminPatchNoteFormPage />} />
           <Route path="ip-bans" element={<AdminIpBansPage />} />
+          <Route path="games" element={<AdminGamesPage />} />
         </Route>
 
         {/* 인세인 모드 — /:game 보다 위에 선언해야 AdminRoute 보호가 동작 */}

@@ -53,6 +53,12 @@ public class RankingResponse {
             this.attempts = null;
             this.moves = null;
             this.gameLevel = null;
+        } else if (r instanceof SudokuRanking su) {
+            this.score = su.getScore();
+            this.time = null;
+            this.attempts = null;
+            this.moves = null;
+            this.gameLevel = null;
         } else {
             this.time = null;
             this.score = null;

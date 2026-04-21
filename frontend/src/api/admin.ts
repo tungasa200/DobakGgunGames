@@ -186,6 +186,23 @@ export const adminIpBanApi = {
     req(`${BASE}/ip-bans/${id}`, token, { method: 'DELETE' }),
 };
 
+// ── 게임 활성/비활성 ────────────────────────────────────
+
+export interface AdminGameStatus {
+  gameKey: string;
+  active: boolean;
+}
+
+export const adminGameApi = {
+  list: (token: string) =>
+    req<AdminGameStatus[]>(`${BASE}/games`, token),
+  setActive: (token: string, key: string, active: boolean) =>
+    req<AdminGameStatus>(`${BASE}/games/${key}/active`, token, {
+      method: 'PATCH',
+      body: JSON.stringify({ active }),
+    }),
+};
+
 // ── 통계 ───────────────────────────────────────────────────
 
 export interface StatsSummary {

@@ -68,6 +68,16 @@ const MENU = [
       </svg>
     ),
   },
+  {
+    to: '/admin/games', label: '게임 관리',
+    icon: (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2"/>
+        <path d="M12 12h.01M8 12h.01M16 12h.01"/>
+        <path d="M10 10v4M6 10v4"/>
+      </svg>
+    ),
+  },
 ];
 
 export default function AdminSidebar() {

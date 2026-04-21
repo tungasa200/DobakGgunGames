@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { fetchGameStatus } from '../../api/games';
 import styles from './NormalHeader.module.css';
 
 const GAMES = [
@@ -10,6 +11,7 @@ const GAMES = [
   { key: 'solitaire',   label: '솔리테어', icon: '🃏' },
   { key: 'blockfall',   label: '블록폴',   icon: '🟦' },
   { key: 'apple',       label: '사과게임', icon: '🍎' },
+  { key: 'sudoku',      label: '스도쿠',   icon: '🔢' },
 ];
 
 const SCROLL_TOP_THRESHOLD = 80;   // px — 이 이내면 항상 표시
@@ -37,6 +39,11 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    fetchGameStatus().then(setGameStatus);
+  }, []);
 
   /* ── 드롭다운 외부 클릭 닫기 ── */
   useEffect(() => {
@@ -136,22 +143,35 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
               const isCurrent = g.isHome ? currentGame === '' : g.key === currentGame;
               const normalHref = g.isHome ? '/' : `/${g.key}`;
               const excelHref  = g.isHome ? '/excel' : `/${g.key}/excel`;
+              const isDisabled = !g.isHome && user?.role !== 'ADMIN' && gameStatus[g.key] === false;
               return (
-                <div key={g.key || 'home'} className={styles.dropItem}>
+                <div key={g.key || 'home'} className={`${styles.dropItem} ${isDisabled ? styles.dropItemDisabled : ''}`}>
                   <span className={styles.dropIcon}>{g.icon}</span>
-                  <span className={styles.dropName}>{g.label}</span>
+                  <span className={`${styles.dropName} ${isDisabled ? styles.dropNameDisabled : ''}`}>
+                    {g.label}
+                    {isDisabled && <span style={{ marginLeft: 4, fontSize: 10, color: '#b71c1c', fontWeight: 400 }}>점검 중</span>}
+                  </span>
                   <div className={styles.dropBtns}>
-                    <Link
-                      className={`${styles.dropBtn} ${isCurrent ? styles.dropCurrent : ''}`}
-                      style={isCurrent ? { background: accentColor, borderColor: accentColor } : undefined}
-                      to={normalHref}
-                      onClick={() => setOpen(false)}
-                    >{g.isHome ? '기본 메인' : '일반 모드'}</Link>
-                    <Link
-                      className={`${styles.dropBtn} ${isCurrent ? styles.dropExcelSame : ''}`}
-                      to={excelHref}
-                      onClick={() => setOpen(false)}
-                    >{g.isHome ? '엑셀 메인' : '엑셀 모드'}</Link>
+                    {isDisabled ? (
+                      <>
+                        <span className={`${styles.dropBtn} ${styles.dropBtnDisabled}`}>🔧 점검 중</span>
+                        <span className={`${styles.dropBtn} ${styles.dropBtnDisabled}`}>🔧 점검 중</span>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          className={`${styles.dropBtn} ${isCurrent ? styles.dropCurrent : ''}`}
+                          style={isCurrent ? { background: accentColor, borderColor: accentColor } : undefined}
+                          to={normalHref}
+                          onClick={() => setOpen(false)}
+                        >{g.isHome ? '기본 메인' : '일반 모드'}</Link>
+                        <Link
+                          className={`${styles.dropBtn} ${isCurrent ? styles.dropExcelSame : ''}`}
+                          to={excelHref}
+                          onClick={() => setOpen(false)}
+                        >{g.isHome ? '엑셀 메인' : '엑셀 모드'}</Link>
+                      </>
+                    )}
                   </div>
                 </div>
               );
