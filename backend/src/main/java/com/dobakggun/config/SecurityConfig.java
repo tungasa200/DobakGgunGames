@@ -17,6 +17,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -39,6 +40,9 @@ public class SecurityConfig {
 
     @Autowired(required = false)
     private OAuth2SuccessHandler oAuth2SuccessHandler;
+
+    @Autowired(required = false)
+    private ClientRegistrationRepository clientRegistrationRepository;
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
@@ -82,6 +86,12 @@ public class SecurityConfig {
                 .anyRequest().permitAll()
             )
             .oauth2Login(oauth2 -> {
+                // ClientRegistrationRepository 빈이 없는 환경(테스트 슬라이스 등)에서는
+                // oauth2Login 세부 설정을 건너뜀으로써 filterChain 생성 실패를 방지
+                if (clientRegistrationRepository == null) {
+                    oauth2.disable();
+                    return;
+                }
                 if (customOAuth2UserService != null) {
                     oauth2.userInfoEndpoint(u -> u.userService(customOAuth2UserService));
                 }

@@ -203,6 +203,40 @@ export const adminGameApi = {
     }),
 };
 
+// ── RSP (어드민 전용 가위바위보) ─────────────────────────
+
+export type RspChoice = 'ROCK' | 'SCISSORS' | 'PAPER';
+export type RspResult = 'WIN' | 'LOSS' | 'DRAW';
+
+export interface RspStats {
+  totalPlays: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number | null;
+}
+
+export interface RspPlayResponse {
+  id: number;
+  userChoice: RspChoice;
+  computerChoice: RspChoice;
+  result: RspResult;
+  playedAt: string;
+  stats: RspStats;
+}
+
+export type RspStatsResponse = RspStats;
+
+export const adminRspApi = {
+  playRound: (token: string, userChoice: RspChoice): Promise<RspPlayResponse> =>
+    req<RspPlayResponse>(`${BASE}/rsp/plays`, token, {
+      method: 'POST',
+      body: JSON.stringify({ userChoice }),
+    }),
+  getStats: (token: string): Promise<RspStatsResponse> =>
+    req<RspStatsResponse>(`${BASE}/rsp/stats`, token),
+};
+
 // ── 통계 ───────────────────────────────────────────────────
 
 export interface StatsSummary {
