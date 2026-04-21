@@ -10,6 +10,7 @@ const GAMES = [
   { key: 'blockfall',   label: '블록폴',   icon: '3.' },
   { key: 'solitaire',   label: '솔리테어', icon: '4.' },
   { key: 'apple',       label: '사과게임', icon: '5.' },
+  { key: 'sudoku',      label: '스도쿠',   icon: '6.' },
 ];
 
 // ===== 열 라벨 헬퍼 (A, B, C, ..., AA, ...) =====

@@ -512,7 +512,7 @@ export default function SudokuBoard({ excel = false }: Props) {
 
       {/* ── 엑셀 모드: 랭킹 시트 ── */}
       {excel && showRankingArea && (() => {
-        const CELL = 30;
+        const CELL = 40;
         const RANK_COLS = [
           { label: '순위', span: 2 },
           { label: '이름', span: 5 },
@@ -627,9 +627,9 @@ export default function SudokuBoard({ excel = false }: Props) {
                 {alltime
                   ? RankCell(
                       `👑 역대 1위  ${alltime.name} · ${formatTime(alltime.time ?? 0)} · ${new Date(alltime.createdAt).toLocaleDateString('ko-KR')}`,
-                      1, RANK_TOTAL, ['xrcWeekTitle'], { paddingLeft: 8 }, 'alltime'
+                      1, RANK_TOTAL, ['xrcAlltime'], { paddingLeft: 8 }, 'alltime'
                     )
-                  : RankCell('👑 역대 1위  기록 없음', 1, RANK_TOTAL, [], { color: '#aaa', paddingLeft: 8 }, 'alltime-empty')
+                  : RankCell('👑 역대 1위  기록 없음', 1, RANK_TOTAL, ['xrcAlltime'], { paddingLeft: 8, color: '#bfa050' }, 'alltime-empty')
                 }
               </div>
             </div>
@@ -639,11 +639,11 @@ export default function SudokuBoard({ excel = false }: Props) {
 
       {/* ── 엑셀 모드: 룰 시트 ── */}
       {excel && showRulesArea && (() => {
-        const CELL = 30;
-        const RULES_TOTAL = 12;
+        const CELL = 40;
+        const RULES_TOTAL = 17;
         const extraCols   = Math.max(10, Math.ceil(sheetSize.width / CELL));
         const totalHeaderCols = RULES_TOTAL + extraCols;
-        const contentRows = 18;
+        const contentRows = 15;
         const extraRows   = Math.max(20, Math.ceil(sheetSize.height / CELL));
         const totalRows   = contentRows + extraRows;
 
