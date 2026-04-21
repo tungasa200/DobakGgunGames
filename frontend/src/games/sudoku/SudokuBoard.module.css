@@ -79,6 +79,7 @@
   border: 1px solid #d0d0d0;
   border-radius: 2px;
   font-size: 13px;
+  color: #333;
 }
 .excelMode .deleteBtn:hover { background: #e8f4fd; }
 .excelMode .actionBtn {
@@ -154,13 +155,14 @@
   margin-bottom: 10px;
 }
 .excelMode .xRankTab {
-  border: 1px solid #d0d0d0;
-  border-radius: 2px;
-  background: #f2f2f2;
-  color: #333;
+  border: 2px solid #217346;
+  border-radius: 4px;
+  background: white;
+  color: #217346;
   font-family: 'Calibri', sans-serif;
+  font-weight: bold;
 }
-.excelMode .xRankTab:hover     { background: #e8f4fd; border-color: #c8dff5; }
+.excelMode .xRankTab:hover     { background: #217346; color: white; }
 .excelMode .xRankTabActive     { background: #217346; color: white; border-color: #217346; }
 
 /* 엑셀 모드 룰 시트 */
@@ -169,8 +171,12 @@
   max-width: none;
   font-family: 'Calibri', 'Segoe UI', sans-serif;
   color: #333;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  padding: 10px 0 0;
 }
-.excelMode .xRulesWrap h4 { color: #217346; }
+.excelMode .xRulesWrap h4 { color: #2c3e50; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 4px; }
 
 
 /* ── Difficulty Tabs ── */
@@ -243,10 +249,6 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   touch-action: manipulation;
 }
-.excelMode .board {
-  grid-template-columns: repeat(9, 40px);
-  grid-template-rows: repeat(9, 40px);
-}
 
 /* ── Cell ── */
 .cell {
@@ -277,7 +279,6 @@
   line-height: 1;
   pointer-events: none;
 }
-.excelMode .cellVal { font-size: 16px; }
 .valFixed    { color: #2c3e50; }
 .valUser     { color: #1565c0; }
 .valConflict { color: #e74c3c; }
@@ -301,7 +302,6 @@
   color: #7f8c8d;
   line-height: 1;
 }
-.excelMode .noteNum { font-size: 8px; }
 
 /* ── Controls ── */
 .controls {
@@ -316,9 +316,6 @@
   display: grid;
   grid-template-columns: repeat(5, 52px);
   gap: 6px;
-}
-.excelMode .numPad {
-  grid-template-columns: repeat(5, 44px);
 }
 .numBtn {
   width: 52px;
@@ -335,10 +332,6 @@
   position: relative;
   gap: 1px;
 }
-.excelMode .numBtn {
-  width: 44px;
-  height: 44px;
-}
 .numBtn:hover:not(:disabled) { background: #d0e8f5; }
 .numBtnDone {
   opacity: 0.35;
@@ -350,7 +343,6 @@
   color: #2c3e50;
   line-height: 1;
 }
-.excelMode .numBtnDigit { font-size: 16px; }
 .numBtnCount {
   font-size: 10px;
   color: #7f8c8d;
@@ -370,7 +362,6 @@
   transition: background 0.12s;
   color: #e67e22;
 }
-.excelMode .deleteBtn { width: 44px; height: 44px; font-size: 16px; }
 .deleteBtn:hover { background: #fde7c0; }
 
 /* ── Action Row ── */
