@@ -1,11 +1,14 @@
 /**
- * BlockfallInsaneBoard — 블록폴 인세인 모드 (Full Implementation)
- * STEP 1: 페이지 신설 ✓
- * STEP 2: 이중 레이어 엔진 (arena + particles) ✓
- * STEP 3: Sand 물리 시뮬레이션 + SAND_BURST ✓
- * STEP 4: 이벤트 프레임워크 ✓
- * STEP 5: 모든 이벤트 구현 ✓
- * STEP 6: 확장 블록 ✓
+ * BlockfallInsaneBoard — 블록폴 인세인 모드 전면 개편 (2026-04-22)
+ * - 난이도 선택 UI 제거, hard 고정
+ * - Camera Shake (canvas ctx.translate 방식)
+ * - CSS filter 색 왜곡
+ * - Flash Overlay 경고
+ * - 대형 배너 (.insaneBannerOverlay > .insaneBannerBox)
+ * - BOARD_TILT 버그 수정 (매 틱 vx 증분 지속)
+ * - BOUNCE_WALLS 재구현 (초기 vx ±1.5 부여)
+ * - 파티클 수치 전반 강화
+ * - 랭킹 UI 개편 (INSANE 전용, 단일 탭)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -18,14 +21,13 @@ import styles from './BlockfallInsaneBoard.module.css';
 // ===== 타입 =====
 type Matrix = number[][];
 interface Player { pos: { x: number; y: number }; matrix: Matrix | null }
-type Level = 'easy' | 'normal' | 'hard';
 type GameStatus = 'idle' | 'playing' | 'paused' | 'over';
 
 interface SandParticle {
   type: 'sand';
   x: number;       // 정수 (셀 단위)
   y: number;
-  vx: number;      // 0 기본, VORTEX/BOUNCE_WALLS에서 사용
+  vx: number;
   vy: number;
   colorIndex: number;
   state: 'moving' | 'settled';
@@ -57,7 +59,9 @@ interface EventDef {
   emoji: string;
   duration: number;   // ms. 0 = 즉발
   weight: number;
+  type: 'visual' | 'physical' | 'disruptive';
   mobileExcluded?: boolean;
+  sub?: string;       // 배너 부제목
 }
 
 // ===== 상수 =====
@@ -65,11 +69,12 @@ const INIT_BOARD_W = 11;
 const INIT_BOARD_H = 21;
 const CELL = 30;
 
-const SAND_TICK_INTERVAL = 60;   // ms — sand 물리 틱 간격
-const SAND_BATCH_SIZE    = 25;   // 틱당 최대 처리 파티클 수 (FULL_SAND 프레임 드랍 방지)
-const SHATTER_GRAVITY    = 0.06; // cells/frame²
-const SHATTER_DAMPING    = 0.50;
-const SHATTER_MIN_SPEED  = 0.04;
+// B: 파티클 수치 상수 — 강화
+const SAND_TICK_INTERVAL = 45;    // ms (60→45)
+const SAND_BATCH_SIZE    = 35;    // (25→35)
+const SHATTER_GRAVITY    = 0.08;  // (0.06→0.08)
+const SHATTER_DAMPING    = 0.60;  // (0.50→0.60)
+const SHATTER_MIN_SPEED  = 0.03;  // (0.04→0.03)
 
 // 인세인 모드 색상
 const COLORS: (string | null)[] = [
@@ -91,6 +96,7 @@ const COLORS: (string | null)[] = [
   '#ff8b94', // 15: MIDDLE
 ];
 
+// A: hard 고정
 const DROP_SPEEDS: Record<string, number[]> = {
   easy:   [800, 690, 600, 520, 450, 390, 340, 300, 265, 235, 210],
   normal: [400, 340, 290, 248, 213, 183, 158, 137, 119, 104,  91],
@@ -103,27 +109,39 @@ const T_FRONT_CORNERS = [[0, 1], [1, 3], [2, 3], [0, 2]];
 const LOCK_DELAY = 500;
 const MAX_LOCK_RESETS = 15;
 
-// ===== 이벤트 풀 =====
+// 카테고리별 배너 색상
+const BANNER_COLORS: Record<'visual' | 'physical' | 'disruptive', {
+  text: string; border: string; shadow: string;
+}> = {
+  visual:     { text: '#67e8f9', border: 'rgba(103,232,249,0.6)', shadow: '0 0 24px rgba(103,232,249,0.3)' },
+  physical:   { text: '#ff9f0a', border: 'rgba(255,159,10,0.6)',  shadow: '0 0 24px rgba(255,159,10,0.35)' },
+  disruptive: { text: '#ff375f', border: 'rgba(255,55,95,0.6)',   shadow: '0 0 24px rgba(255,55,95,0.4)' },
+};
+
+// ===== 이벤트 풀 (A: type 필드 추가, K: SPIN_BLOCK emoji 교체) =====
 const EVENT_POOL: EventDef[] = [
-  { id: 'FLIP_H',          name: '좌우 반전',        emoji: '↔️',  duration: 8000,  weight: 1,   mobileExcluded: true },
-  { id: 'FLIP_V',          name: '상하 반전',        emoji: '↕️',  duration: 6000,  weight: 1,   mobileExcluded: true },
-  { id: 'DARK_SPOTLIGHT',  name: '암전',             emoji: '🔦',  duration: 10000, weight: 1 },
-  { id: 'INVISIBLE_PIECE', name: '투명 블록',        emoji: '👻',  duration: 6000,  weight: 1 },
-  { id: 'COLOR_GRAY',      name: '색맹 모드',        emoji: '🩶',  duration: 8000,  weight: 1 },
-  { id: 'SAND_BURST',      name: '모래 폭발',        emoji: '💨',  duration: 0,     weight: 1 },
-  { id: 'FULL_SAND',       name: '대혼돈',           emoji: '🌪️', duration: 0,     weight: 0.5 },
-  { id: 'LIQUID_FLOOD',    name: '모래 홍수',        emoji: '🌊',  duration: 0,     weight: 1 },
-  { id: 'EXPLODE',         name: '폭발',             emoji: '💥',  duration: 0,     weight: 1 },
-  { id: 'VORTEX',          name: '소용돌이',         emoji: '🌀',  duration: 8000,  weight: 1 },
-  { id: 'BOUNCE_WALLS',    name: '탄성 벽',          emoji: '🏓',  duration: 8000,  weight: 1 },
-  { id: 'FLOOR_DROP',      name: '바닥 붕괴',        emoji: '🕳️', duration: 0,     weight: 1,   mobileExcluded: true },
-  { id: 'CONTROL_FREEZE',  name: '조작 마비',        emoji: '🥶',  duration: 2000,  weight: 1 },
-  { id: 'PIECE_SHATTER',   name: '블록 분해',        emoji: '🧨',  duration: 0,     weight: 1 },
-  { id: 'RANDOM_LOCK',     name: '강제 고정',        emoji: '🔒',  duration: 0,     weight: 1 },
-  { id: 'BOARD_TILT',      name: '기울기',           emoji: '📐',  duration: 6000,  weight: 1 },
-  { id: 'SPIN_BLOCK',      name: '자동 회전',        emoji: '🌀',  duration: -1,    weight: 1 },  // -1 = piece 낙하 종료까지
-  { id: 'BOARD_EXPAND',    name: '보드 확장',        emoji: '📏',  duration: 0,     weight: 0.7 },
+  { id: 'FLIP_H',          name: '좌우 반전',   emoji: '↔️',  duration: 8000,  weight: 1.2, type: 'visual',     mobileExcluded: true, sub: '8초 동안 좌우 반전' },
+  { id: 'FLIP_V',          name: '상하 반전',   emoji: '↕️',  duration: 6000,  weight: 1.2, type: 'visual',     mobileExcluded: true, sub: '6초 동안 상하 반전' },
+  { id: 'DARK_SPOTLIGHT',  name: '암전',        emoji: '🔦',  duration: 10000, weight: 1,   type: 'visual',     sub: '10초 동안 스포트라이트' },
+  { id: 'INVISIBLE_PIECE', name: '투명 블록',   emoji: '👻',  duration: 6000,  weight: 1,   type: 'visual',     sub: '6초 동안 피스 투명' },
+  { id: 'COLOR_GRAY',      name: '색맹 모드',   emoji: '🩶',  duration: 8000,  weight: 1,   type: 'visual',     sub: '8초 동안 색상 소멸' },
+  { id: 'SAND_BURST',      name: '모래 폭발',   emoji: '💨',  duration: 0,     weight: 1,   type: 'physical',   sub: '즉발 — 다음 고정 시 적용' },
+  { id: 'FULL_SAND',       name: '대혼돈',      emoji: '🌪️', duration: 0,     weight: 0.4, type: 'physical',   sub: '즉발 — 전체 모래 변환' },
+  { id: 'LIQUID_FLOOD',    name: '모래 홍수',   emoji: '🌊',  duration: 0,     weight: 1,   type: 'physical',   sub: '즉발 — 상단 모래 유입' },
+  { id: 'EXPLODE',         name: '폭발',        emoji: '💥',  duration: 0,     weight: 1,   type: 'physical',   sub: '즉발 — 반경 3 폭발' },
+  { id: 'VORTEX',          name: '소용돌이',    emoji: '🌀',  duration: 8000,  weight: 1,   type: 'physical',   sub: '8초 동안 구심력 작동' },
+  { id: 'BOUNCE_WALLS',    name: '탄성 벽',     emoji: '🏓',  duration: 8000,  weight: 1,   type: 'physical',   sub: '8초 동안 벽 탄성' },
+  { id: 'FLOOR_DROP',      name: '바닥 붕괴',   emoji: '🕳️', duration: 0,     weight: 1,   type: 'physical',   mobileExcluded: true, sub: '즉발 — 바닥 확장 + 파편' },
+  { id: 'CONTROL_FREEZE',  name: '조작 마비',   emoji: '🥶',  duration: 2000,  weight: 1,   type: 'disruptive', sub: '2초 동안 조작 불가' },
+  { id: 'PIECE_SHATTER',   name: '블록 분해',   emoji: '🧨',  duration: 0,     weight: 1,   type: 'disruptive', sub: '즉발 — 현재 피스 분해' },
+  { id: 'RANDOM_LOCK',     name: '강제 고정',   emoji: '🔒',  duration: 0,     weight: 1,   type: 'disruptive', sub: '즉발 — 현재 위치 고정' },
+  { id: 'BOARD_TILT',      name: '기울기',      emoji: '📐',  duration: 6000,  weight: 1,   type: 'disruptive', sub: '6초 동안 보드 기울기' },
+  { id: 'SPIN_BLOCK',      name: '자동 회전',   emoji: '🎡',  duration: -1,    weight: 1,   type: 'disruptive', sub: '피스 낙하 중 자동 회전' },  // K: 🌀→🎡
+  { id: 'BOARD_EXPAND',    name: '보드 확장',   emoji: '📏',  duration: 0,     weight: 0.5, type: 'physical',   sub: '즉발 — 좌우 1칸 확장' },
 ];
+
+// HIGH flash 등급 이벤트
+const HIGH_FLASH_EVENTS = new Set<EventId>(['EXPLODE', 'FLOOR_DROP', 'FULL_SAND', 'CONTROL_FREEZE']);
 
 // ===== 헬퍼 =====
 function createMatrix(w: number, h: number): Matrix {
@@ -189,9 +207,8 @@ function rotateMatrix(matrix: Matrix, dir: number) {
   else matrix.reverse();
 }
 
-// 이벤트 간격 계산 (레벨별)
 function getEventInterval(level: number): number {
-  if (level >= 11) return 0; // 매 lock 시 발동
+  if (level >= 11) return 0;
   return Math.max(1000, 30000 - (level - 1) * 2600);
 }
 
@@ -202,12 +219,14 @@ export default function BlockfallInsaneBoard() {
   const { user } = useAuth();
 
   // ===== 캔버스 refs =====
-  const boardRef = useRef<HTMLCanvasElement>(null);
-  const nextRef  = useRef<HTMLCanvasElement>(null);
-  const holdRef  = useRef<HTMLCanvasElement>(null);
-  const timerBarRef = useRef<HTMLDivElement>(null);
+  const boardRef        = useRef<HTMLCanvasElement>(null);
+  const nextRef         = useRef<HTMLCanvasElement>(null);
+  const holdRef         = useRef<HTMLCanvasElement>(null);
+  const timerBarRef     = useRef<HTMLDivElement>(null);
+  const flashOverlayRef = useRef<HTMLDivElement>(null);
+  const bannerBoxRef    = useRef<HTMLDivElement>(null);
 
-  // ===== 보드 크기 (동적) =====
+  // ===== 보드 크기 =====
   const boardW = useRef(INIT_BOARD_W);
   const boardH = useRef(INIT_BOARD_H);
 
@@ -238,15 +257,17 @@ export default function BlockfallInsaneBoard() {
   const isPieceT    = useRef(false);
   const holdPieceIsT = useRef(false);
   const holdPieceRot = useRef(0);
-  const currentLevelRef = useRef<Level>('normal');
+
+  // A: hard 고정 — currentLevelRef는 항상 'hard'
+  const currentLevelRef = useRef<string>('hard');
 
   // Sand 물리 틱 타이머
   const sandTickCounter = useRef(0);
 
   // ===== 이벤트 시스템 refs =====
   const activeEventId   = useRef<EventId | null>(null);
-  const activeEventDur  = useRef(0);   // 지속 이벤트 남은 시간(ms)
-  const eventCooldown   = useRef(30000); // 다음 이벤트까지 대기 시간
+  const activeEventDur  = useRef(0);
+  const eventCooldown   = useRef(30000);
 
   // 시각 이벤트 플래그
   const evFlipH         = useRef(false);
@@ -255,14 +276,18 @@ export default function BlockfallInsaneBoard() {
   const evInvisible     = useRef(false);
   const evColorGray     = useRef(false);
   // 물리/방해 이벤트 플래그
-  const evSandBurst     = useRef(false);  // 다음 lock 시 sand로 변환
+  const evSandBurst     = useRef(false);
   const evVortex        = useRef(false);
   const evBounceWalls   = useRef(false);
   const evControlFreeze = useRef(false);
   const evSpinBlock     = useRef(false);
   const evSpinTimer     = useRef(0);
 
-  // 모바일 판정 (게임 시작 시 1회)
+  // G: BOARD_TILT 재구현용 refs
+  const evBoardTilt     = useRef(false);
+  const tiltDir         = useRef(0);
+
+  // 모바일 판정
   const isMobileRef = useRef(navigator.maxTouchPoints > 0);
 
   // 세션
@@ -270,21 +295,40 @@ export default function BlockfallInsaneBoard() {
   const sessionFailedRef  = useRef(false);
   const [sessionFailed, setSessionFailed] = useState(false);
 
+  // ===== C: Camera Shake ref =====
+  const shakeRef = useRef({ amplitude: 0, duration: 0, total: 0, elapsed: 0 });
+
+  // ===== D: Filter ref =====
+  const filterRef = useRef({ fadeMs: 0, fadeTotalMs: 0 });
+
+  // ===== E: Flash 타이머 ids (정리용) =====
+  const flashTimerIds = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // ===== prefers-reduced-motion =====
+  const prefersReducedMotion = useRef(
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
   // ===== React 상태 =====
   const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
   const [score, setScore]       = useState(0);
   const [gameLevel, setGameLevel] = useState(1);
   const [lines, setLines]       = useState(0);
   const [combo, setCombo]       = useState(0);
-  const [difficulty, setDifficulty] = useState<Level>('normal');
-  const [eventBanner, setEventBanner] = useState<{ name: string; emoji: string } | null>(null);
+  // F: 배너 state — sub 필드 추가
+  const [eventBanner, setEventBanner] = useState<{ name: string; emoji: string; type: 'visual'|'physical'|'disruptive'; sub?: string } | null>(null);
+  // 배너 퇴장 상태
+  const [bannerExiting, setBannerExiting] = useState(false);
+  const bannerExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 랭킹
-  const [rankLevel, setRankLevel]     = useState<Level>('normal');
   const [rankings, setRankings]       = useState<RankEntry[]>([]);
   const [rankLoading, setRankLoading] = useState(false);
   const [alltimeBest, setAlltimeBest] = useState<RankEntry | null>(null);
   const [showRules, setShowRules]     = useState(false);
+  // 제출 성공 후 반환된 id (본인 행 판별)
+  const submittedIdRef = useRef<number | null>(null);
 
   // 모달
   const [showDebug, setShowDebug]       = useState(false);
@@ -297,6 +341,105 @@ export default function BlockfallInsaneBoard() {
     if (modalOpen) setPlayerName(user?.nickname ?? '');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalOpen]);
+
+  // ===== C: triggerShake =====
+  function triggerShake(amplitudePx: number, durationMs: number) {
+    if (prefersReducedMotion.current) return;
+    if (amplitudePx <= shakeRef.current.amplitude) return;
+    const capped = Math.min(amplitudePx, 20);
+    shakeRef.current = { amplitude: capped, duration: durationMs, total: durationMs, elapsed: 0 };
+  }
+
+  // ===== D: setBoardFilter =====
+  function setBoardFilter(filterValue: string, fadeMs: number) {
+    if (prefersReducedMotion.current) return;
+    if (evColorGray.current) return; // COLOR_GRAY 중 무시
+    const canvas = boardRef.current;
+    if (canvas) canvas.style.filter = filterValue;
+    filterRef.current = { fadeMs, fadeTotalMs: fadeMs };
+  }
+
+  function clearBoardFilter() {
+    const canvas = boardRef.current;
+    if (!canvas) return;
+    if (evColorGray.current) {
+      canvas.style.filter = 'grayscale(1) contrast(1.3)';
+    } else {
+      canvas.style.filter = 'none';
+    }
+    filterRef.current = { fadeMs: 0, fadeTotalMs: 0 };
+  }
+
+  // ===== E: scheduleFlash =====
+  function scheduleFlash(eventId: EventId) {
+    const overlay = flashOverlayRef.current;
+    if (!overlay) return;
+    const isHigh = HIGH_FLASH_EVENTS.has(eventId);
+
+    // 타이머 ID 저장 (cleanup용)
+    const ids: ReturnType<typeof setTimeout>[] = [];
+
+    if (isHigh) {
+      // T=-350ms: 붉은 테두리 fade in 시작
+      ids.push(setTimeout(() => {
+        overlay.style.boxShadow = 'inset 0 0 0 4px rgba(255, 45, 85, 0)';
+      }, 0));
+      ids.push(setTimeout(() => {
+        overlay.style.boxShadow = 'inset 0 0 0 4px rgba(255, 45, 85, 1)';
+      }, 150));
+      // T=0ms (이벤트 발동): 흰 배경
+      ids.push(setTimeout(() => {
+        overlay.style.background = 'rgba(255, 255, 255, 0.18)';
+        overlay.style.boxShadow  = 'inset 0 0 0 4px rgba(255, 45, 85, 1)';
+      }, 350));
+      // T=+100ms: 흰 배경 제거 + 테두리 fade out 시작
+      ids.push(setTimeout(() => {
+        overlay.style.background = 'transparent';
+        overlay.style.boxShadow  = 'inset 0 0 0 4px rgba(255, 45, 85, 0.5)';
+      }, 450));
+      ids.push(setTimeout(() => {
+        overlay.style.boxShadow = 'inset 0 0 0 4px rgba(255, 45, 85, 0)';
+      }, 650));
+    } else {
+      // LOW: T=-200ms 붉은 테두리
+      ids.push(setTimeout(() => {
+        overlay.style.boxShadow = 'inset 0 0 0 4px rgba(255, 45, 85, 0)';
+      }, 0));
+      ids.push(setTimeout(() => {
+        overlay.style.boxShadow = 'inset 0 0 0 4px rgba(255, 45, 85, 1)';
+      }, 150));
+      // T=0ms 이벤트 발동
+      ids.push(setTimeout(() => {
+        overlay.style.boxShadow = 'inset 0 0 0 4px rgba(255, 45, 85, 0.6)';
+      }, 200));
+      // T=+150ms 소멸
+      ids.push(setTimeout(() => {
+        overlay.style.boxShadow = 'inset 0 0 0 4px rgba(255, 45, 85, 0)';
+      }, 350));
+    }
+
+    flashTimerIds.current.push(...ids);
+  }
+
+  // ===== F: 배너 표시 =====
+  function showBanner(def: EventDef) {
+    // 이전 배너 퇴장 타이머 정리
+    if (bannerExitTimerRef.current) clearTimeout(bannerExitTimerRef.current);
+    setBannerExiting(false);
+    setEventBanner({ name: def.name, emoji: def.emoji, type: def.type, sub: def.sub });
+
+    // 1800ms 후 퇴장 클래스
+    const t1 = setTimeout(() => {
+      setBannerExiting(true);
+    }, 1800);
+    // 2200ms 후 null
+    const t2 = setTimeout(() => {
+      setEventBanner(null);
+      setBannerExiting(false);
+    }, 2200);
+    bannerExitTimerRef.current = t2;
+    flashTimerIds.current.push(t1, t2);
+  }
 
   // ===== 파티클 헬퍼 =====
   function hasSettledAt(x: number, y: number): boolean {
@@ -311,7 +454,6 @@ export default function BlockfallInsaneBoard() {
     return true;
   }
 
-  // settled 파티클이 지지 없이 떠 있으면 다시 moving으로 전환
   function recheckSettled() {
     for (const p of particles.current) {
       if (p.state !== 'settled') continue;
@@ -327,7 +469,7 @@ export default function BlockfallInsaneBoard() {
     }
   }
 
-  // ===== 충돌 판정 (낙하 피스 기준) =====
+  // ===== 충돌 판정 =====
   function collide(pos: { x: number; y: number }, matrix: Matrix): boolean {
     for (let y = 0; y < matrix.length; y++) {
       for (let x = 0; x < matrix[y].length; x++) {
@@ -358,7 +500,6 @@ export default function BlockfallInsaneBoard() {
     return true;
   }
 
-  // ===== 보조 =====
   function isCornerBlocked(bx: number, by: number): boolean {
     if (bx < 0 || bx >= boardW.current || by >= boardH.current) return true;
     if (by < 0) return false;
@@ -390,7 +531,7 @@ export default function BlockfallInsaneBoard() {
     });
   }
 
-  // SAND_BURST 여부를 고려한 피스 고정 — lockPiece / playerHardDrop / lockPieceImmediate 공통 사용
+  // B: SAND_BURST / PIECE_SHATTER — 초기 vx/vy 부여
   function mergePieceIntoBoard() {
     if (evSandBurst.current) {
       player.current.matrix!.forEach((row, y) => {
@@ -400,7 +541,8 @@ export default function BlockfallInsaneBoard() {
               type: 'sand',
               x: x + player.current.pos.x,
               y: y + player.current.pos.y,
-              vx: 0, vy: 0,
+              vx: Math.random() * 3 - 1.5,   // B: 초기 분산
+              vy: Math.random() * -0.8,
               colorIndex: val,
               state: 'moving',
             });
@@ -413,12 +555,11 @@ export default function BlockfallInsaneBoard() {
     }
   }
 
-  // ===== Sand 물리 시뮬레이션 =====
+  // ===== G: Sand 물리 시뮬레이션 (BOARD_TILT 재구현 포함) =====
   function simulateSand() {
     const parts = particles.current;
     let processed = 0;
 
-    // SandParticle physics (셀 단위 정수 이동)
     for (let i = 0; i < parts.length && processed < SAND_BATCH_SIZE; i++) {
       const p = parts[i];
       if (p.type !== 'sand' || p.state !== 'moving') continue;
@@ -426,10 +567,13 @@ export default function BlockfallInsaneBoard() {
 
       const x = p.x, y = p.y;
 
-      // VORTEX: 중심 방향으로 수평 힘 추가
+      // VORTEX: 구심력 강화 (0.3 → 0.8)
       if (evVortex.current) {
         const cx = boardW.current / 2;
-        p.vx = (p.vx + (x < cx ? 0.3 : -0.3)) * 0.8;
+        p.vx = (p.vx + (x < cx ? 0.8 : -0.8)) * 0.9;
+      } else if (evBoardTilt.current) {
+        // G: BOARD_TILT — 매 틱 vx 증분 지속
+        p.vx = (p.vx + tiltDir.current * 0.4) * 0.8;
       } else {
         p.vx *= 0.7;
       }
@@ -439,16 +583,22 @@ export default function BlockfallInsaneBoard() {
       // 1. 아래로 낙하
       if (isEmptyForSand(x, y + 1)) {
         p.y = y + 1;
-        p.vy = Math.min(p.vy + 1, 3);
+        p.vy = Math.min(p.vy + 1, 4); // B: 최대 낙하속도 3→4
         continue;
       }
 
-      // BOUNCE_WALLS: 벽 충돌 시 vx 반전
-      if (evBounceWalls.current && !isEmptyForSand(x, y + 1)) {
+      // H: BOUNCE_WALLS 재구현 — 벽 충돌 시 반전+감쇠 0.9
+      if (evBounceWalls.current) {
         if (nx !== x && isEmptyForSand(nx, y)) {
-          p.x = nx;
-          p.vx *= -0.8;
-          continue;
+          // 벽 경계 체크
+          if (nx < 0 || nx >= boardW.current) {
+            p.vx = -p.vx * 0.9;
+          } else {
+            p.x = nx;
+            continue;
+          }
+        } else if (!isEmptyForSand(nx, y) && nx !== x) {
+          p.vx = -p.vx * 0.9;
         }
       }
 
@@ -469,8 +619,20 @@ export default function BlockfallInsaneBoard() {
       }
     }
 
-    // ShatterParticle physics (실수 좌표, 매 게임루프 프레임에서 처리)
-    // (아래 simulateShatter에서 별도 처리)
+    // G: BOARD_TILT 중 settled sand — tilt 방향 빈 공간 있으면 moving 전환
+    if (evBoardTilt.current) {
+      const dir = tiltDir.current;
+      for (const p of parts) {
+        if (p.type !== 'sand' || p.state !== 'settled') continue;
+        const x = Math.round(p.x);
+        const y = Math.round(p.y);
+        if (isEmptyForSand(x + dir, y) && isEmptyForSand(x + dir, y + 1)) {
+          p.state = 'moving';
+          p.vx = dir * (0.5 + Math.random() * 0.3);
+          p.vy = 0;
+        }
+      }
+    }
   }
 
   function simulateShatter() {
@@ -479,13 +641,12 @@ export default function BlockfallInsaneBoard() {
 
       p.vy += SHATTER_GRAVITY;
       let nx = p.x + p.vx;
-      let ny = p.y + p.vy;
+      const ny = p.y + p.vy;
 
       // 벽 충돌
       if (nx < 0) { nx = 0; p.vx = Math.abs(p.vx) * SHATTER_DAMPING; }
       else if (nx >= boardW.current) { nx = boardW.current - 1; p.vx = -Math.abs(p.vx) * SHATTER_DAMPING; }
 
-      // 바닥 or solid 충돌
       const iy = Math.floor(ny);
       const ix = Math.round(nx);
       const hitFloor = ny >= boardH.current - 1;
@@ -510,40 +671,46 @@ export default function BlockfallInsaneBoard() {
     }
   }
 
-  // ===== 줄 클리어 (arena + settled particles 합산) =====
-  // fromLock=true 일 때만 클리어 없으면 콤보 리셋
-  // sand 틱에서 호출 시 fromLock=false → 콤보를 리셋하지 않음
+  // ===== 줄 클리어 =====
   function arenaSweepInsane(tspin: 'full' | 'mini' | null, eventActive: boolean, fromLock = false) {
     let count = 0;
 
     for (let y = boardH.current - 1; y > 0; y--) {
       if (!isRowFull(y)) continue;
 
-      // arena 행 제거
       const row = arena.current.splice(y, 1)[0].fill(0);
       arena.current.unshift(row);
 
-      // settled 파티클 제거
       particles.current = particles.current.filter(p =>
         !(p.state === 'settled' && Math.round(p.y) === y)
       );
 
-      // 위쪽 파티클 y +1 (아래 행이 제거됐으므로)
       for (const p of particles.current) {
         if (p.y < y) p.y += 1;
       }
 
-      y++; // 같은 인덱스 재검사
+      y++;
       count++;
     }
 
-    // settled 파티클 중 지지 없는 것 다시 낙하
     recheckSettled();
 
     if (count <= 0) {
-      // 피스 고정 시에만 콤보 리셋 — sand 틱에서는 리셋 금지
       if (fromLock) comboCount.current = 0;
       return;
+    }
+
+    // 라인 클리어 shake
+    if (count >= 4) {
+      triggerShake(12, 500);
+    } else if (count >= 2) {
+      triggerShake(6, 300);
+    } else {
+      triggerShake(3, 150);
+    }
+    // 이벤트 활성 중 보너스 shake
+    if (eventActive && count >= 1) {
+      triggerShake(Math.min(18, 6 * count * 1.5), 300 * 1.3);
     }
 
     let baseScore = 0;
@@ -559,7 +726,6 @@ export default function BlockfallInsaneBoard() {
       baseScore = (LINE_SCORES[count] ?? LINE_SCORES[4]) * gameLevelRef.current;
     }
 
-    // 이벤트 활성 중 2배 보너스
     if (eventActive) baseScore *= 2;
 
     comboCount.current++;
@@ -584,7 +750,6 @@ export default function BlockfallInsaneBoard() {
   function clearActiveEvent() {
     const id = activeEventId.current;
     if (!id) return;
-    // onEnd: 상태 복원
     evFlipH.current = false;
     evFlipV.current = false;
     evDarkSpot.current = false;
@@ -593,51 +758,101 @@ export default function BlockfallInsaneBoard() {
     evVortex.current = false;
     evBounceWalls.current = false;
     evControlFreeze.current = false;
+    // G: BOARD_TILT ref 초기화
+    evBoardTilt.current = false;
     if (id === 'SPIN_BLOCK') evSpinBlock.current = false;
-    if (id === 'BOARD_TILT') {
-      // settled → moving 초기화는 이미 적용됐으므로 추가 처리 없음
-    }
+
+    // 필터 복원
+    clearBoardFilter();
+
     activeEventId.current = null;
     activeEventDur.current = 0;
-    setEventBanner(null);
   }
 
   function fireEvent(def: EventDef) {
-    // 지속형 이벤트면 현재 이벤트 종료 후 새 이벤트 시작
     if (activeEventId.current && def.duration > 0) clearActiveEvent();
 
     const id = def.id;
 
-    // onStart
+    // E: 경고 Flash 스케줄 (이벤트 발동 전 미리 호출)
+    scheduleFlash(id);
+
+    // D: 이벤트별 CSS filter 적용
     switch (id) {
-      case 'FLIP_H':          evFlipH.current = true; break;
-      case 'FLIP_V':          evFlipV.current = true; break;
-      case 'DARK_SPOTLIGHT':  evDarkSpot.current = true; break;
+      case 'FLIP_H':
+        evFlipH.current = true;
+        if (!prefersReducedMotion.current) {
+          const c = boardRef.current; if (c) c.style.filter = 'hue-rotate(180deg)';
+        }
+        triggerShake(12, 500);
+        break;
+      case 'FLIP_V':
+        evFlipV.current = true;
+        if (!prefersReducedMotion.current) {
+          const c = boardRef.current; if (c) c.style.filter = 'invert(1) contrast(1.5)';
+        }
+        triggerShake(12, 500);
+        break;
+      case 'DARK_SPOTLIGHT':
+        evDarkSpot.current = true;
+        if (!prefersReducedMotion.current) {
+          const c = boardRef.current; if (c) c.style.filter = 'brightness(0.7)';
+        }
+        break;
       case 'INVISIBLE_PIECE': evInvisible.current = true; break;
-      case 'COLOR_GRAY':      evColorGray.current = true; break;
+      case 'COLOR_GRAY':
+        evColorGray.current = true;
+        if (!prefersReducedMotion.current) {
+          const c = boardRef.current; if (c) c.style.filter = 'grayscale(1) contrast(1.3)';
+        }
+        break;
       case 'VORTEX': {
         evVortex.current = true;
-        // 스펙: settled 파티클도 일시적으로 moving으로 전환
+        if (!prefersReducedMotion.current) {
+          const c = boardRef.current; if (c) c.style.filter = 'hue-rotate(-30deg) saturate(1.5)';
+        }
         for (const p of particles.current) {
           if (p.state === 'settled' && p.type === 'sand') {
-            p.state = 'moving';
-            p.vy = 0;
+            p.state = 'moving'; p.vy = 0;
           }
         }
         break;
       }
-      case 'BOUNCE_WALLS':    evBounceWalls.current = true; break;
-      case 'CONTROL_FREEZE':  evControlFreeze.current = true; break;
-      case 'SPIN_BLOCK':      evSpinBlock.current = true; evSpinTimer.current = 0; break;
+      // H: BOUNCE_WALLS 재구현 — 초기 vx ±1.5 부여
+      case 'BOUNCE_WALLS': {
+        evBounceWalls.current = true;
+        for (const p of particles.current) {
+          if (p.type === 'sand' && p.state === 'moving') {
+            p.vx = (Math.random() < 0.5 ? 1.5 : -1.5) + (Math.random() - 0.5) * 0.4;
+          }
+        }
+        break;
+      }
+      case 'CONTROL_FREEZE':
+        evControlFreeze.current = true;
+        setBoardFilter('hue-rotate(180deg) saturate(0.7) brightness(1.1)', 2000);
+        break;
+      case 'SPIN_BLOCK': evSpinBlock.current = true; evSpinTimer.current = 0; break;
 
-      case 'SAND_BURST':      evSandBurst.current = true; break;
+      case 'SAND_BURST':
+        evSandBurst.current = true;
+        triggerShake(8, 300);
+        break;
 
       case 'FULL_SAND': {
-        // 보드 전체 solid → sand(moving)
+        triggerShake(15, 800);
+        setBoardFilter('contrast(1.3) brightness(0.9) sepia(0.3)', 800);
         for (let y = 0; y < boardH.current; y++) {
           for (let x = 0; x < boardW.current; x++) {
             if (arena.current[y][x] !== 0) {
-              particles.current.push({ type: 'sand', x, y, vx: 0, vy: 0, colorIndex: arena.current[y][x], state: 'moving' });
+              // B: 초기 vx/vy 부여
+              particles.current.push({
+                type: 'sand', x, y,
+                vx: Math.random() * 3 - 1.5,
+                vy: Math.random() * -0.8,
+                colorIndex: arena.current[y][x],
+                state: 'moving',
+              });
               arena.current[y][x] = 0;
             }
           }
@@ -646,50 +861,74 @@ export default function BlockfallInsaneBoard() {
       }
 
       case 'LIQUID_FLOOD': {
-        // 상단에서 sand N개 생성
-        const n = boardW.current * 2;
+        // B: 생성 수 boardW*2 → boardW*6, y=0~2 분산
+        setBoardFilter('saturate(2.2) hue-rotate(15deg)', 500);
+        const n = boardW.current * 6;
         for (let i = 0; i < n; i++) {
           const x = Math.floor(Math.random() * boardW.current);
-          particles.current.push({ type: 'sand', x, y: 0, vx: 0, vy: 0, colorIndex: (Math.floor(Math.random() * 7) + 1), state: 'moving' });
+          const y = Math.floor(Math.random() * 3);  // y=0~2 분산
+          // B: 초기 vx/vy 부여
+          particles.current.push({
+            type: 'sand', x, y,
+            vx: Math.random() * 3 - 1.5,
+            vy: Math.random() * -0.8,
+            colorIndex: (Math.floor(Math.random() * 7) + 1),
+            state: 'moving',
+          });
         }
         break;
       }
 
       case 'EXPLODE': {
-        // 랜덤 위치 폭발, 반경 2 solid 제거
+        // B: 반경 2→3
+        triggerShake(14, 600);
+        setBoardFilter('hue-rotate(90deg) contrast(1.5) brightness(1.2)', 300);
         const cx = Math.floor(Math.random() * boardW.current);
         const cy = Math.floor(boardH.current * 0.4 + Math.random() * boardH.current * 0.4);
-        for (let dy = -2; dy <= 2; dy++) {
-          for (let dx = -2; dx <= 2; dx++) {
-            if (dx * dx + dy * dy <= 4) {
+        for (let dy = -3; dy <= 3; dy++) {
+          for (let dx = -3; dx <= 3; dx++) {
+            if (dx * dx + dy * dy <= 9) {  // 반경 3: r²=9
               const ex = cx + dx, ey = cy + dy;
               if (ey >= 0 && ey < boardH.current && ex >= 0 && ex < boardW.current) {
-                arena.current[ey][ex] = 0;
+                if (arena.current[ey][ex] !== 0) {
+                  // ShatterParticle 20개 튀어오르기
+                  particles.current.push({
+                    type: 'shatter', x: ex, y: ey,
+                    vx: Math.random() * 5 - 2.5,
+                    vy: -(Math.random() * 2 + 0.5),
+                    colorIndex: arena.current[ey][ex],
+                    bounces: 2,
+                    state: 'flying',
+                  });
+                  arena.current[ey][ex] = 0;
+                }
               }
             }
           }
         }
-        // 폭발 범위 settled 파티클 제거
         particles.current = particles.current.filter(p => {
           if (p.state !== 'settled') return true;
           const dx = Math.round(p.x) - cx, dy = Math.round(p.y) - cy;
-          return dx * dx + dy * dy > 4;
+          return dx * dx + dy * dy > 9;
         });
         recheckSettled();
         break;
       }
 
       case 'PIECE_SHATTER': {
-        // 현재 피스 → sand particles
+        triggerShake(8, 250);
+        setBoardFilter('brightness(1.3)', 200);
         if (player.current.matrix) {
           player.current.matrix.forEach((row, y) => {
             row.forEach((val, x) => {
               if (val !== 0) {
+                // B: 초기 vx/vy 부여
                 particles.current.push({
                   type: 'sand',
                   x: x + player.current.pos.x,
                   y: y + player.current.pos.y,
-                  vx: 0, vy: 0,
+                  vx: Math.random() * 3 - 1.5,
+                  vy: Math.random() * -0.8,
                   colorIndex: val,
                   state: 'moving',
                 });
@@ -702,14 +941,18 @@ export default function BlockfallInsaneBoard() {
       }
 
       case 'RANDOM_LOCK': {
-        // 현재 피스 강제 고정
+        triggerShake(7, 300);
         lockPieceImmediate();
         break;
       }
 
+      // G: BOARD_TILT 재구현
       case 'BOARD_TILT': {
-        // settled → moving, vx 한쪽으로
         const dir = Math.random() < 0.5 ? 1 : -1;
+        tiltDir.current = dir;
+        evBoardTilt.current = true;
+        setBoardFilter('hue-rotate(45deg) contrast(1.2)', 6000);
+        // 기존 settled → moving (초기 킥)
         for (const p of particles.current) {
           if (p.state === 'settled' && p.type === 'sand') {
             p.state = 'moving';
@@ -725,12 +968,10 @@ export default function BlockfallInsaneBoard() {
       }
 
       case 'FLOOR_DROP': {
-        // 보드 하단 확장 + 블록 ShatterParticle로 변환
-        const addRows = 4;
+        const addRows = 6;  // 4→6
         boardH.current += addRows;
         for (let i = 0; i < addRows; i++) arena.current.push(new Array(boardW.current).fill(0));
 
-        // canvas 높이 업데이트, ctx scale 재적용
         const canvas = boardRef.current;
         if (canvas) {
           canvas.height = boardH.current * CELL;
@@ -738,38 +979,40 @@ export default function BlockfallInsaneBoard() {
           if (ctx) ctx.scale(CELL, CELL);
         }
 
-        // 모든 arena 블록 → ShatterParticle
+        triggerShake(8, 300);  // 바닥 확장 낮은 강도
+        setBoardFilter('hue-rotate(180deg) contrast(1.4) saturate(1.8)', 400);
+
         for (let y = 0; y < boardH.current - addRows; y++) {
           for (let x = 0; x < boardW.current; x++) {
             if (arena.current[y][x] !== 0) {
               particles.current.push({
                 type: 'shatter', x, y,
-                vx: (Math.random() - 0.5) * 0.5,
-                vy: 0.1,
+                vx: Math.random() * 5 - 2.5,   // B: -1~1 → -2.5~2.5
+                vy: 0.5,                          // B: 0.1→0.5
                 colorIndex: arena.current[y][x],
-                bounces: 3,
+                bounces: 5,                       // B: 3→5
                 state: 'flying',
               });
               arena.current[y][x] = 0;
             }
           }
         }
+        // 충돌 순간 최대 shake (약간 지연)
+        setTimeout(() => triggerShake(18, 800), 200);
         break;
       }
 
       case 'BOARD_EXPAND': {
-        // 보드 좌우로 1칸씩 확장 (총 +2)
+        triggerShake(12, 500);
+        setBoardFilter('brightness(1.15) saturate(1.4)', 600);
         boardW.current += 2;
         for (let y = 0; y < boardH.current; y++) {
           arena.current[y].unshift(0);
           arena.current[y].push(0);
         }
-        // 파티클 x 좌표 +1 (왼쪽으로 1칸 생겼으므로)
         for (const p of particles.current) { p.x += 1; }
-        // 현재 피스 x 조정
         if (player.current.matrix) player.current.pos.x += 1;
 
-        // canvas 너비 업데이트
         const canvas = boardRef.current;
         if (canvas) {
           canvas.width = boardW.current * CELL;
@@ -785,18 +1028,13 @@ export default function BlockfallInsaneBoard() {
       activeEventId.current = id;
       activeEventDur.current = def.duration;
     }
-    // SPIN_BLOCK은 duration=-1, 피스 락 시 해제
     if (def.duration === -1) {
       activeEventId.current = id;
       activeEventDur.current = -1;
     }
 
-    setEventBanner({ name: def.name, emoji: def.emoji });
-    if (def.duration > 0) {
-      setTimeout(() => setEventBanner(null), Math.min(def.duration, 2000));
-    } else {
-      setTimeout(() => setEventBanner(null), 2000);
-    }
+    // F: 배너 표시
+    showBanner(def);
   }
 
   function fireRandomEvent() {
@@ -819,7 +1057,7 @@ export default function BlockfallInsaneBoard() {
     lockResets.current = 0;
     lastActionRot.current = false;
     tPieceRot.current = 0;
-    evSpinBlock.current = false; // SPIN_BLOCK 해제
+    evSpinBlock.current = false;
     if (activeEventId.current === 'SPIN_BLOCK') clearActiveEvent();
 
     player.current.matrix = nextPiece.current ?? randomInsanePiece();
@@ -829,7 +1067,6 @@ export default function BlockfallInsaneBoard() {
     player.current.pos.x = (boardW.current / 2 | 0) - (player.current.matrix[0].length / 2 | 0);
   }
 
-  // ===== 블록 고정 (즉발 이벤트 전용 — 점수 계산 없이 강제 고정) =====
   function lockPieceImmediate() {
     if (!player.current.matrix) return;
     if (collidePlayer()) { doGameOver(); return; }
@@ -840,7 +1077,6 @@ export default function BlockfallInsaneBoard() {
     lockCounter.current = 0;
   }
 
-  // ===== 블록 고정 =====
   function lockPiece() {
     if (!player.current.matrix) return;
     if (collidePlayer()) { doGameOver(); return; }
@@ -853,9 +1089,9 @@ export default function BlockfallInsaneBoard() {
     isLanding.current = false;
     lockCounter.current = 0;
 
-    // 레벨 11: 매 lock 시 이벤트 발동
     if (gameLevelRef.current >= 11) {
-      fireRandomEvent();
+      // 레벨 11: 즉발 이벤트만 발동 (지속형 활성 중 스킵)
+      if (!activeEventId.current) fireRandomEvent();
     }
   }
 
@@ -894,7 +1130,18 @@ export default function BlockfallInsaneBoard() {
 
     ctx.save();
 
-    // 시각 이벤트: 반전 변환
+    // C: Camera Shake — draw() 맨 앞 ctx.save() 직후 translate 적용
+    if (shakeRef.current.duration > 0) {
+      const amp = shakeRef.current.amplitude
+        * Math.pow(shakeRef.current.duration / shakeRef.current.total, 0.7);
+      const t = shakeRef.current.elapsed;
+      ctx.translate(
+        (amp * Math.sin(t * 0.06)) / CELL,
+        (amp * 0.4 * Math.sin(t * 0.09 + Math.PI / 4)) / CELL
+      );
+    }
+
+    // 시각 이벤트 반전 변환
     if (evFlipH.current) {
       ctx.translate(bw, 0);
       ctx.scale(-1, 1);
@@ -926,45 +1173,35 @@ export default function BlockfallInsaneBoard() {
     // === Layer 3: settled sand/shatter ===
     for (const p of particles.current) {
       if (p.state !== 'settled') continue;
-      drawCell(ctx, Math.round(p.x), Math.round(p.y), p.colorIndex, 0.85);
+      drawCell(ctx, Math.round(p.x), Math.round(p.y), p.colorIndex, 0.90); // B: 0.85→0.90
     }
 
     // === Layer 4: moving sand ===
     for (const p of particles.current) {
       if (p.type !== 'sand' || p.state !== 'moving') continue;
-      drawCell(ctx, p.x, p.y, p.colorIndex, 0.6);
+      // B: sand 잔상 (속도 클 때만)
+      const speed = Math.abs(p.vx) + Math.abs(p.vy);
+      if (speed > 1.5) {
+        drawCell(ctx, p.x - p.vx * 0.8, p.y - p.vy * 0.8, p.colorIndex, 0.20);
+      }
+      drawCell(ctx, p.x, p.y, p.colorIndex, 0.75); // B: 0.6→0.75
     }
 
     // === Layer 5: flying shatter (실수 좌표, motion blur) ===
     for (const p of particles.current) {
       if (p.type !== 'shatter' || p.state !== 'flying') continue;
-      // 잔상
+      // B: 잔상 거리 1.5→2.5, 잔상 alpha 0.25→0.35
       const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
       if (speed > 0.1) {
-        ctx.save();
-        ctx.globalAlpha = 0.25;
-        drawCell(ctx, p.x - p.vx * 1.5, p.y - p.vy * 1.5, p.colorIndex, 0.25);
-        ctx.restore();
+        drawCell(ctx, p.x - p.vx * 2.5, p.y - p.vy * 2.5, p.colorIndex, 0.35);
       }
-      const energy = Math.max(0, p.bounces / 3);
-      drawCell(ctx, p.x, p.y, p.colorIndex, 0.6 + energy * 0.4);
+      const energy = Math.max(0, p.bounces / 5);
+      drawCell(ctx, p.x, p.y, p.colorIndex, 0.7 + energy * 0.3); // B: 0.6+e*0.4 → 0.7+e*0.3
     }
 
-    // === Layer 6: 낙하 피스 (고스트 + 현재) ===
+    // === Layer 6: 낙하 피스 ===
     const pm = player.current.matrix;
     if (pm && !evInvisible.current) {
-      // 고스트 (easy)
-      if (currentLevelRef.current === 'easy') {
-        let gy = player.current.pos.y;
-        while (!collide({ x: player.current.pos.x, y: gy + 1 }, pm)) gy++;
-        if (gy > player.current.pos.y) {
-          ctx.globalAlpha = 0.22;
-          pm.forEach((row, y) => row.forEach((val, x) => {
-            if (val !== 0) drawCell(ctx, x + player.current.pos.x, y + gy, val, 1);
-          }));
-          ctx.globalAlpha = 1.0;
-        }
-      }
       pm.forEach((row, y) => row.forEach((val, x) => {
         if (val !== 0) drawCell(ctx, x + player.current.pos.x, y + player.current.pos.y, val, 1);
       }));
@@ -974,9 +1211,10 @@ export default function BlockfallInsaneBoard() {
     if (evDarkSpot.current && pm) {
       const px = (player.current.pos.x + pm[0].length / 2);
       const py = (player.current.pos.y + pm.length / 2);
-      const gradient = ctx.createRadialGradient(px, py, 1.5, px, py, 6);
+      // B: 반경 6→3
+      const gradient = ctx.createRadialGradient(px, py, 0.5, px, py, 3);
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
-      gradient.addColorStop(1, 'rgba(0,0,0,0.95)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.98)');  // B: 0.95→0.98
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, bw, bh);
     }
@@ -1009,7 +1247,7 @@ export default function BlockfallInsaneBoard() {
       comboAlpha.current -= 0.025;
     }
 
-    ctx.restore(); // visual event transforms 복원
+    ctx.restore();
 
     // NEXT / HOLD 캔버스
     const nc = nextRef.current;
@@ -1046,7 +1284,6 @@ export default function BlockfallInsaneBoard() {
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function drawCell(context: CanvasRenderingContext2D, x: number, y: number, colorIndex: number, alpha: number) {
@@ -1069,8 +1306,6 @@ export default function BlockfallInsaneBoard() {
 
   // ===== 게임 루프 =====
   const gameLoop = useCallback((time: number) => {
-    // 첫 프레임(lastTime=0) 또는 탭 전환 후 복귀 시 큰 dt가 발생하면
-    // 이벤트 즉시 발동·낙하 점프 방지를 위해 해당 프레임은 스킵
     if (lastTime.current === 0) {
       lastTime.current = time;
       animId.current = requestAnimationFrame(gameLoop);
@@ -1080,16 +1315,32 @@ export default function BlockfallInsaneBoard() {
     lastTime.current = time;
     if (dt <= 0) { animId.current = requestAnimationFrame(gameLoop); return; }
 
+    // C: shake 타이머 업데이트
+    if (shakeRef.current.duration > 0) {
+      shakeRef.current.duration -= dt;
+      shakeRef.current.elapsed  += dt;
+      if (shakeRef.current.duration <= 0) {
+        shakeRef.current.amplitude = 0;
+        shakeRef.current.duration  = 0;
+      }
+    }
+
+    // D: filter fadeMs 타이머
+    if (filterRef.current.fadeMs > 0) {
+      filterRef.current.fadeMs -= dt;
+      if (filterRef.current.fadeMs <= 0) {
+        clearBoardFilter();
+      }
+    }
+
     // Sand 물리 틱
     sandTickCounter.current += dt;
     if (sandTickCounter.current >= SAND_TICK_INTERVAL) {
       sandTickCounter.current = 0;
       simulateSand();
-      // sand settling 후 라인 클리어 재검사
       arenaSweepInsane(null, activeEventId.current !== null);
     }
 
-    // ShatterParticle 매 프레임 처리
     simulateShatter();
 
     // 지속형 이벤트 타이머
@@ -1102,7 +1353,7 @@ export default function BlockfallInsaneBoard() {
       if (activeEventDur.current <= 0) clearActiveEvent();
     }
 
-    // 이벤트 쿨다운 (레벨 11 미만)
+    // 이벤트 쿨다운
     if (gameLevelRef.current < 11) {
       eventCooldown.current -= dt;
       if (eventCooldown.current <= 0) {
@@ -1177,6 +1428,7 @@ export default function BlockfallInsaneBoard() {
     if (isSoft) scoreRef.current++;
     dropCounter.current = 0;
     updateDisplay();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playerHardDrop = useCallback(() => {
@@ -1195,7 +1447,7 @@ export default function BlockfallInsaneBoard() {
     arenaSweepInsane(tspin, activeEventId.current !== null, true);
     dropCounter.current = 0;
     updateDisplay();
-    if (gameLevelRef.current >= 11) fireRandomEvent();
+    if (gameLevelRef.current >= 11 && !activeEventId.current) fireRandomEvent();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1249,18 +1501,38 @@ export default function BlockfallInsaneBoard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ===== 게임 시작 =====
-  const startGame = useCallback((lv?: Level) => {
-    const level = lv ?? currentLevelRef.current;
+  // ===== 게임 시작 (A: hard 고정) =====
+  const startGame = useCallback(() => {
+    const level = 'hard';
     currentLevelRef.current = level;
     if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
+
+    // 배너 정리
+    if (bannerExitTimerRef.current) clearTimeout(bannerExitTimerRef.current);
+    flashTimerIds.current.forEach(id => clearTimeout(id));
+    flashTimerIds.current = [];
+    setEventBanner(null);
+    setBannerExiting(false);
+
+    // filter 초기화
+    const canvas = boardRef.current;
+    if (canvas) canvas.style.filter = 'none';
+    filterRef.current = { fadeMs: 0, fadeTotalMs: 0 };
+
+    // shake 초기화
+    shakeRef.current = { amplitude: 0, duration: 0, total: 0, elapsed: 0 };
+
+    // flash overlay 초기화
+    const overlay = flashOverlayRef.current;
+    if (overlay) {
+      overlay.style.boxShadow = '';
+      overlay.style.background = 'transparent';
+    }
 
     // 보드 크기 초기화
     boardW.current = INIT_BOARD_W;
     boardH.current = INIT_BOARD_H;
 
-    // canvas 크기 초기화
-    const canvas = boardRef.current;
     if (canvas) {
       if (canvas.width !== INIT_BOARD_W * CELL) canvas.width = INIT_BOARD_W * CELL;
       if (canvas.height !== INIT_BOARD_H * CELL) canvas.height = INIT_BOARD_H * CELL;
@@ -1279,10 +1551,11 @@ export default function BlockfallInsaneBoard() {
     holdPiece.current = null; holdUsed.current = false;
     isLanding.current = false; lockCounter.current = 0; lockResets.current = 0;
 
-    // 이벤트 초기화
     clearActiveEvent();
     evSandBurst.current = false;
     evControlFreeze.current = false;
+    evBoardTilt.current = false;
+    tiltDir.current = 0;
     eventCooldown.current = getEventInterval(1);
 
     const sp = DROP_SPEEDS[level];
@@ -1292,9 +1565,9 @@ export default function BlockfallInsaneBoard() {
     playerReset();
     updateDisplay();
     setGameStatus('playing');
-    setEventBanner(null);
     lastTime.current = 0;
     animId.current = requestAnimationFrame(gameLoop);
+    submittedIdRef.current = null;
 
     (async () => {
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -1339,7 +1612,6 @@ export default function BlockfallInsaneBoard() {
       if (status === 'paused' && (e.key === 'p' || e.key === 'P')) { togglePause(); return; }
       if (status !== 'playing') return;
       if (evSpinBlock.current) {
-        // SPIN_BLOCK: 좌우만 허용
         if (e.key === 'ArrowLeft')  { e.preventDefault(); playerMove(-1); }
         if (e.key === 'ArrowRight') { e.preventDefault(); playerMove(1); }
         return;
@@ -1411,23 +1683,26 @@ export default function BlockfallInsaneBoard() {
 
   // ===== 언마운트 =====
   useEffect(() => {
-    return () => { if (animId.current) cancelAnimationFrame(animId.current); };
+    return () => {
+      if (animId.current) cancelAnimationFrame(animId.current);
+      flashTimerIds.current.forEach(id => clearTimeout(id));
+    };
   }, []);
 
-  // ===== 랭킹 =====
-  async function loadRanking(lv: Level) {
+  // ===== 랭킹 (A: hard 고정) =====
+  async function loadRanking() {
     setRankLoading(true);
-    try { setRankings(await rankingsApi.getWeekly('blockfall-insane', lv) as RankEntry[]); }
+    try { setRankings(await rankingsApi.getWeekly('blockfall-insane', 'hard') as RankEntry[]); }
     catch { setRankings([]); }
     finally { setRankLoading(false); }
   }
-  async function loadAlltime(lv: Level) {
+  async function loadAlltime() {
     try {
-      const data = await rankingsApi.getAlltimeBest('blockfall-insane', lv);
+      const data = await rankingsApi.getAlltimeBest('blockfall-insane', 'hard');
       setAlltimeBest(data && (data as RankEntry).id ? data as RankEntry : null);
     } catch { setAlltimeBest(null); }
   }
-  useEffect(() => { loadRanking('normal'); loadAlltime('normal'); }, []); // eslint-disable-line
+  useEffect(() => { loadRanking(); loadAlltime(); }, []); // mount once
 
   async function handleSubmitRanking() {
     const name = playerName.trim();
@@ -1435,23 +1710,20 @@ export default function BlockfallInsaneBoard() {
     if (containsProfanity(name)) { setNameBanned(true); return; }
     setNameBanned(false); setSubmitState('loading');
     try {
-      await rankingsApi.submit('blockfall-insane', {
-        level: difficulty, name, score: scoreRef.current,
+      const result = await rankingsApi.submit('blockfall-insane', {
+        level: 'hard', name, score: scoreRef.current,
         gameLevel: gameLevelRef.current, linesCleared: linesRef.current,
         sessionId: sessionIdRef.current,
       });
+      // 제출 성공 후 id 저장 (본인 행 판별)
+      if (result && typeof (result as RankEntry).id === 'number') {
+        submittedIdRef.current = (result as RankEntry).id;
+      } else {
+        submittedIdRef.current = null;
+      }
       setModalOpen(false); setPlayerName(''); setSubmitState('idle');
-      loadRanking(difficulty); loadAlltime(difficulty);
+      loadRanking(); loadAlltime();
     } catch { setSubmitState('error'); }
-  }
-
-  function handleDifficultyChange(lv: Level) {
-    setDifficulty(lv); currentLevelRef.current = lv;
-    if (gameStatus === 'playing' || gameStatus === 'over') startGame(lv);
-  }
-
-  function handleRankTabChange(lv: Level) {
-    setRankLevel(lv); loadRanking(lv); loadAlltime(lv); setShowRules(false);
   }
 
   const statusText =
@@ -1459,25 +1731,25 @@ export default function BlockfallInsaneBoard() {
     gameStatus === 'paused' ? 'PAUSE' :
     gameStatus === 'over'   ? 'GAME OVER' : '';
 
-  const LEVELS: { value: Level; label: string }[] = [
-    { value: 'easy', label: '쉬움' },
-    { value: 'normal', label: '보통' },
-    { value: 'hard', label: '어려움' },
-  ];
+  // G: BOARD_TILT skewX inline style
+  const boardSkewStyle = evBoardTilt.current
+    ? { transform: `skewX(${tiltDir.current * 3}deg)` }
+    : undefined;
+
+  // I: 랭킹 행 클래스 판별
+  function getRankRowClass(r: RankEntry, idx: number): string {
+    const isMine = submittedIdRef.current !== null
+      ? r.id === submittedIdRef.current
+      : r.name === playerName && playerName !== '';
+    if (isMine) return styles.rankRowMine;
+    if (idx === 0) return styles.rankRow1st;
+    if (idx === 1) return styles.rankRow2nd;
+    if (idx === 2) return styles.rankRow3rd;
+    return '';
+  }
 
   return (
     <div className={styles.wrap}>
-      {/* 난이도 */}
-      <div className={styles.diffRow}>
-        {LEVELS.map(lv => (
-          <button key={lv.value}
-            className={`${styles.diffBtn} ${difficulty === lv.value ? styles.diffActive : ''}`}
-            onClick={() => handleDifficultyChange(lv.value)}>
-            {lv.label}
-          </button>
-        ))}
-      </div>
-
       {/* 상태 바 */}
       <div className={styles.infoBar}>
         <div className={styles.infoItem}><div className={styles.infoLabel}>점수</div><div className={styles.infoValue}>{score.toLocaleString()}</div></div>
@@ -1489,11 +1761,6 @@ export default function BlockfallInsaneBoard() {
       </div>
 
       {statusText && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
-
-      {/* 이벤트 배너 */}
-      {eventBanner && (
-        <div className={styles.eventBanner}>{eventBanner.emoji} {eventBanner.name}!</div>
-      )}
 
       {/* 이벤트 타이머 바 */}
       <div className={styles.eventTimerBar}>
@@ -1522,7 +1789,47 @@ export default function BlockfallInsaneBoard() {
             </div>
           </div>
         </div>
-        <canvas ref={boardRef} width={INIT_BOARD_W * CELL} height={INIT_BOARD_H * CELL} className={styles.board} />
+
+        {/* F: .boardWrapper 신규 래퍼 */}
+        <div className={styles.boardWrapper}>
+          <canvas
+            ref={boardRef}
+            width={INIT_BOARD_W * CELL}
+            height={INIT_BOARD_H * CELL}
+            className={styles.board}
+            style={boardSkewStyle}
+          />
+          {/* E: Flash Overlay */}
+          <div ref={flashOverlayRef} className={styles.flashOverlay} />
+          {/* F: 배너 오버레이 */}
+          {eventBanner && (() => {
+            const palette = BANNER_COLORS[eventBanner.type];
+            return (
+              <div className={styles.insaneBannerOverlay} aria-live="assertive">
+                <div
+                  ref={bannerBoxRef}
+                  className={`${styles.insaneBannerBox}${bannerExiting ? ` ${styles.insaneBannerExiting}` : ''}`}
+                  data-name={eventBanner.name}
+                  style={{
+                    borderColor: palette.border,
+                    boxShadow: palette.shadow,
+                  }}
+                >
+                  <span className={styles.insaneBannerEmoji}>{eventBanner.emoji}</span>
+                  <div
+                    className={styles.insaneBannerName}
+                    style={{ color: palette.text, textShadow: `0 0 16px ${palette.border}` }}
+                  >
+                    {eventBanner.name}
+                  </div>
+                  {eventBanner.sub && (
+                    <div className={styles.insaneBannerSub}>{eventBanner.sub}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       {/* 버튼 */}
@@ -1581,9 +1888,11 @@ export default function BlockfallInsaneBoard() {
         </div>
       </div>
 
-      {/* 랭킹 */}
+      {/* I: 랭킹 — INSANE 전용 단일 탭 */}
       <div className={styles.rankSection}>
-        <h3 className={styles.rankTitle}>주간 RANK — INSANE</h3>
+        <h3 className={styles.insaneRankTitle}>
+          <span className={styles.insaneWord}>INSANE</span> RANK
+        </h3>
         {!showRules && alltimeBest && (
           <div className={styles.alltimeBanner}>
             <span className={styles.atLabel}>👑 역대 1위</span>
@@ -1592,14 +1901,16 @@ export default function BlockfallInsaneBoard() {
             </span>
           </div>
         )}
+        {/* A: 단일 룰 탭만 */}
         <div className={styles.rankTabs}>
-          {LEVELS.map(lv => (
-            <button key={lv.value}
-              className={`${styles.rankTab} ${rankLevel === lv.value && !showRules ? styles.rankTabActive : ''}`}
-              onClick={() => handleRankTabChange(lv.value)}>{lv.label}</button>
-          ))}
-          <button className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
-            onClick={() => setShowRules(true)}>룰</button>
+          <button
+            className={`${styles.rankTab} ${!showRules ? styles.rankTabActive : ''}`}
+            onClick={() => setShowRules(false)}
+          >주간 랭킹</button>
+          <button
+            className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
+            onClick={() => setShowRules(true)}
+          >룰</button>
         </div>
         {showRules ? (
           <div className={styles.rulesPanel}>
@@ -1634,7 +1945,11 @@ export default function BlockfallInsaneBoard() {
               {rankings.length === 0
                 ? <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
                 : rankings.map((r, i) => (
-                  <tr key={r.id}>
+                  <tr
+                    key={r.id}
+                    className={getRankRowClass(r, i)}
+                    style={{ animation: `${styles.rankRowSlideIn ?? 'rankRowSlideIn'} 0.3s ease-out ${i * 40}ms both` }}
+                  >
                     <td>{i + 1}</td><td>{r.name}</td>
                     <td>{(r.score ?? 0).toLocaleString()}점</td>
                     <td>Lv.{r.gameLevel ?? 1}</td>

@@ -1,7 +1,16 @@
-/* ===== 블록폴 인세인 모드 스타일 =====
-   기존 BlockfallBoard.module.css를 베이스로 인세인 테마 적용
-   주요 변경: accent #8e44ad → #ff2d55, 배경 어두운 계열
+/* ===== 블록폴 인세인 모드 스타일 — 전면 개편 2026-04-22 =====
+   accent: #ff2d55 / #ff9f0a / #ffd60a / #67e8f9
+   배경: 짙은 남색 계열
 */
+
+/* ===== CSS 변수 ===== */
+:root {
+  --insane-accent-1:    #ff2d55;
+  --insane-accent-2:    #ff9f0a;
+  --insane-accent-gold: #ffd60a;
+  --insane-accent-cyan: #67e8f9;
+  --insane-bg-deep:     #0d0d1a;
+}
 
 .wrap {
   max-width: 600px;
@@ -10,23 +19,6 @@
   font-family: 'Segoe UI', sans-serif;
   color: #e0e0e0;
 }
-
-/* 난이도 */
-.diffRow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-
-.diffBtn {
-  padding: 7px 16px;
-  border: 2px solid #ff2d55;
-  border-radius: 5px;
-  background: transparent;
-  color: #ff2d55;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.15s;
-}
-.diffBtn:hover { background: #ff2d55; color: #fff; }
-.diffActive    { background: #ff2d55; color: #fff; }
 
 /* 정보 바 */
 .infoBar {
@@ -59,24 +51,134 @@
 }
 .statusOver { color: #ff2d55; }
 
-/* 이벤트 배너 */
-.eventBanner {
-  text-align: center;
-  font-size: 1rem;
-  font-weight: bold;
-  color: #ff2d55;
-  background: rgba(255, 45, 85, 0.12);
-  border: 1px solid rgba(255, 45, 85, 0.4);
-  border-radius: 6px;
-  padding: 6px 12px;
-  margin-bottom: 8px;
-  letter-spacing: 0.04em;
-  animation: eventPulse 0.5s ease-out;
+/* ===== 이벤트 배너 오버레이 구조 ===== */
+
+/* boardWrapper: canvas + overlay 포지셔닝 기준점 */
+.boardWrapper {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
-@keyframes eventPulse {
-  0%   { transform: scale(1.04); opacity: 0.7; }
-  100% { transform: scale(1); opacity: 1; }
+/* Flash 오버레이 */
+.flashOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 2px;
+}
+
+/* 배너 컨테이너 */
+.insaneBannerOverlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 배너 내부 박스 */
+.insaneBannerBox {
+  padding: 10px 24px 12px;
+  border-radius: 6px;
+  border: 2px solid; /* 카테고리별 JS inline style */
+  background: rgba(0, 0, 0, 0.72);
+  text-align: center;
+  min-width: 60%;
+  max-width: 92%;
+  animation: insaneBannerIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  position: relative;
+  overflow: hidden;
+}
+
+@supports (backdrop-filter: blur(6px)) {
+  .insaneBannerBox {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+}
+
+/* backdrop-filter 미지원 폴백 */
+@supports not (backdrop-filter: blur(6px)) {
+  .insaneBannerBox {
+    background: rgba(0, 0, 0, 0.88);
+  }
+}
+
+/* 글리치 ::after */
+.insaneBannerBox::after {
+  content: attr(data-name);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+  color: #0af;
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  animation: insaneBannerGlitch 0.3s ease-out forwards;
+  pointer-events: none;
+}
+
+.insaneBannerEmoji {
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  display: block;
+  margin-bottom: 2px;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.insaneBannerName {
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: 'Segoe UI', 'Impact', sans-serif;
+  /* color, text-shadow: JS inline style */
+}
+
+.insaneBannerSub {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.08em;
+  margin-top: 3px;
+}
+
+/* 퇴장 애니메이션 트리거 */
+.insaneBannerExiting {
+  animation: insaneBannerOut 0.4s ease-in forwards !important;
+}
+
+/* ===== 배너 키프레임 ===== */
+
+@keyframes insaneBannerIn {
+  0%   { transform: scale(0.6) skewX(-8deg); opacity: 0; letter-spacing: 0.2em; }
+  40%  { transform: scale(1.08) skewX(2deg); opacity: 1; letter-spacing: 0.06em; }
+  55%  { transform: scale(0.97) skewX(-1deg); }
+  70%  { transform: scale(1.03) skewX(0deg); }
+  100% { transform: scale(1) skewX(0deg); opacity: 1; letter-spacing: 0.04em; }
+}
+
+@keyframes insaneBannerGlitch {
+  0%   { clip-path: inset(0 0 100% 0); transform: translateX(-4px); opacity: 1; }
+  10%  { clip-path: inset(20% 0 60% 0); transform: translateX(4px); }
+  25%  { clip-path: inset(55% 0 30% 0); transform: translateX(-3px); }
+  40%  { clip-path: inset(10% 0 80% 0); transform: translateX(2px); }
+  60%  { clip-path: inset(0 0 0 0); transform: translateX(0); }
+  100% { clip-path: inset(0 0 0 0); transform: translateX(0); opacity: 0; }
+}
+
+@keyframes insaneBannerOut {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.88); }
 }
 
 /* 이벤트 타이머 바 */
@@ -226,6 +328,11 @@
   .board { width: 220px; height: 420px; }
   .hints { font-size: 0.68em; line-height: 1.8; }
   .infoItem { min-width: 58px; padding: 5px 8px; }
+
+  /* 배너 오버라이드 */
+  .insaneBannerBox {
+    min-width: 80%;
+  }
 }
 
 /* ===== 360px 미만 ===== */
@@ -234,26 +341,79 @@
   .miniCanvas { width: 70px; height: 70px; }
   .board { width: 198px; height: 378px; }
   .gameArea { gap: 4px; }
+
+  /* 배너 오버라이드 */
+  .insaneBannerBox { padding: 8px 12px; }
+  .insaneBannerName { font-size: 1.4rem; }
+  .insaneBannerEmoji { display: none; }
 }
 
-/* 랭킹 */
-.rankSection { margin-top: 28px; width: 100%; max-width: min(560px, 100%); overflow-x: auto; }
-.rankTitle   { text-align: center; margin: 0 0 10px; color: #e0e0e0; font-size: 1rem; font-weight: bold; }
+/* ===== 랭킹 ===== */
+.rankSection {
+  margin-top: 28px;
+  width: 100%;
+  max-width: min(560px, 100%);
+  overflow-x: auto;
+  background: var(--insane-bg-deep);
+  border-radius: 10px;
+  padding: 16px 12px 12px;
+}
 
+/* 인세인 랭킹 타이틀 */
+@keyframes insaneRankGlitch {
+  0% {
+    text-shadow: 2px 0 rgba(255, 45, 85, 0.8), -2px 0 rgba(103, 232, 249, 0.8);
+    clip-path: inset(0 0 0 0);
+    transform: translateX(0);
+  }
+  15% {
+    text-shadow: -2px 0 rgba(255, 45, 85, 0.8), 2px 0 rgba(103, 232, 249, 0.8);
+    clip-path: inset(10% 0 70% 0);
+    transform: translateX(2px);
+  }
+  30% {
+    clip-path: inset(0 0 0 0);
+    transform: translateX(0);
+  }
+  50% { text-shadow: 2px 0 rgba(255, 159, 10, 0.6), -2px 0 rgba(255, 45, 85, 0.6); }
+  75% { text-shadow: 0 0 8px rgba(255, 45, 85, 0.6); }
+  100% { text-shadow: 0 0 4px rgba(255, 45, 85, 0.4); }
+}
+
+.insaneRankTitle {
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-align: center;
+  color: #ff2d55;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  animation: insaneRankGlitch 4s infinite;
+  margin: 0 0 10px;
+  position: relative;
+}
+
+.insaneWord {
+  color: #ff9f0a;
+  text-shadow: 0 0 12px rgba(255, 159, 10, 0.5);
+}
+
+/* 역대 1위 배너 */
 .alltimeBanner {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 45, 85, 0.08);
-  border: 1px solid rgba(255, 45, 85, 0.3);
+  background: rgba(255, 214, 10, 0.06);
+  border: 1px solid rgba(255, 214, 10, 0.5);
+  box-shadow: 0 0 12px rgba(255, 214, 10, 0.12);
   border-radius: 8px;
   padding: 7px 12px;
   margin-bottom: 8px;
   font-size: 0.85rem;
 }
-.atLabel   { font-weight: bold; color: #ff2d55; white-space: nowrap; }
+.atLabel   { font-weight: bold; color: #ffd60a; white-space: nowrap; }
 .atContent { color: #bbb; }
 
+/* 랭킹 탭 (단일 룰 탭용) */
 .rankTabs { display: flex; gap: 4px; margin-bottom: 6px; }
 
 .rankTab {
@@ -279,7 +439,7 @@
   white-space: nowrap;
 }
 .table th {
-  background: #ff2d55;
+  background: linear-gradient(90deg, #ff2d55, #ff9f0a);
   color: #fff;
   padding: 6px 10px;
 }
@@ -290,7 +450,40 @@
   color: #ccc;
 }
 .table tr:nth-child(even) td { background: #111; }
-.table tr:first-child td     { color: #ff8c00; font-weight: bold; }
+
+/* 순위별 행 강조 */
+.rankRow1st td {
+  background: rgba(255, 214, 10, 0.08);
+  color: #ffd60a;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 214, 10, 0.5);
+}
+.rankRow2nd td {
+  background: rgba(200, 200, 200, 0.05);
+  color: #c0c0c0;
+  font-weight: bold;
+}
+.rankRow3rd td {
+  background: rgba(205, 127, 50, 0.06);
+  color: #cd7f32;
+  font-weight: bold;
+}
+.rankRowMine td {
+  background: rgba(255, 45, 85, 0.10) !important;
+  border-left: 3px solid #ff2d55;
+}
+.rankRowMine td:first-child::after {
+  content: ' (나)';
+  font-size: 0.75em;
+  color: #ff2d55;
+  opacity: 0.8;
+}
+
+/* 랭킹 행 슬라이드인 */
+@keyframes rankRowSlideIn {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
 
 .placeholder { color: #666; font-style: italic; text-align: center; }
 
