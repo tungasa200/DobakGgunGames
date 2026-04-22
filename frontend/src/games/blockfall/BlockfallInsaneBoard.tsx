@@ -1394,27 +1394,25 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const ny = len > 0.0001 ? dy / len : 0;
 
     // 아몬드형 흰자 (수평으로 길쭉)
-    const eyeRadiusX = 0.3;
-    const eyeRadiusY = 0.17;
-    const irisRadius = 0.11;   // 빨간 홍채
-    const pupilRadius = 0.045; // 검은 동공
-    const gazeOffsetX = 0.13;
-    const gazeOffsetY = 0.06;
-
-    // 흰자 (invert 상태에서 검정으로 그리면 화면상 흰색으로 보임)
-    context.fillStyle = '#000000';
-    context.beginPath();
-    context.ellipse(cx, cy, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
-    context.fill();
+    const eyeRadiusX = 0.26;
+    const eyeRadiusY = 0.14;
+    const irisRadius = 0.1;    // 빨간 홍채
+    const pupilRadius = 0.04;  // 검은 동공
+    const gazeOffsetX = 0.11;
+    const gazeOffsetY = 0.045;
 
     // 깜빡임 진행도 (0=완전 열림, 1=완전 닫힘)
     const blink = blinkRef.current.phase;
-    if (blink >= 0.95) {
-      // 완전 감김: 가로 선만
-      context.fillStyle = '#000000';
-      context.fillRect(cx - eyeRadiusX, cy - 0.02, eyeRadiusX * 2, 0.04);
-      return;
-    }
+    const yScale = Math.max(1 - blink, 0.1); // 완전 감김 시 얇은 가로선
+
+    // 흰자: yScale에 따라 위아래로 납작해지며 감김
+    context.fillStyle = '#000000';
+    context.beginPath();
+    context.ellipse(cx, cy, eyeRadiusX, eyeRadiusY * yScale, 0, 0, Math.PI * 2);
+    context.fill();
+
+    // 반 이상 감겼으면 홍채/동공 숨김 (모양 깨짐 방지)
+    if (blink > 0.35) return;
 
     // 홍채 (청록으로 그리면 invert 후 빨강으로 빛남)
     const irisX = cx + nx * gazeOffsetX;
@@ -1429,14 +1427,6 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     context.beginPath();
     context.arc(irisX, irisY, pupilRadius, 0, Math.PI * 2);
     context.fill();
-
-    // 깜빡임 중 부분 닫힘: 위아래에서 검은 띠가 좁혀들어옴
-    if (blink > 0) {
-      const lidH = eyeRadiusY * blink;
-      context.fillStyle = '#000000';
-      context.fillRect(cx - eyeRadiusX, cy - eyeRadiusY, eyeRadiusX * 2, lidH);
-      context.fillRect(cx - eyeRadiusX, cy + eyeRadiusY - lidH, eyeRadiusX * 2, lidH);
-    }
   }
 
   // ===== 게임 루프 =====
