@@ -21,6 +21,8 @@ import styles from './BlockfallInsaneBoard.module.css';
 
 const BGM_DEFAULT_SRC = '/bgm/blockfall/blockfall_default.mp3';
 const BGM_INSANE_SRC = '/bgm/blockfall/blockfall_insane.mp3';
+const BGM_INSANE_PHASE2_SRC = '/bgm/blockfall/blockfall_insane_phase2.mp3';
+const PHASE2_LEVEL_THRESHOLD = 9;
 
 // ===== 타입 =====
 type Matrix = number[][];
@@ -246,13 +248,16 @@ interface InsaneBoardProps {
 export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps) {
   const { user } = useAuth();
 
-  // ===== BGM (normal 단계 + insane 단계) =====
+  // ===== BGM (normal / insane / insane-phase2 3단계) =====
   const defaultBgm = useBgm(BGM_DEFAULT_SRC, { volume: 0.4 });
   const insaneBgm = useBgm(BGM_INSANE_SRC, { volume: 0.4 });
+  const phase2Bgm = useBgm(BGM_INSANE_PHASE2_SRC, { volume: 0.4 });
+  const activeBgmRef = useRef<'default' | 'insane' | 'phase2'>('default');
   const toggleBgmMute = useCallback(() => {
     defaultBgm.toggleMute();
     insaneBgm.toggleMute();
-  }, [defaultBgm, insaneBgm]);
+    phase2Bgm.toggleMute();
+  }, [defaultBgm, insaneBgm, phase2Bgm]);
 
   // ===== 캔버스 refs =====
   const boardRef        = useRef<HTMLCanvasElement>(null);
@@ -1116,6 +1121,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     clearActiveEvent();
     defaultBgm.stop();
     insaneBgm.stop();
+    phase2Bgm.stop();
+    activeBgmRef.current = 'default';
     setGameStatus('over');
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
@@ -1612,7 +1619,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     lastTime.current = 0;
     animId.current = requestAnimationFrame(gameLoop);
     insaneBgm.stop();
+    phase2Bgm.stop();
     defaultBgm.play();
+    activeBgmRef.current = 'default';
     submittedIdRef.current = null;
 
     (async () => {
@@ -1637,30 +1646,46 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // ===== 일시정지 =====
   const togglePause = useCallback(() => {
     setGameStatus(prev => {
+      const current = activeBgmRef.current === 'phase2' ? phase2Bgm
+                    : activeBgmRef.current === 'insane' ? insaneBgm
+                    : defaultBgm;
       if (prev === 'playing') {
         if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
         draw();
-        if (themePhaseRef.current === 'insane') insaneBgm.pause();
-        else defaultBgm.pause();
+        current.pause();
         return 'paused';
       } else if (prev === 'paused') {
         lastTime.current = 0;
         animId.current = requestAnimationFrame(gameLoop);
-        if (themePhaseRef.current === 'insane') insaneBgm.resume();
-        else defaultBgm.resume();
+        current.resume();
         return 'playing';
       }
       return prev;
     });
-  }, [draw, gameLoop, defaultBgm, insaneBgm]);
+  }, [draw, gameLoop, defaultBgm, insaneBgm, phase2Bgm]);
 
   // ===== 테마 전환 시 BGM 교체 (일반 → 인세인) =====
   useEffect(() => {
     if (themePhase !== 'insane') return;
+    // 이미 phase2 재생 중이면 유지
+    if (activeBgmRef.current === 'phase2') return;
     defaultBgm.stop();
     insaneBgm.play();
+    activeBgmRef.current = 'insane';
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [themePhase]);
+
+  // ===== 레벨 9 이상 & 인세인 페이즈 → phase2 BGM 교체 =====
+  useEffect(() => {
+    if (gameLevel < PHASE2_LEVEL_THRESHOLD) return;
+    if (themePhaseRef.current !== 'insane') return;
+    if (activeBgmRef.current === 'phase2') return;
+    defaultBgm.stop();
+    insaneBgm.stop();
+    phase2Bgm.play();
+    activeBgmRef.current = 'phase2';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameLevel]);
 
   // ===== 키보드 =====
   useEffect(() => {
