@@ -1,8 +1,8 @@
 # developer-frontend — Blockfall Insane Overhaul 진행 로그
 
-최종 업데이트: 2026-04-22
+최종 업데이트: 2026-04-22 (BUG-01/02 수정)
 브랜치: WIP
-커밋: 374b0ad
+커밋: 374b0ad → BUG-01/02 fix 커밋 예정
 
 ---
 
@@ -75,6 +75,7 @@
 - [x] settled sand 중 tiltDir 방향 빈 공간 있으면 moving 전환 (매 틱 재검사)
 - [x] `clearActiveEvent()`에서 `evBoardTilt.current = false`
 - [x] board에 `style={{ transform: skewX(tiltDir * 3deg) }}` JSX inline style
+- [x] **BUG-01 fix**: `boardSkewDeg` useState 추가 → BOARD_TILT 발동 시 `setBoardSkewDeg(dir * 3)`, 종료/리셋 시 `setBoardSkewDeg(0)`. JSX boardSkewStyle을 state 기반으로 교체하여 즉각 리렌더 보장 (ref 기반 지연 최대 180ms 제거).
 
 ### H. BOUNCE_WALLS 재구현
 - [x] 발동 시 모든 moving sand에 초기 vx ±1.5 부여
@@ -106,12 +107,13 @@
 ## 빌드/린트 상태
 - `tsc -b`: 통과 (에러 0)
 - `eslint BlockfallInsaneBoard.tsx`: 통과 (에러 0, 경고 0)
+- BUG-01/02 수정 후 재검증: `tsc -b --noEmit` 통과, `eslint` 통과
 
 ---
 
 ## 미완료 항목 및 사유
 
-없음 (체크리스트 전항목 완료)
+없음 (체크리스트 전항목 완료, BUG-01/02 수정 완료)
 
 ---
 
@@ -128,6 +130,12 @@
 ## 이월 사항
 
 없음.
+
+---
+
+## 현재 상태
+
+qa-tester 조건부 통과, BUG-01/02 수정 완료.
 
 ---
 

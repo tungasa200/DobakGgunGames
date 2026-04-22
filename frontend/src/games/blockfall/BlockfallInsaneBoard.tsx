@@ -322,6 +322,9 @@ export default function BlockfallInsaneBoard() {
   const [bannerExiting, setBannerExiting] = useState(false);
   const bannerExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // G: BOARD_TILT skewX — ref 변경은 리렌더를 유발하지 않으므로 별도 state 관리
+  const [boardSkewDeg, setBoardSkewDeg] = useState(0);
+
   // 랭킹
   const [rankings, setRankings]       = useState<RankEntry[]>([]);
   const [rankLoading, setRankLoading] = useState(false);
@@ -760,6 +763,7 @@ export default function BlockfallInsaneBoard() {
     evControlFreeze.current = false;
     // G: BOARD_TILT ref 초기화
     evBoardTilt.current = false;
+    setBoardSkewDeg(0);
     if (id === 'SPIN_BLOCK') evSpinBlock.current = false;
 
     // 필터 복원
@@ -951,6 +955,7 @@ export default function BlockfallInsaneBoard() {
         const dir = Math.random() < 0.5 ? 1 : -1;
         tiltDir.current = dir;
         evBoardTilt.current = true;
+        setBoardSkewDeg(dir * 3);
         setBoardFilter('hue-rotate(45deg) contrast(1.2)', 6000);
         // 기존 settled → moving (초기 킥)
         for (const p of particles.current) {
@@ -1556,6 +1561,7 @@ export default function BlockfallInsaneBoard() {
     evControlFreeze.current = false;
     evBoardTilt.current = false;
     tiltDir.current = 0;
+    setBoardSkewDeg(0);
     eventCooldown.current = getEventInterval(1);
 
     const sp = DROP_SPEEDS[level];
@@ -1686,6 +1692,8 @@ export default function BlockfallInsaneBoard() {
     return () => {
       if (animId.current) cancelAnimationFrame(animId.current);
       flashTimerIds.current.forEach(id => clearTimeout(id));
+      // BUG-02: 배너 퇴장 타이머 누수 방지
+      if (bannerExitTimerRef.current) clearTimeout(bannerExitTimerRef.current);
     };
   }, []);
 
@@ -1731,9 +1739,9 @@ export default function BlockfallInsaneBoard() {
     gameStatus === 'paused' ? 'PAUSE' :
     gameStatus === 'over'   ? 'GAME OVER' : '';
 
-  // G: BOARD_TILT skewX inline style
-  const boardSkewStyle = evBoardTilt.current
-    ? { transform: `skewX(${tiltDir.current * 3}deg)` }
+  // G: BOARD_TILT skewX inline style — state 기반으로 즉각 리렌더 보장 (BUG-01 fix)
+  const boardSkewStyle = boardSkewDeg !== 0
+    ? { transform: `skewX(${boardSkewDeg}deg)` }
     : undefined;
 
   // I: 랭킹 행 클래스 판별

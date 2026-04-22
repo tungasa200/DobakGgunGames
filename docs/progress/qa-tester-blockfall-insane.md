@@ -17,26 +17,109 @@
 
 > 주: 저장된 테스트 플랜 파일에는 team-lead가 저장 과정에서 planner PRD 확정본 수치(SAND_TICK_INTERVAL 45, SAND_BATCH_SIZE 35, bounces 5, damping 0.60, alpha 0.75/0.90, LIQUID_FLOOD boardW*6 등)를 섹션 3/4/부록 B에 추가 반영함. qa-tester 원본 초안은 planner 확정본 수신 전 작성되었음.
 
-## 이월 사항 (미완료 / 확정 대기)
+## 2026-04-22 — 정적 코드 검증 세션 (구현 완료 후)
 
-| 우선순위 | 항목 | 사유 |
+### 판정: CONDITIONAL_PASS
+
+### 검증 방법
+- BlockfallInsaneBoard.tsx (1991줄) 전체 코드 정독
+- BlockfallInsaneBoard.module.css (636줄) 전체 코드 정독
+- tsc -b --noEmit: 에러 0 (통과)
+- eslint src/games/blockfall/BlockfallInsaneBoard.tsx: 에러 0 (통과)
+- 각 Critical/Blocker/수치 항목 grep으로 직접 확인
+
+### 주요 발견 이슈
+
+#### [BUG-01] Medium — BOARD_TILT skewX 즉시 반영 보장 안 됨
+- 위치: BlockfallInsaneBoard.tsx:1735-1737, canvas style 적용부 :1800
+- boardSkewStyle이 evBoardTilt.current (ref)를 읽지만, ref 변경은 리렌더를 유발하지 않음
+- BOARD_TILT 발동 직후 skewX가 즉시 적용되지 않고 updateDisplay()가 호출되는 시점(낙하 간격 최소 32ms~180ms)까지 지연될 수 있음
+- 실제 게임에서는 대부분 빠르게 리렌더가 발생하지만 즉시 보장 없음
+
+#### [BUG-02] Low — 언마운트 시 bannerExitTimerRef 미정리
+- 위치: BlockfallInsaneBoard.tsx:1684-1690 (언마운트 useEffect)
+- bannerExitTimerRef.current (t2)는 flashTimerIds에도 push되어 있어 실질적 메모리 누수는 없음
+- 그러나 언마운트 cleanup에서 bannerExitTimerRef.current에 대한 명시적 clearTimeout이 없음
+- 영향: 낮음 (중복 정리 경로 존재)
+
+#### [INFO-01] Planner 확인 필요 — PRD vs 디자인 명세 수치 불일치
+- SHATTER_GRAVITY: PRD 섹션 5-5 "0.06→0.04" vs 디자인 명세 섹션 8-5 "0.06→0.08"
+  → 구현은 0.08. 테스트 플랜 부록 B는 0.08 기준으로 동기화됨
+- SAND_BATCH_SIZE: PRD 섹션 5-5 "25 유지" vs 디자인 명세 섹션 8-5 "25→35"
+  → 구현은 35. 테스트 플랜 부록 B는 35 기준
+- drawCell motion blur: PRD 섹션 5-5 "3장 연속 (×1.5, ×2.5, ×3.5)" vs 디자인 명세 섹션 1-1 "단일 잔상"
+  → 구현은 단일 잔상 방식(디자인 명세 기준)
+- 이 항목들은 PRD와 디자이너 명세 간 충돌로 qa-tester가 bug로 판정하지 않음. planner에게 확인 요청.
+
+#### [INFO-02] CSS prefers-reduced-motion 미디어 쿼리 미구현
+- 위치: BlockfallInsaneBoard.module.css 전체 (해당 쿼리 없음)
+- 디자인 명세 섹션 9-1 "prefers-reduced-motion 적용 시 CSS 애니메이션(insaneBannerIn 등) 비활성" 미구현
+- JS 코드에는 prefersReducedMotion.current 체크로 shake/filter 비활성 처리됨 (통과)
+- CSS 키프레임 애니메이션(insaneBannerIn, insaneBannerGlitch, insaneRankGlitch)은 reduced-motion 시에도 재생됨
+- WCAG 2.3.1 Flash 기준(초당 3회 미만)은 통과하나, 배너 애니메이션 민감 사용자 배려 부족
+- 우선순위: Low (JS 레벨 대응으로 core 기능은 처리됨)
+
+### 통과 항목 요약
+- 오디오 코드 신규 추가: 없음 (PASS)
+- Excel 모드 코드: 없음 (PASS)
+- AdminRoute 래퍼: App.tsx에서 유지됨, /blockfall-insane이 /:game보다 먼저 선언됨 (PASS)
+- BlockfallBoard.tsx 미수정: git diff 기준 변경 없음 (PASS)
+- difficulty state / LEVELS / handleDifficultyChange 코드: 없음 (PASS)
+- hard 고정: startGame()에서 level='hard' 고정, rankingsApi 호출 시 'hard' 전달 (PASS)
+- shakeRef + triggerShake: 구현됨, draw() 내 ctx.translate 적용 (PASS)
+- evBoardTilt ref + tiltDir ref: 구현됨 (PASS)
+- simulateSand 내 매 틱 vx 증분: `p.vx = (p.vx + tiltDir.current * 0.4) * 0.8` (PASS)
+- settled sand tiltDir 재검사: 구현됨 (PASS)
+- clearActiveEvent() 내 evBoardTilt.current = false: 구현됨 (PASS)
+- insaneBannerOverlay/insaneBannerBox JSX 구조: 구현됨 (PASS)
+- 기존 eventBanner 제거: 코드 내 .eventBanner 미존재 (PASS)
+- flashOverlayRef + scheduleFlash: 구현됨 (PASS)
+- BOUNCE_WALLS 발동 시 moving sand에 초기 vx ±1.5: 구현됨 (PASS)
+- LIQUID_FLOOD 수량 boardW*6: 구현됨 (:866) (PASS)
+- EXPLODE 반경 3 (dx*dx+dy*dy <= 9): 구현됨 (:890) (PASS)
+- SPIN_BLOCK emoji 🎡: 구현됨 (VORTEX는 🌀) (PASS)
+- SAND_TICK_INTERVAL === 45: PASS
+- SAND_BATCH_SIZE === 35: PASS
+- SHATTER_GRAVITY === 0.08: PASS (PRD 수치와 다르나 디자이너 명세/테스트 플랜 기준 PASS)
+- SHATTER_DAMPING === 0.60: PASS
+- SHATTER_MIN_SPEED === 0.03: PASS
+- moving sand globalAlpha 0.75: PASS (:1187)
+- settled sand globalAlpha 0.90: PASS (:1176)
+- shatter 잔상 거리 vx*2.5: PASS (:1196)
+- shatter 잔상 alpha 0.35: PASS (:1196)
+- DARK_SPOTLIGHT 반경 3 (createRadialGradient 0.5,py,3): PASS (:1215)
+- DARK_SPOTLIGHT 어둠 alpha 0.98: PASS (:1217)
+- VORTEX 구심력 0.8: PASS (:573)
+- VORTEX 감쇠 0.9: PASS (:573)
+- FLOOR_DROP 확장 행 6: PASS (:971)
+- FLOOR_DROP bounces 5: PASS (:993)
+- CSS 키프레임 5개 (insaneBannerIn, insaneBannerGlitch, insaneBannerOut, insaneRankGlitch, rankRowSlideIn): PASS
+- CSS 클래스 (boardWrapper, flashOverlay, insaneBannerOverlay, insaneBannerBox): PASS
+- CSS 클래스 (rankRow1st, rankRow2nd, rankRow3rd, rankRowMine): PASS
+- CSS 변수 --insane-bg-deep: #0d0d1a: PASS
+- @supports backdrop-filter 폴백: PASS (CSS:100-112)
+- tsc -b --noEmit: PASS (에러 0)
+- ESLint: PASS (에러 0)
+
+### 조건부 통과 조건
+1. [BUG-01] BOARD_TILT skewX 즉시 반영 — developer-frontend가 evBoardTilt를 state로 승격하거나 발동 시 forceUpdate 트리거 방식 개선. 또는 현재 동작 수준이 허용 가능하다면 planner 판단 요청.
+2. [INFO-01] SHATTER_GRAVITY / SAND_BATCH_SIZE / drawCell motion blur 스펙 불일치 — planner가 디자인 명세 기준으로 확정하면 현재 구현 PASS, PRD 원문 기준이면 수정 필요.
+3. [INFO-02] CSS prefers-reduced-motion — 접근성 요구사항 수준에 따라 developer-frontend 수정 또는 Low 수용.
+
+### 반려 여부
+반려: No
+
+Critical/High 버그 없음. BUG-01은 Medium, BUG-02는 Low. PRD 확정 불일치(INFO-01)는 스펙 충돌이므로 bug 처리 불가. 조건부 통과.
+
+## 이월 사항
+
+| 우선순위 | 항목 | 담당 |
 |---|---|---|
-| 필수 | 실제 테스트 케이스 실행 | developer-frontend 구현 완료 대기 중 |
-| 필수 | planner 이벤트 재정의 목록 기반 섹션 2 최종 재검토 | team-lead 저장본의 planner 보강 반영 검수 |
-| 필수 | Screen Shake 실제 구현 검증 | 현 코드 미구현, developer-frontend 구현 후 canvas translate 동작 확인 필요 |
-| 필수 | 경고 Flash 실제 구현 검증 | 현 코드 미구현, developer-frontend 구현 후 HIGH/LOW 등급 동작 확인 필요 |
-| 필수 | BOARD_TILT 지속 기울기 개선 동작 확인 | planner 재구현 스펙(지속 vx 증분 + settled 재검사) 실제 구현 검증 필요 |
-| 필수 | 난이도 선택 UI 제거 완료 확인 | 실제 구현 완료 후 `/blockfall-insane` 접속 확인 |
-| 권장 | 디버그 훅(`window.__fireInsaneEvent`) 노출 요청 | developer-frontend에 전달 필요 |
-
-## 다음 단계
-
-1. developer-frontend에 디버그 훅 노출 요청 메시지 전달
-2. developer-frontend 구현 완료 신호 수신 후 테스트 케이스 순차 실행
-   - 우선 실행: Lint/Build 게이트(섹션 10) → 어드민 접근 회귀(섹션 7) → 이벤트별 검증(섹션 2)
-3. 실제 구현물에 대해 광기 연출(Screen Shake / 색 왜곡 / 경고 Flash / 대형 배너) 동작 검증
-4. 이슈 발견 시 `docs/review/blockfall-insane-bugs.md` 작성 + 해당 developer 직접 메시지
-5. 회귀 이슈(BlockfallBoard 파손 등) 발견 시 즉시 PR 반려 + developer-frontend 차단 메시지
+| Medium | BUG-01 BOARD_TILT skewX 즉시 반영 개선 | developer-frontend 또는 planner 판단 |
+| Low | BUG-02 언마운트 bannerExitTimerRef 명시적 정리 | developer-frontend |
+| 확인 | INFO-01 PRD vs 디자인 명세 수치 불일치 (SHATTER_GRAVITY 등) | planner |
+| Low | INFO-02 CSS prefers-reduced-motion 미디어 쿼리 추가 | developer-frontend |
+| 필수(런타임) | 실제 브라우저 동작 검증 (camera shake 체감, 배너 글리치, BOARD_TILT skewX 지연 재현) | qa-tester (브라우저 접근 시) |
 
 ## 반려 기준
 
