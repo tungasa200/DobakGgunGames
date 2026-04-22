@@ -99,6 +99,12 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
     });
   }, [game, user, navigate]);
 
+  // blockfall-insane은 엑셀 모드 미지원 — 일반 모드로 강제 리다이렉트
+  if (game === 'blockfall-insane' && excel) {
+    navigate('/blockfall-insane', { replace: true });
+    return null;
+  }
+
   if (!name || !game) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>

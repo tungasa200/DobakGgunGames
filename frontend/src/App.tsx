@@ -78,6 +78,8 @@ export default function App() {
           path="/blockfall-insane"
           element={<AuthRoute><GamePage excel={false} gameKey="blockfall-insane" /></AuthRoute>}
         />
+        {/* 인세인 엑셀 모드 없음 — 접근 시 인세인 일반 모드로 리다이렉트 */}
+        <Route path="/blockfall-insane/excel" element={<Navigate to="/blockfall-insane" replace />} />
 
         {/* 게임 라우트 (가장 마지막 — 다른 경로와 충돌 방지) */}
         <Route path="/:game" element={<GamePage excel={false} />} />
