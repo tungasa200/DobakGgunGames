@@ -439,7 +439,7 @@
   white-space: nowrap;
 }
 .table th {
-  background: linear-gradient(90deg, #ff2d55, #ff9f0a);
+  background: #ff2d55;
   color: #fff;
   padding: 6px 10px;
 }
@@ -453,23 +453,22 @@
 
 /* 순위별 행 강조 */
 .rankRow1st td {
-  background: rgba(255, 214, 10, 0.08);
+  background: #1a1600;
   color: #ffd60a;
   font-weight: bold;
-  text-shadow: 0 0 8px rgba(255, 214, 10, 0.5);
 }
 .rankRow2nd td {
-  background: rgba(200, 200, 200, 0.05);
+  background: #141414;
   color: #c0c0c0;
   font-weight: bold;
 }
 .rankRow3rd td {
-  background: rgba(205, 127, 50, 0.06);
+  background: #110d08;
   color: #cd7f32;
   font-weight: bold;
 }
 .rankRowMine td {
-  background: rgba(255, 45, 85, 0.10) !important;
+  background: #1a0008 !important;
   border-left: 3px solid #ff2d55;
 }
 .rankRowMine td:first-child::after {

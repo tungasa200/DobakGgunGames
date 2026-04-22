@@ -47,6 +47,12 @@ public class RankingResponse {
             this.time = null;
             this.attempts = null;
             this.moves = null;
+        } else if (r instanceof BlockfallInsaneRanking bi) {
+            this.score = bi.getScore();
+            this.gameLevel = bi.getGameLevel();
+            this.time = null;
+            this.attempts = null;
+            this.moves = null;
         } else if (r instanceof AppleRanking ap) {
             this.score = ap.getScore();
             this.time = null;
