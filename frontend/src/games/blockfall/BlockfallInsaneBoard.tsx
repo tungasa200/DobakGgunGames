@@ -1415,10 +1415,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     // 반 이상 감겼으면 홍채/동공 숨김 (모양 깨짐 방지)
     if (blink > 0.35) return;
 
-    // 홍채 (청록으로 그리면 invert 후 빨강으로 빛남)
+    // 홍채 (밝은 청록으로 그리면 invert 후 검붉은색 #800000)
     const irisX = cx + nx * gazeOffsetX;
     const irisY = cy + ny * gazeOffsetY;
-    context.fillStyle = '#00ffff';
+    context.fillStyle = '#7fffff';
     context.beginPath();
     context.arc(irisX, irisY, irisRadius, 0, Math.PI * 2);
     context.fill();
