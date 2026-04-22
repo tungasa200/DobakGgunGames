@@ -514,7 +514,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   // ===== 게임 오버 =====
   function doGameOver() {
     if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
-    bgm.stop();
+    if (!excel) bgm.stop();
     setGameStatus('over');
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
@@ -699,7 +699,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
     setGameStatus('playing');
     lastTime.current = 0;
     animId.current = requestAnimationFrame(gameLoop);
-    bgm.play();
+    if (!excel) bgm.play();
     // 세션 생성 최대 3회 재시도
     (async () => {
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -726,17 +726,17 @@ export default function BlockfallBoard({ excel = false }: Props) {
       if (prev === 'playing') {
         if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
         draw();
-        bgm.pause();
+        if (!excel) bgm.pause();
         return 'paused';
       } else if (prev === 'paused') {
         lastTime.current = 0;
         animId.current = requestAnimationFrame(gameLoop);
-        bgm.resume();
+        if (!excel) bgm.resume();
         return 'playing';
       }
       return prev;
     });
-  }, [draw, gameLoop, bgm]);
+  }, [draw, gameLoop, bgm, excel]);
 
   // ===== 키보드 =====
   useEffect(() => {
@@ -907,16 +907,12 @@ export default function BlockfallBoard({ excel = false }: Props) {
             <span className={styles.xrbIcon}>{gameStatus === 'paused' ? '▶' : '⏸'}</span>
             <span>{gameStatus === 'paused' ? '계속' : '일시정지'}</span>
           </div>
-          <div className={styles.xrb} onClick={bgm.toggleMute}>
-            <span className={styles.xrbIcon}>{bgm.muted ? '🔇' : '🔊'}</span>
-            <span>{bgm.muted ? '음소거' : 'BGM'}</span>
-          </div>
         </div>
         <div className={styles.xrgLabel}>블록폴</div>
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [excel, difficulty, gameStatus, setRibbonGameGroup, bgm.muted]);
+  }, [excel, difficulty, gameStatus, setRibbonGameGroup]);
 
   // 엑셀모드 플러스 버튼 새 게임 콜백 등록
   const newGameFnRef = useRef<() => void>(() => {});
@@ -1048,14 +1044,16 @@ export default function BlockfallBoard({ excel = false }: Props) {
             >
               {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
             </button>
-            <button
-              className={styles.pauseBtn}
-              onClick={bgm.toggleMute}
-              aria-label={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
-              title={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
-            >
-              {bgm.muted ? '🔇 BGM' : '🔊 BGM'}
-            </button>
+            {!excel && (
+              <button
+                className={styles.pauseBtn}
+                onClick={bgm.toggleMute}
+                aria-label={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
+                title={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
+              >
+                {bgm.muted ? '🔇 BGM' : '🔊 BGM'}
+              </button>
+            )}
           </div>
 
           {/* 모바일 버튼 */}
