@@ -277,6 +277,7 @@ export default function BlockfallInsaneBoard() {
   const evSandBurst       = useRef(false);
   const evExplodePending  = useRef(false);
   const evControlFreeze   = useRef(false);
+  const floorDropCount    = useRef(0);  // FLOOR_DROP 발동 횟수 (3의 배수: 원복)
   const evSpinBlock     = useRef(false);
   const evSpinTimer     = useRef(0);
 
@@ -896,9 +897,21 @@ export default function BlockfallInsaneBoard() {
       }
 
       case 'FLOOR_DROP': {
-        const addRows = 6;  // 4→6
-        boardH.current += addRows;
-        for (let i = 0; i < addRows; i++) arena.current.push(new Array(boardW.current).fill(0));
+        floorDropCount.current += 1;
+        const isReset = floorDropCount.current % 3 === 0;
+        const addRows = 6;
+        const prevH = boardH.current;
+
+        if (isReset) {
+          // 3번째마다: 보드 높이 원복
+          boardH.current = INIT_BOARD_H;
+          // 늘어난 빈 행 제거 (아래부터)
+          arena.current.splice(INIT_BOARD_H);
+        } else {
+          // 1·2번째: 보드 아래에 빈 행 추가
+          boardH.current += addRows;
+          for (let i = 0; i < addRows; i++) arena.current.push(new Array(boardW.current).fill(0));
+        }
 
         const canvas = boardRef.current;
         if (canvas) {
@@ -907,25 +920,26 @@ export default function BlockfallInsaneBoard() {
           if (ctx) ctx.scale(CELL, CELL);
         }
 
-        triggerShake(8, 300);  // 바닥 확장 낮은 강도
+        triggerShake(isReset ? 18 : 8, isReset ? 600 : 300);
         setBoardFilter('hue-rotate(180deg) contrast(1.4) saturate(1.8)', 400);
 
-        for (let y = 0; y < boardH.current - addRows; y++) {
+        // 쌓인 블럭 전체 박살
+        const scanH = Math.min(prevH, boardH.current);
+        for (let y = 0; y < scanH; y++) {
           for (let x = 0; x < boardW.current; x++) {
-            if (arena.current[y][x] !== 0) {
+            if (arena.current[y]?.[x] !== 0 && arena.current[y]?.[x] != null) {
               particles.current.push({
                 type: 'shatter', x, y,
-                vx: Math.random() * 5 - 2.5,   // B: -1~1 → -2.5~2.5
-                vy: 0.5,                          // B: 0.1→0.5
+                vx: Math.random() * 5 - 2.5,
+                vy: 0.5,
                 colorIndex: arena.current[y][x],
-                bounces: 5,                       // B: 3→5
+                bounces: 5,
                 state: 'flying',
               });
               arena.current[y][x] = 0;
             }
           }
         }
-        // 충돌 순간 최대 shake (약간 지연)
         setTimeout(() => triggerShake(18, 800), 200);
         break;
       }
@@ -1490,6 +1504,7 @@ export default function BlockfallInsaneBoard() {
     evSandBurst.current = false;
     evExplodePending.current = false;
     evControlFreeze.current = false;
+    floorDropCount.current = 0;
     eventCooldown.current = getEventInterval(1);
 
     const sp = DROP_SPEEDS[level];
