@@ -420,6 +420,13 @@ export default function BlockfallInsaneBoard() {
     if (x < 0 || x >= boardW.current || y < 0 || y >= boardH.current) return false;
     if (arena.current[y]?.[x] !== 0) return false;
     if (hasSettledAt(x, y)) return false;
+    // 낙하 중인 피스 셀도 장애물로 처리 — 모래가 피스 위에 정착하면 의문의 게임오버 발생
+    const pm = player.current.matrix;
+    if (pm) {
+      const rx = x - player.current.pos.x;
+      const ry = y - player.current.pos.y;
+      if (ry >= 0 && ry < pm.length && rx >= 0 && rx < pm[ry].length && pm[ry][rx] !== 0) return false;
+    }
     return true;
   }
 
@@ -629,7 +636,12 @@ export default function BlockfallInsaneBoard() {
       const iy = Math.floor(ny);
       const ix = Math.round(nx);
       const hitFloor = ny >= boardH.current - 1;
-      const hitSolid = !hitFloor && (arena.current[iy]?.[ix] ?? 0) !== 0;
+      const pm = player.current.matrix;
+      const hitPiece = pm != null && (() => {
+        const rx = ix - player.current.pos.x, ry = iy - player.current.pos.y;
+        return ry >= 0 && ry < pm.length && rx >= 0 && rx < pm[ry].length && pm[ry][rx] !== 0;
+      })();
+      const hitSolid = !hitFloor && ((arena.current[iy]?.[ix] ?? 0) !== 0 || hitPiece);
 
       if (hitFloor || hitSolid) {
         if (p.bounces <= 0 || (Math.abs(p.vy) < SHATTER_MIN_SPEED && Math.abs(p.vx) < SHATTER_MIN_SPEED)) {
@@ -953,8 +965,21 @@ export default function BlockfallInsaneBoard() {
     });
   }
 
+  function clearParticlesOnPiece() {
+    const pm = player.current.matrix;
+    if (!pm) return;
+    const px = player.current.pos.x, py = player.current.pos.y;
+    particles.current = particles.current.filter(p => {
+      if (p.state !== 'settled') return true;
+      const rx = Math.round(p.x) - px, ry = Math.round(p.y) - py;
+      if (ry < 0 || ry >= pm.length || rx < 0 || rx >= pm[ry].length) return true;
+      return pm[ry][rx] === 0;
+    });
+  }
+
   function lockPieceImmediate() {
     if (!player.current.matrix) return;
+    clearParticlesOnPiece();
     if (collidePlayer()) { doGameOver(); return; }
     mergePieceIntoBoard();
     playerReset();
@@ -965,6 +990,7 @@ export default function BlockfallInsaneBoard() {
 
   function lockPiece() {
     if (!player.current.matrix) return;
+    clearParticlesOnPiece();
     if (collidePlayer()) { doGameOver(); return; }
 
     const tspin = detectTspin();
