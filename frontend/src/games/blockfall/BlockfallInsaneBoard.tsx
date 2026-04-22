@@ -1402,8 +1402,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const gazeOffsetX = 0.11;
     const gazeOffsetY = 0.045;
 
-    // 깜빡임 진행도 (0=완전 열림, 1=완전 닫힘)
-    const blink = blinkRef.current.phase;
+    // 깜빡임 진행도 (0=완전 열림, 1=완전 닫힘). 색맹 이벤트 중엔 강제 감김.
+    const blink = evColorGray.current ? 1 : blinkRef.current.phase;
     const yScale = Math.max(1 - blink, 0.1); // 완전 감김 시 얇은 가로선
 
     // 흰자: yScale에 따라 위아래로 납작해지며 감김
