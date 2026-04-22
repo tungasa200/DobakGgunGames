@@ -1702,14 +1702,14 @@ export default function BlockfallInsaneBoard() {
         </button>
       </div>
 
-      {/* 이벤트 수동 테스트 패널 */}
-      <button
+      {/* 이벤트 수동 테스트 패널 — 어드민 전용 */}
+      {user?.role === 'ADMIN' && <button
         className={`${styles.debugToggle} ${showDebug ? styles.debugToggleOpen : ''}`}
         onClick={() => setShowDebug(v => !v)}
       >
         🧪 이벤트 수동 테스트 {showDebug ? '▲' : '▼'}
-      </button>
-      {showDebug && (
+      </button>}
+      {user?.role === 'ADMIN' && showDebug && (
         <div className={styles.debugPanel}>
           <div className={styles.debugGrid}>
             {EVENT_POOL.map(def => (
