@@ -181,7 +181,7 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
 
         <div className={styles.center}>{gameName ? `도박꾼 ${gameName}` : ''}</div>
 
-        {gameName && (
+        {gameName && currentGame !== 'blockfall-insane' && (
           <Link
             className={styles.excelBtn}
             style={{ color: accentColor }}
