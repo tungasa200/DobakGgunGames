@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ExcelShell from '../components/excel/ExcelShell';
 import NormalHeader from '../components/normal/NormalHeader';
@@ -83,6 +83,12 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // blockfall-insane 헤더 강조색 — 첫 이벤트 전: 일반 블록폴 보라, 이후: 인세인 빨강
+  const [insaneAccentColor, setInsaneAccentColor] = useState('#8e44ad');
+  const handleInsaneThemeChange = useCallback((phase: 'normal' | 'insane') => {
+    setInsaneAccentColor(phase === 'insane' ? '#ff2d55' : '#8e44ad');
+  }, []);
+
   useEffect(() => {
     if (!name || !game) return;
     document.title = excel ? (FILE_TITLES[game] ?? game) : name;
@@ -121,7 +127,7 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
     game === 'solitaire'        ? <CardBoard           excel={excel} /> :
     game === 'blockfall'        ? <BlockfallBoard      excel={excel} /> :
     game === 'sudoku'           ? <SudokuBoard         excel={excel} /> :
-    game === 'blockfall-insane' ? <BlockfallInsaneBoard /> :
+    game === 'blockfall-insane' ? <BlockfallInsaneBoard onThemeChange={handleInsaneThemeChange} /> :
     null;
 
   if (excel) {
@@ -158,7 +164,7 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
           <NormalHeader
             currentGame={game}
             gameName={name}
-            accentColor={ACCENT_COLORS[game] ?? '#2c3e50'}
+            accentColor={game === 'blockfall-insane' ? insaneAccentColor : (ACCENT_COLORS[game] ?? '#2c3e50')}
           />
           {board}
         </div>

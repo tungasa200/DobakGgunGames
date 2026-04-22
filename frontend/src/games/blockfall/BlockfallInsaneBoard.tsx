@@ -98,6 +98,27 @@ const COLORS: (string | null)[] = [
 // 죽은 블럭 색상 인덱스 — 물리적으로 자리를 차지하지만 라인 클리어 불가
 const DEAD_COLOR = 16;
 
+// 첫 이벤트 발동 전 — 일반 블록폴 색상 팔레트
+const COLORS_PRE_EVENT: (string | null)[] = [
+  null,
+  '#ffaa0d', // 1: T
+  '#f4b0c6', // 2: O
+  '#ABEE62', // 3: L
+  '#0DC2FF', // 4: J
+  '#F7597C', // 5: I
+  '#FFE138', // 6: S
+  '#CA41D9', // 7: Z
+  '#67e8f9', // 8: WIDE-I
+  '#ff6b35', // 9: DOT
+  '#4ecdc4', // 10: DOMINO
+  '#a8ff78', // 11: MINI-L
+  '#ffd6e0', // 12: X
+  '#c3a6ff', // 13: BIG-O
+  '#ffe66d', // 14: THUMBS-UP
+  '#ff8b94', // 15: MIDDLE
+  '#eeeeee', // 16: DEAD
+];
+
 // A: hard 고정
 const DROP_SPEEDS: Record<string, number[]> = {
   easy:   [800, 690, 600, 520, 450, 390, 340, 300, 265, 235, 210],
@@ -213,8 +234,12 @@ function getEventInterval(level: number): number {
 
 type RankEntry = { id: number; name: string; score: number; gameLevel?: number; createdAt: string };
 
+interface InsaneBoardProps {
+  onThemeChange?: (phase: 'normal' | 'insane') => void;
+}
+
 // ===== 컴포넌트 =====
-export default function BlockfallInsaneBoard() {
+export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps) {
   const { user } = useAuth();
 
   // ===== 캔버스 refs =====
@@ -291,6 +316,11 @@ export default function BlockfallInsaneBoard() {
 
   // ===== C: Camera Shake ref =====
   const shakeRef = useRef({ amplitude: 0, duration: 0, total: 0, elapsed: 0 });
+
+  // ===== 테마 페이즈 (게임 전/첫 이벤트 전 = 'normal', 첫 이벤트 발동 후 = 'insane') =====
+  const firstEventFiredRef = useRef(false);
+  const themePhaseRef = useRef<'normal' | 'insane'>('normal');
+  const [themePhase, setThemePhase] = useState<'normal' | 'insane'>('normal');
 
   // ===== Lv9 색상반전 =====
   const invertActiveRef = useRef(false);
@@ -794,6 +824,15 @@ export default function BlockfallInsaneBoard() {
   }
 
   function fireEvent(def: EventDef) {
+    // 첫 이벤트 발동 시 인세인 테마로 전환
+    if (!firstEventFiredRef.current) {
+      firstEventFiredRef.current = true;
+      themePhaseRef.current = 'insane';
+      setThemePhase('insane');
+      onThemeChange?.('insane');
+      triggerShake(15, 600);
+    }
+
     if (activeEventId.current && def.duration > 0) clearActiveEvent();
 
     const id = def.id;
@@ -1096,9 +1135,10 @@ export default function BlockfallInsaneBoard() {
     }
 
     // === Layer 1: 배경 + 그리드 ===
-    ctx.fillStyle = '#0a0a0a';
+    const preEvent = themePhaseRef.current === 'normal';
+    ctx.fillStyle = preEvent ? '#111827' : '#0a0a0a';
     ctx.fillRect(0, 0, bw, bh);
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.strokeStyle = preEvent ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 0.02;
     for (let x = 1; x < bw; x++) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, bh); ctx.stroke();
@@ -1198,7 +1238,7 @@ export default function BlockfallInsaneBoard() {
     if (nc) {
       const nctx = nc.getContext('2d');
       if (nctx) {
-        nctx.fillStyle = '#0a0a0a';
+        nctx.fillStyle = themePhaseRef.current === 'normal' ? '#111827' : '#0a0a0a';
         nctx.fillRect(0, 0, 4, 4);
         if (nextPiece.current) {
           const m = nextPiece.current;
@@ -1214,7 +1254,7 @@ export default function BlockfallInsaneBoard() {
     if (hc) {
       const hctx = hc.getContext('2d');
       if (hctx) {
-        hctx.fillStyle = '#0a0a0a';
+        hctx.fillStyle = themePhaseRef.current === 'normal' ? '#111827' : '#0a0a0a';
         hctx.fillRect(0, 0, 4, 4);
         if (holdPiece.current) {
           hctx.globalAlpha = holdUsed.current ? 0.4 : 1.0;
@@ -1234,7 +1274,8 @@ export default function BlockfallInsaneBoard() {
     const saved = context.globalAlpha;
     context.globalAlpha *= alpha;
     const isDead = evColorGray.current || colorIndex === DEAD_COLOR;
-    context.fillStyle = isDead ? '#eeeeee' : (COLORS[colorIndex] ?? '#ccc');
+    const palette = themePhaseRef.current === 'normal' ? COLORS_PRE_EVENT : COLORS;
+    context.fillStyle = isDead ? '#eeeeee' : (palette[colorIndex] ?? '#ccc');
     context.fillRect(x, y, 1, 1);
     if (isDead) {
       // 죽은 블럭: 어두운 테두리만, 하이라이트 없음
@@ -1489,6 +1530,12 @@ export default function BlockfallInsaneBoard() {
     // Lv9 색상반전 초기화
     removeInvert();
 
+    // 테마 초기화
+    firstEventFiredRef.current = false;
+    themePhaseRef.current = 'normal';
+    setThemePhase('normal');
+    onThemeChange?.('normal');
+
     arena.current = createMatrix(INIT_BOARD_W, INIT_BOARD_H);
     particles.current = [];
     scoreRef.current = 0; gameLevelRef.current = 1;
@@ -1697,7 +1744,7 @@ export default function BlockfallInsaneBoard() {
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} data-theme={themePhase}>
       {/* 상태 바 */}
       <div className={styles.infoBar}>
         <div className={styles.infoItem}><div className={styles.infoLabel}>점수</div><div className={styles.infoValue}>{score.toLocaleString()}</div></div>

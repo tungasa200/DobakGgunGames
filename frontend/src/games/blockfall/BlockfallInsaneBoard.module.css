@@ -632,3 +632,54 @@
   font-size: 0.85em;
   text-align: center;
 }
+
+/* ===== 테마 전환 트랜지션 ===== */
+.infoItem, .sideBox, .mobileBtn {
+  transition: background-color 0.5s ease, border-color 0.5s ease;
+}
+.infoValue, .status, .hints, .sideTitle {
+  transition: color 0.5s ease;
+}
+.board, .miniCanvas {
+  transition: border-color 0.5s ease;
+}
+
+/* ===== 첫 이벤트 전 — 일반 블록폴 테마 ===== */
+.wrap[data-theme="normal"] {
+  color: #2c3e50;
+}
+.wrap[data-theme="normal"] .infoItem {
+  background: white;
+  border-color: #ddd;
+}
+.wrap[data-theme="normal"] .infoValue {
+  color: #2c3e50;
+}
+.wrap[data-theme="normal"] .status {
+  color: #2c3e50;
+}
+.wrap[data-theme="normal"] .sideBox {
+  background: white;
+  border-color: #ddd;
+}
+.wrap[data-theme="normal"] .sideTitle {
+  color: #888;
+}
+.wrap[data-theme="normal"] .hints {
+  color: #888;
+}
+.wrap[data-theme="normal"] .miniCanvas {
+  border-color: #ddd;
+  background-color: #111827;
+}
+.wrap[data-theme="normal"] .board {
+  border-color: #ddd;
+}
+.wrap[data-theme="normal"] .mobileBtn {
+  background: #f5f5f5;
+  color: #2c3e50;
+  border-color: #ddd;
+}
+.wrap[data-theme="normal"] .mobileBtn:active {
+  background: #e0e0e0;
+}
