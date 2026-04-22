@@ -355,6 +355,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     document.documentElement.style.filter = '';
   }
 
+  // ===== Lv11 코스믹 호러 (블록 검정 + 추적하는 눈) =====
+  const cosmicHorrorRef = useRef(false);
+  // blinkPhase: 0(완전 열림) ~ 1(완전 닫힘). nextStartTime은 ms timestamp(performance.now)
+  const blinkRef = useRef<{ phase: number; nextStartTime: number; closingStartTime: number }>({
+    phase: 0,
+    nextStartTime: 0,
+    closingStartTime: 0,
+  });
+
   // ===== D: Filter ref =====
   const filterRef = useRef({ fadeMs: 0, fadeTotalMs: 0 });
 
@@ -801,6 +810,17 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       if (gameLevelRef.current === 9) {
         triggerShake(15, 600);
         applyInvert();
+      }
+      // Lv11 진입: 코스믹 호러 발동 (모든 블록 검정 + 추적하는 눈)
+      if (gameLevelRef.current === 11 && !cosmicHorrorRef.current) {
+        cosmicHorrorRef.current = true;
+        triggerShake(20, 900);
+        const now = performance.now();
+        blinkRef.current = {
+          phase: 0,
+          closingStartTime: 0,
+          nextStartTime: now + 5000 + Math.random() * 5000,
+        };
       }
     }
     updateDisplay();
@@ -1316,6 +1336,22 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     context.globalAlpha *= alpha;
     const isDead = evColorGray.current || colorIndex === DEAD_COLOR;
     const palette = themePhaseRef.current === 'normal' ? COLORS_PRE_EVENT : COLORS;
+
+    if (cosmicHorrorRef.current) {
+      // Lv11 코스믹 호러: 화면 전체 invert 상태에서 흰색으로 그리면 검정으로 보임
+      context.fillStyle = '#ffffff';
+      context.fillRect(x, y, 1, 1);
+      // 흐릿한 회색 테두리 (invert 후 어두운 윤곽)
+      context.fillStyle = 'rgba(180,180,180,0.5)';
+      context.fillRect(x, y, 1, 0.04);
+      context.fillRect(x, y, 0.04, 1);
+      context.fillRect(x, y + 0.96, 1, 0.04);
+      context.fillRect(x + 0.96, y, 0.04, 1);
+      drawCosmicEye(context, x, y);
+      context.globalAlpha = saved;
+      return;
+    }
+
     context.fillStyle = isDead ? '#eeeeee' : (palette[colorIndex] ?? '#ccc');
     context.fillRect(x, y, 1, 1);
     if (isDead) {
@@ -1337,6 +1373,60 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     context.globalAlpha = saved;
   }
 
+  // Lv11 코스믹 호러: 셀 중앙에 떨어지는 블록을 응시하는 눈 그리기
+  function drawCosmicEye(context: CanvasRenderingContext2D, cellX: number, cellY: number) {
+    // 시선 추적 대상: 현재 떨어지는 블록의 중심
+    const m = player.current.matrix;
+    let targetX: number, targetY: number;
+    if (m) {
+      targetX = player.current.pos.x + m[0].length / 2;
+      targetY = player.current.pos.y + m.length / 2;
+    } else {
+      targetX = cellX + 0.5;
+      targetY = cellY + 0.5;
+    }
+    const cx = cellX + 0.5;
+    const cy = cellY + 0.5;
+    const dx = targetX - cx;
+    const dy = targetY - cy;
+    const len = Math.hypot(dx, dy);
+    const nx = len > 0.0001 ? dx / len : 0;
+    const ny = len > 0.0001 ? dy / len : 0;
+
+    const eyeRadius = 0.22;
+    const pupilRadius = 0.1;
+    const pupilOffset = 0.09;
+
+    // 흰자 (invert 상태에서 검정으로 그리면 화면상 흰색으로 보임)
+    context.fillStyle = '#000000';
+    context.beginPath();
+    context.arc(cx, cy, eyeRadius, 0, Math.PI * 2);
+    context.fill();
+
+    // 깜빡임 진행도 (0=완전 열림, 1=완전 닫힘)
+    const blink = blinkRef.current.phase;
+    if (blink >= 0.95) {
+      // 완전 감김: 가로 선만
+      context.fillStyle = '#000000';
+      context.fillRect(cx - eyeRadius, cy - 0.02, eyeRadius * 2, 0.04);
+      return;
+    }
+
+    // 동공 (청록으로 그리면 invert 후 빨강으로 빛남)
+    context.fillStyle = '#00ffff';
+    context.beginPath();
+    context.arc(cx + nx * pupilOffset, cy + ny * pupilOffset, pupilRadius, 0, Math.PI * 2);
+    context.fill();
+
+    // 깜빡임 중 부분 닫힘: 위아래에서 검은 띠가 좁혀들어옴
+    if (blink > 0) {
+      const lidH = eyeRadius * blink;
+      context.fillStyle = '#000000';
+      context.fillRect(cx - eyeRadius, cy - eyeRadius, eyeRadius * 2, lidH);
+      context.fillRect(cx - eyeRadius, cy + eyeRadius - lidH, eyeRadius * 2, lidH);
+    }
+  }
+
   // ===== 게임 루프 =====
   const gameLoop = useCallback((time: number) => {
     if (lastTime.current === 0) {
@@ -1347,6 +1437,26 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const dt = time - lastTime.current;
     lastTime.current = time;
     if (dt <= 0) { animId.current = requestAnimationFrame(gameLoop); return; }
+
+    // Lv11 코스믹 호러: 깜빡임 타이머
+    if (cosmicHorrorRef.current) {
+      const BLINK_DURATION = 280; // 닫힘+열림 합산 ms
+      const b = blinkRef.current;
+      if (b.closingStartTime > 0) {
+        const elapsed = time - b.closingStartTime;
+        if (elapsed >= BLINK_DURATION) {
+          b.phase = 0;
+          b.closingStartTime = 0;
+          b.nextStartTime = time + 5000 + Math.random() * 5000;
+        } else {
+          // 0 → 1 → 0 (닫혔다 열림) 삼각파
+          const half = BLINK_DURATION / 2;
+          b.phase = elapsed < half ? elapsed / half : 1 - (elapsed - half) / half;
+        }
+      } else if (time >= b.nextStartTime && b.nextStartTime > 0) {
+        b.closingStartTime = time;
+      }
+    }
 
     // C: shake 타이머 업데이트
     if (shakeRef.current.duration > 0) {
@@ -1583,6 +1693,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
     // Lv9 색상반전 초기화
     removeInvert();
+    // Lv11 코스믹 호러 초기화
+    cosmicHorrorRef.current = false;
+    blinkRef.current = { phase: 0, nextStartTime: 0, closingStartTime: 0 };
 
     // 테마 초기화
     firstEventFiredRef.current = false;
