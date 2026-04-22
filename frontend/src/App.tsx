@@ -25,6 +25,7 @@ import AdminPatchNoteFormPage from './pages/admin/AdminPatchNoteFormPage';
 import AdminIpBansPage from './pages/admin/AdminIpBansPage';
 import AdminGamesPage from './pages/admin/AdminGamesPage';
 import AdminClearButton from './components/admin/AdminClearButton';
+import AuthRoute from './components/AuthRoute';
 import { AdminTestProvider } from './context/AdminTestContext';
 import AdminRspPage from './pages/admin/AdminRspPage';
 import AdminRspExcelPage from './pages/admin/AdminRspExcelPage';
@@ -72,10 +73,10 @@ export default function App() {
           <Route path="games" element={<AdminGamesPage />} />
         </Route>
 
-        {/* 인세인 모드 — /:game 보다 위에 선언해야 AdminRoute 보호가 동작 */}
+        {/* 인세인 모드 — 로그인 유저 전용, /:game 보다 위에 선언 */}
         <Route
           path="/blockfall-insane"
-          element={<AdminRoute><GamePage excel={false} gameKey="blockfall-insane" /></AdminRoute>}
+          element={<AuthRoute><GamePage excel={false} gameKey="blockfall-insane" /></AuthRoute>}
         />
 
         {/* 게임 라우트 (가장 마지막 — 다른 경로와 충돌 방지) */}

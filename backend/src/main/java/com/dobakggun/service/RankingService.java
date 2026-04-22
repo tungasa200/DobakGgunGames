@@ -23,12 +23,13 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RankingService {
 
-    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "solitaire", "apple", "sudoku");
+    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "blockfall-insane", "solitaire", "apple", "sudoku");
     private static final int RATE_LIMIT_PER_MINUTE = 3;
 
     private final MinesweeperRankingRepository minesweeperRepo;
     private final BaseballRankingRepository baseballRepo;
     private final BlockfallRankingRepository blockfallRepo;
+    private final BlockfallInsaneRankingRepository blockfallInsaneRepo;
     private final SolitaireRankingRepository solitaireRepo;
     private final AppleRankingRepository appleRepo;
     private final SudokuRankingRepository sudokuRepo;
@@ -77,9 +78,10 @@ public class RankingService {
 
         // Phase 2: 게임별 서버 검증
         switch (game) {
-            case "solitaire" -> solitaireMoveService.validateMoves(session, req);
-            case "apple"     -> appleValidationService.validate(session, req);
-            case "blockfall" -> blockfallValidationService.validate(session, req);
+            case "solitaire"        -> solitaireMoveService.validateMoves(session, req);
+            case "apple"            -> appleValidationService.validate(session, req);
+            case "blockfall"        -> blockfallValidationService.validate(session, req);
+            case "blockfall-insane" -> blockfallValidationService.validate(session, req);
         }
 
         // 점수 범위 검증 (스도쿠는 서버 계산이므로 제외)
@@ -94,36 +96,39 @@ public class RankingService {
 
     private List<? extends Ranking> queryWeekly(String game, String level, LocalDateTime weekStart) {
         return switch (game) {
-            case "minesweeper" -> minesweeperRepo.findWeekly(level, weekStart);
-            case "baseball"    -> baseballRepo.findWeekly(level, weekStart);
-            case "blockfall"   -> blockfallRepo.findWeekly(level, weekStart);
-            case "solitaire"   -> solitaireRepo.findWeekly(level, weekStart);
-            case "apple"       -> appleRepo.findWeekly(level, weekStart);
-            case "sudoku"      -> sudokuRepo.findWeekly(level, weekStart);
+            case "minesweeper"      -> minesweeperRepo.findWeekly(level, weekStart);
+            case "baseball"         -> baseballRepo.findWeekly(level, weekStart);
+            case "blockfall"        -> blockfallRepo.findWeekly(level, weekStart);
+            case "blockfall-insane" -> blockfallInsaneRepo.findWeekly(level, weekStart);
+            case "solitaire"        -> solitaireRepo.findWeekly(level, weekStart);
+            case "apple"            -> appleRepo.findWeekly(level, weekStart);
+            case "sudoku"           -> sudokuRepo.findWeekly(level, weekStart);
             default -> List.of();
         };
     }
 
     private Ranking queryAlltimeBest(String game, String level) {
         return switch (game) {
-            case "minesweeper" -> minesweeperRepo.findAlltimeBest(level);
-            case "baseball"    -> baseballRepo.findAlltimeBest(level);
-            case "blockfall"   -> blockfallRepo.findAlltimeBest(level);
-            case "solitaire"   -> solitaireRepo.findAlltimeBest(level);
-            case "apple"       -> appleRepo.findAlltimeBest(level);
-            case "sudoku"      -> sudokuRepo.findAlltimeBest(level);
+            case "minesweeper"      -> minesweeperRepo.findAlltimeBest(level);
+            case "baseball"         -> baseballRepo.findAlltimeBest(level);
+            case "blockfall"        -> blockfallRepo.findAlltimeBest(level);
+            case "blockfall-insane" -> blockfallInsaneRepo.findAlltimeBest(level);
+            case "solitaire"        -> solitaireRepo.findAlltimeBest(level);
+            case "apple"            -> appleRepo.findAlltimeBest(level);
+            case "sudoku"           -> sudokuRepo.findAlltimeBest(level);
             default -> null;
         };
     }
 
     private long countByIpHash(String game, String ipHash, LocalDateTime after) {
         return switch (game) {
-            case "minesweeper" -> minesweeperRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
-            case "baseball"    -> baseballRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
-            case "blockfall"   -> blockfallRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
-            case "solitaire"   -> solitaireRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
-            case "apple"       -> appleRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
-            case "sudoku"      -> sudokuRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "minesweeper"      -> minesweeperRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "baseball"         -> baseballRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "blockfall"        -> blockfallRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "blockfall-insane" -> blockfallInsaneRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "solitaire"        -> solitaireRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "apple"            -> appleRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "sudoku"           -> sudokuRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             default -> 0L;
         };
     }
@@ -137,6 +142,9 @@ public class RankingService {
                     .level(req.getLevel()).name(req.getName().trim())
                     .attempts(req.getAttempts()).time(req.getTime()).ipHash(ipHash).userId(userId).build());
             case "blockfall" -> blockfallRepo.save(BlockfallRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .score(req.getScore()).gameLevel(req.getGameLevel()).ipHash(ipHash).userId(userId).build());
+            case "blockfall-insane" -> blockfallInsaneRepo.save(BlockfallInsaneRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
                     .score(req.getScore()).gameLevel(req.getGameLevel()).ipHash(ipHash).userId(userId).build());
             case "solitaire" -> solitaireRepo.save(SolitaireRanking.builder()
@@ -175,11 +183,12 @@ public class RankingService {
 
     private void validateScoreBounds(String game, RankingRequest req) {
         boolean invalid = switch (game) {
-            case "minesweeper" -> req.getTime() == null || req.getTime() < 0.4 || req.getTime() > 3600;
-            case "baseball"    -> req.getAttempts() == null || req.getAttempts() < 1 || req.getAttempts() > 999;
-            case "blockfall"      -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 9_999_999;
-            case "solitaire"   -> req.getTime() == null || req.getTime() < 1 || req.getMoves() == null || req.getMoves() < 1;
-            case "apple"       -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 1200;
+            case "minesweeper"      -> req.getTime() == null || req.getTime() < 0.4 || req.getTime() > 3600;
+            case "baseball"         -> req.getAttempts() == null || req.getAttempts() < 1 || req.getAttempts() > 999;
+            case "blockfall"        -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 9_999_999;
+            case "blockfall-insane" -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 9_999_999;
+            case "solitaire"        -> req.getTime() == null || req.getTime() < 1 || req.getMoves() == null || req.getMoves() < 1;
+            case "apple"            -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 1200;
             default -> true;
         };
         if (invalid) {
@@ -195,12 +204,13 @@ public class RankingService {
 
     private void validateLevel(String game, String level) {
         Set<String> valid = switch (game) {
-            case "minesweeper" -> Set.of("beginner", "intermediate", "expert");
-            case "baseball"    -> Set.of("easy", "normal", "hard");
-            case "blockfall"   -> Set.of("easy", "normal", "hard");
-            case "solitaire"   -> Set.of("draw1", "draw3");
-            case "apple"       -> Set.of("normal");
-            case "sudoku"      -> Set.of("easy", "normal", "hard");
+            case "minesweeper"      -> Set.of("beginner", "intermediate", "expert");
+            case "baseball"         -> Set.of("easy", "normal", "hard");
+            case "blockfall"        -> Set.of("easy", "normal", "hard");
+            case "blockfall-insane" -> Set.of("hard");
+            case "solitaire"        -> Set.of("draw1", "draw3");
+            case "apple"            -> Set.of("normal");
+            case "sudoku"           -> Set.of("easy", "normal", "hard");
             default -> Set.of();
         };
         if (!valid.contains(level)) {

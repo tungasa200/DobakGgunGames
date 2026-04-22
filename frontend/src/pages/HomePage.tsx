@@ -236,9 +236,9 @@ export default function HomePage() {
               </div>
             </div>
             <div className={styles.cardRanking}>
-              {user?.role === 'ADMIN' && (
+              {!!user && (
                 <Link className={styles.btn} to="/blockfall-insane">
-                  🔥 블록폴: 인세인 (테스트)
+                  🔥 블록폴: 인세인
                 </Link>
               )}
             </div>

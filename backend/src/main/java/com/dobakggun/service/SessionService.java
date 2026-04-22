@@ -25,12 +25,13 @@ public class SessionService {
 
     // 게임별 세션 만료 시간 (초)
     private static final Map<String, Long> EXPIRE_SECONDS = Map.of(
-        "apple",       7200L,
-        "minesweeper", 7200L,
-        "baseball",    7200L,
-        "solitaire",   7200L,
-        "blockfall",   7200L,
-        "sudoku",      7200L
+        "apple",            7200L,
+        "minesweeper",      7200L,
+        "baseball",         7200L,
+        "solitaire",        7200L,
+        "blockfall",        7200L,
+        "blockfall-insane", 7200L,
+        "sudoku",           7200L
     );
 
     private final GameSessionRepository sessionRepo;

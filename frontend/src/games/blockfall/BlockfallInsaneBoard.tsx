@@ -937,6 +937,20 @@ export default function BlockfallInsaneBoard() {
     isPieceT.current = player.current.matrix.some(row => row.includes(1));
     player.current.pos.y = 0;
     player.current.pos.x = (boardW.current / 2 | 0) - (player.current.matrix[0].length / 2 | 0);
+
+    // 스폰 위치에 정착한 파티클(모래·파편) 제거
+    // — 이벤트 파편이 스폰존에 쌓여 의문의 게임오버가 나는 현상 방지
+    // — 아레나 셀이 막힌 경우(진짜 게임오버)는 collide에서 별도 판정
+    const pm = player.current.matrix;
+    const px = player.current.pos.x;
+    const py = player.current.pos.y;
+    particles.current = particles.current.filter(p => {
+      if (p.state !== 'settled') return true;
+      const rx = Math.round(p.x) - px;
+      const ry = Math.round(p.y) - py;
+      if (ry < 0 || ry >= pm.length || rx < 0 || rx >= pm[0].length) return true;
+      return pm[ry][rx] === 0; // 피스 셀이 있는 위치의 파티클만 제거
+    });
   }
 
   function lockPieceImmediate() {
