@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
@@ -155,6 +156,15 @@ interface Props { excel?: boolean }
 
 export default function BlockfallBoard({ excel = false }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleInsaneClick = useCallback(() => {
+    if (!user) {
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+    navigate('/blockfall-insane');
+  }, [user, navigate]);
 
   // ===== 캔버스 refs =====
   const boardRef = useRef<HTMLCanvasElement>(null);
@@ -896,6 +906,14 @@ export default function BlockfallBoard({ excel = false }: Props) {
               <span>{{ easy: '쉬움', normal: '보통', hard: '어려움' }[lv]}</span>
             </div>
           ))}
+          <div
+            className={`${styles.xrb} ${styles.xrbInsane}`}
+            onClick={handleInsaneClick}
+            title={user ? '인세인 모드로 이동' : '로그인이 필요한 기능입니다'}
+          >
+            <span className={styles.xrbIcon}>🔥</span>
+            <span>인세인</span>
+          </div>
           <div className={styles.xrb} onClick={() => startGame()}>
             <span className={styles.xrbIcon}>▶</span>
             <span>{gameStatus === 'idle' ? '시작' : '다시하기'}</span>
@@ -912,7 +930,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [excel, difficulty, gameStatus, setRibbonGameGroup]);
+  }, [excel, difficulty, gameStatus, setRibbonGameGroup, user, handleInsaneClick]);
 
   // 엑셀모드 플러스 버튼 새 게임 콜백 등록
   const newGameFnRef = useRef<() => void>(() => {});
@@ -960,6 +978,13 @@ export default function BlockfallBoard({ excel = false }: Props) {
               {lv.label}
             </button>
           ))}
+          <button
+            className={`${styles.diffBtn} ${styles.insaneBtn}`}
+            onClick={handleInsaneClick}
+            title={user ? '인세인 모드로 이동' : '로그인이 필요한 기능입니다'}
+          >
+            🔥 인세인
+          </button>
         </div>
       )}
 
@@ -1034,7 +1059,10 @@ export default function BlockfallBoard({ excel = false }: Props) {
 
           {/* 버튼 */}
           <div className={styles.controls}>
-            <button className={styles.startBtn} onClick={() => startGame()}>
+            <button
+              className={styles.startBtn}
+              onClick={(e) => { e.currentTarget.blur(); startGame(); }}
+            >
               {gameStatus === 'idle' ? '▶ 시작' : '↺ 다시하기'}
             </button>
             <button
