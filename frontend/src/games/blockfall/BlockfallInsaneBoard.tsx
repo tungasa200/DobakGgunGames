@@ -978,6 +978,20 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
             }
           }
         }
+
+        // 리셋 시: 정착 파티클 제거 + 피스 위치 보정
+        // — 보드 축소로 인해 collide()가 즉시 true를 반환해 게임오버 나는 현상 방지
+        if (isReset) {
+          particles.current = particles.current.filter(p => p.state !== 'settled');
+          if (player.current.matrix) {
+            const ph = player.current.matrix.length;
+            player.current.pos.y = Math.min(
+              player.current.pos.y,
+              Math.max(0, boardH.current - ph)
+            );
+          }
+        }
+
         setTimeout(() => triggerShake(18, 800), 200);
         break;
       }
