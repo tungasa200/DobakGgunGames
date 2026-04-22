@@ -16,7 +16,11 @@ import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useAuth } from '../../context/AuthContext';
 import { useAdminTest } from '../../context/AdminTestContext';
+import { useBgm } from '../../hooks/useBgm';
 import styles from './BlockfallInsaneBoard.module.css';
+
+const BGM_DEFAULT_SRC = '/bgm/blockfall/blockfall_default.mp3';
+const BGM_INSANE_SRC = '/bgm/blockfall/blockfall_insane.mp3';
 
 // ===== 타입 =====
 type Matrix = number[][];
@@ -241,6 +245,14 @@ interface InsaneBoardProps {
 // ===== 컴포넌트 =====
 export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps) {
   const { user } = useAuth();
+
+  // ===== BGM (normal 단계 + insane 단계) =====
+  const defaultBgm = useBgm(BGM_DEFAULT_SRC, { volume: 0.4 });
+  const insaneBgm = useBgm(BGM_INSANE_SRC, { volume: 0.4 });
+  const toggleBgmMute = useCallback(() => {
+    defaultBgm.toggleMute();
+    insaneBgm.toggleMute();
+  }, [defaultBgm, insaneBgm]);
 
   // ===== 캔버스 refs =====
   const boardRef        = useRef<HTMLCanvasElement>(null);
@@ -1102,6 +1114,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   function doGameOver() {
     if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
     clearActiveEvent();
+    defaultBgm.stop();
+    insaneBgm.stop();
     setGameStatus('over');
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
@@ -1597,6 +1611,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     setGameStatus('playing');
     lastTime.current = 0;
     animId.current = requestAnimationFrame(gameLoop);
+    insaneBgm.stop();
+    defaultBgm.play();
     submittedIdRef.current = null;
 
     (async () => {
@@ -1624,15 +1640,27 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       if (prev === 'playing') {
         if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
         draw();
+        if (themePhaseRef.current === 'insane') insaneBgm.pause();
+        else defaultBgm.pause();
         return 'paused';
       } else if (prev === 'paused') {
         lastTime.current = 0;
         animId.current = requestAnimationFrame(gameLoop);
+        if (themePhaseRef.current === 'insane') insaneBgm.resume();
+        else defaultBgm.resume();
         return 'playing';
       }
       return prev;
     });
-  }, [draw, gameLoop]);
+  }, [draw, gameLoop, defaultBgm, insaneBgm]);
+
+  // ===== 테마 전환 시 BGM 교체 (일반 → 인세인) =====
+  useEffect(() => {
+    if (themePhase !== 'insane') return;
+    defaultBgm.stop();
+    insaneBgm.play();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [themePhase]);
 
   // ===== 키보드 =====
   useEffect(() => {
@@ -1841,6 +1869,12 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           disabled={gameStatus !== 'playing' && gameStatus !== 'paused'}
           onClick={togglePause}>
           {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
+        </button>
+        <button className={styles.pauseBtn}
+          onClick={toggleBgmMute}
+          aria-label={defaultBgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
+          title={defaultBgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}>
+          {defaultBgm.muted ? '🔇 BGM' : '🔊 BGM'}
         </button>
       </div>
 
