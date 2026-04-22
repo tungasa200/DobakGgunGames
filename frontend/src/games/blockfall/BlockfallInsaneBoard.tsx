@@ -207,8 +207,7 @@ function rotateMatrix(matrix: Matrix, dir: number) {
 }
 
 function getEventInterval(level: number): number {
-  if (level >= 11) return 0;
-  return Math.max(1000, 30000 - (level - 1) * 2600);
+  return Math.max(3000, 12000 - (level - 1) * 1000);
 }
 
 type RankEntry = { id: number; name: string; score: number; gameLevel?: number; createdAt: string };
@@ -975,10 +974,6 @@ export default function BlockfallInsaneBoard() {
     isLanding.current = false;
     lockCounter.current = 0;
 
-    if (gameLevelRef.current >= 11) {
-      // 레벨 11: 즉발 이벤트만 발동 (지속형 활성 중 스킵)
-      if (!activeEventId.current) fireRandomEvent();
-    }
   }
 
   // ===== 게임 오버 =====
@@ -1247,12 +1242,10 @@ export default function BlockfallInsaneBoard() {
     }
 
     // 이벤트 쿨다운
-    if (gameLevelRef.current < 11) {
-      eventCooldown.current -= dt;
-      if (eventCooldown.current <= 0) {
-        fireRandomEvent();
-        eventCooldown.current = getEventInterval(gameLevelRef.current);
-      }
+    eventCooldown.current -= dt;
+    if (eventCooldown.current <= 0) {
+      fireRandomEvent();
+      eventCooldown.current = getEventInterval(gameLevelRef.current);
     }
 
     // SPIN_BLOCK 자동 회전
@@ -1340,7 +1333,6 @@ export default function BlockfallInsaneBoard() {
     arenaSweepInsane(tspin, activeEventId.current !== null, true);
     dropCounter.current = 0;
     updateDisplay();
-    if (gameLevelRef.current >= 11 && !activeEventId.current) fireRandomEvent();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
