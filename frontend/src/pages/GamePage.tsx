@@ -83,10 +83,30 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // blockfall-insane 헤더 강조색 — 첫 이벤트 전: 일반 블록폴 보라, 이후: 인세인 빨강
+  // blockfall-insane 헤더 강조색 + 배경색 — 첫 이벤트 전: 일반 블록폴 스타일, 이후: 인세인 스타일
   const [insaneAccentColor, setInsaneAccentColor] = useState('#8e44ad');
+  const [insaneBgColor, setInsaneBgColor] = useState('#f0f0f0');
+  // 테마 전환 시 깜빡임 오버라이드 (null이면 insaneBgColor 사용)
+  const [flickerBg, setFlickerBg] = useState<string | null>(null);
   const handleInsaneThemeChange = useCallback((phase: 'normal' | 'insane') => {
     setInsaneAccentColor(phase === 'insane' ? '#ff2d55' : '#8e44ad');
+    if (phase === 'insane') {
+      // 밝↔어두움 2회 깜빡인 뒤 어둠으로 정착
+      const frames = ['#0a0a0a', '#f0f0f0', '#0a0a0a', '#f0f0f0', '#0a0a0a'];
+      frames.forEach((color, i) => {
+        setTimeout(() => {
+          if (i === frames.length - 1) {
+            setFlickerBg(null);
+            setInsaneBgColor('#0a0a0a');
+          } else {
+            setFlickerBg(color);
+          }
+        }, i * 110);
+      });
+    } else {
+      setFlickerBg(null);
+      setInsaneBgColor('#f0f0f0');
+    }
   }, []);
 
   useEffect(() => {
@@ -156,7 +176,7 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
           position: 'fixed',
           inset: 0,
           overflow: 'auto',
-          background: BG_COLORS[game] ?? '#f0f0f0',
+          background: game === 'blockfall-insane' ? (flickerBg ?? insaneBgColor) : (BG_COLORS[game] ?? '#f0f0f0'),
           fontFamily: 'sans-serif',
           display: 'flex',
           flexDirection: 'column',
