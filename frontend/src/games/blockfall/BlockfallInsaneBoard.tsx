@@ -291,6 +291,21 @@ export default function BlockfallInsaneBoard() {
   // ===== C: Camera Shake ref =====
   const shakeRef = useRef({ amplitude: 0, duration: 0, total: 0, elapsed: 0 });
 
+  // ===== Lv9 색상반전 =====
+  const invertActiveRef = useRef(false);
+
+  function applyInvert() {
+    if (invertActiveRef.current) return;
+    invertActiveRef.current = true;
+    document.documentElement.style.filter = 'invert(1)';
+  }
+
+  function removeInvert() {
+    if (!invertActiveRef.current) return;
+    invertActiveRef.current = false;
+    document.documentElement.style.filter = '';
+  }
+
   // ===== D: Filter ref =====
   const filterRef = useRef({ fadeMs: 0, fadeTotalMs: 0 });
 
@@ -733,6 +748,11 @@ export default function BlockfallInsaneBoard() {
       gameLevelRef.current = newLv;
       const sp = DROP_SPEEDS[currentLevelRef.current];
       dropInterval.current = sp[Math.min(gameLevelRef.current - 1, sp.length - 1)];
+      // Lv9 진입: 1회 진동 + 전체 화면 색상반전
+      if (gameLevelRef.current >= 9) {
+        triggerShake(20, 800);
+        applyInvert();
+      }
     }
     updateDisplay();
   }
@@ -1450,6 +1470,9 @@ export default function BlockfallInsaneBoard() {
       if (ctx) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(CELL, CELL); }
     }
 
+    // Lv9 색상반전 초기화
+    removeInvert();
+
     arena.current = createMatrix(INIT_BOARD_W, INIT_BOARD_H);
     particles.current = [];
     scoreRef.current = 0; gameLevelRef.current = 1;
@@ -1597,6 +1620,8 @@ export default function BlockfallInsaneBoard() {
       flashTimerIds.current.forEach(id => clearTimeout(id));
       // BUG-02: 배너 퇴장 타이머 누수 방지
       if (bannerExitTimerRef.current) clearTimeout(bannerExitTimerRef.current);
+      // Lv9 색상반전 언마운트 시 원복
+      document.documentElement.style.filter = '';
     };
   }, []);
 
