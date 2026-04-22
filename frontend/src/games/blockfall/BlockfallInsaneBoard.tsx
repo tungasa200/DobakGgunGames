@@ -1011,7 +1011,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   function fireRandomEvent() {
     const isMobile = isMobileRef.current;
-    const pool = EVENT_POOL.filter(e => !isMobile || !e.mobileExcluded);
+    // Lv10+ 에서는 색맹/바닥붕괴 제외 — 고레벨 빈발 시 오히려 난이도 하락
+    const highLevel = gameLevelRef.current >= 10;
+    const pool = EVENT_POOL.filter(e => {
+      if (isMobile && e.mobileExcluded) return false;
+      if (highLevel && (e.id === 'COLOR_GRAY' || e.id === 'FLOOR_DROP')) return false;
+      return true;
+    });
     const totalW = pool.reduce((s, e) => s + e.weight, 0);
     let r = Math.random() * totalW;
     for (const def of pool) {
