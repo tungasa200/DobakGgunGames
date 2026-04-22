@@ -888,6 +888,8 @@ export default function BlockfallInsaneBoard() {
       }
 
       case 'RANDOM_LOCK': {
+        // 스폰 직후 즉사 방지 — 블럭이 4칸 이상 내려왔을 때만 고정
+        if (player.current.pos.y < 4) break;
         triggerShake(7, 300);
         lockPieceImmediate();
         break;
