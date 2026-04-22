@@ -219,3 +219,15 @@ testRuntimeOnly 'com.h2database:h2'                                       // @Sp
 - RSP 기능은 `/api/admin/**` 경로이므로 기존 `hasRole("ADMIN")` 보호 자동 적용
 - `RankingService.VALID_GAMES`에 `rsp` 미등록 상태 유지 (랭킹 시스템과 분리)
 - ESLint 기존 에러는 프론트엔드 영역으로 백엔드 이슈 아님
+
+---
+
+## 2026-04-22 (세션 종료 확인)
+
+### 상태
+- RSP 백엔드 구현: 완전 완료 (이전 세션 완료, 추가 작업 없음)
+- Blockfall Insane Overhaul: 백엔드 변경 없음 (PRD 확정 방침)
+- 이번 세션 변경 파일: 없음
+
+### 다음 세션 할 일
+- 없음
