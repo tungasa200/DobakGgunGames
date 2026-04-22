@@ -24,3 +24,19 @@
 ### 다음 세션 할 일
 - designer가 랭킹 UI 시안 / 배너 디자인 / 필터 색상 확정하면 PRD 섹션 7-2, 5-4 보강.
 - 구현 중 스펙 질문 빠르게 답변.
+
+## 2026-04-22 (2차 — 구현 완료 및 세션 종료)
+
+### 완료
+- developer-frontend 구현 완료 (BlockfallInsaneBoard.tsx + module.css 전면 수정)
+- qa-tester CONDITIONAL_PASS 판정, BUG-01/02 수정 완료
+- INFO-01 수치 충돌(PRD vs 디자인 명세) 사용자 결정으로 **디자인 명세 기준 확정**
+  - SHATTER_GRAVITY: 0.08 확정
+  - SAND_BATCH_SIZE: 35 확정
+  - drawCell motion blur: 1장 잔상 확정
+- PRD 섹션 5-5 수치 갱신 완료
+
+### 다음 세션 할 일
+- 없음 (Blockfall Insane Overhaul 1차 완료)
+- 브라우저 체감 확인 후 추가 튜닝 요청 있으면 별도 세션으로 대응
+

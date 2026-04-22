@@ -161,10 +161,13 @@
 
 ### 5-5. 파티클 강화
 
-- `SAND_BATCH_SIZE = 25` 유지 (성능).
-- `SHATTER_GRAVITY` 0.06 → 0.04. `SHATTER_DAMPING` 0.5 → 0.6.
-- `drawCell` motion blur: 현재 1장 → **3장 연속** (×1.5, ×2.5, ×3.5), alpha 0.25/0.15/0.08.
+- `SAND_BATCH_SIZE = 25` → **35** 로 상향.
+- `SHATTER_GRAVITY` 0.06 → **0.08**. `SHATTER_DAMPING` 0.5 → 0.6.
+- `drawCell` motion blur: 현재 0장 → **1장 잔상** (×1.5, alpha 0.25).
 - Shatter 초기 `vy` 상향 (이벤트별 명세 반영).
+
+<!-- (2026-04-22 디자인 명세 기준으로 확정, PRD 갱신) -->
+
 
 ---
 

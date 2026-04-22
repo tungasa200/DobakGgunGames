@@ -1,8 +1,8 @@
 # developer-frontend — Blockfall Insane Overhaul 진행 로그
 
-최종 업데이트: 2026-04-22 (BUG-01/02 수정)
+최종 업데이트: 2026-04-22 (세션 종료 로그)
 브랜치: WIP
-커밋: 374b0ad → BUG-01/02 fix 커밋 예정
+커밋: 374b0ad (구현), 0913613 (BUG-01/02 수정)
 
 ---
 
@@ -156,3 +156,33 @@ qa-tester 조건부 통과, BUG-01/02 수정 완료.
 - SPIN_BLOCK emoji가 🎡 (VORTEX 🌀과 다름)
 - 랭킹 1위 금색, 2위 은색, 3위 동색, 본인 행 붉은 left border
 - 오디오 관련 코드 전무
+
+---
+
+## 세션 종료 로그 — 2026-04-22
+
+### 최종 상태
+- qa-tester CONDITIONAL_PASS → BUG-01/02 수정 완료 → 조건 해소
+- tsc -b: 에러 0 / eslint: 에러 0, 경고 0
+- 커밋: 374b0ad (구현), 0913613 (BUG 수정)
+
+### BUG-01 수정 (boardSkewDeg state 승격)
+- `boardSkewDeg: number` useState 추가
+- BOARD_TILT 발동/종료/게임 리셋 시 setBoardSkewDeg 호출
+- JSX board inline style: ref 직접 읽기 → boardSkewDeg state 사용으로 교체
+- 효과: skewX 즉각 반영 보장 (이전: 최대 180ms 지연)
+
+### BUG-02 수정 (배너 타이머 cleanup)
+- 언마운트 useEffect에 `clearTimeout(bannerExitTimerRef.current)` 추가
+
+### 확정 수치 (사용자 결정 — 디자인 명세 기준)
+- SHATTER_GRAVITY: 0.08 (PRD 0.04 충돌 → 디자인 명세로 확정)
+- SAND_BATCH_SIZE: 35 (PRD 25 유지 → 디자인 명세로 확정)
+- drawCell motion blur: 1장 잔상 (PRD 3장 → 디자인 명세로 확정)
+
+### 환경변수 추가
+없음.
+
+### 다음 세션 할 일
+- 없음 (Blockfall Insane Overhaul 1차 완료)
+- 브라우저 체감 후 추가 튜닝 요청 있으면 대응
