@@ -1396,9 +1396,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     // 아몬드형 흰자 (수평으로 길쭉)
     const eyeRadiusX = 0.3;
     const eyeRadiusY = 0.17;
-    const pupilRadius = 0.1;
-    const pupilOffsetX = 0.13;
-    const pupilOffsetY = 0.06;
+    const irisRadius = 0.11;   // 빨간 홍채
+    const pupilRadius = 0.045; // 검은 동공
+    const gazeOffsetX = 0.13;
+    const gazeOffsetY = 0.06;
 
     // 흰자 (invert 상태에서 검정으로 그리면 화면상 흰색으로 보임)
     context.fillStyle = '#000000';
@@ -1415,10 +1416,18 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       return;
     }
 
-    // 동공 (청록으로 그리면 invert 후 빨강으로 빛남)
+    // 홍채 (청록으로 그리면 invert 후 빨강으로 빛남)
+    const irisX = cx + nx * gazeOffsetX;
+    const irisY = cy + ny * gazeOffsetY;
     context.fillStyle = '#00ffff';
     context.beginPath();
-    context.arc(cx + nx * pupilOffsetX, cy + ny * pupilOffsetY, pupilRadius, 0, Math.PI * 2);
+    context.arc(irisX, irisY, irisRadius, 0, Math.PI * 2);
+    context.fill();
+
+    // 동공 (흰색으로 그리면 invert 후 검정)
+    context.fillStyle = '#ffffff';
+    context.beginPath();
+    context.arc(irisX, irisY, pupilRadius, 0, Math.PI * 2);
     context.fill();
 
     // 깜빡임 중 부분 닫힘: 위아래에서 검은 띠가 좁혀들어옴
