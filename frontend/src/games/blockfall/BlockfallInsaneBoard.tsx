@@ -207,7 +207,8 @@ function rotateMatrix(matrix: Matrix, dir: number) {
 }
 
 function getEventInterval(level: number): number {
-  return Math.max(3000, 12000 - (level - 1) * 1000);
+  // 레벨1: 20초, 레벨11: 3초, 선형 감소
+  return Math.max(3000, 20000 - (level - 1) * 1700);
 }
 
 type RankEntry = { id: number; name: string; score: number; gameLevel?: number; createdAt: string };
@@ -264,7 +265,7 @@ export default function BlockfallInsaneBoard() {
   // ===== 이벤트 시스템 refs =====
   const activeEventId   = useRef<EventId | null>(null);
   const activeEventDur  = useRef(0);
-  const eventCooldown   = useRef(30000);
+  const eventCooldown   = useRef(20000);
 
   // 시각 이벤트 플래그
   const evFlipH         = useRef(false);
