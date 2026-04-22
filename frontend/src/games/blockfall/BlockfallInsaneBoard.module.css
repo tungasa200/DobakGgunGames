@@ -357,6 +357,7 @@
   background: var(--insane-bg-deep);
   border-radius: 10px;
   padding: 16px 12px 12px;
+  box-sizing: border-box; /* width: 100% + padding 이 viewport 초과하는 문제 방지 */
 }
 
 /* 인세인 랭킹 타이틀 */
@@ -437,7 +438,19 @@
   border-collapse: collapse;
   font-size: 0.88rem;
   white-space: nowrap;
+  table-layout: fixed; /* 긴 닉네임이 테이블 너비를 밀어내지 않도록 */
 }
+/* 열 너비 비율: 순위 10% / 이름 30% / 점수 22% / 레벨 13% / 날짜 25% */
+.table th:nth-child(1), .table td:nth-child(1) { width: 10%; }
+.table th:nth-child(2), .table td:nth-child(2) {
+  width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table th:nth-child(3), .table td:nth-child(3) { width: 22%; }
+.table th:nth-child(4), .table td:nth-child(4) { width: 13%; }
+.table th:nth-child(5), .table td:nth-child(5) { width: 25%; }
+
 .table th {
   background: #ff2d55;
   color: #fff;
@@ -634,10 +647,10 @@
 }
 
 /* ===== 테마 전환 트랜지션 ===== */
-.infoItem, .sideBox, .mobileBtn {
+.infoItem, .sideBox, .mobileBtn, .rankSection, .rankTab, .rulesPanel, .modal {
   transition: background-color 0.5s ease, border-color 0.5s ease;
 }
-.infoValue, .status, .hints, .sideTitle {
+.infoValue, .status, .hints, .sideTitle, .insaneRankTitle, .atLabel, .atContent {
   transition: color 0.5s ease;
 }
 .board, .miniCanvas {
@@ -682,4 +695,94 @@
 }
 .wrap[data-theme="normal"] .mobileBtn:active {
   background: #e0e0e0;
+}
+
+/* 프로그레스 바 */
+.wrap[data-theme="normal"] .eventTimerBar { display: none; }
+
+/* 버튼 */
+.wrap[data-theme="normal"] .startBtn { background: #8e44ad; }
+.wrap[data-theme="normal"] .startBtn:hover { background: #7d3c98; }
+
+/* 랭킹 섹션 */
+.wrap[data-theme="normal"] .rankSection {
+  background: transparent;
+  border-radius: 0;
+  padding: 16px 0 0;
+}
+.wrap[data-theme="normal"] .insaneRankTitle {
+  color: #8e44ad;
+  animation: none;
+  text-shadow: none;
+}
+.wrap[data-theme="normal"] .insaneWord {
+  color: #8e44ad;
+  text-shadow: none;
+}
+.wrap[data-theme="normal"] .alltimeBanner {
+  background: linear-gradient(135deg, #fef9e7, #fdebd0);
+  border-color: #f0b27a;
+  box-shadow: none;
+}
+.wrap[data-theme="normal"] .atLabel  { color: #b7950b; }
+.wrap[data-theme="normal"] .atContent { color: #784212; }
+
+.wrap[data-theme="normal"] .rankTab {
+  border-color: #8e44ad;
+  color: #8e44ad;
+  background: #fff;
+}
+.wrap[data-theme="normal"] .rankTab:hover  { background: #8e44ad; color: #fff; }
+.wrap[data-theme="normal"] .rankTabActive  { background: #8e44ad; color: #fff; }
+
+.wrap[data-theme="normal"] .table th { background: #8e44ad; }
+.wrap[data-theme="normal"] .table td {
+  color: #333;
+  border-bottom-color: #eee;
+}
+.wrap[data-theme="normal"] .table tr:nth-child(even) td { background: #f9f9f9; }
+
+.wrap[data-theme="normal"] .rankRow1st td { background: #fef9e7; color: #e67e22; }
+.wrap[data-theme="normal"] .rankRow2nd td { background: #f5f5f5; color: #555; }
+.wrap[data-theme="normal"] .rankRow3rd td { background: #fdf6ec; color: #a0522d; }
+.wrap[data-theme="normal"] .rankRowMine td {
+  background: #f5eafa !important;
+  border-left-color: #8e44ad;
+}
+.wrap[data-theme="normal"] .rankRowMine td:first-child::after { color: #8e44ad; }
+
+.wrap[data-theme="normal"] .placeholder { color: #aaa; }
+
+.wrap[data-theme="normal"] .rulesPanel {
+  background: #fff;
+  border-color: #e0e0e0;
+  color: #333;
+}
+.wrap[data-theme="normal"] .rulesPanel h4 {
+  color: #2c3e50;
+  border-bottom-color: #eee;
+}
+
+/* 모달 */
+.wrap[data-theme="normal"] .modal {
+  background: #fff;
+  border-color: #ddd;
+  color: #333;
+}
+.wrap[data-theme="normal"] .modal h3 { color: #8e44ad; }
+.wrap[data-theme="normal"] .modal p  { color: #555; }
+.wrap[data-theme="normal"] .nameInput {
+  background: #fff;
+  color: #333;
+  border-color: #aaa;
+}
+.wrap[data-theme="normal"] .nameInput:focus { border-color: #8e44ad; }
+.wrap[data-theme="normal"] .primaryBtn { background: #8e44ad; }
+.wrap[data-theme="normal"] .primaryBtn:hover { background: #7d3c98; }
+.wrap[data-theme="normal"] .secondaryBtn { background: #95a5a6; }
+.wrap[data-theme="normal"] .hint { color: #c0392b; }
+.wrap[data-theme="normal"] .sessionFailBanner {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: rgba(231, 76, 60, 0.5);
+  color: #f1948a;
 }
