@@ -786,3 +786,46 @@
   border-color: rgba(231, 76, 60, 0.5);
   color: #f1948a;
 }
+
+/* ===== Lv10+ 테두리 RGB 분리 글리치 ===== */
+.chromaticGlitch::before,
+.chromaticGlitch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid;
+  border-radius: 2px;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  z-index: 3;
+}
+.chromaticGlitch::before {
+  border-color: rgba(255, 0, 85, 0.85);
+  animation: chromaticGlitchRed 0.12s steps(4, end) infinite;
+}
+.chromaticGlitch::after {
+  border-color: rgba(0, 255, 255, 0.85);
+  animation: chromaticGlitchCyan 0.12s steps(4, end) infinite;
+}
+@keyframes chromaticGlitchRed {
+  0%   { transform: translate( 3px,  0px); }
+  25%  { transform: translate(-2px,  1px); }
+  50%  { transform: translate( 1px, -2px); }
+  75%  { transform: translate(-3px, -1px); }
+  100% { transform: translate( 3px,  0px); }
+}
+@keyframes chromaticGlitchCyan {
+  0%   { transform: translate(-3px,  0px); }
+  25%  { transform: translate( 2px, -1px); }
+  50%  { transform: translate(-1px,  2px); }
+  75%  { transform: translate( 3px,  1px); }
+  100% { transform: translate(-3px,  0px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chromaticGlitch::before,
+  .chromaticGlitch::after {
+    animation: none;
+  }
+  .chromaticGlitch::before { transform: translate(2px, 0); }
+  .chromaticGlitch::after  { transform: translate(-2px, 0); }
+}

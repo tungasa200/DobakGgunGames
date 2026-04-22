@@ -797,9 +797,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       gameLevelRef.current = newLv;
       const sp = DROP_SPEEDS[currentLevelRef.current];
       dropInterval.current = sp[Math.min(gameLevelRef.current - 1, sp.length - 1)];
-      // Lv9 진입: 1회 진동 + 전체 화면 색상반전
-      if (gameLevelRef.current >= 9) {
-        triggerShake(20, 800);
+      // Lv9 진입: 1회 진동(인세인 진입과 동일) + 전체 화면 색상반전
+      if (gameLevelRef.current === 9) {
+        triggerShake(15, 600);
         applyInvert();
       }
     }
@@ -1873,7 +1873,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         </div>
 
         {/* F: .boardWrapper 신규 래퍼 */}
-        <div className={styles.boardWrapper}>
+        <div className={`${styles.boardWrapper} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
           <canvas
             ref={boardRef}
             width={INIT_BOARD_W * CELL}
@@ -1887,7 +1887,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
       {/* 버튼 */}
       <div className={styles.controls}>
-        <button className={styles.startBtn} onClick={() => startGame()}>
+        <button
+          className={styles.startBtn}
+          onClick={(e) => { e.currentTarget.blur(); startGame(); }}
+        >
           {gameStatus === 'idle' ? '▶ 시작' : '↺ 다시하기'}
         </button>
         <button className={styles.pauseBtn}
