@@ -304,6 +304,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const evControlFreeze   = useRef(false);
   const floorDropCount    = useRef(0);  // FLOOR_DROP 발동 횟수 (3의 배수: 원복)
   const evSpinBlock     = useRef(false);
+  const randomLockPending = useRef(false); // RANDOM_LOCK 대기 중 (조건 충족 시 발동)
   const evSpinTimer     = useRef(0);
 
   // 모바일 판정
@@ -928,10 +929,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       }
 
       case 'RANDOM_LOCK': {
-        // 스폰 직후 즉사 방지 — 블럭이 4칸 이상 내려왔을 때만 고정
-        if (player.current.pos.y < 4) break;
-        triggerShake(7, 300);
-        lockPieceImmediate();
+        // 중앙 상단 구간이면 대기, 벗어나는 순간 발동
+        randomLockPending.current = true;
         break;
       }
 
@@ -1017,6 +1016,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     lastActionRot.current = false;
     tPieceRot.current = 0;
     evSpinBlock.current = false;
+    randomLockPending.current = false;
     if (activeEventId.current === 'SPIN_BLOCK') clearActiveEvent();
 
     player.current.matrix = nextPiece.current ?? randomInsanePiece();
@@ -1352,6 +1352,19 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       eventCooldown.current = getEventInterval(gameLevelRef.current);
     }
 
+    // RANDOM_LOCK 대기 — 피스가 중앙 상단 구간을 벗어나는 순간 발동
+    if (randomLockPending.current && player.current.matrix) {
+      const pm = player.current.matrix;
+      const cx = player.current.pos.x + pm[0].length / 2;
+      const inHorizCenter = cx >= Math.floor(boardW.current / 3) && cx <= Math.floor(boardW.current * 2 / 3);
+      const inTopQuarter  = player.current.pos.y < Math.floor(boardH.current / 4);
+      if (!inHorizCenter || !inTopQuarter) {
+        randomLockPending.current = false;
+        triggerShake(7, 300);
+        lockPieceImmediate();
+      }
+    }
+
     // SPIN_BLOCK 자동 회전
     if (evSpinBlock.current) {
       evSpinTimer.current += dt;
@@ -1552,6 +1565,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     evExplodePending.current = false;
     evControlFreeze.current = false;
     floorDropCount.current = 0;
+    randomLockPending.current = false;
     eventCooldown.current = getEventInterval(1);
 
     const sp = DROP_SPEEDS[level];
