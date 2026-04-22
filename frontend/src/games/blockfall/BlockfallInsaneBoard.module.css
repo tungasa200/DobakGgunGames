@@ -788,13 +788,17 @@
 }
 
 /* ===== Lv10+ 테두리 RGB 분리 글리치 ===== */
+.chromaticGlitch {
+  position: relative;
+  overflow: visible !important; /* eventTimerBar 등 overflow:hidden 덮어씀 */
+}
 .chromaticGlitch::before,
 .chromaticGlitch::after {
   content: '';
   position: absolute;
   inset: 0;
   border: 2px solid;
-  border-radius: 2px;
+  border-radius: inherit;
   pointer-events: none;
   mix-blend-mode: screen;
   z-index: 3;

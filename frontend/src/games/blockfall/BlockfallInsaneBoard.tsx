@@ -1048,11 +1048,11 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   function fireRandomEvent() {
     const isMobile = isMobileRef.current;
-    // Lv10+ 에서는 색맹/바닥붕괴 제외 — 고레벨 빈발 시 오히려 난이도 하락
+    // Lv10+ 에서는 바닥붕괴 제외 — 고레벨 빈발 시 오히려 난이도 하락
     const highLevel = gameLevelRef.current >= 10;
     const pool = EVENT_POOL.filter(e => {
       if (isMobile && e.mobileExcluded) return false;
-      if (highLevel && (e.id === 'COLOR_GRAY' || e.id === 'FLOOR_DROP')) return false;
+      if (highLevel && e.id === 'FLOOR_DROP') return false;
       return true;
     });
     const totalW = pool.reduce((s, e) => s + e.weight, 0);
@@ -1347,8 +1347,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       context.fillRect(x, y, 0.04, 1);
       context.fillRect(x, y + 0.96, 1, 0.04);
       context.fillRect(x + 0.96, y, 0.04, 1);
-      // 죽은 블록은 눈 없음 (구분용)
-      if (!isDead) drawCosmicEye(context, x, y);
+      // 실제로 죽은 블록(DEAD_COLOR)만 눈 없음 — COLOR_GRAY 이벤트 중에도 눈 유지
+      if (colorIndex !== DEAD_COLOR) drawCosmicEye(context, x, y);
       context.globalAlpha = saved;
       return;
     }
@@ -1961,7 +1961,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       {statusText && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
 
       {/* 이벤트 타이머 바 */}
-      <div className={styles.eventTimerBar}>
+      <div className={`${styles.eventTimerBar} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
         <div ref={timerBarRef} className={styles.eventTimerFill} style={{ width: '0%' }} />
       </div>
 
@@ -1972,15 +1972,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       {/* 게임 영역 */}
       <div className={styles.gameArea}>
         <div className={styles.sidePanel}>
-          <div className={styles.sideBox}>
+          <div className={`${styles.sideBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
             <div className={styles.sideTitle}>NEXT</div>
             <canvas ref={nextRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
           </div>
-          <div className={styles.sideBox}>
+          <div className={`${styles.sideBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
             <div className={styles.sideTitle}>HOLD</div>
             <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
           </div>
-          <div className={`${styles.sideBox} ${styles.hintsBox}`}>
+          <div className={`${styles.sideBox} ${styles.hintsBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
             <div className={styles.sideTitle}>키</div>
             <div className={styles.hints}>
               ← → 이동<br />↑ 회전<br />↓ 내리기<br />Space 급강하<br />Shift 홀드<br />P 일시정지
