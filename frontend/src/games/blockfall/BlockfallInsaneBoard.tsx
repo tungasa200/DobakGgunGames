@@ -1338,8 +1338,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const palette = themePhaseRef.current === 'normal' ? COLORS_PRE_EVENT : COLORS;
 
     if (cosmicHorrorRef.current) {
-      // Lv11 코스믹 호러: 화면 전체 invert 상태에서 흰색으로 그리면 검정으로 보임
-      context.fillStyle = '#ffffff';
+      // Lv11 코스믹 호러: invert 상태에서 아주 살짝 밝게 그려 완전검정 대신 옅은 회색으로 보이게
+      context.fillStyle = '#f0f0f0';
       context.fillRect(x, y, 1, 1);
       // 흐릿한 회색 테두리 (invert 후 어두운 윤곽)
       context.fillStyle = 'rgba(180,180,180,0.5)';
@@ -1347,7 +1347,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       context.fillRect(x, y, 0.04, 1);
       context.fillRect(x, y + 0.96, 1, 0.04);
       context.fillRect(x + 0.96, y, 0.04, 1);
-      drawCosmicEye(context, x, y);
+      // 죽은 블록은 눈 없음 (구분용)
+      if (!isDead) drawCosmicEye(context, x, y);
       context.globalAlpha = saved;
       return;
     }
