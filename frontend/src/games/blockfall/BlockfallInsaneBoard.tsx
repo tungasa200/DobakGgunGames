@@ -1393,14 +1393,17 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const nx = len > 0.0001 ? dx / len : 0;
     const ny = len > 0.0001 ? dy / len : 0;
 
-    const eyeRadius = 0.22;
+    // 아몬드형 흰자 (수평으로 길쭉)
+    const eyeRadiusX = 0.3;
+    const eyeRadiusY = 0.17;
     const pupilRadius = 0.1;
-    const pupilOffset = 0.09;
+    const pupilOffsetX = 0.13;
+    const pupilOffsetY = 0.06;
 
     // 흰자 (invert 상태에서 검정으로 그리면 화면상 흰색으로 보임)
     context.fillStyle = '#000000';
     context.beginPath();
-    context.arc(cx, cy, eyeRadius, 0, Math.PI * 2);
+    context.ellipse(cx, cy, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
     context.fill();
 
     // 깜빡임 진행도 (0=완전 열림, 1=완전 닫힘)
@@ -1408,22 +1411,22 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     if (blink >= 0.95) {
       // 완전 감김: 가로 선만
       context.fillStyle = '#000000';
-      context.fillRect(cx - eyeRadius, cy - 0.02, eyeRadius * 2, 0.04);
+      context.fillRect(cx - eyeRadiusX, cy - 0.02, eyeRadiusX * 2, 0.04);
       return;
     }
 
     // 동공 (청록으로 그리면 invert 후 빨강으로 빛남)
     context.fillStyle = '#00ffff';
     context.beginPath();
-    context.arc(cx + nx * pupilOffset, cy + ny * pupilOffset, pupilRadius, 0, Math.PI * 2);
+    context.arc(cx + nx * pupilOffsetX, cy + ny * pupilOffsetY, pupilRadius, 0, Math.PI * 2);
     context.fill();
 
     // 깜빡임 중 부분 닫힘: 위아래에서 검은 띠가 좁혀들어옴
     if (blink > 0) {
-      const lidH = eyeRadius * blink;
+      const lidH = eyeRadiusY * blink;
       context.fillStyle = '#000000';
-      context.fillRect(cx - eyeRadius, cy - eyeRadius, eyeRadius * 2, lidH);
-      context.fillRect(cx - eyeRadius, cy + eyeRadius - lidH, eyeRadius * 2, lidH);
+      context.fillRect(cx - eyeRadiusX, cy - eyeRadiusY, eyeRadiusX * 2, lidH);
+      context.fillRect(cx - eyeRadiusX, cy + eyeRadiusY - lidH, eyeRadiusX * 2, lidH);
     }
   }
 
