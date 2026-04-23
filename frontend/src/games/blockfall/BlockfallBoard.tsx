@@ -948,7 +948,6 @@ export default function BlockfallBoard({ excel = false }: Props) {
   // ===== 상태 텍스트 =====
   const statusText =
     gameStatus === 'idle'   ? '▶ 시작 버튼을 눌러주세요' :
-    gameStatus === 'paused' ? 'PAUSE' :
     gameStatus === 'over'   ? 'GAME OVER' : '';
 
   const LEVELS: { value: Level; label: string }[] = [
@@ -1046,12 +1045,15 @@ export default function BlockfallBoard({ excel = false }: Props) {
             {excel && <div className={styles.blockfallColGap} />}
 
             {/* 보드 */}
-            <canvas
-              ref={boardRef}
-              width={BOARD_W * CELL}
-              height={BOARD_H * CELL}
-              className={styles.board}
-            />
+            <div className={styles.boardWrapper}>
+              <canvas
+                ref={boardRef}
+                width={BOARD_W * CELL}
+                height={BOARD_H * CELL}
+                className={styles.board}
+              />
+              {gameStatus === 'paused' && <div className={styles.pauseOverlay}>PAUSE</div>}
+            </div>
           </div>
 
           {/* 버튼 */}

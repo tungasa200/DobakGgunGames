@@ -202,7 +202,7 @@ const PIECE_POOL: PieceEntry[] = [
   { matrix: createInsanePiece('X'),         weight: 1.5 },
   { matrix: createInsanePiece('BIG_O'),     weight: 1.5 },
   { matrix: createInsanePiece('THUMBS_UP'), weight: 1.5 },
-  { matrix: createInsanePiece('MIDDLE'),    weight: 1.5 },
+  { matrix: createInsanePiece('MIDDLE'),    weight: 1 },
 ];
 const TOTAL_PIECE_WEIGHT = PIECE_POOL.reduce((s, p) => s + p.weight, 0);
 
@@ -1645,14 +1645,26 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const playerRotate = useCallback((dir: number) => {
     if (evControlFreeze.current) return;
     const posX = player.current.pos.x;
+    const posY = player.current.pos.y;
+    const mtx = player.current.matrix!;
+    const isWideI = mtx.some(row => row.some(c => c === 8));
+    const prevW = mtx[0].length;
+    const prevH = mtx.length;
     let offset = 1;
-    rotateMatrix(player.current.matrix!, dir);
+    rotateMatrix(mtx, dir);
+    if (isWideI) {
+      const newW = mtx[0].length;
+      const newH = mtx.length;
+      player.current.pos.x += Math.floor((prevW - newW) / 2);
+      player.current.pos.y += Math.floor((prevH - newH) / 2);
+    }
     while (collide(player.current.pos, player.current.matrix!)) {
       player.current.pos.x += offset;
       offset = -(offset + (offset > 0 ? 1 : -1));
       if (Math.abs(offset) > player.current.matrix![0].length) {
         rotateMatrix(player.current.matrix!, -dir);
         player.current.pos.x = posX;
+        if (isWideI) player.current.pos.y = posY;
         return;
       }
     }
@@ -2112,7 +2124,6 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   const statusText =
     gameStatus === 'idle'   ? '▶ 시작 버튼을 눌러주세요' :
-    gameStatus === 'paused' ? 'PAUSE' :
     gameStatus === 'over'   ? 'GAME OVER' : '';
 
   // I: 랭킹 행 클래스 판별
@@ -2194,6 +2205,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           />
           {/* E: Flash Overlay */}
           <div ref={flashOverlayRef} className={styles.flashOverlay} />
+          {gameStatus === 'paused' && <div className={styles.pauseOverlay}>PAUSE</div>}
         </div>
       </div>
 
