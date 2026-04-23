@@ -21,7 +21,7 @@ export interface AdminUser {
   id: number;
   email: string;
   nickname: string;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'FREND' | 'ADMIN';
   status: 'PENDING' | 'ACTIVE' | 'BANNED';
   provider: string | null;
   profileImage: string | null;

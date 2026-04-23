@@ -9,13 +9,13 @@ type ConfirmAction =
   | { type: 'status'; user: AdminUser; value: string }
   | { type: 'delete'; user: AdminUser };
 
-const ROLE_LABELS: Record<string, string> = { USER: '일반', ADMIN: '관리자' };
+const ROLE_LABELS: Record<string, string> = { USER: '일반', FREND: '도박꾼', ADMIN: '관리자' };
 const STATUS_LABELS: Record<string, string> = { PENDING: '대기', ACTIVE: '활성', BANNED: '차단' };
 const STATUS_BADGE: Record<string, string> = {
   ACTIVE: s.badgeGreen, PENDING: s.badgeYellow, BANNED: s.badgeRed,
 };
 const ROLE_BADGE: Record<string, string> = {
-  USER: s.badgeGray, ADMIN: s.badgeBlue,
+  USER: s.badgeGray, FREND: s.badgePurple, ADMIN: s.badgeBlue,
 };
 
 export default function AdminUsersPage() {
@@ -96,6 +96,7 @@ export default function AdminUsersPage() {
         <select className={s.select} value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(0); }}>
           <option value="">전체 역할</option>
           <option value="USER">일반</option>
+          <option value="FREND">도박꾼</option>
           <option value="ADMIN">관리자</option>
         </select>
         <select className={s.select} value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(0); }}>
@@ -139,6 +140,7 @@ export default function AdminUsersPage() {
                       onChange={e => setConfirm({ type: 'role', user: u, value: e.target.value })}
                     >
                       <option value="USER">일반</option>
+                      <option value="FREND">도박꾼</option>
                       <option value="ADMIN">관리자</option>
                     </select>
                     <select

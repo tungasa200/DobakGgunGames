@@ -158,6 +158,7 @@
 .badgeYellow { border-color: #fde68a; color: #d97706; background: #fffbeb; }
 .badgeGray   { border-color: #e5e5e5; color: #666;    background: #fafafa; }
 .badgeBlue   { border-color: #bfdbfe; color: #2563eb; background: #eff6ff; }
+.badgePurple { border-color: #e9d5ff; color: #7c3aed; background: #f5f3ff; }
 
 /* ── 페이지네이션 ── */
 .pagination {
