@@ -27,7 +27,7 @@ export default function OAuthCallbackPage() {
     userApi.getProfile(accessToken)
       .then(profile => {
         setAuth(
-          { id: profile.id, nickname: profile.nickname, profileImage: profile.profileImage, role: profile.role as 'USER' | 'FREND' | 'ADMIN' },
+          { id: profile.id, nickname: profile.nickname, profileImage: profile.profileImage, role: profile.role as 'USER' | 'FRIEND' | 'ADMIN' },
           accessToken,
           refreshToken,
         );

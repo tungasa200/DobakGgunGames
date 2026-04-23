@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class User {
 
-    public enum Role { USER, FREND, ADMIN }
+    public enum Role { USER, FRIEND, ADMIN }
     public enum Status { PENDING, ACTIVE, BANNED }
     public enum Provider { LOCAL, GOOGLE, NAVER, KAKAO }
 

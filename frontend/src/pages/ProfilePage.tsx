@@ -13,6 +13,8 @@ import s from './auth.module.css';
 import ps from './ProfilePage.module.css';
 
 const STATUS_LABEL: Record<string, string> = { UNREAD: '미확인', READ: '확인됨', REPLIED: '답변완료' };
+const ROLE_LABEL: Record<string, string> = { USER: '일반', FRIEND: '도박꾼', ADMIN: '관리자' };
+const ROLE_BADGE_CLASS: Record<string, string> = { USER: ps.roleBadgeUser, FRIEND: ps.roleBadgeFriend, ADMIN: ps.roleBadgeAdmin };
 const STATUS_COLOR: Record<string, string> = {
   UNREAD: '#9ca3af', READ: '#3b82f6', REPLIED: '#10b981',
 };
@@ -249,7 +251,10 @@ export default function ProfilePage() {
                 <div className={ps.headerInfo}>
                   <div className={ps.name}>{profile.nickname}</div>
                   <div className={ps.email}>{profile.email}</div>
-                  <div className={ps.badge}>{profile.provider === 'LOCAL' || !profile.provider ? '이메일 계정' : `${profile.provider} 연동`}</div>
+                  <div className={ps.badgeRow}>
+                    <span className={ps.badge}>{profile.provider === 'LOCAL' || !profile.provider ? '이메일 계정' : `${profile.provider} 연동`}</span>
+                    <span className={`${ps.roleBadge} ${ROLE_BADGE_CLASS[profile.role] ?? ps.roleBadgeUser}`}>{ROLE_LABEL[profile.role] ?? profile.role}</span>
+                  </div>
                 </div>
               </div>
 

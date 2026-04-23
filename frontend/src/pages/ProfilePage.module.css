@@ -137,6 +137,13 @@
   text-overflow: ellipsis;
 }
 
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
 .badge {
   display: inline-block;
   font-size: 11px;
@@ -147,6 +154,18 @@
   color: #aa3bff;
   width: fit-content;
 }
+
+.roleBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  width: fit-content;
+}
+.roleBadgeUser  { background: #f1f5f9; color: #64748b; }
+.roleBadgeFriend { background: #f5f3ff; color: #7c3aed; }
+.roleBadgeAdmin { background: #eff6ff; color: #2563eb; }
 
 /* ══════════════════════════════════════
    버튼들

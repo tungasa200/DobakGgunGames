@@ -5,7 +5,7 @@ export interface AuthUser {
   id: number;
   nickname: string;
   profileImage: string | null;
-  role: 'USER' | 'FREND' | 'ADMIN';
+  role: 'USER' | 'FRIEND' | 'ADMIN';
 }
 
 export interface AuthResponse {
