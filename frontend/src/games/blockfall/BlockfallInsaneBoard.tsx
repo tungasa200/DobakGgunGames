@@ -742,6 +742,20 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     for (let y = boardH.current - 1; y > 0; y--) {
       if (!isRowFull(y)) continue;
 
+      // 클리어 행에 맞닿은 위/아래 행의 죽은 블럭 제거
+      for (const adjY of [y - 1, y + 1]) {
+        if (adjY < 0 || adjY >= boardH.current) continue;
+        for (let x = 0; x < boardW.current; x++) {
+          if (arena.current[adjY]?.[x] === DEAD_COLOR) {
+            arena.current[adjY][x] = 0;
+          }
+        }
+      }
+      particles.current = particles.current.filter(p =>
+        !(p.state === 'settled' && p.colorIndex === DEAD_COLOR &&
+          (Math.round(p.y) === y - 1 || Math.round(p.y) === y + 1))
+      );
+
       const row = arena.current.splice(y, 1)[0].fill(0);
       arena.current.unshift(row);
 
