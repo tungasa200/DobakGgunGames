@@ -1,0 +1,115 @@
+.createForm {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.formRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.nameInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 7px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.12s;
+  min-height: 40px;
+}
+
+.nameInput:focus {
+  outline: none;
+  border-color: #aa3bff;
+}
+
+.nameInputError {
+  border-color: #ef4444;
+}
+
+.nameInputError:focus {
+  border-color: #ef4444;
+}
+
+.submitBtn {
+  flex-shrink: 0;
+  padding: 0 16px;
+  background: #2c3e50;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #1a2d3d;
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  gap: 8px;
+}
+
+.fieldError {
+  flex: 1;
+  font-size: 12px;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.charCount {
+  font-size: 12px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.charCountWarn {
+  color: #f59e0b;
+}
+
+.cancelLink {
+  font-size: 12px;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.1s;
+  flex-shrink: 0;
+}
+
+.cancelLink:hover {
+  color: #64748b;
+}
+
+@media (max-width: 480px) {
+  .formRow {
+    flex-direction: column;
+  }
+
+  .submitBtn {
+    width: 100%;
+    padding: 10px;
+  }
+}

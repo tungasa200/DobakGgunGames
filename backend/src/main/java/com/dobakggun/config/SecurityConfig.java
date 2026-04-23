@@ -82,6 +82,13 @@ public class SecurityConfig {
                 .requestMatchers("/api/contacts").authenticated()
                 .requestMatchers("/api/contacts/my").authenticated()
                 .requestMatchers("/api/contacts/my/**").authenticated()
+                // WebSocket 엔드포인트 — 실제 인증은 JwtHandshakeInterceptor에서 처리
+                .requestMatchers("/ws/**").permitAll()
+                // 채팅 API — FRIEND 이상
+                .requestMatchers(HttpMethod.GET,    "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
+                .requestMatchers(HttpMethod.POST,   "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
+                .requestMatchers(HttpMethod.GET,    "/api/chat/rooms/*/history").hasAnyRole("FRIEND", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/chat/rooms/**").hasRole("ADMIN")
                 // 나머지 허용
                 .anyRequest().permitAll()
             )
@@ -118,6 +125,7 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/ws/**", config);
         return source;
     }
 }

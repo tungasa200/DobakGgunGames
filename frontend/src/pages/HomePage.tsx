@@ -239,16 +239,26 @@ export default function HomePage() {
               />
             );
           })}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.icon}>🧪</span>
-              <div className={styles.title}>
-                <div className={styles.nameKo}>Test Lab</div>
+          {user && (
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <span className={styles.icon}>🧪</span>
+                <div className={styles.title}>
+                  <div className={styles.nameKo}>Test Lab</div>
+                </div>
+              </div>
+              <div className={styles.cardRanking}>
+                <p className={styles.placeholder} style={{ fontSize: '0.78em', color: '#64748b', textAlign: 'left', padding: '4px 0 8px' }}>
+                  현재 실험 중인 기능들을 미리 체험할 수 있는 공간입니다.
+                </p>
+                <div className={styles.btns}>
+                  <Link to="/dbgchat" className={`${styles.btn} ${styles.btnNormal}`} style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    💬 실시간 채팅 랩
+                  </Link>
+                </div>
               </div>
             </div>
-            <div className={styles.cardRanking}>
-            </div>
-          </div>
+          )}
         </div>
       </div>
       <Footer />

@@ -65,6 +65,11 @@ public class JwtUtil {
         return role != null ? role.toString() : "USER";
     }
 
+    public String getNicknameFromToken(String token) {
+        Object nickname = parseClaims(token).get("nickname");
+        return nickname != null ? nickname.toString() : "";
+    }
+
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(key)
