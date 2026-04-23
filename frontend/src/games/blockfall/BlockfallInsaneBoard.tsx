@@ -1966,29 +1966,24 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     canvas.width  = vw;
     canvas.height = vh;
 
-    // 눈 무작위 배치 (겹침 방지)
-    const MIN_DIST = 44; // 눈 중심 간 최소 거리 (px) — 흰자 34px + 여백
-    const TARGET_COUNT = Math.floor((vw * vh) / (MIN_DIST * MIN_DIST * 5.5)); // 밀도 절반으로 축소
-    const MAX_ATTEMPTS = TARGET_COUNT * 20;
+    // 눈 격자 배치 (체크무늬 오프셋)
+    const SPACING_X = 78;
+    const SPACING_Y = 66;
+    const cols = Math.ceil(vw / SPACING_X) + 2;
+    const rows = Math.ceil(vh / SPACING_Y) + 2;
     const now = performance.now();
     const eyes: BgEye[] = [];
-    for (let attempt = 0; attempt < MAX_ATTEMPTS && eyes.length < TARGET_COUNT; attempt++) {
-      const cx = Math.random() * vw;
-      const cy = Math.random() * vh;
-      // 기존 눈과 겹치는지 확인
-      let ok = true;
-      for (const e of eyes) {
-        if (Math.hypot(cx - e.x, cy - e.y) < MIN_DIST) { ok = false; break; }
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        eyes.push({
+          x: c * SPACING_X + (r % 2) * (SPACING_X / 2) - SPACING_X / 2,
+          y: r * SPACING_Y - SPACING_Y / 2,
+          phase: 0,
+          nextBlink: now + 4000 + Math.random() * 12000,
+          closingStart: 0,
+          blinkDur: 400 + Math.random() * 600,
+        });
       }
-      if (!ok) continue;
-      eyes.push({
-        x: cx,
-        y: cy,
-        phase: 0,
-        nextBlink: now + 4000 + Math.random() * 12000, // 각자 다른 타이밍에 첫 깜빡임
-        closingStart: 0,
-        blinkDur: 400 + Math.random() * 600,          // 400~1000ms 사이 무작위 깜빡임 속도 (천천히)
-      });
     }
     bgEyesRef.current = eyes;
 
