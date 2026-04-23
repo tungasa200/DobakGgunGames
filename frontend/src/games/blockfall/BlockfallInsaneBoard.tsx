@@ -1968,7 +1968,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
     // 눈 무작위 배치 (겹침 방지)
     const MIN_DIST = 44; // 눈 중심 간 최소 거리 (px) — 흰자 34px + 여백
-    const TARGET_COUNT = Math.floor((vw * vh) / (MIN_DIST * MIN_DIST * 2.2));
+    const TARGET_COUNT = Math.floor((vw * vh) / (MIN_DIST * MIN_DIST * 5.5)); // 밀도 절반으로 축소
     const MAX_ATTEMPTS = TARGET_COUNT * 20;
     const now = performance.now();
     const eyes: BgEye[] = [];
@@ -1985,9 +1985,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         x: cx,
         y: cy,
         phase: 0,
-        nextBlink: now + Math.random() * 8000,       // 각자 다른 타이밍에 첫 깜빡임
+        nextBlink: now + 4000 + Math.random() * 12000, // 각자 다른 타이밍에 첫 깜빡임
         closingStart: 0,
-        blinkDur: 150 + Math.random() * 350,          // 150~500ms 사이 무작위 깜빡임 속도
+        blinkDur: 400 + Math.random() * 600,          // 400~1000ms 사이 무작위 깜빡임 속도 (천천히)
       });
     }
     bgEyesRef.current = eyes;
@@ -2010,7 +2010,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           if (el >= eye.blinkDur) {
             eye.phase = 0;
             eye.closingStart = 0;
-            eye.nextBlink = time + 1000 + Math.random() * 7000; // 다음 깜빡임도 무작위
+            eye.nextBlink = time + 6000 + Math.random() * 14000; // 다음 깜빡임도 무작위 (빈도 낮게)
           } else {
             const half = eye.blinkDur / 2;
             eye.phase = el < half ? el / half : 1 - (el - half) / half;
@@ -2043,8 +2043,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         ctx.arc(irisX, irisY, IRIS_R, 0, Math.PI * 2);
         ctx.fill();
 
-        // 동공: 검정(#000000)으로 그림 → 페이지 invert → 흰색 (블록 동공 흰색의 반대)
-        ctx.fillStyle = '#000000';
+        // 동공: 흰색(#ffffff)으로 그림 → 페이지 invert → 검정
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(irisX, irisY, PUPIL_R, 0, Math.PI * 2);
         ctx.fill();
