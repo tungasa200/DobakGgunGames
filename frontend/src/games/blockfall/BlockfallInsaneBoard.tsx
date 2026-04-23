@@ -1998,6 +1998,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       const tx = bgMouseRef.current.x;
       const ty = bgMouseRef.current.y;
 
+      // ===== 크로매틱 글리치 오프셋 (CSS chromaticGlitch 와 동일한 4-스텝 패턴) =====
+      // 페이지가 invert(1) 상태이므로: red→화면에서 teal, cyan→화면에서 red
+      const GLITCH_CYCLE = 120; // ms
+      const gStep = Math.floor((time % GLITCH_CYCLE) / (GLITCH_CYCLE / 4));
+      const GR = ([ [3, 0], [-2, 1], [1, -2], [-3, -1] ] as const)[gStep];
+      const GC = ([ [-3, 0], [2, -1], [-1, 2], [3, 1] ] as const)[gStep];
+
       for (const eye of bgEyesRef.current) {
         // 깜빡임 업데이트 — 눈마다 개별 blinkDur 사용
         if (eye.closingStart > 0) {
@@ -2005,7 +2012,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           if (el >= eye.blinkDur) {
             eye.phase = 0;
             eye.closingStart = 0;
-            eye.nextBlink = time + 6000 + Math.random() * 14000; // 다음 깜빡임도 무작위 (빈도 낮게)
+            eye.nextBlink = time + 6000 + Math.random() * 14000;
           } else {
             const half = eye.blinkDur / 2;
             eye.phase = el < half ? el / half : 1 - (el - half) / half;
@@ -2024,7 +2031,19 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         const irisX = eye.x + nx * GAZE_X;
         const irisY = eye.y + ny * GAZE_Y;
 
-        // 흰자: 흰색(#ffffff)으로 그림 → 페이지 invert → 검정 (블록 흰자의 반대)
+        // 크로매틱 프린지 (흰자 뒤에 red/cyan 번짐)
+        ctx.globalAlpha = 0.82;
+        ctx.fillStyle = 'rgba(255,0,85,1)';
+        ctx.beginPath();
+        ctx.ellipse(eye.x + GR[0], eye.y + GR[1], RX, RY * yScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0,255,255,1)';
+        ctx.beginPath();
+        ctx.ellipse(eye.x + GC[0], eye.y + GC[1], RX, RY * yScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // 흰자: 흰색(#ffffff)으로 그림 → 페이지 invert → 검정
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.ellipse(eye.x, eye.y, RX, RY * yScale, 0, 0, Math.PI * 2);
@@ -2032,7 +2051,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
         if (eye.phase > 0.35) continue;
 
-        // 홍채: #800000(진한빨강)으로 그림 → 페이지 invert → #7fffff(청록) (블록 홍채 #800000의 반대)
+        // 홍채: #800000(진한빨강)으로 그림 → 페이지 invert → #7fffff(청록)
         ctx.fillStyle = '#800000';
         ctx.beginPath();
         ctx.arc(irisX, irisY, IRIS_R, 0, Math.PI * 2);
