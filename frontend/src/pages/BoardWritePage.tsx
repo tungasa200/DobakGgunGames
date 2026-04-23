@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { boardMock as api } from '../mocks/boardMock';
+import { boardApi as api } from '../api/boardApi';
 import type { PostType } from '../api/boardApi';
 import type { TournamentFormData } from '../components/board/TournamentFields';
 import NormalHeader from '../components/normal/NormalHeader';

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { boardMock as api } from '../mocks/boardMock';
+import { boardApi as api } from '../api/boardApi';
 import type { BoardPostSummary, PostType } from '../api/boardApi';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
