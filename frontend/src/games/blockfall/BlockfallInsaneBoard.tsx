@@ -882,7 +882,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
       case 'LIQUID_FLOOD': {
         setBoardFilter('saturate(2.2) hue-rotate(15deg)', 500);
-        const n = boardW.current * 6;
+        const n = boardW.current + Math.floor(Math.random() * boardW.current * 5);
         for (let i = 0; i < n; i++) {
           const x = Math.floor(Math.random() * boardW.current);
           const y = Math.floor(Math.random() * 3);
