@@ -2,20 +2,19 @@
 
 - 작성자: developer-backend
 - 작성일: 2026-04-23
-- 상태: **구현 완료 — QA 검증 요청**
+- 상태: **구현 완료 — QA PASS**
 - 기반 PRD: `docs/specs/chat-testroom.md` r2
 
 ---
 
-## 현재 상태
+## 최종 상태 (2026-04-23 세션 종료)
 
-### 구현 완료
+### 구현 완료 파일 목록 (18개)
 
-**build.gradle**
-- `spring-boot-starter-websocket` 의존성 추가
-- `processResources` 태스크: `shared/badwords.json` → classpath 복사
+**빌드 설정 수정 (1)**
+- `build.gradle` — `spring-boot-starter-websocket` 의존성 추가, `shared/badwords.json` classpath 복사
 
-**DTO (com.dobakggun.dto.chat)**
+**DTO (7) — com.dobakggun.dto.chat**
 - `CreateRoomRequest.java`
 - `ChatRoomResponse.java`
 - `ChatRoomListResponse.java`
@@ -24,66 +23,68 @@
 - `ChatHistoryResponse.java`
 - `ChatErrorResponse.java`
 
-**service**
+**service (3)**
 - `BadWordFilter.java` — classpath:badwords.json 로드, containsBadWord()
-- `ChatRedisService.java` — Redis 3종 키 CRUD, TTL 갱신, @Scheduled 스윕
+- `ChatRedisService.java` — Redis 3종 키 CRUD, TTL 갱신, @Scheduled 스윕, saveMessageWithoutTTLRefresh() 추가
 - `ChatRoomService.java` — 방 생성/목록/삭제 비즈니스 로직, 금칙어/최대방수 체크
 
-**security**
+**security (3)**
 - `ChatPrincipal.java` — java.security.Principal 구현체
 - `JwtHandshakeInterceptor.java` — HTTP 핸드셰이크 JWT 검증 (Authorization 헤더 → ?token= 쿼리 fallback)
-- `StompChannelInterceptor.java` — CONNECT/SUBSCRIBE/SEND 재인증, 방 존재 확인
+- `StompChannelInterceptor.java` — CONNECT/SUBSCRIBE/SEND 재인증, 방 존재 확인, 파이프라인 차단 로직 (QA 버그 수정 적용)
 
-**config**
+**config (1)**
 - `WebSocketConfig.java` — STOMP 브로커 설정, /ws SockJS 엔드포인트, CORS
 
-**controller**
-- `ChatController.java` — @MessageMapping, 입/퇴장 @EventListener
+**controller (2)**
+- `ChatController.java` — @MessageMapping, 입/퇴장 @EventListener, roomId 검증 및 다중 방 구독 처리 (QA 버그 수정 적용)
 - `ChatRestController.java` — GET/POST/GET/DELETE /api/chat/rooms/**
 
-**기존 파일 수정**
+**기존 파일 수정 (3)**
 - `SecurityConfig.java` — /ws/**, /api/chat/** 접근 제어 규칙 추가, /ws/** CORS 등록
 - `JwtUtil.java` — getNicknameFromToken() 메서드 추가
 - `DobakGgunGamesApplicationTests.java` — ChatRedisService @MockBean 추가
 
 ---
 
-### 진행 중
-- 없음
+## QA 발견 버그 수정 완료 내역 (7건)
 
-### 버그 수정 이력 (2026-04-23 QA 결과 대응)
+### CRITICAL (1건)
 
-#### StompChannelInterceptor.java
-- [CRITICAL] `import java.util.Map;` 누락 → 추가
-- [HIGH] CONNECT 인증 실패 시 조용히 통과하던 문제 수정
-  - `handleConnect` 반환 타입 `void` → `boolean`
-  - userId null 또는 isAllowedRole false 시 에러 전송 후 `return false`
-  - `preSend`에서 `handleConnect` 반환값이 false면 `return null` (연결 차단)
-- [HIGH] SUBSCRIBE/SEND 에러 시 원본 메시지 통과하던 문제 수정
-  - `handleSubscribe`, `handleSend` 반환 타입 `void` → `boolean`
-  - 에러 조건(FORBIDDEN, ROOM_NOT_FOUND) 충족 시 `return false`
-  - `preSend`에서 각 핸들러가 false 반환 시 `return null` (메시지 파이프라인 차단)
+| # | 파일 | 내용 |
+|---|---|---|
+| 1 | `StompChannelInterceptor.java` | `import java.util.Map;` 누락 → 추가 (컴파일 에러) |
 
-#### ChatController.java
-- [HIGH] `handleMessage`에 roomId 검증 추가
-  - `^[a-z0-9]{8}$` 패턴 불일치 시 `INVALID_ROOM_ID` 에러 후 return
-  - `chatRedisService.roomExists(roomId)` false 시 `ROOM_NOT_FOUND` 에러 후 return
-- [MEDIUM] 삭제된 방 메시지 브로드캐스트: roomExists 체크로 자동 해결
-- [HIGH] 다중 방 구독 처리
-  - 세션 속성 `lastRoomId` (String) → `subscribedRoomIds` (Set\<String\>) 로 변경
-  - `handleSubscribe`: `subscribedRoomIds` Set에 roomId add
-  - `handleDisconnect`: Set 내 모든 roomId에 퇴장 메시지 발송
-- [MEDIUM] 퇴장 메시지 TTL 갱신 부작용 수정
-  - `chatRedisService.saveMessageWithoutTTLRefresh()` 신규 메서드 추가 (LPUSH+LTRIM만, EXPIRE 생략)
-  - `handleDisconnect`에서 이 메서드 사용
-- [LOW] `handleSubscribe`에서 Principal 타입 불일치 시 `log.warn` 추가 (type명, name 포함)
+### HIGH (4건)
 
-#### ChatRedisService.java
-- `saveMessageWithoutTTLRefresh(String roomId, ChatMessageResponse msg)` 메서드 추가
-  - LPUSH + LTRIM(0, 99)만 수행, EXPIRE 갱신 없음
+| # | 파일 | 내용 |
+|---|---|---|
+| 2 | `StompChannelInterceptor.java` | CONNECT 인증 실패 시 조용히 통과하던 문제 — `handleConnect` 반환 타입 `void` → `boolean`, userId null 또는 isAllowedRole false 시 에러 전송 후 `return false`, `preSend`에서 false면 `return null` (연결 차단) |
+| 3 | `StompChannelInterceptor.java` | SUBSCRIBE/SEND 에러 시 원본 메시지 통과하던 문제 — `handleSubscribe`, `handleSend` 반환 타입 `void` → `boolean`, 에러 조건 충족 시 `return false`, `preSend`에서 `return null` (파이프라인 차단) |
+| 4 | `ChatController.java` | `handleMessage`에 roomId 검증 누락 — `^[a-z0-9]{8}$` 패턴 불일치 시 `INVALID_ROOM_ID` 에러 후 return, `chatRedisService.roomExists(roomId)` false 시 `ROOM_NOT_FOUND` 에러 후 return |
+| 5 | `ChatController.java` | 다중 방 구독 처리 미흡 — 세션 속성 `lastRoomId` (String) → `subscribedRoomIds` (Set\<String\>) 변경, `handleSubscribe`에서 Set에 add, `handleDisconnect`에서 Set 내 모든 roomId에 퇴장 메시지 발송 |
 
-### 블로커 / 질문
-- 없음
+### MEDIUM (2건)
+
+| # | 파일 | 내용 |
+|---|---|---|
+| 6 | `ChatController.java` | 삭제된 방 메시지 브로드캐스트 — roomExists 체크(버그 #4)로 자동 해결 |
+| 7 | `ChatRedisService.java` / `ChatController.java` | 퇴장 메시지 TTL 갱신 부작용 — `saveMessageWithoutTTLRefresh()` 신규 메서드 추가 (LPUSH+LTRIM만, EXPIRE 생략), `handleDisconnect`에서 해당 메서드 사용 |
+
+---
+
+## 커밋/배포 이력
+
+| 날짜 | 커밋 해시 | 브랜치 | 내용 |
+|---|---|---|---|
+| 2026-04-23 | `5d0f99b` | WIP | chat-testroom 전체 구현 + QA 7건 버그 수정 완료, 푸시 완료 |
+
+---
+
+## 사용자 확인 필요
+
+- `./gradlew build` 실행 후 빌드 성공 여부 확인
+  - 실패 시 로그를 developer-backend에게 제공하면 즉시 대응
 
 ---
 
@@ -118,6 +119,9 @@
 
 ---
 
-## 다음 세션에서 할 것
-- `./gradlew build` 결과 사용자 측 확인 후 빌드 에러 있으면 대응
-- qa-tester 재검증 결과 수신 후 추가 버그 수정 대응
+## 다음 단계
+
+1. 사용자가 로컬에서 `./gradlew build` 실행 확인
+2. 빌드 성공 후 로컬 통합 테스트 (WebSocket 연결, 방 생성/입퇴장, 메시지 송수신, 금칙어 필터)
+3. 통합 테스트 이상 없으면 WIP → main 머지
+4. Railway 자동 배포 완료 확인

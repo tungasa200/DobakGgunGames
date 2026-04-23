@@ -37,10 +37,11 @@
 - 입력창: `flex-shrink: 0` 하단 고정
 - NormalHeader 가 fixed이므로 높이 spacer 위에 채팅방 헤더 추가
 
-### 3. 접근 차단 — URL 유지, 리다이렉트 아님
+### 3. 접근 차단 — FriendRoute URL 유지, 리다이렉트 아님
 
 - PRD 5-1 준수: USER 등급 차단 시 `/dbgchat` URL 유지하며 차단 페이지 렌더
 - `FriendRoute` 컴포넌트: `AdminRoute` 패턴 재사용, FRIEND/ADMIN 통과
+- URL 변경 없이 같은 경로에서 접근 거부 메시지 인라인 렌더 방식 채택
 
 ### 4. Test Lab 카드 — 비로그인 시 전체 숨김
 
@@ -65,6 +66,15 @@
 - PRD `docs/specs/chat-testroom.md` r2 기준 전체 반영
 - 모드: 일반 모드만 (Excel 모드 미적용 — PRD 2장 확인)
 - 등급명 노출 금지 정책: 차단 페이지, 에러 메시지 전부 준수
+
+---
+
+## 세션 종료 기록 (2026-04-23)
+
+- developer-frontend 에 명세 전달 완료
+  - 전달 파일: `docs/design/chat-testroom-flow.md`, `docs/design/chat-testroom-components.md`
+- WIP 브랜치 커밋 완료: `5d0f99b`
+- 본 세션에서 신규 스펙 변경 없음 (PRD r2 그대로 반영)
 
 ---
 
