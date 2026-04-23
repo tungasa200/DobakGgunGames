@@ -1,0 +1,183 @@
+.page {
+  flex: 1;
+  padding: 32px 24px 48px;
+}
+
+.inner {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.backLink {
+  display: inline-block;
+  font-size: 14px;
+  color: #475569;
+  text-decoration: none;
+  margin-bottom: 24px;
+}
+.backLink:hover { color: #2c3e50; text-decoration: underline; }
+
+.loadingMsg {
+  font-size: 14px;
+  color: #94a3b8;
+  padding: 48px 0;
+  text-align: center;
+}
+
+.postHeader {
+  margin-bottom: 16px;
+}
+
+.postTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nickname { font-size: 14px; color: #475569; }
+.dot { font-size: 14px; color: #94a3b8; }
+.date { font-size: 13px; color: #94a3b8; }
+.edited { font-size: 12px; color: #94a3b8; }
+
+.actionBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.editBtn {
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.editBtn:hover { background: #f8fafc; }
+
+.deleteBtn {
+  background: white;
+  border: 1px solid #fca5a5;
+  color: #ef4444;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.deleteBtn:hover { background: #fef2f2; }
+.deleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.divider {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 20px 0;
+}
+
+/* 대회기록 카드 */
+.tournamentCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.tournamentTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 12px;
+}
+
+.cardDivider {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+.tournamentRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 6px 0;
+}
+
+.tournamentLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.tournamentValue {
+  font-size: 14px;
+  color: #0f172a;
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+/* HTML 본문 렌더링 */
+.boardContent {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #0f172a;
+  padding: 8px 0 24px;
+}
+.boardContent :global(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px 0;
+  border-radius: 4px;
+}
+.boardContent :global(a) {
+  color: #2c3e50;
+  text-decoration: underline;
+}
+.boardContent :global(blockquote) {
+  border-left: 3px solid #e2e8f0;
+  padding-left: 12px;
+  color: #64748b;
+  margin: 8px 0;
+}
+.boardContent :global(pre),
+.boardContent :global(code) {
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: monospace;
+  font-size: 13px;
+}
+.boardContent :global(ul),
+.boardContent :global(ol) {
+  padding-left: 24px;
+  line-height: 1.8;
+}
+.boardContent :global(h2) {
+  font-size: 1.3em;
+  font-weight: 700;
+  margin: 16px 0 8px;
+}
+.boardContent :global(h3) {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 12px 0 6px;
+}
+
+@media (max-width: 767px) {
+  .page { padding: 20px 16px 48px; }
+  .postTitle { font-size: 18px; }
+  .tournamentCard { padding: 14px 16px; }
+}

@@ -1,0 +1,84 @@
+.wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  transition: border-color 0.15s;
+  overflow: hidden;
+}
+
+.wrap:focus-within {
+  border-color: #2c3e50;
+}
+
+.dragging {
+  border-color: #2c3e50 !important;
+  border-width: 2px;
+  background: rgba(44,62,80,0.04);
+}
+
+/* EditorContent 내부 ProseMirror */
+.content :global(.ProseMirror) {
+  padding: 16px;
+  outline: none;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #0f172a;
+}
+
+/* placeholder */
+.content :global(.ProseMirror p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* 에디터 내 스타일 */
+.content :global(.ProseMirror h2) {
+  font-size: 1.4em;
+  font-weight: 700;
+  margin: 12px 0 6px;
+}
+.content :global(.ProseMirror h3) {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+.content :global(.ProseMirror blockquote) {
+  border-left: 3px solid #e2e8f0;
+  padding-left: 12px;
+  color: #64748b;
+  margin: 8px 0;
+}
+.content :global(.ProseMirror code) {
+  background: #f1f5f9;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+.content :global(.ProseMirror img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px 0;
+  border-radius: 4px;
+}
+/* 업로드 에러 이미지 표시 */
+.content :global(.ProseMirror img[title="__upload_error__"]) {
+  border: 2px solid #ef4444;
+  opacity: 0.6;
+}
+.content :global(.ProseMirror ul),
+.content :global(.ProseMirror ol) {
+  padding-left: 24px;
+  line-height: 1.8;
+}
+.content :global(.ProseMirror a) {
+  color: #2c3e50;
+  text-decoration: underline;
+}
+.content :global(.ProseMirror p) {
+  margin: 0 0 4px;
+}

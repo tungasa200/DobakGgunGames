@@ -1,0 +1,128 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 8px 8px 0 0;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: #f1f5f9;
+}
+
+.active {
+  background: #e2e8f0;
+  color: #2c3e50;
+}
+
+.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.sep {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: #e2e8f0;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* 링크 팝오버 */
+.linkWrap {
+  position: relative;
+  display: flex;
+  gap: 2px;
+}
+
+.linkPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  z-index: 100;
+  min-width: 280px;
+}
+
+.linkInput {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: none;
+}
+.linkInput:focus {
+  border-color: #2c3e50;
+  box-shadow: 0 0 0 2px rgba(44,62,80,0.15);
+}
+
+.linkError {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #ef4444;
+}
+
+.linkActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.linkInsertBtn {
+  background: #2c3e50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.linkInsertBtn:hover { background: #34495e; }
+
+.linkCancelBtn {
+  background: white;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.linkCancelBtn:hover { background: #f8fafc; }
+
+@media (max-width: 767px) {
+  .btn {
+    min-width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}

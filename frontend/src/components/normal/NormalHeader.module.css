@@ -251,6 +251,20 @@
 .profileDropLogout { color: #e53935; }
 .profileDropLogout:hover { background: #fff5f5; }
 
+/* 게시판 링크 */
+.boardLink {
+  color: rgba(255,255,255,0.9);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+.boardLink:hover { background: rgba(255,255,255,0.15); }
+
 .loginBtn {
   background: white;
   color: #333;
