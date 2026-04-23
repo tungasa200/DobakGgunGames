@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(ls *.md)",
-      "Bash(./gradlew test *)"
+      "Bash(./gradlew test *)",
+      "Bash(git add *)",
+      "Bash(git push:*)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(git commit *)"
     ]
   }
 }
