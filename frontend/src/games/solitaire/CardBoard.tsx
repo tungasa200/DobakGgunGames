@@ -75,7 +75,21 @@ function calcDimensions(vw: number) {
 
 // ── 타입 ─────────────────────────────────────────────────────────────
 interface Dims { cw: number; ch: number; gap: number }
-interface Props { excel?: boolean }
+interface Props {
+  excel?: boolean;
+  bgColor?: string;
+  onBgColorChange?: (color: string) => void;
+}
+
+// 일반 모드 배경 선택지
+const BG_OPTIONS: { color: string; label: string }[] = [
+  { color: '#0b5e20', label: '초록' },
+  { color: '#f5ead6', label: '미색' },
+  { color: '#ffffff', label: '흰색' },
+  { color: '#c0c0c0', label: '회색' },
+];
+// 밝은 배경 기준 (이 색들에서는 본문 텍스트를 어둡게 표시)
+const LIGHT_BG_SET = new Set(['#f5ead6', '#ffffff', '#c0c0c0']);
 
 interface XCellInfo {
   text: string;
@@ -131,7 +145,8 @@ function CardEl({
 }
 
 // ══════════════════════════════════════════════════════════════════════
-export default function CardBoard({ excel = false }: Props) {
+export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColorChange }: Props) {
+  const lightBg = LIGHT_BG_SET.has(bgColor);
   const { user } = useAuth();
   const [drawMode, setDrawMode] = useState<DrawMode>('draw1');
   const {
@@ -542,7 +557,10 @@ export default function CardBoard({ excel = false }: Props) {
 
   // ═══════════════ JSX ════════════════════════════════════════════════
   return (
-    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`} ref={wrapRef}>
+    <div
+      className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && lightBg ? styles.lightBg : ''}`}
+      ref={wrapRef}
+    >
 
       {/* ── 일반 모드 전용: 컨트롤 바 ── */}
       {!excel && (
@@ -559,6 +577,21 @@ export default function CardBoard({ excel = false }: Props) {
             ))}
           </div>
           <button className={styles.startBtn} onClick={() => handleStartGame(drawMode)}>새 게임</button>
+          <div className={styles.bgPicker} role="radiogroup" aria-label="배경색 선택">
+            {BG_OPTIONS.map((opt) => (
+              <button
+                key={opt.color}
+                type="button"
+                role="radio"
+                aria-checked={bgColor === opt.color}
+                aria-label={`배경 ${opt.label}`}
+                title={opt.label}
+                className={`${styles.bgSwatch} ${bgColor === opt.color ? styles.bgSwatchActive : ''}`}
+                style={{ backgroundColor: opt.color }}
+                onClick={() => onBgColorChange?.(opt.color)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
