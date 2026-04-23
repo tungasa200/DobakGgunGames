@@ -1846,7 +1846,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   useEffect(() => {
     const canvas = boardRef.current;
     if (!canvas) return;
-    let sx = 0, sy = 0, st = 0, lastTap = 0;
+    let sx = 0, sy = 0, st = 0;
     function onStart(e: TouchEvent) {
       e.preventDefault();
       sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
@@ -1859,10 +1859,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       const dt = Date.now() - st;
       const ax = Math.abs(dx), ay = Math.abs(dy);
       if (ax < 15 && ay < 15 && dt < 250) {
-        const now = Date.now();
-        if (now - lastTap < 300) playerHardDrop();
-        else playerRotate(1);
-        lastTap = now;
+        playerRotate(1);
       } else if (ax > ay && ax > 20) {
         playerMove(dx > 0 ? 1 : -1);
       } else if (ay > ax && dy > 40) {
