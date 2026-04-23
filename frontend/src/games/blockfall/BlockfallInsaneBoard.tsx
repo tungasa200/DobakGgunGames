@@ -597,8 +597,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     setGameLevel(gameLevelRef.current);
     setLines(linesRef.current);
     setCombo(comboCount.current);
-    // Lv11 + 10000점 초과: 페이지 배경 눈 기믹 발동
-    if (gameLevelRef.current === 11 && scoreRef.current > 100000 && !showHorrorBgRef.current) {
+    // Lv11 + 30만점 초과: 페이지 배경 눈 기믹 발동
+    if (gameLevelRef.current === 11 && scoreRef.current > 300000 && !showHorrorBgRef.current) {
       showHorrorBgRef.current = true;
       setShowHorrorBg(true);
     }
@@ -1844,7 +1844,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameLevel]);
 
-  // ===== Lv11 + 10만점 초과 → phase3 BGM 교체 =====
+  // ===== Lv11 + 30만점 초과 → phase3 BGM 교체 =====
   useEffect(() => {
     if (!showHorrorBg) return;
     if (activeBgmRef.current === 'phase3') return;
