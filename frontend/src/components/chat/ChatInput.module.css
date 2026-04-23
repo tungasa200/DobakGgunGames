@@ -1,0 +1,98 @@
+.inputArea {
+  flex-shrink: 0;
+  border-top: 1px solid #e2e8f0;
+  padding: 12px 16px;
+  background: #fff;
+}
+
+.inputError {
+  font-size: 12px;
+  color: #ef4444;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  background: #fff5f5;
+  border-radius: 6px;
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.textInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.5;
+  transition: border-color 0.12s;
+}
+
+.textInput:focus {
+  outline: none;
+  border-color: #aa3bff;
+}
+
+.textInput:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.sendBtn {
+  flex-shrink: 0;
+  padding: 0 16px;
+  min-height: 44px;
+  background: #aa3bff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+
+.sendBtn:hover:not(:disabled) {
+  background: #9333ea;
+}
+
+.sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inputMeta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.charCount {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.charCountWarn {
+  color: #f59e0b;
+}
+
+@media (max-width: 480px) {
+  .inputArea {
+    padding: 10px 12px;
+  }
+
+  .sendBtn {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}

@@ -18,6 +18,7 @@ repositories {
 }
 
 dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -54,6 +55,12 @@ dependencies {
 
 	// OWASP Java HTML Sanitizer (게시판 XSS 방어)
 	implementation 'com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1'
+}
+
+processResources {
+	from("${rootProject.projectDir}/shared/badwords.json") {
+		into(".")
+	}
 }
 
 tasks.named('test') {

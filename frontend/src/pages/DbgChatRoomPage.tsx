@@ -1,0 +1,139 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { chatApi, ChatApiError } from '../api/chat';
+import type { ChatMessageData, StompErrorData } from '../api/chat';
+import { createStompClient } from '../lib/stompClient';
+import type { ConnectionStatus } from '../lib/stompClient';
+import NormalHeader from '../components/normal/NormalHeader';
+import Footer from '../components/normal/Footer';
+import ConnectionStatusBadge from '../components/chat/ConnectionStatus';
+import ChatMessageList from '../components/chat/ChatMessageList';
+import ChatInput from '../components/chat/ChatInput';
+import styles from './DbgChatRoomPage.module.css';
+
+export default function DbgChatRoomPage() {
+  const { roomId } = useParams<{ roomId: string }>();
+  const navigate = useNavigate();
+  const { user, accessToken } = useAuth();
+
+  const [roomName, setRoomName] = useState('');
+  const [messages, setMessages] = useState<ChatMessageData[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [degraded, setDegraded] = useState(false);
+  const [degradedDismissed, setDegradedDismissed] = useState(false);
+  const [serverError, setServerError] = useState('');
+
+  const stompRef = useRef<ReturnType<typeof createStompClient> | null>(null);
+
+  const handleRoomDeleted = useCallback(() => {
+    navigate('/dbgchat', { replace: true, state: { toast: '채팅방이 종료되었습니다.' } });
+  }, [navigate]);
+
+  const handleMessage = useCallback((msg: ChatMessageData) => {
+    setMessages((prev) => [...prev, msg]);
+  }, []);
+
+  const handleError = useCallback((err: StompErrorData) => {
+    setServerError(err.message);
+  }, []);
+
+  const handleStatusChange = useCallback((status: ConnectionStatus) => {
+    setConnectionStatus(status);
+    if (status === 'error') {
+      navigate('/dbgchat', { replace: true, state: { toast: '서버와 연결이 끊어졌습니다.' } });
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!roomId || !accessToken) return;
+
+    let stompClient: ReturnType<typeof createStompClient> | null = null;
+    let cancelled = false;
+
+    const init = async () => {
+      try {
+        const history = await chatApi.getHistory(accessToken, roomId);
+        if (cancelled) return;
+        setRoomName(history.roomName);
+        setMessages(history.messages);
+        setDegraded(history.degraded);
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ChatApiError && err.status === 404) {
+          navigate('/dbgchat', { replace: true, state: { toast: '채팅방이 종료되었습니다.' } });
+          return;
+        }
+        setDegraded(true);
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+
+      if (cancelled) return;
+
+      stompClient = createStompClient({
+        roomId,
+        token: accessToken,
+        onMessage: handleMessage,
+        onError: handleError,
+        onStatusChange: handleStatusChange,
+        onRoomDeleted: handleRoomDeleted,
+      });
+      stompRef.current = stompClient;
+      stompClient.connect();
+    };
+
+    init();
+
+    return () => {
+      cancelled = true;
+      stompClient?.disconnect();
+      stompRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, accessToken]);
+
+  const handleSend = (text: string) => {
+    stompRef.current?.send(text);
+    setServerError('');
+  };
+
+  return (
+    <div className={styles.roomPage}>
+      <NormalHeader />
+      <div className={styles.roomHeader}>
+        <Link to="/dbgchat" className={styles.backLink}>← 목록</Link>
+        <span className={styles.roomName}>💬 {roomName || '채팅방'}</span>
+        <ConnectionStatusBadge status={connectionStatus} />
+      </div>
+
+      {degraded && !degradedDismissed && (
+        <div className={styles.degradedBanner}>
+          <span>⚠ 히스토리를 불러올 수 없습니다. 새 메시지는 계속 받을 수 있습니다.</span>
+          <button
+            className={styles.degradedClose}
+            onClick={() => setDegradedDismissed(true)}
+            aria-label="배너 닫기"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      <ChatMessageList
+        messages={messages}
+        currentUserId={user?.id}
+        loading={historyLoading}
+      />
+
+      <ChatInput
+        disabled={connectionStatus !== 'connected'}
+        onSend={handleSend}
+        serverError={serverError}
+      />
+
+      <Footer />
+    </div>
+  );
+}

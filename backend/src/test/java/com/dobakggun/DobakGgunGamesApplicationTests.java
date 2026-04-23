@@ -1,5 +1,6 @@
 package com.dobakggun;
 
+import com.dobakggun.service.ChatRedisService;
 import com.dobakggun.service.IpBanService;
 import com.dobakggun.service.RedisTokenService;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,10 @@ class DobakGgunGamesApplicationTests {
 	/** StringRedisTemplate 주입 받는 서비스 mock */
 	@MockBean
 	private RedisTokenService redisTokenService;
+
+	/** 채팅 Redis 서비스 mock */
+	@MockBean
+	private ChatRedisService chatRedisService;
 
 	@Test
 	void contextLoads() {

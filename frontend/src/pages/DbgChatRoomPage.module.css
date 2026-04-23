@@ -1,0 +1,81 @@
+.roomPage {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.roomHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.backLink {
+  font-size: 13px;
+  color: #64748b;
+  text-decoration: none;
+  flex-shrink: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.backLink:hover {
+  color: #0f172a;
+}
+
+.roomName {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.degradedBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 8px 16px 0;
+  font-size: 13px;
+  color: #92400e;
+  flex-shrink: 0;
+}
+
+.degradedClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #92400e;
+  font-size: 14px;
+  padding: 0;
+  font-family: inherit;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.degradedClose:hover {
+  color: #78350f;
+}
+
+@media (max-width: 480px) {
+  .roomName {
+    font-size: 14px;
+  }
+
+  .roomHeader {
+    padding: 10px 12px;
+  }
+}

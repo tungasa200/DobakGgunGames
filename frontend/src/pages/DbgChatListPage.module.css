@@ -1,0 +1,193 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.container {
+  max-width: 720px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 6px;
+}
+
+.pageTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.labBadge {
+  font-size: 11px;
+  font-weight: 600;
+  background: #f5f3ff;
+  color: #7c3aed;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.pageDesc {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 20px;
+}
+
+.toastBanner {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #166534;
+  margin-bottom: 16px;
+}
+
+.degradedBanner {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #92400e;
+  margin-bottom: 16px;
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.listTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.createBtn {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  background: #2c3e50;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  min-height: 36px;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+
+.createBtn:hover:not(:disabled) {
+  background: #1a2d3d;
+}
+
+.createBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 스켈레톤 */
+.skeletonList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeletonCard {
+  height: 72px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* 에러 상태 */
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.errorState p {
+  margin: 0;
+}
+
+.retryBtn {
+  padding: 8px 16px;
+  background: white;
+  color: #2c3e50;
+  border: 1.5px solid #2c3e50;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+
+.retryBtn:hover {
+  background: #2c3e50;
+  color: white;
+}
+
+/* 빈 상태 */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.emptyDesc {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 12px;
+  }
+
+  .listHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .createBtn {
+    width: 100%;
+  }
+}

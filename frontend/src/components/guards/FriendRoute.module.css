@@ -1,0 +1,58 @@
+.accessDeniedPage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.accessDeniedMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.lockIcon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.accessDeniedTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.accessDeniedDesc {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.homeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 160px;
+  min-height: 44px;
+  padding: 0 20px;
+  background: white;
+  color: #2c3e50;
+  border: 1.5px solid #2c3e50;
+  border-radius: 7px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 8px;
+  transition: all 0.12s;
+}
+
+.homeBtn:hover {
+  background: #2c3e50;
+  color: white;
+}

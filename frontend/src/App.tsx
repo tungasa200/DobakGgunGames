@@ -16,7 +16,9 @@ import PatchNotesPage from './pages/PatchNotesPage';
 import PatchNoteDetailPage from './pages/PatchNoteDetailPage';
 import AdminRoute from './components/admin/AdminRoute';
 import AdminLayout from './components/admin/AdminLayout';
-import FriendRoute from './components/FriendRoute';
+import FriendRoute from './components/guards/FriendRoute';
+import DbgChatListPage from './pages/DbgChatListPage';
+import DbgChatRoomPage from './pages/DbgChatRoomPage';
 import BoardListPage from './pages/BoardListPage';
 import BoardDetailPage from './pages/BoardDetailPage';
 import BoardWritePage from './pages/BoardWritePage';
@@ -104,6 +106,10 @@ export default function App() {
           <Route path="ip-bans" element={<AdminIpBansPage />} />
           <Route path="games" element={<AdminGamesPage />} />
         </Route>
+
+        {/* 채팅 Test Room — FRIEND 이상 전용, /:game 보다 위에 선언 */}
+        <Route path="/dbgchat" element={<FriendRoute><DbgChatListPage /></FriendRoute>} />
+        <Route path="/dbgchat/:roomId" element={<FriendRoute><DbgChatRoomPage /></FriendRoute>} />
 
         {/* 인세인 모드 — 로그인 유저 전용, /:game 보다 위에 선언 */}
         <Route
