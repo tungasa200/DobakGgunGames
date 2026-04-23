@@ -22,6 +22,20 @@
 .diffBtn:hover { background: #8e44ad; color: #fff; }
 .diffActive    { background: #8e44ad; color: #fff; }
 
+/* 인세인 모드 진입 버튼 */
+.insaneBtn {
+  border-color: #ff2d55;
+  color: #ff2d55;
+  margin-left: auto;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.insaneBtn:hover {
+  background: #ff2d55;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.5);
+}
+
 /* 정보 바 */
 .infoBar {
   display: flex;
@@ -456,6 +470,15 @@
 .xrbIcon { font-size: 18px; line-height: 1.2; }
 .xrbActive { background: #c8e6c9 !important; border-color: #4caf50 !important; }
 .xrbDisabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.xrbInsane {
+  border-color: #ff2d55;
+  color: #ff2d55;
+  font-weight: 700;
+}
+.xrbInsane:hover {
+  background: #ffe5ec;
+  border-color: #ff2d55;
+}
 
 /* ===== 엑셀 랭킹·룰 시트 구조 (원본: #excel-ranking-sheet / #excel-rules-sheet) ===== */
 .xSheetWrapper {

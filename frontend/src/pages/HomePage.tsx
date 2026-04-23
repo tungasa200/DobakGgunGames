@@ -9,11 +9,18 @@ import styles from './HomePage.module.css';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
+interface LevelConfig {
+  value: string;
+  label: string;
+  game?: string;
+  apiLevel?: string;
+}
+
 interface GameConfig {
   key: string;
   name: string;
   icon: string;
-  levels: { value: string; label: string }[];
+  levels: LevelConfig[];
   defaultLevel: string;
   fmt: (r: RankingEntry) => string;
   comingSoon?: boolean;
@@ -52,6 +59,7 @@ const GAMES: GameConfig[] = [
       { value: 'easy', label: '쉬움' },
       { value: 'normal', label: '보통' },
       { value: 'hard', label: '어려움' },
+      { value: 'insane', label: '인세인', game: 'blockfall-insane', apiLevel: 'hard' },
     ],
     defaultLevel: 'normal',
     fmt: (r) => `${(r.score ?? 0).toLocaleString()}점`,
@@ -178,24 +186,27 @@ export default function HomePage() {
     fetchGameStatus().then(setGameStatus);
   }, []);
 
-  const fetchLevel = (gameKey: string, level: string) => {
-    getCachedWeekly(gameKey, level)
+  const fetchLevel = (game: GameConfig, levelValue: string) => {
+    const lv = game.levels.find((l) => l.value === levelValue);
+    const apiGame = lv?.game ?? game.key;
+    const apiLevel = lv?.apiLevel ?? levelValue;
+    getCachedWeekly(apiGame, apiLevel)
       .then((data) =>
         setCache((prev) => ({
           ...prev,
-          [gameKey]: { ...(prev[gameKey] ?? {}), [level]: data },
+          [game.key]: { ...(prev[game.key] ?? {}), [levelValue]: data },
         }))
       )
       .catch(() =>
         setCache((prev) => ({
           ...prev,
-          [gameKey]: { ...(prev[gameKey] ?? {}), [level]: 'error' },
+          [game.key]: { ...(prev[game.key] ?? {}), [levelValue]: 'error' },
         }))
       );
   };
 
   useEffect(() => {
-    GAMES.forEach((game) => fetchLevel(game.key, game.defaultLevel));
+    GAMES.forEach((game) => fetchLevel(game, game.defaultLevel));
   }, []);
 
   return (
@@ -222,7 +233,7 @@ export default function HomePage() {
                 activeLevel={activeLevels[game.key]}
                 onLevelChange={(lv) => {
                   setActiveLevels((prev) => ({ ...prev, [game.key]: lv }));
-                  if (!cache[game.key]?.[lv]) fetchLevel(game.key, lv);
+                  if (!cache[game.key]?.[lv]) fetchLevel(game, lv);
                 }}
                 disabled={isDisabled}
               />
@@ -236,11 +247,6 @@ export default function HomePage() {
               </div>
             </div>
             <div className={styles.cardRanking}>
-              {!!user && (
-                <Link className={styles.btn} to="/blockfall-insane">
-                  🔥 블록폴: 인세인
-                </Link>
-              )}
             </div>
           </div>
         </div>

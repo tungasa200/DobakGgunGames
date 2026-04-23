@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
 import { useAdminTest } from '../../context/AdminTestContext';
+import { useBgm } from '../../hooks/useBgm';
 import styles from './BlockfallBoard.module.css';
+
+const BGM_SRC = '/bgm/blockfall/blockfall_default.mp3';
 
 // ===== 엑셀 랭킹/룰 시트 상수 (원본 blockfall/excel.html 동일) =====
 const XL_CELL = 30; // 원본: CELL_SIZE = 30
@@ -152,6 +156,15 @@ interface Props { excel?: boolean }
 
 export default function BlockfallBoard({ excel = false }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleInsaneClick = useCallback(() => {
+    if (!user) {
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+    navigate('/blockfall-insane');
+  }, [user, navigate]);
 
   // ===== 캔버스 refs =====
   const boardRef = useRef<HTMLCanvasElement>(null);
@@ -219,6 +232,9 @@ export default function BlockfallBoard({ excel = false }: Props) {
   }, [modalOpen]);
 
   const COLORS = excel ? COLORS_EXCEL : COLORS_NORMAL;
+
+  // ===== BGM =====
+  const bgm = useBgm(BGM_SRC, { volume: 0.4 });
 
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
@@ -508,6 +524,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   // ===== 게임 오버 =====
   function doGameOver() {
     if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
+    if (!excel) bgm.stop();
     setGameStatus('over');
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
@@ -692,6 +709,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
     setGameStatus('playing');
     lastTime.current = 0;
     animId.current = requestAnimationFrame(gameLoop);
+    if (!excel) bgm.play();
     // 세션 생성 최대 3회 재시도
     (async () => {
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -718,15 +736,17 @@ export default function BlockfallBoard({ excel = false }: Props) {
       if (prev === 'playing') {
         if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
         draw();
+        if (!excel) bgm.pause();
         return 'paused';
       } else if (prev === 'paused') {
         lastTime.current = 0;
         animId.current = requestAnimationFrame(gameLoop);
+        if (!excel) bgm.resume();
         return 'playing';
       }
       return prev;
     });
-  }, [draw, gameLoop]);
+  }, [draw, gameLoop, bgm, excel]);
 
   // ===== 키보드 =====
   useEffect(() => {
@@ -766,7 +786,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   useEffect(() => {
     const canvas = boardRef.current;
     if (!canvas) return;
-    let sx = 0, sy = 0, st = 0, lastTap = 0;
+    let sx = 0, sy = 0, st = 0;
     function onStart(e: TouchEvent) {
       e.preventDefault();
       sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
@@ -779,10 +799,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
       const dt = Date.now() - st;
       const ax = Math.abs(dx), ay = Math.abs(dy);
       if (ax < 15 && ay < 15 && dt < 250) {
-        const now = Date.now();
-        if (now - lastTap < 300) playerHardDrop();
-        else playerRotate(1);
-        lastTap = now;
+        playerRotate(1);
       } else if (ax > ay && ax > 20) {
         playerMove(dx > 0 ? 1 : -1);
       } else if (ay > ax && dy > 40) {
@@ -886,6 +903,14 @@ export default function BlockfallBoard({ excel = false }: Props) {
               <span>{{ easy: '쉬움', normal: '보통', hard: '어려움' }[lv]}</span>
             </div>
           ))}
+          <div
+            className={`${styles.xrb} ${styles.xrbInsane}`}
+            onClick={handleInsaneClick}
+            title={user ? '인세인 모드로 이동' : '로그인이 필요한 기능입니다'}
+          >
+            <span className={styles.xrbIcon}>🔥</span>
+            <span>인세인</span>
+          </div>
           <div className={styles.xrb} onClick={() => startGame()}>
             <span className={styles.xrbIcon}>▶</span>
             <span>{gameStatus === 'idle' ? '시작' : '다시하기'}</span>
@@ -902,7 +927,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [excel, difficulty, gameStatus, setRibbonGameGroup]);
+  }, [excel, difficulty, gameStatus, setRibbonGameGroup, user, handleInsaneClick]);
 
   // 엑셀모드 플러스 버튼 새 게임 콜백 등록
   const newGameFnRef = useRef<() => void>(() => {});
@@ -950,6 +975,13 @@ export default function BlockfallBoard({ excel = false }: Props) {
               {lv.label}
             </button>
           ))}
+          <button
+            className={`${styles.diffBtn} ${styles.insaneBtn}`}
+            onClick={handleInsaneClick}
+            title={user ? '인세인 모드로 이동' : '로그인이 필요한 기능입니다'}
+          >
+            🔥 인세인
+          </button>
         </div>
       )}
 
@@ -1024,7 +1056,10 @@ export default function BlockfallBoard({ excel = false }: Props) {
 
           {/* 버튼 */}
           <div className={styles.controls}>
-            <button className={styles.startBtn} onClick={() => startGame()}>
+            <button
+              className={styles.startBtn}
+              onClick={(e) => { e.currentTarget.blur(); startGame(); }}
+            >
               {gameStatus === 'idle' ? '▶ 시작' : '↺ 다시하기'}
             </button>
             <button
@@ -1034,6 +1069,16 @@ export default function BlockfallBoard({ excel = false }: Props) {
             >
               {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
             </button>
+            {!excel && (
+              <button
+                className={styles.pauseBtn}
+                onClick={bgm.toggleMute}
+                aria-label={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
+                title={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
+              >
+                {bgm.muted ? '🔇 BGM' : '🔊 BGM'}
+              </button>
+            )}
           </div>
 
           {/* 모바일 버튼 */}

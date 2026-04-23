@@ -16,7 +16,13 @@ import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useAuth } from '../../context/AuthContext';
 import { useAdminTest } from '../../context/AdminTestContext';
+import { useBgm } from '../../hooks/useBgm';
 import styles from './BlockfallInsaneBoard.module.css';
+
+const BGM_DEFAULT_SRC = '/bgm/blockfall/blockfall_default.mp3';
+const BGM_INSANE_SRC = '/bgm/blockfall/blockfall_insane.mp3';
+const BGM_INSANE_PHASE2_SRC = '/bgm/blockfall/blockfall_insane_phase2.mp3';
+const PHASE2_LEVEL_THRESHOLD = 9;
 
 // ===== 타입 =====
 type Matrix = number[][];
@@ -242,6 +248,17 @@ interface InsaneBoardProps {
 export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps) {
   const { user } = useAuth();
 
+  // ===== BGM (normal / insane / insane-phase2 3단계) =====
+  const defaultBgm = useBgm(BGM_DEFAULT_SRC, { volume: 0.4 });
+  const insaneBgm = useBgm(BGM_INSANE_SRC, { volume: 0.4 });
+  const phase2Bgm = useBgm(BGM_INSANE_PHASE2_SRC, { volume: 0.4 });
+  const activeBgmRef = useRef<'default' | 'insane' | 'phase2'>('default');
+  const toggleBgmMute = useCallback(() => {
+    defaultBgm.toggleMute();
+    insaneBgm.toggleMute();
+    phase2Bgm.toggleMute();
+  }, [defaultBgm, insaneBgm, phase2Bgm]);
+
   // ===== 캔버스 refs =====
   const boardRef        = useRef<HTMLCanvasElement>(null);
   const nextRef         = useRef<HTMLCanvasElement>(null);
@@ -337,6 +354,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     invertActiveRef.current = false;
     document.documentElement.style.filter = '';
   }
+
+  // ===== Lv11 코스믹 호러 (블록 검정 + 추적하는 눈) =====
+  const cosmicHorrorRef = useRef(false);
+  // blinkPhase: 0(완전 열림) ~ 1(완전 닫힘). nextStartTime은 ms timestamp(performance.now)
+  const blinkRef = useRef<{ phase: number; nextStartTime: number; closingStartTime: number }>({
+    phase: 0,
+    nextStartTime: 0,
+    closingStartTime: 0,
+  });
 
   // ===== D: Filter ref =====
   const filterRef = useRef({ fadeMs: 0, fadeTotalMs: 0 });
@@ -780,10 +806,21 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       gameLevelRef.current = newLv;
       const sp = DROP_SPEEDS[currentLevelRef.current];
       dropInterval.current = sp[Math.min(gameLevelRef.current - 1, sp.length - 1)];
-      // Lv9 진입: 1회 진동 + 전체 화면 색상반전
-      if (gameLevelRef.current >= 9) {
-        triggerShake(20, 800);
+      // Lv9 진입: 1회 진동(인세인 진입과 동일) + 전체 화면 색상반전
+      if (gameLevelRef.current === 9) {
+        triggerShake(15, 600);
         applyInvert();
+      }
+      // Lv11 진입: 코스믹 호러 발동 (모든 블록 검정 + 추적하는 눈)
+      if (gameLevelRef.current === 11 && !cosmicHorrorRef.current) {
+        cosmicHorrorRef.current = true;
+        triggerShake(20, 900);
+        const now = performance.now();
+        blinkRef.current = {
+          phase: 0,
+          closingStartTime: 0,
+          nextStartTime: now + 5000 + Math.random() * 5000,
+        };
       }
     }
     updateDisplay();
@@ -1011,7 +1048,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   function fireRandomEvent() {
     const isMobile = isMobileRef.current;
-    const pool = EVENT_POOL.filter(e => !isMobile || !e.mobileExcluded);
+    // Lv10+ 에서는 바닥붕괴 제외 — 고레벨 빈발 시 오히려 난이도 하락
+    const highLevel = gameLevelRef.current >= 10;
+    const pool = EVENT_POOL.filter(e => {
+      if (isMobile && e.mobileExcluded) return false;
+      if (highLevel && e.id === 'FLOOR_DROP') return false;
+      return true;
+    });
     const totalW = pool.reduce((s, e) => s + e.weight, 0);
     let r = Math.random() * totalW;
     for (const def of pool) {
@@ -1096,6 +1139,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   function doGameOver() {
     if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
     clearActiveEvent();
+    defaultBgm.stop();
+    insaneBgm.stop();
+    phase2Bgm.stop();
+    activeBgmRef.current = 'default';
     setGameStatus('over');
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
@@ -1289,6 +1336,23 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     context.globalAlpha *= alpha;
     const isDead = evColorGray.current || colorIndex === DEAD_COLOR;
     const palette = themePhaseRef.current === 'normal' ? COLORS_PRE_EVENT : COLORS;
+
+    if (cosmicHorrorRef.current) {
+      // Lv11 코스믹 호러: invert 상태에서 아주 살짝 밝게 그려 완전검정 대신 옅은 회색으로 보이게
+      context.fillStyle = '#f0f0f0';
+      context.fillRect(x, y, 1, 1);
+      // 흐릿한 회색 테두리 (invert 후 어두운 윤곽)
+      context.fillStyle = 'rgba(180,180,180,0.5)';
+      context.fillRect(x, y, 1, 0.04);
+      context.fillRect(x, y, 0.04, 1);
+      context.fillRect(x, y + 0.96, 1, 0.04);
+      context.fillRect(x + 0.96, y, 0.04, 1);
+      // 실제로 죽은 블록(DEAD_COLOR)만 눈 없음 — COLOR_GRAY 이벤트 중에도 눈 유지
+      if (colorIndex !== DEAD_COLOR) drawCosmicEye(context, x, y);
+      context.globalAlpha = saved;
+      return;
+    }
+
     context.fillStyle = isDead ? '#eeeeee' : (palette[colorIndex] ?? '#ccc');
     context.fillRect(x, y, 1, 1);
     if (isDead) {
@@ -1310,6 +1374,62 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     context.globalAlpha = saved;
   }
 
+  // Lv11 코스믹 호러: 셀 중앙에 떨어지는 블록을 응시하는 눈 그리기
+  function drawCosmicEye(context: CanvasRenderingContext2D, cellX: number, cellY: number) {
+    // 시선 추적 대상: 현재 떨어지는 블록의 중심
+    const m = player.current.matrix;
+    let targetX: number, targetY: number;
+    if (m) {
+      targetX = player.current.pos.x + m[0].length / 2;
+      targetY = player.current.pos.y + m.length / 2;
+    } else {
+      targetX = cellX + 0.5;
+      targetY = cellY + 0.5;
+    }
+    const cx = cellX + 0.5;
+    const cy = cellY + 0.5;
+    const dx = targetX - cx;
+    const dy = targetY - cy;
+    const len = Math.hypot(dx, dy);
+    const nx = len > 0.0001 ? dx / len : 0;
+    const ny = len > 0.0001 ? dy / len : 0;
+
+    // 아몬드형 흰자 (수평으로 길쭉)
+    const eyeRadiusX = 0.26;
+    const eyeRadiusY = 0.14;
+    const irisRadius = 0.1;    // 빨간 홍채
+    const pupilRadius = 0.04;  // 검은 동공
+    const gazeOffsetX = 0.11;
+    const gazeOffsetY = 0.045;
+
+    // 깜빡임 진행도 (0=완전 열림, 1=완전 닫힘). 색맹 이벤트 중엔 강제 감김.
+    const blink = evColorGray.current ? 1 : blinkRef.current.phase;
+    const yScale = Math.max(1 - blink, 0.1); // 완전 감김 시 얇은 가로선
+
+    // 흰자: yScale에 따라 위아래로 납작해지며 감김
+    context.fillStyle = '#000000';
+    context.beginPath();
+    context.ellipse(cx, cy, eyeRadiusX, eyeRadiusY * yScale, 0, 0, Math.PI * 2);
+    context.fill();
+
+    // 반 이상 감겼으면 홍채/동공 숨김 (모양 깨짐 방지)
+    if (blink > 0.35) return;
+
+    // 홍채 (밝은 청록으로 그리면 invert 후 검붉은색 #800000)
+    const irisX = cx + nx * gazeOffsetX;
+    const irisY = cy + ny * gazeOffsetY;
+    context.fillStyle = '#7fffff';
+    context.beginPath();
+    context.arc(irisX, irisY, irisRadius, 0, Math.PI * 2);
+    context.fill();
+
+    // 동공 (흰색으로 그리면 invert 후 검정)
+    context.fillStyle = '#ffffff';
+    context.beginPath();
+    context.arc(irisX, irisY, pupilRadius, 0, Math.PI * 2);
+    context.fill();
+  }
+
   // ===== 게임 루프 =====
   const gameLoop = useCallback((time: number) => {
     if (lastTime.current === 0) {
@@ -1320,6 +1440,26 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const dt = time - lastTime.current;
     lastTime.current = time;
     if (dt <= 0) { animId.current = requestAnimationFrame(gameLoop); return; }
+
+    // Lv11 코스믹 호러: 깜빡임 타이머
+    if (cosmicHorrorRef.current) {
+      const BLINK_DURATION = 280; // 닫힘+열림 합산 ms
+      const b = blinkRef.current;
+      if (b.closingStartTime > 0) {
+        const elapsed = time - b.closingStartTime;
+        if (elapsed >= BLINK_DURATION) {
+          b.phase = 0;
+          b.closingStartTime = 0;
+          b.nextStartTime = time + 5000 + Math.random() * 5000;
+        } else {
+          // 0 → 1 → 0 (닫혔다 열림) 삼각파
+          const half = BLINK_DURATION / 2;
+          b.phase = elapsed < half ? elapsed / half : 1 - (elapsed - half) / half;
+        }
+      } else if (time >= b.nextStartTime && b.nextStartTime > 0) {
+        b.closingStartTime = time;
+      }
+    }
 
     // C: shake 타이머 업데이트
     if (shakeRef.current.duration > 0) {
@@ -1556,6 +1696,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
     // Lv9 색상반전 초기화
     removeInvert();
+    // Lv11 코스믹 호러 초기화
+    cosmicHorrorRef.current = false;
+    blinkRef.current = { phase: 0, nextStartTime: 0, closingStartTime: 0 };
 
     // 테마 초기화
     firstEventFiredRef.current = false;
@@ -1591,6 +1734,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     setGameStatus('playing');
     lastTime.current = 0;
     animId.current = requestAnimationFrame(gameLoop);
+    insaneBgm.stop();
+    phase2Bgm.stop();
+    defaultBgm.play();
+    activeBgmRef.current = 'default';
     submittedIdRef.current = null;
 
     (async () => {
@@ -1615,18 +1762,46 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // ===== 일시정지 =====
   const togglePause = useCallback(() => {
     setGameStatus(prev => {
+      const current = activeBgmRef.current === 'phase2' ? phase2Bgm
+                    : activeBgmRef.current === 'insane' ? insaneBgm
+                    : defaultBgm;
       if (prev === 'playing') {
         if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
         draw();
+        current.pause();
         return 'paused';
       } else if (prev === 'paused') {
         lastTime.current = 0;
         animId.current = requestAnimationFrame(gameLoop);
+        current.resume();
         return 'playing';
       }
       return prev;
     });
-  }, [draw, gameLoop]);
+  }, [draw, gameLoop, defaultBgm, insaneBgm, phase2Bgm]);
+
+  // ===== 테마 전환 시 BGM 교체 (일반 → 인세인) =====
+  useEffect(() => {
+    if (themePhase !== 'insane') return;
+    // 이미 phase2 재생 중이면 유지
+    if (activeBgmRef.current === 'phase2') return;
+    defaultBgm.stop();
+    insaneBgm.play();
+    activeBgmRef.current = 'insane';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [themePhase]);
+
+  // ===== 레벨 9 이상 & 인세인 페이즈 → phase2 BGM 교체 =====
+  useEffect(() => {
+    if (gameLevel < PHASE2_LEVEL_THRESHOLD) return;
+    if (themePhaseRef.current !== 'insane') return;
+    if (activeBgmRef.current === 'phase2') return;
+    defaultBgm.stop();
+    insaneBgm.stop();
+    phase2Bgm.play();
+    activeBgmRef.current = 'phase2';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameLevel]);
 
   // ===== 키보드 =====
   useEffect(() => {
@@ -1671,7 +1846,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   useEffect(() => {
     const canvas = boardRef.current;
     if (!canvas) return;
-    let sx = 0, sy = 0, st = 0, lastTap = 0;
+    let sx = 0, sy = 0, st = 0;
     function onStart(e: TouchEvent) {
       e.preventDefault();
       sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
@@ -1684,10 +1859,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       const dt = Date.now() - st;
       const ax = Math.abs(dx), ay = Math.abs(dy);
       if (ax < 15 && ay < 15 && dt < 250) {
-        const now = Date.now();
-        if (now - lastTap < 300) playerHardDrop();
-        else playerRotate(1);
-        lastTap = now;
+        playerRotate(1);
       } else if (ax > ay && ax > 20) {
         playerMove(dx > 0 ? 1 : -1);
       } else if (ay > ax && dy > 40) {
@@ -1786,7 +1958,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       {statusText && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
 
       {/* 이벤트 타이머 바 */}
-      <div className={styles.eventTimerBar}>
+      <div className={`${styles.eventTimerBar} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
         <div ref={timerBarRef} className={styles.eventTimerFill} style={{ width: '0%' }} />
       </div>
 
@@ -1797,15 +1969,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       {/* 게임 영역 */}
       <div className={styles.gameArea}>
         <div className={styles.sidePanel}>
-          <div className={styles.sideBox}>
+          <div className={`${styles.sideBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
             <div className={styles.sideTitle}>NEXT</div>
             <canvas ref={nextRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
           </div>
-          <div className={styles.sideBox}>
+          <div className={`${styles.sideBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
             <div className={styles.sideTitle}>HOLD</div>
             <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
           </div>
-          <div className={`${styles.sideBox} ${styles.hintsBox}`}>
+          <div className={`${styles.sideBox} ${styles.hintsBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
             <div className={styles.sideTitle}>키</div>
             <div className={styles.hints}>
               ← → 이동<br />↑ 회전<br />↓ 내리기<br />Space 급강하<br />Shift 홀드<br />P 일시정지
@@ -1814,7 +1986,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         </div>
 
         {/* F: .boardWrapper 신규 래퍼 */}
-        <div className={styles.boardWrapper}>
+        <div className={`${styles.boardWrapper} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
           <canvas
             ref={boardRef}
             width={INIT_BOARD_W * CELL}
@@ -1828,13 +2000,22 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
       {/* 버튼 */}
       <div className={styles.controls}>
-        <button className={styles.startBtn} onClick={() => startGame()}>
+        <button
+          className={styles.startBtn}
+          onClick={(e) => { e.currentTarget.blur(); startGame(); }}
+        >
           {gameStatus === 'idle' ? '▶ 시작' : '↺ 다시하기'}
         </button>
         <button className={styles.pauseBtn}
           disabled={gameStatus !== 'playing' && gameStatus !== 'paused'}
           onClick={togglePause}>
           {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
+        </button>
+        <button className={styles.pauseBtn}
+          onClick={toggleBgmMute}
+          aria-label={defaultBgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
+          title={defaultBgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}>
+          {defaultBgm.muted ? '🔇 BGM' : '🔊 BGM'}
         </button>
       </div>
 
