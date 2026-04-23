@@ -22,6 +22,7 @@ import styles from './BlockfallInsaneBoard.module.css';
 const BGM_DEFAULT_SRC = '/bgm/blockfall/blockfall_default.mp3';
 const BGM_INSANE_SRC = '/bgm/blockfall/blockfall_insane.mp3';
 const BGM_INSANE_PHASE2_SRC = '/bgm/blockfall/blockfall_insane_phase2.mp3';
+const BGM_INSANE_PHASE3_SRC = '/bgm/blockfall/blockfall_insane_phase3.mp3';
 const PHASE2_LEVEL_THRESHOLD = 9;
 
 // ===== 타입 =====
@@ -248,16 +249,18 @@ interface InsaneBoardProps {
 export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps) {
   const { user } = useAuth();
 
-  // ===== BGM (normal / insane / insane-phase2 3단계) =====
+  // ===== BGM (normal / insane / insane-phase2 / insane-phase3 4단계) =====
   const defaultBgm = useBgm(BGM_DEFAULT_SRC, { volume: 0.4 });
   const insaneBgm = useBgm(BGM_INSANE_SRC, { volume: 0.4 });
   const phase2Bgm = useBgm(BGM_INSANE_PHASE2_SRC, { volume: 0.4 });
-  const activeBgmRef = useRef<'default' | 'insane' | 'phase2'>('default');
+  const phase3Bgm = useBgm(BGM_INSANE_PHASE3_SRC, { volume: 0.4 });
+  const activeBgmRef = useRef<'default' | 'insane' | 'phase2' | 'phase3'>('default');
   const toggleBgmMute = useCallback(() => {
     defaultBgm.toggleMute();
     insaneBgm.toggleMute();
     phase2Bgm.toggleMute();
-  }, [defaultBgm, insaneBgm, phase2Bgm]);
+    phase3Bgm.toggleMute();
+  }, [defaultBgm, insaneBgm, phase2Bgm, phase3Bgm]);
 
   // ===== 캔버스 refs =====
   const boardRef        = useRef<HTMLCanvasElement>(null);
@@ -364,6 +367,17 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     closingStartTime: 0,
   });
 
+  // ===== Lv11 + 10000점 초과: 페이지 배경 눈 기믹 =====
+  const showHorrorBgRef = useRef(false);
+  const bgCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const bgAnimRef = useRef<number | null>(null);
+  const bgMouseRef = useRef({
+    x: typeof window !== 'undefined' ? window.innerWidth / 2 : 600,
+    y: typeof window !== 'undefined' ? window.innerHeight / 2 : 400,
+  });
+  type BgEye = { x: number; y: number; phase: number; nextBlink: number; closingStart: number; blinkDur: number };
+  const bgEyesRef = useRef<BgEye[]>([]);
+
   // ===== D: Filter ref =====
   const filterRef = useRef({ fadeMs: 0, fadeTotalMs: 0 });
 
@@ -382,6 +396,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const [gameLevel, setGameLevel] = useState(1);
   const [lines, setLines]       = useState(0);
   const [combo, setCombo]       = useState(0);
+  const [showHorrorBg, setShowHorrorBg] = useState(false);
   const bannerExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 랭킹
@@ -582,6 +597,11 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     setGameLevel(gameLevelRef.current);
     setLines(linesRef.current);
     setCombo(comboCount.current);
+    // Lv11 + 10000점 초과: 페이지 배경 눈 기믹 발동
+    if (gameLevelRef.current === 11 && scoreRef.current > 100000 && !showHorrorBgRef.current) {
+      showHorrorBgRef.current = true;
+      setShowHorrorBg(true);
+    }
   }
 
   function mergeInto() {
@@ -1156,6 +1176,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     defaultBgm.stop();
     insaneBgm.stop();
     phase2Bgm.stop();
+    phase3Bgm.stop();
     activeBgmRef.current = 'default';
     setGameStatus('over');
     draw();
@@ -1713,6 +1734,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     // Lv11 코스믹 호러 초기화
     cosmicHorrorRef.current = false;
     blinkRef.current = { phase: 0, nextStartTime: 0, closingStartTime: 0 };
+    // 배경 눈 기믹 초기화
+    showHorrorBgRef.current = false;
+    setShowHorrorBg(false);
+    bgEyesRef.current = [];
 
     // 테마 초기화
     firstEventFiredRef.current = false;
@@ -1750,6 +1775,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     animId.current = requestAnimationFrame(gameLoop);
     insaneBgm.stop();
     phase2Bgm.stop();
+    phase3Bgm.stop();
     defaultBgm.play();
     activeBgmRef.current = 'default';
     submittedIdRef.current = null;
@@ -1776,7 +1802,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // ===== 일시정지 =====
   const togglePause = useCallback(() => {
     setGameStatus(prev => {
-      const current = activeBgmRef.current === 'phase2' ? phase2Bgm
+      const current = activeBgmRef.current === 'phase3' ? phase3Bgm
+                    : activeBgmRef.current === 'phase2' ? phase2Bgm
                     : activeBgmRef.current === 'insane' ? insaneBgm
                     : defaultBgm;
       if (prev === 'playing') {
@@ -1792,13 +1819,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       }
       return prev;
     });
-  }, [draw, gameLoop, defaultBgm, insaneBgm, phase2Bgm]);
+  }, [draw, gameLoop, defaultBgm, insaneBgm, phase2Bgm, phase3Bgm]);
 
   // ===== 테마 전환 시 BGM 교체 (일반 → 인세인) =====
   useEffect(() => {
     if (themePhase !== 'insane') return;
-    // 이미 phase2 재생 중이면 유지
-    if (activeBgmRef.current === 'phase2') return;
+    // 이미 phase2/3 재생 중이면 유지
+    if (activeBgmRef.current === 'phase2' || activeBgmRef.current === 'phase3') return;
     defaultBgm.stop();
     insaneBgm.play();
     activeBgmRef.current = 'insane';
@@ -1809,13 +1836,25 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   useEffect(() => {
     if (gameLevel < PHASE2_LEVEL_THRESHOLD) return;
     if (themePhaseRef.current !== 'insane') return;
-    if (activeBgmRef.current === 'phase2') return;
+    if (activeBgmRef.current === 'phase2' || activeBgmRef.current === 'phase3') return;
     defaultBgm.stop();
     insaneBgm.stop();
     phase2Bgm.play();
     activeBgmRef.current = 'phase2';
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameLevel]);
+
+  // ===== Lv11 + 10만점 초과 → phase3 BGM 교체 =====
+  useEffect(() => {
+    if (!showHorrorBg) return;
+    if (activeBgmRef.current === 'phase3') return;
+    defaultBgm.stop();
+    insaneBgm.stop();
+    phase2Bgm.stop();
+    phase3Bgm.play();
+    activeBgmRef.current = 'phase3';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHorrorBg]);
 
   // ===== 키보드 =====
   useEffect(() => {
@@ -1895,6 +1934,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   useEffect(() => {
     return () => {
       if (animId.current) cancelAnimationFrame(animId.current);
+      if (bgAnimRef.current) cancelAnimationFrame(bgAnimRef.current);
       flashTimerIds.current.forEach(id => clearTimeout(id));
       // BUG-02: 배너 퇴장 타이머 누수 방지
       if (bannerExitTimerRef.current) clearTimeout(bannerExitTimerRef.current);
@@ -1902,6 +1942,122 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       document.documentElement.style.filter = '';
     };
   }, []);
+
+  // ===== 마우스 추적 (배경 눈 시선) =====
+  useEffect(() => {
+    function onMove(e: MouseEvent) { bgMouseRef.current = { x: e.clientX, y: e.clientY }; }
+    window.addEventListener('mousemove', onMove, { passive: true });
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
+
+  // ===== 배경 눈 기믹 애니메이션 =====
+  useEffect(() => {
+    if (!showHorrorBg) {
+      if (bgAnimRef.current) { cancelAnimationFrame(bgAnimRef.current); bgAnimRef.current = null; }
+      return;
+    }
+
+    const canvas = bgCanvasRef.current;
+    if (!canvas) return;
+
+    // 뷰포트 맞춤
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    canvas.width  = vw;
+    canvas.height = vh;
+
+    // 눈 무작위 배치 (겹침 방지)
+    const MIN_DIST = 44; // 눈 중심 간 최소 거리 (px) — 흰자 34px + 여백
+    const TARGET_COUNT = Math.floor((vw * vh) / (MIN_DIST * MIN_DIST * 2.2));
+    const MAX_ATTEMPTS = TARGET_COUNT * 20;
+    const now = performance.now();
+    const eyes: BgEye[] = [];
+    for (let attempt = 0; attempt < MAX_ATTEMPTS && eyes.length < TARGET_COUNT; attempt++) {
+      const cx = Math.random() * vw;
+      const cy = Math.random() * vh;
+      // 기존 눈과 겹치는지 확인
+      let ok = true;
+      for (const e of eyes) {
+        if (Math.hypot(cx - e.x, cy - e.y) < MIN_DIST) { ok = false; break; }
+      }
+      if (!ok) continue;
+      eyes.push({
+        x: cx,
+        y: cy,
+        phase: 0,
+        nextBlink: now + Math.random() * 8000,       // 각자 다른 타이밍에 첫 깜빡임
+        closingStart: 0,
+        blinkDur: 150 + Math.random() * 350,          // 150~500ms 사이 무작위 깜빡임 속도
+      });
+    }
+    bgEyesRef.current = eyes;
+
+    // 눈 크기 (px)
+    const RX = 17, RY = 9, IRIS_R = 6, PUPIL_R = 2.5, GAZE_X = 6, GAZE_Y = 3;
+
+    function frame(time: number) {
+      const ctx = canvas!.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas!.width, canvas!.height);
+
+      const tx = bgMouseRef.current.x;
+      const ty = bgMouseRef.current.y;
+
+      for (const eye of bgEyesRef.current) {
+        // 깜빡임 업데이트 — 눈마다 개별 blinkDur 사용
+        if (eye.closingStart > 0) {
+          const el = time - eye.closingStart;
+          if (el >= eye.blinkDur) {
+            eye.phase = 0;
+            eye.closingStart = 0;
+            eye.nextBlink = time + 1000 + Math.random() * 7000; // 다음 깜빡임도 무작위
+          } else {
+            const half = eye.blinkDur / 2;
+            eye.phase = el < half ? el / half : 1 - (el - half) / half;
+          }
+        } else if (eye.nextBlink > 0 && time >= eye.nextBlink) {
+          eye.closingStart = time;
+        }
+
+        const yScale = Math.max(1 - eye.phase, 0.05);
+
+        // 시선 방향
+        const dx = tx - eye.x, dy = ty - eye.y;
+        const len = Math.hypot(dx, dy);
+        const nx = len > 1 ? dx / len : 0;
+        const ny = len > 1 ? dy / len : 0;
+        const irisX = eye.x + nx * GAZE_X;
+        const irisY = eye.y + ny * GAZE_Y;
+
+        // 흰자: 흰색(#ffffff)으로 그림 → 페이지 invert → 검정 (블록 흰자의 반대)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(eye.x, eye.y, RX, RY * yScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (eye.phase > 0.35) continue;
+
+        // 홍채: #800000(진한빨강)으로 그림 → 페이지 invert → #7fffff(청록) (블록 홍채 #800000의 반대)
+        ctx.fillStyle = '#800000';
+        ctx.beginPath();
+        ctx.arc(irisX, irisY, IRIS_R, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 동공: 검정(#000000)으로 그림 → 페이지 invert → 흰색 (블록 동공 흰색의 반대)
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(irisX, irisY, PUPIL_R, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      bgAnimRef.current = requestAnimationFrame(frame);
+    }
+
+    bgAnimRef.current = requestAnimationFrame(frame);
+    return () => {
+      if (bgAnimRef.current) { cancelAnimationFrame(bgAnimRef.current); bgAnimRef.current = null; }
+    };
+  }, [showHorrorBg]);
 
   // ===== 랭킹 (A: hard 고정) =====
   async function loadRanking() {
@@ -1958,7 +2114,22 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   }
 
   return (
-    <div className={styles.wrap} data-theme={themePhase}>
+    <>
+    {/* 배경 눈 기믹 캔버스 — fixed, 게임 영역 뒤에 렌더링 */}
+    {showHorrorBg && (
+      <canvas
+        ref={bgCanvasRef}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+    )}
+    <div className={styles.wrap} data-theme={themePhase} style={{ position: 'relative', zIndex: 1 }}>
       {/* 상태 바 */}
       <div className={styles.infoBar}>
         <div className={styles.infoItem}><div className={styles.infoLabel}>점수</div><div className={styles.infoValue}>{score.toLocaleString()}</div></div>
@@ -2175,5 +2346,6 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         </div>
       )}
     </div>
+    </>
   );
 }
