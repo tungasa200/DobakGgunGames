@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 public class ChatRoomService {
 
     private static final Pattern ROOM_NAME_PATTERN =
-            Pattern.compile("^[가-힣a-zA-Z0-9 !?.\\-_()\\ [\\]#]+$");
+            Pattern.compile("^[가-힣a-zA-Z0-9 !?.\\-_()\\[\\]#]+$");
     private static final String CHARSET = "abcdefghijklmnopqrstuvwxyz0123456789";
     private static final int MAX_ROOMS = 50;
     private static final int MAX_ROOM_ID_ATTEMPTS = 5;
