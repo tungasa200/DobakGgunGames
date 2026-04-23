@@ -12,8 +12,7 @@ function AccessDeniedPage() {
       <main className={styles.accessDeniedMain}>
         <span className={styles.lockIcon}>🔒</span>
         <h1 className={styles.accessDeniedTitle}>접근 권한이 없습니다</h1>
-        <p className={styles.accessDeniedDesc}>이 기능은 특별 등급 이상만 이용할 수 있습니다.</p>
-        <p className={styles.accessDeniedDesc}>공개 채팅 기능은 준비 중입니다.</p>
+        <p className={styles.accessDeniedDesc}>이 기능은 도박군(FRIEND) 등급 이상만 이용할 수 있습니다.</p>
         <Link to="/" className={styles.homeBtn}>홈으로 돌아가기</Link>
       </main>
       <Footer />

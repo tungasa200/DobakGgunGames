@@ -1,0 +1,46 @@
+.section {
+  margin-top: 40px;
+}
+
+.heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.list {
+  margin: 0;
+}
+
+.moreWrap {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.moreBtn {
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  border-radius: 8px;
+  padding: 8px 24px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.moreBtn:hover:not(:disabled) {
+  background: #f8fafc;
+}
+.moreBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 16px 0 0;
+}

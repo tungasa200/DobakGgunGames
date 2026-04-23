@@ -189,6 +189,11 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
           >📊 엑셀 모드</Link>
         )}
 
+        {/* 게시판 링크 — FRIEND/ADMIN만 노출 */}
+        {user && (user.role === 'FRIEND' || user.role === 'ADMIN') && (
+          <Link className={styles.boardLink} to="/board">게시판</Link>
+        )}
+
         {user ? (
           <div className={styles.authArea}>
             <button

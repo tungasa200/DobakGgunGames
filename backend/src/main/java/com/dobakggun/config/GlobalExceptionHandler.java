@@ -1,5 +1,6 @@
 package com.dobakggun.config;
 
+import com.dobakggun.exception.BoardException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,12 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(BoardException.class)
+    public ResponseEntity<Map<String, String>> handleBoardException(BoardException e) {
+        return ResponseEntity.status(e.getErrorCode().getStatus())
+                .body(Map.of("error", e.getErrorCode().name(), "message", e.getMessage()));
+    }
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleStatus(ResponseStatusException e) {

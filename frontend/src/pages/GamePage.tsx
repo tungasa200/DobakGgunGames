@@ -62,6 +62,10 @@ const BG_COLORS: Record<string, string> = {
   'blockfall-insane': '#0a0a0a',
 };
 
+// 솔리테어 배경 선택지 (일반 모드에서 사용자가 직접 변경)
+const SOLITAIRE_BG_KEY = 'dobakggun-solitaire-bg';
+const SOLITAIRE_BG_ALLOWED = new Set(['#0b5e20', '#f5ead6', '#ffffff', '#c0c0c0']);
+
 // 게임별 강조색 — 원본 NORMAL_GAME_CONFIG.accentColor 와 동일
 const ACCENT_COLORS: Record<string, string> = {
   minesweeper:       '#3498db',
@@ -86,6 +90,18 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
   // blockfall-insane 헤더 강조색 + 배경색 — 첫 이벤트 전: 일반 블록폴 스타일, 이후: 인세인 스타일
   const [insaneAccentColor, setInsaneAccentColor] = useState('#8e44ad');
   const [insaneBgColor, setInsaneBgColor] = useState('#f0f0f0');
+
+  // 솔리테어 배경색 (사용자 선택, localStorage 영속)
+  const [solitaireBg, setSolitaireBg] = useState<string>(() => {
+    if (typeof window === 'undefined') return '#0b5e20';
+    const saved = window.localStorage.getItem(SOLITAIRE_BG_KEY);
+    return saved && SOLITAIRE_BG_ALLOWED.has(saved) ? saved : '#0b5e20';
+  });
+  const handleSolitaireBgChange = useCallback((color: string) => {
+    if (!SOLITAIRE_BG_ALLOWED.has(color)) return;
+    setSolitaireBg(color);
+    try { window.localStorage.setItem(SOLITAIRE_BG_KEY, color); } catch { /* ignore */ }
+  }, []);
   // 테마 전환 시 깜빡임 오버라이드 (null이면 insaneBgColor 사용)
   const [flickerBg, setFlickerBg] = useState<string | null>(null);
   const handleInsaneThemeChange = useCallback((phase: 'normal' | 'insane') => {
@@ -144,7 +160,7 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
     game === 'baseball'         ? <BaseballBoard       excel={excel} /> :
     game === 'minesweeper'      ? <MinesweeperBoard    excel={excel} /> :
     game === 'apple'            ? <AppleCanvas         excel={excel} /> :
-    game === 'solitaire'        ? <CardBoard           excel={excel} /> :
+    game === 'solitaire'        ? <CardBoard           excel={excel} bgColor={solitaireBg} onBgColorChange={handleSolitaireBgChange} /> :
     game === 'blockfall'        ? <BlockfallBoard      excel={excel} /> :
     game === 'sudoku'           ? <SudokuBoard         excel={excel} /> :
     game === 'blockfall-insane' ? <BlockfallInsaneBoard onThemeChange={handleInsaneThemeChange} /> :
@@ -176,7 +192,7 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
           position: 'fixed',
           inset: 0,
           overflow: 'auto',
-          background: game === 'blockfall-insane' ? (flickerBg ?? insaneBgColor) : (BG_COLORS[game] ?? '#f0f0f0'),
+          background: game === 'blockfall-insane' ? (flickerBg ?? insaneBgColor) : (game === 'solitaire' ? solitaireBg : (BG_COLORS[game] ?? '#f0f0f0')),
           fontFamily: 'sans-serif',
           display: 'flex',
           flexDirection: 'column',

@@ -66,6 +66,12 @@ public class SecurityConfig {
                 .requestMatchers("/login/oauth2/**", "/oauth2/**").permitAll()
                 // 어드민 전용 — ADMIN role 필수
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // 게시판 — FRIEND 이상 필요
+                .requestMatchers(HttpMethod.GET, "/api/board/posts", "/api/board/posts/**").hasAnyRole("FRIEND", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/board/posts", "/api/board/images").hasAnyRole("FRIEND", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/board/posts/*/comments").hasAnyRole("FRIEND", "ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/board/posts/*").hasAnyRole("FRIEND", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/board/posts/*", "/api/board/posts/*/comments/*").hasAnyRole("FRIEND", "ADMIN")
                 // 기존 게임 서비스 — 인증 없이 모두 허용
                 .requestMatchers("/api/*/session/**").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/*/rankings").permitAll()
@@ -118,7 +124,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
-        config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Content-Type", "Authorization"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);

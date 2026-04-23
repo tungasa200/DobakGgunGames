@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import ExcelHomePage from './pages/ExcelHomePage';
@@ -18,6 +19,10 @@ import AdminLayout from './components/admin/AdminLayout';
 import FriendRoute from './components/guards/FriendRoute';
 import DbgChatListPage from './pages/DbgChatListPage';
 import DbgChatRoomPage from './pages/DbgChatRoomPage';
+import BoardListPage from './pages/BoardListPage';
+import BoardDetailPage from './pages/BoardDetailPage';
+import BoardWritePage from './pages/BoardWritePage';
+import BoardEditPage from './pages/BoardEditPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminContactsPage from './pages/admin/AdminContactsPage';
@@ -34,6 +39,26 @@ import AdminRspPage from './pages/admin/AdminRspPage';
 import AdminRspExcelPage from './pages/admin/AdminRspExcelPage';
 
 export default function App() {
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== ' ' && e.code !== 'Space' && e.keyCode !== 32) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') return;
+        if (target.isContentEditable) return;
+      }
+      e.preventDefault();
+    };
+    const opts: AddEventListenerOptions = { capture: true, passive: false };
+    document.addEventListener('keydown', onKeyDown, opts);
+    window.addEventListener('keydown', onKeyDown, opts);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, opts);
+      window.removeEventListener('keydown', onKeyDown, opts);
+    };
+  }, []);
+
   return (
     <AdminTestProvider>
     <BrowserRouter>
@@ -56,6 +81,12 @@ export default function App() {
         {/* 패치노트 공개 */}
         <Route path="/patch-notes" element={<PatchNotesPage />} />
         <Route path="/patch-notes/:id" element={<PatchNoteDetailPage />} />
+
+        {/* 게시판 — FRIEND 이상 전용 (/:game 보다 먼저 선언) */}
+        <Route path="/board" element={<FriendRoute><BoardListPage /></FriendRoute>} />
+        <Route path="/board/new" element={<FriendRoute><BoardWritePage /></FriendRoute>} />
+        <Route path="/board/:id/edit" element={<FriendRoute><BoardEditPage /></FriendRoute>} />
+        <Route path="/board/:id" element={<FriendRoute><BoardDetailPage /></FriendRoute>} />
 
         {/* 어드민 전용 가위바위보 — 홈/사이드바 미노출, URL 직접 입력 전용.
             AdminLayout 중첩 라우트보다 먼저 선언해야 매칭 우선순위가 올바름. */}

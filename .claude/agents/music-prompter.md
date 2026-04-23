@@ -242,6 +242,7 @@ instrumental, no vocals, loop-friendly, classic 16-bit era
 - 시대: [연도]
 - 레퍼런스: [참조 게임 목록]
 - 분위기: [분위기]
+- 길이: 1000자 이내
 
 ### 🎼 Suno 프롬프트 (복붙용)
 
