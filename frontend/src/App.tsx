@@ -35,8 +35,7 @@ import AdminGamesPage from './pages/admin/AdminGamesPage';
 import AdminClearButton from './components/admin/AdminClearButton';
 import AuthRoute from './components/AuthRoute';
 import { AdminTestProvider } from './context/AdminTestContext';
-import AdminRspPage from './pages/admin/AdminRspPage';
-import AdminRspExcelPage from './pages/admin/AdminRspExcelPage';
+import OnlineRpsPage from './pages/OnlineRpsPage';
 
 export default function App() {
   useEffect(() => {
@@ -88,10 +87,11 @@ export default function App() {
         <Route path="/board/:id/edit" element={<FriendRoute><BoardEditPage /></FriendRoute>} />
         <Route path="/board/:id" element={<FriendRoute><BoardDetailPage /></FriendRoute>} />
 
-        {/* 어드민 전용 가위바위보 — 홈/사이드바 미노출, URL 직접 입력 전용.
-            AdminLayout 중첩 라우트보다 먼저 선언해야 매칭 우선순위가 올바름. */}
-        <Route path="/admin/rsp" element={<AdminRspPage />} />
-        <Route path="/admin/rsp/excel" element={<AdminRspExcelPage />} />
+        {/* Online RPS — 로그인 유저 전용, /:game 보다 위에 선언 */}
+        <Route
+          path="/online-rps"
+          element={<AuthRoute><OnlineRpsPage /></AuthRoute>}
+        />
 
         {/* 어드민 */}
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>

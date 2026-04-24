@@ -231,3 +231,12 @@ testRuntimeOnly 'com.h2database:h2'                                       // @Sp
 
 ### 다음 세션 할 일
 - 없음
+
+---
+
+## 후속 액션
+
+- 2026-04-24: online-rps로 교체됨. 기존 AdminRsp* 파일 제거 완료.
+  - 삭제된 파일: AdminRspController.java, AdminRspService.java, AdminRspPlay.java, RspChoice.java, RspResult.java, AdminRspPlayRepository.java, dto/rsp/ 디렉토리 전체
+  - 삭제된 테스트: AdminRspControllerSecurityTest.java, AdminRspPlayRepositoryTest.java, AdminRspServiceTest.java
+  - 후속: backend/src/main/resources/db/drop-admin-rsp.sql 사용자가 Railway MySQL에 수동 실행 필요

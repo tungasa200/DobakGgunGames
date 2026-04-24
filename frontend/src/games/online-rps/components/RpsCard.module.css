@@ -1,0 +1,233 @@
+/* Online RPS CSS 변수 */
+:root {
+  --rps-card-bg: #ffffff;
+  --rps-card-border: #d1d5db;
+  --rps-card-hover-border: #6366f1;
+  --rps-card-label: #374151;
+  --rps-selected-bg: #eef2ff;
+  --rps-selected-border: #6366f1;
+  --rps-auto-bg: #fffbeb;
+  --rps-auto-border: #f59e0b;
+  --rps-auto-badge-bg: #f59e0b;
+  --rps-result-win-bg: #f0fdf4;
+  --rps-result-win-border: #16a34a;
+  --rps-result-loss-bg: #fef2f2;
+  --rps-result-loss-border: #dc2626;
+  --rps-result-draw-bg: #fefce8;
+  --rps-result-draw-border: #ca8a04;
+  --rps-timer-track: #e5e7eb;
+  --rps-timer-fill: #6366f1;
+  --rps-timer-warn: #ef4444;
+  --rps-timer-expired: #dc2626;
+  --rps-countdown-color: #6366f1;
+  --rps-player-item-bg: #f9fafb;
+  --rps-player-item-border: #e5e7eb;
+  --rps-toast-warn-bg: #fffbeb;
+  --rps-toast-error-bg: #fef2f2;
+  --rps-toast-info-bg: #eff6ff;
+}
+
+/* ── 키프레임 ─────────────────────────────────────────────── */
+
+@keyframes rps-card-select {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.12) rotate(-3deg); }
+  70%  { transform: scale(1.08) rotate(2deg); }
+  100% { transform: translateY(-4px) scale(1.06) rotate(0deg); }
+}
+
+@keyframes rps-card-reveal {
+  0%   { opacity: 0; transform: rotateY(90deg) scale(0.8); }
+  60%  { opacity: 1; transform: rotateY(-8deg) scale(1.03); }
+  100% { opacity: 1; transform: rotateY(0deg) scale(1); }
+}
+
+@keyframes rps-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-4px) rotate(-2deg); }
+  40%       { transform: translateX(4px) rotate(2deg); }
+  60%       { transform: translateX(-3px) rotate(-1deg); }
+  80%       { transform: translateX(3px) rotate(1deg); }
+}
+
+/* ── 카드 기본 컨테이너 ────────────────────────────────────── */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 112px;
+  height: 140px;
+  border: 2px solid var(--rps-card-border);
+  border-radius: 16px;
+  background: var(--rps-card-bg);
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  user-select: none;
+  outline: none;
+}
+
+.card:focus-visible {
+  outline: 3px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* ── idle ──────────────────────────────────────────────────── */
+
+.idle:hover {
+  transform: translateY(-6px) scale(1.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  border-color: var(--rps-card-hover-border);
+}
+
+/* ── selected ─────────────────────────────────────────────── */
+
+.selected {
+  border-color: var(--rps-selected-border);
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.25),
+    0 8px 24px rgba(99, 102, 241, 0.2);
+  background: var(--rps-selected-bg);
+  transform: translateY(-4px) scale(1.06);
+  cursor: default;
+  animation: rps-card-select 280ms ease-out;
+}
+
+/* ── unselected ───────────────────────────────────────────── */
+
+.unselected {
+  opacity: 0.38;
+  transform: scale(0.96);
+  cursor: default;
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+/* ── revealed ─────────────────────────────────────────────── */
+
+.revealed {
+  cursor: default;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  animation: rps-card-reveal 480ms ease-out;
+}
+
+.revealedWin {
+  border-color: var(--rps-result-win-border);
+  background: var(--rps-result-win-bg);
+}
+
+.revealedLoss {
+  border-color: var(--rps-result-loss-border);
+  background: var(--rps-result-loss-bg);
+}
+
+.revealedDraw {
+  border-color: var(--rps-result-draw-border);
+  background: var(--rps-result-draw-bg);
+}
+
+/* ── auto ─────────────────────────────────────────────────── */
+
+.auto {
+  border-color: var(--rps-auto-border);
+  background: var(--rps-auto-bg);
+  cursor: default;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  animation: rps-card-reveal 480ms ease-out;
+}
+
+/* ── disabled ─────────────────────────────────────────────── */
+
+.disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* ── shake (타임아웃 임박) ────────────────────────────────── */
+
+.shake {
+  animation: rps-shake 200ms ease;
+}
+
+/* ── 내부 요소 ────────────────────────────────────────────── */
+
+.image {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rps-card-label);
+}
+
+.hint {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* ── 자동선택 뱃지 ─────────────────────────────────────────── */
+
+.autoBadge {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--rps-auto-badge-bg);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* ── 결과 라벨 (참가자 이름) ──────────────────────────────── */
+
+.ownerLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 반응형 ──────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .card {
+    width: 88px;
+    height: 110px;
+  }
+
+  .image {
+    width: 48px;
+    height: 48px;
+  }
+
+  .hint {
+    display: none;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .card {
+    width: 96px;
+    height: 120px;
+  }
+
+  .image {
+    width: 54px;
+    height: 54px;
+  }
+}

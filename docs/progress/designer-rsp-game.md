@@ -140,3 +140,9 @@
 - `docs/progress/designer-rsp-game.md` — designer 소유 (본 파일)
 - `frontend/src/styles/excel.css` — 수정 금지 (명세만 참조)
 - `frontend/` 실제 코드 — developer-frontend 소유
+
+---
+
+## 후속 액션
+
+- 2026-04-24: online-rps로 교체됨. docs/design/online-rps-design.md 참조.

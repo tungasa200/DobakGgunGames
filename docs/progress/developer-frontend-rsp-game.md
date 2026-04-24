@@ -202,6 +202,25 @@ Excel 모드:
 
 ---
 
+## 2026-04-24 메모 — Online RPS 전환 완료
+
+이 기능(admin-rsp)은 Online RPS(멀티플레이)로 전면 교체되었습니다.
+
+### 제거된 파일
+- `frontend/src/games/rsp/RspBoard.tsx` (삭제)
+- `frontend/src/games/rsp/useRspGame.ts` (삭제)
+- `frontend/src/games/rsp/RspBoard.module.css` (삭제)
+- `frontend/src/pages/admin/AdminRspPage.tsx` (삭제)
+- `frontend/src/pages/admin/AdminRspExcelPage.tsx` (삭제)
+- `frontend/src/api/admin.ts` adminRspApi 섹션 제거
+- `frontend/src/App.tsx` `/admin/rsp`, `/admin/rsp/excel` 라우트 제거
+
+### 신규 기능
+- `frontend/src/pages/OnlineRpsPage.tsx` (`/online-rps` 라우트)
+- 상세: `docs/progress/developer-frontend-online-rps.md` 참조
+
+---
+
 ## qa-tester에게 요청할 검증 항목
 
 ### 접근 제어

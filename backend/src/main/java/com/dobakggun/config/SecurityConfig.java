@@ -95,6 +95,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,   "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.GET,    "/api/chat/rooms/*/history").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/chat/rooms/**").hasAnyRole("FRIEND", "ADMIN")
+                // Online RPS — 로그인 유저 전체 허용 (ADMIN/USER/FRIEND)
+                .requestMatchers("/api/rps/**").authenticated()
                 // 나머지 허용
                 .anyRequest().permitAll()
             )

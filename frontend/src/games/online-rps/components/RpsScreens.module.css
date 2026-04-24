@@ -1,0 +1,595 @@
+/* ── 키프레임 ─────────────────────────────────────────────── */
+
+@keyframes rps-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.1); }
+}
+
+@keyframes rps-num-pop {
+  0%   { transform: scale(1.3); opacity: 0.7; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes rps-banner-pop {
+  0%   { transform: scale(0.7);  opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes rps-timer-pulse {
+  from { opacity: 1; }
+  to   { opacity: 0.6; }
+}
+
+@keyframes rps-toast-in {
+  from { transform: translateY(-20px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes rps-dots {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1; }
+}
+
+/* ── 전체 페이지 레이아웃 ─────────────────────────────────── */
+
+.page {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  font-family: sans-serif;
+}
+
+/* ── 헤더 ─────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.headerTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.headerBack {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.headerBack:hover {
+  color: #111827;
+}
+
+.headerTimer {
+  font-size: 16px;
+  font-weight: 700;
+  color: #6b7280;
+  min-width: 48px;
+  text-align: right;
+}
+
+.headerTimerWarn {
+  color: #ef4444;
+  animation: rps-timer-pulse 500ms ease alternate infinite;
+}
+
+/* ── 타이머 바 ────────────────────────────────────────────── */
+
+.timerBar {
+  width: 100%;
+  height: 6px;
+  background: #e5e7eb;
+  position: relative;
+  overflow: hidden;
+}
+
+.timerBarFill {
+  height: 100%;
+  background: #6366f1;
+  transition: width 200ms linear, background-color 400ms ease;
+}
+
+.timerBarFillWarn {
+  background: #ef4444;
+}
+
+/* ── 콘텐츠 영역 ──────────────────────────────────────────── */
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  gap: 20px;
+}
+
+/* ── 대기 화면 ────────────────────────────────────────────── */
+
+.waitingIcon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  animation: rps-pulse 1.4s ease-in-out infinite;
+}
+
+.waitingIconStatic {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.waitingTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  text-align: center;
+}
+
+.waitingCountdownTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+}
+
+.waitingSub {
+  font-size: 14px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.countdownNumber {
+  font-size: 64px;
+  font-weight: 900;
+  color: #6366f1;
+  line-height: 1;
+  animation: rps-num-pop 200ms ease-out;
+}
+
+/* ── 참가자 목록 ─────────────────────────────────────────── */
+
+.participantList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 400px;
+}
+
+.participantItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--rps-player-item-bg, #f9fafb);
+  border: 1px solid var(--rps-player-item-border, #e5e7eb);
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ca8a04;
+  flex-shrink: 0;
+}
+
+.meBadge {
+  font-size: 11px;
+  background: #eef2ff;
+  color: #6366f1;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+.playerCount {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.playerCountNum {
+  color: #6366f1;
+  font-weight: 600;
+}
+
+/* ── 나가기 버튼 ─────────────────────────────────────────── */
+
+.leaveBtn {
+  padding: 10px 32px;
+  border: 1.5px solid #dc2626;
+  color: #dc2626;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  background: transparent;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.leaveBtn:hover {
+  background: #fef2f2;
+}
+
+/* ── 게임 화면 ────────────────────────────────────────────── */
+
+.cardRow {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.statusMsg {
+  font-size: 15px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.statusMsgSelected {
+  font-size: 15px;
+  color: #6366f1;
+  font-weight: 600;
+  text-align: center;
+}
+
+.statusMsgAuto {
+  font-size: 14px;
+  color: #f59e0b;
+  text-align: center;
+}
+
+/* ── 참가자 선택 현황 ─────────────────────────────────────── */
+
+.choiceStatus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+.choiceStatusItem {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+}
+
+.choiceStatusItemChosen {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #16a34a;
+}
+
+/* ── 결과 화면 ────────────────────────────────────────────── */
+
+.resultBanner {
+  width: 100%;
+  max-width: 480px;
+  padding: 16px 0;
+  text-align: center;
+  border-radius: 12px;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  animation: rps-banner-pop 400ms ease-out;
+}
+
+.resultBannerWin {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  color: #15803d;
+}
+
+.resultBannerLoss {
+  background: #fef2f2;
+  border: 2px solid #dc2626;
+  color: #b91c1c;
+}
+
+.resultBannerDraw {
+  background: #fefce8;
+  border: 2px solid #ca8a04;
+  color: #92400e;
+}
+
+.resultSummary {
+  font-size: 15px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.resultCards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.resultCardWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.resultCardName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.resultBadge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.resultBadgeWin {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.resultBadgeLoss {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.resultBadgeDraw {
+  background: #fef9c3;
+  color: #92400e;
+}
+
+/* ── 재도전 카운트다운 ─────────────────────────────────────── */
+
+.rematchSection {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.rematchText {
+  font-size: 14px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.rematchBar {
+  width: 100%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.rematchBarFill {
+  height: 100%;
+  background: #6366f1;
+  transition: width 1000ms linear;
+}
+
+/* ── 로딩/매칭 화면 ──────────────────────────────────────── */
+
+.loadingScreen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  gap: 16px;
+}
+
+.loadingTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.loadingSub {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── 에러 화면 ────────────────────────────────────────────── */
+
+.errorScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.errorIcon {
+  font-size: 32px;
+}
+
+.errorTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.errorMessage {
+  font-size: 14px;
+  color: #6b7280;
+  max-width: 320px;
+}
+
+.errorBtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btnPrimary {
+  padding: 10px 24px;
+  background: #6366f1;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.btnPrimary:hover {
+  background: #4f46e5;
+}
+
+.btnSecondary {
+  padding: 10px 24px;
+  background: transparent;
+  color: #6b7280;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.btnSecondary:hover {
+  background: #f3f4f6;
+}
+
+/* ── 토스트 ───────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  width: min(360px, 90vw);
+  padding: 12px 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  font-size: 14px;
+  animation: rps-toast-in 220ms ease-out;
+}
+
+.toastWarn {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  color: #92400e;
+}
+
+.toastError {
+  background: #fef2f2;
+  border-left: 4px solid #dc2626;
+  color: #b91c1c;
+}
+
+.toastInfo {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  color: #1d4ed8;
+}
+
+/* ── 재연결 배너 ─────────────────────────────────────────── */
+
+.reconnectBanner {
+  width: 100%;
+  height: 40px;
+  background: #fef3c7;
+  border-bottom: 2px solid #f59e0b;
+  color: #92400e;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 반응형 ──────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .headerTitle {
+    font-size: 16px;
+  }
+
+  .countdownNumber {
+    font-size: 48px;
+  }
+
+  .resultBanner {
+    font-size: 26px;
+  }
+
+  .cardRow {
+    gap: 8px;
+  }
+
+  .participantList {
+    max-width: 100%;
+  }
+}

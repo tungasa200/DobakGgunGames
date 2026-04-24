@@ -135,3 +135,9 @@
 - **ESLint 기존 에러 54건**은 RSP 무관 기존 파일에서 발생 — 별도 이슈로 분리 권장.
 - **환경변수 추가 없음** — Vercel / Railway 반영 작업 불필요.
 - QA 미수행 상태이므로 후속 세션에서 qa-tester 재착수 시 `docs/review/rsp-game-test-plan.md` 부재 상태부터 시작해야 함.
+
+---
+
+## 후속 액션 (online-rps로 교체됨)
+
+- 2026-04-24: online-rps 프로젝트로 전면 교체됨. `docs/specs/online-rps-prd.md` 참조.

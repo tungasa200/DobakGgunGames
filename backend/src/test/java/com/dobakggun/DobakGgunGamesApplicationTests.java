@@ -3,6 +3,8 @@ package com.dobakggun;
 import com.dobakggun.service.ChatRedisService;
 import com.dobakggun.service.IpBanService;
 import com.dobakggun.service.RedisTokenService;
+import com.dobakggun.service.RpsMatchService;
+import com.dobakggun.service.RpsRoomService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -36,6 +38,14 @@ class DobakGgunGamesApplicationTests {
 	/** 채팅 Redis 서비스 mock */
 	@MockBean
 	private ChatRedisService chatRedisService;
+
+	/** RPS 매칭 서비스 — Redis 의존성 mock */
+	@MockBean
+	private RpsMatchService rpsMatchService;
+
+	/** RPS 방 서비스 — @PostConstruct DB 호출 및 @Scheduled mock */
+	@MockBean
+	private RpsRoomService rpsRoomService;
 
 	@Test
 	void contextLoads() {
