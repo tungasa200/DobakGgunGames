@@ -44,7 +44,7 @@ function bfColLabel(i: number): string {
 }
 
 // ===== 상수 =====
-const BOARD_W = 11, BOARD_H = 21, CELL = 40;
+const BOARD_W = 11, BOARD_H = 21, CELL = 33;
 
 const COLORS_NORMAL = [
   null,

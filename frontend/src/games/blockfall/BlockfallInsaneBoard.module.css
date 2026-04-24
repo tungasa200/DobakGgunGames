@@ -13,7 +13,7 @@
 }
 
 .wrap {
-  max-width: 820px; /* 788px 게임/랭킹 영역 + 좌우 패딩 32px, 일반 모드와 동일 */
+  max-width: 687px; /* 655px 게임/랭킹 영역 + 좌우 패딩 32px, 일반 모드와 동일 */
   margin: 0 auto;
   padding: 20px 16px;
   font-family: 'Segoe UI', sans-serif;
@@ -278,13 +278,13 @@
 /* Mock BAG 패널 */
 .bagPanel {
   flex-shrink: 0;
-  width: 160px;
+  width: 132px;
 }
 .bagPanelCanvas {
   display: block;
   background-color: #0a0a0a;
-  width: 160px;
-  height: 840px;
+  width: 132px;
+  height: 693px;
 }
 .wrap[data-theme="normal"] .bagPanelCanvas {
   background-color: #111827;
@@ -303,7 +303,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 160px;  /* miniCanvas 160px(4×CELL, CELL=40)에 맞춤 */
+  width: 132px;  /* miniCanvas 132px(4×CELL, CELL=33)에 맞춤 */
   flex-shrink: 0;
 }
 
@@ -332,8 +332,8 @@
   border-radius: 4px;
   background-color: #0a0a0a;
   display: block;
-  width: 160px;
-  height: 160px;
+  width: 132px;
+  height: 132px;
 }
 
 .hintsBox { }
@@ -444,9 +444,9 @@
   .hintsBox { display: none; }
 }
 
-/* 뷰포트 < 820px: BAG 패널 숨김 + CELL=40 확대 크기를 기존 30 크기로 롤백
-   (gameArea with bag 788px + wrap 좌우 패딩 32px = 820px 미만이면 공간 부족) */
-@media (max-width: 819px) {
+/* 뷰포트 < 687px: BAG 패널 숨김 + CELL=33 확대 크기를 기존 30 크기로 롤백
+   (gameArea with bag 655px + wrap 좌우 패딩 32px = 687px 미만이면 공간 부족) */
+@media (max-width: 686px) {
   .bagPanel { display: none; }
   .sidePanel { width: 120px; }
   .miniCanvas { width: 120px; height: 120px; }
@@ -487,11 +487,11 @@
 }
 
 /* ===== 랭킹 ===== */
-/* 일반 모드 playWrapper(788px, gameArea 실측과 동일)와 동일 폭 */
+/* 일반 모드 playWrapper(655px, gameArea 실측과 동일)와 동일 폭 */
 .rankSection {
   margin-top: 28px;
   width: 100%;
-  max-width: min(788px, 100%);
+  max-width: min(655px, 100%);
   overflow-x: auto;
   background: var(--insane-bg-deep);
   border-radius: 10px;
