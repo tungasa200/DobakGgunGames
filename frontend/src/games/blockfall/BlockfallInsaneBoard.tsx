@@ -1205,21 +1205,24 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   function fireRandomEvent() {
     const isMobile = isMobileRef.current;
-    // Lv10+ 에서는 바닥붕괴 제외 — 고레벨 빈발 시 오히려 난이도 하락
+    // Lv10+ 에서는 바닥 붕괴/측면 붕괴의 가중치를 대폭 낮춰 아주 낮은 확률로 발동
+    // — 고레벨에서 shatter 기반 초기화 이벤트가 빈발하면 오히려 난이도가 하락하는 문제 완화
     const highLevel = gameLevelRef.current >= 10;
     // SIDE_EXPAND는 bag UI가 숨겨진 상태(인세인 페이즈 bag 소진 후)에서만 발동.
     // 확장 시 bag 패널 자리를 회수하므로, bag이 보이는 중에는 레이아웃 충돌 방지를 위해 제외.
     const bagHidden = !bagVisibleRef.current;
     const pool = EVENT_POOL.filter(e => {
       if (isMobile && e.mobileExcluded) return false;
-      if (highLevel && e.id === 'FLOOR_DROP') return false;
       if (!bagHidden && e.id === 'SIDE_EXPAND') return false;
       return true;
     });
-    const totalW = pool.reduce((s, e) => s + e.weight, 0);
+    // Lv10+ 가중치 보정: FLOOR_DROP/SIDE_EXPAND → 0.1 (원래 1 대비 약 1/10, 전체 확률 ≈ 0.9%)
+    const getWeight = (e: EventDef) =>
+      highLevel && (e.id === 'FLOOR_DROP' || e.id === 'SIDE_EXPAND') ? 0.1 : e.weight;
+    const totalW = pool.reduce((s, e) => s + getWeight(e), 0);
     let r = Math.random() * totalW;
     for (const def of pool) {
-      r -= def.weight;
+      r -= getWeight(def);
       if (r <= 0) { fireEvent(def); return; }
     }
     fireEvent(pool[pool.length - 1]);
