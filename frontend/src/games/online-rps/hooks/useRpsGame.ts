@@ -103,7 +103,11 @@ export function useRpsGame(): UseRpsGameReturn {
       },
       onMatchCountdown: (payload: MatchCountdownPayload) => {
         setCountdown(payload.secondsRemaining);
-        setPhase('countdown');
+        setPhase((prev) => {
+          // 결과 화면 중엔 countdown으로 전환하지 않음 — 결과가 사라지는 버그 방지
+          if (prev === 'result') return 'result';
+          return 'countdown';
+        });
       },
       onMatchCountdownCancelled: () => {
         setCountdown(0);
