@@ -12,6 +12,14 @@
   margin: 24px 0 24px;
   font-size: clamp(1.3em, 5vw, 2em);
   color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.headingLogo {
+  height: 1.3em;
+  width: auto;
+  display: block;
 }
 
 .grid {

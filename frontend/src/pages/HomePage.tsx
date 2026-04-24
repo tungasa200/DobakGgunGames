@@ -221,7 +221,10 @@ export default function HomePage() {
     }}>
       <NormalHeader currentGame="" gameName="게임 목록" accentColor="#2c3e50" />
       <div className={styles.page}>
-        <h1 className={styles.heading}>🎮 DobakGgun</h1>
+        <h1 className={styles.heading}>
+          <img src="/common/logo.png" alt="" className={styles.headingLogo} />
+          DobakGgun
+        </h1>
         <div className={styles.grid}>
           {GAMES.map((game) => {
             const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.key] === false;

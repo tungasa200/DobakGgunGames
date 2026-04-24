@@ -29,6 +29,11 @@
   font-size: 28px;
   margin-bottom: 4px;
 }
+.logo img {
+  height: 56px;
+  width: auto;
+  vertical-align: middle;
+}
 
 .title {
   font-size: 20px;

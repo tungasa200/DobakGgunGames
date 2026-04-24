@@ -130,7 +130,10 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
           transform: visible ? 'translateY(0)' : 'translateY(-100%)',
         }}
       >
-        <Link className={styles.logo} to="/">🎮 DobakGgun</Link>
+        <Link className={styles.logo} to="/">
+          <img src="/common/logo.png" alt="" className={styles.logoImg} />
+          DobakGgun
+        </Link>
 
         <button ref={btnRef} className={styles.menuBtn} onClick={() => setOpen(o => !o)}>
           게임 목록 ▾

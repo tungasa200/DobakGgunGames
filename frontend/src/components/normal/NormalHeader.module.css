@@ -27,9 +27,26 @@
   flex-shrink: 0;
   text-decoration: none;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .logo:hover {
   opacity: 0.8;
+}
+.logoImg {
+  height: 22px;
+  width: auto;
+  display: block;
+  filter:
+    drop-shadow( 1px  0   0 #fff)
+    drop-shadow(-1px  0   0 #fff)
+    drop-shadow( 0    1px 0 #fff)
+    drop-shadow( 0   -1px 0 #fff)
+    drop-shadow( 1px  1px 0 #fff)
+    drop-shadow(-1px -1px 0 #fff)
+    drop-shadow( 1px -1px 0 #fff)
+    drop-shadow(-1px  1px 0 #fff);
 }
 
 /* 게임 목록 버튼 */

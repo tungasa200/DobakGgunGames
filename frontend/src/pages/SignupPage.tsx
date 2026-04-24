@@ -218,7 +218,7 @@ export default function SignupPage() {
 
   return layout(
     <>
-        <div className={s.logo}>🎮</div>
+        <div className={s.logo}><img src="/common/logo.png" alt="DobakGgun" /></div>
         <h1 className={s.title}>회원가입</h1>
         <p className={s.subtitle}>무료로 가입하고 기록을 남겨보세요</p>
 
