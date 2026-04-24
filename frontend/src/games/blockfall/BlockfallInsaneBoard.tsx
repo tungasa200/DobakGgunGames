@@ -2245,6 +2245,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     gameStatus === 'over'   ? 'YOU DIED' : '';
 
   // I: 랭킹 행 클래스 판별
+  const g = gameLevel >= 10 ? styles.chromaticGlitch : ''; // 글리치 단축 변수
+
   function getRankRowClass(r: RankEntry, idx: number): string {
     const isMine = submittedIdRef.current !== null
       ? r.id === submittedIdRef.current
@@ -2274,15 +2276,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     )}
     <div className={styles.wrap} data-theme={themePhase} style={{ position: 'relative', zIndex: 1 }}>
       {/* 난이도 버튼 — 일반 페이즈: 일반 모드와 동일 UI + 인세인 active, 인세인 페이즈: 텍스트 변경 기믹 */}
-      <div className={`${styles.diffRow} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+      <div className={styles.diffRow}>
         {themePhase === 'insane' ? (
           <>
             {INSANE_LEVELS.map(lv => (
-              <span key={lv.value} className={`${styles.diffBtn} ${styles.diffBtnInsanePhase}`}>
+              <span key={lv.value} className={`${styles.diffBtn} ${styles.diffBtnInsanePhase} ${g}`}>
                  INSANE
               </span>
             ))}
-            <span className={`${styles.diffBtn} ${styles.diffBtnInsanePhase} ${styles.diffBtnInsaneActive}`}>
+            <span className={`${styles.diffBtn} ${styles.diffBtnInsanePhase} ${styles.diffBtnInsaneActive} ${g}`}>
                INSANE
             </span>
           </>
@@ -2291,13 +2293,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
             {INSANE_LEVELS.map(lv => (
               <button
                 key={lv.value}
-                className={styles.diffBtn}
+                className={`${styles.diffBtn} ${g}`}
                 onClick={() => handleDifficultyChange(lv.value)}
               >
                 {lv.label}
               </button>
             ))}
-            <button className={`${styles.diffBtn} ${styles.insaneActiveDiffBtn}`} disabled>
+            <button className={`${styles.diffBtn} ${styles.insaneActiveDiffBtn} ${g}`} disabled>
               🔥 인세인
             </button>
           </>
@@ -2305,20 +2307,20 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       </div>
 
       {/* 상태 바 */}
-      <div className={`${styles.infoBar} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
-        <div className={`${styles.infoItem} ${styles.infoScore}`}>
+      <div className={styles.infoBar}>
+        <div className={`${styles.infoItem} ${styles.infoScore} ${g}`}>
           <div className={styles.infoLabel}>점수</div>
           <div className={styles.infoValue}>{score.toLocaleString()}</div>
         </div>
-        <div className={`${styles.infoItem} ${styles.infoLines}`}>
+        <div className={`${styles.infoItem} ${styles.infoLines} ${g}`}>
           <div className={styles.infoLabel}>줄</div>
           <div className={styles.infoValue}>{lines}</div>
         </div>
-        <div className={`${styles.infoItem} ${styles.infoSmall}`}>
+        <div className={`${styles.infoItem} ${styles.infoSmall} ${g}`}>
           <div className={styles.infoLabel}>레벨</div>
           <div className={styles.infoValue}>{gameLevel}</div>
         </div>
-        <div className={`${styles.infoItem} ${styles.infoSmall}`}>
+        <div className={`${styles.infoItem} ${styles.infoSmall} ${g}`}>
           <div className={styles.infoLabel}>콤보</div>
           <div className={`${styles.infoValue} ${combo >= 2 ? styles.infoComboActive : ''}`}>
             {combo >= 2 ? `x${combo}` : '-'}
@@ -2327,7 +2329,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       </div>
 
       {/* 이벤트 타이머 바 */}
-      <div className={`${styles.eventTimerBar} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+      <div className={`${styles.eventTimerBar} ${g}`}>
         <div ref={timerBarRef} className={styles.eventTimerFill} style={{ width: '0%' }} />
       </div>
 
@@ -2338,18 +2340,18 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       {/* 게임 영역 */}
       <div className={styles.gameArea}>
         <div className={styles.sidePanel}>
-          <div className={`${styles.sideBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+          <div className={`${styles.sideBox} ${g}`}>
             <div className={styles.sideTitle}>NEXT</div>
             <canvas ref={nextRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
           </div>
-          <div className={`${styles.sideBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+          <div className={`${styles.sideBox} ${g}`}>
             <div className={styles.sideTitle}>HOLD</div>
             <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
           </div>
         </div>
 
         {/* 보드 박스 — 흰 박스와 동일 구조, 인세인 다크 테마 */}
-        <div className={`${styles.boardBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+        <div className={`${styles.boardBox} ${g}`}>
           <div className={`${styles.boardStatusLine} ${gameStatus === 'over' ? styles.boardStatusOver : gameStatus === 'idle' ? styles.boardStatusIdle : ''}`}>
             {statusText}
           </div>
@@ -2369,7 +2371,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         {/* BAG 패널 — 일반 페이즈에서 bag 큐 미리보기, 인세인 페이즈 bag 소진 후 숨김 */}
         {bagVisible && (
           <div className={styles.bagPanel}>
-            <div className={styles.sideBox}>
+            <div className={`${styles.sideBox} ${g}`}>
               <div className={styles.sideTitle}>BAG</div>
               <canvas
                 ref={mockBagRef}
@@ -2383,21 +2385,21 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       </div>
 
       {/* 버튼 */}
-      <div className={`${styles.controls} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+      <div className={styles.controls}>
         <button
-          className={styles.startBtn}
+          className={`${styles.startBtn} ${g}`}
           onClick={(e) => { e.currentTarget.blur(); startGame(); }}
         >
           {gameStatus === 'idle' ? '▶ 시작' : '↺ 다시하기'}
         </button>
         <button
-          className={styles.pauseBtn}
+          className={`${styles.pauseBtn} ${g}`}
           disabled={gameStatus !== 'playing' && gameStatus !== 'paused'}
           onClick={togglePause}
         >
           {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
         </button>
-        <div className={styles.bgmControl}>
+        <div className={`${styles.bgmControl} ${g}`}>
           <button
             className={styles.bgmMuteBtn}
             onClick={toggleBgmMute}
