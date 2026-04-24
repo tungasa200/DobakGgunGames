@@ -8,12 +8,21 @@ type Options = {
 const DEFAULT_STORAGE_KEY = 'dobakggun_bgm_muted';
 
 export function useBgm(src: string, opts: Options = {}) {
-  const { volume = 0.5, storageKey = DEFAULT_STORAGE_KEY } = opts;
+  const { volume: initVolume = 0.5, storageKey = DEFAULT_STORAGE_KEY } = opts;
+  const volumeStorageKey = `${storageKey}_vol`;
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wasPlayingRef = useRef(false);
 
   const [muted, setMuted] = useState<boolean>(() => {
     try { return localStorage.getItem(storageKey) === '1'; } catch { return false; }
+  });
+
+  const [volume, setVolumeState] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(volumeStorageKey);
+      return saved !== null ? parseFloat(saved) : initVolume;
+    } catch { return initVolume; }
   });
 
   useEffect(() => {
@@ -37,6 +46,11 @@ export function useBgm(src: string, opts: Options = {}) {
     if (audioRef.current) audioRef.current.muted = muted;
     try { localStorage.setItem(storageKey, muted ? '1' : '0'); } catch { /* ignore */ }
   }, [muted, storageKey]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+    try { localStorage.setItem(volumeStorageKey, String(volume)); } catch { /* ignore */ }
+  }, [volume, volumeStorageKey]);
 
   const play = useCallback(() => {
     const a = audioRef.current;
@@ -67,6 +81,7 @@ export function useBgm(src: string, opts: Options = {}) {
   }, []);
 
   const toggleMute = useCallback(() => setMuted(m => !m), []);
+  const setVolume = useCallback((v: number) => setVolumeState(Math.max(0, Math.min(1, v))), []);
 
-  return { play, pause, resume, stop, toggleMute, muted };
+  return { play, pause, resume, stop, toggleMute, muted, volume, setVolume };
 }

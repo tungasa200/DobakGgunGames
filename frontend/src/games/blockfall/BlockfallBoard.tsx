@@ -175,9 +175,10 @@ export default function BlockfallBoard({ excel = false }: Props) {
   }, [user, navigate]);
 
   // ===== 캔버스 refs =====
-  const boardRef = useRef<HTMLCanvasElement>(null);
-  const nextRef  = useRef<HTMLCanvasElement>(null);
-  const holdRef  = useRef<HTMLCanvasElement>(null);
+  const boardRef    = useRef<HTMLCanvasElement>(null);
+  const nextRef     = useRef<HTMLCanvasElement>(null);
+  const holdRef     = useRef<HTMLCanvasElement>(null);
+  const bagPanelRef = useRef<HTMLCanvasElement>(null);
 
   // ===== 게임 상태 (ref — 렌더링 없이 갱신) =====
   const arena       = useRef<Matrix>(createMatrix(BOARD_W, BOARD_H));
@@ -428,6 +429,28 @@ export default function BlockfallBoard({ excel = false }: Props) {
         }
       }
     }
+
+    // BAG 패널 캔버스 — 현재 bag에서 남은 피스 목록 (일반 모드 전용)
+    const bp = bagPanelRef.current;
+    if (bp && !excel) {
+      const bctx = bp.getContext('2d');
+      if (bctx) {
+        bctx.fillStyle = '#111827';
+        bctx.fillRect(0, 0, 4, BOARD_H);
+        const remaining = bagRef.current.slice(bagIdxRef.current);
+        const slotH = BOARD_H / 5;
+        remaining.forEach((type, i) => {
+          const m = createPiece(type);
+          const ox = Math.floor((4 - m[0].length) / 2);
+          const oy = slotH * i + (slotH - m.length) / 2;
+          m.forEach((row, ry) => {
+            row.forEach((val, rx) => {
+              if (val !== 0) drawCell(bctx, rx + ox, ry + oy, val);
+            });
+          });
+        });
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [excel]);
 
@@ -611,7 +634,6 @@ export default function BlockfallBoard({ excel = false }: Props) {
         if (!isOnGround()) isLanding.current = false;
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playerDrop = useCallback((isSoft = false) => {
@@ -665,7 +687,6 @@ export default function BlockfallBoard({ excel = false }: Props) {
       if (lockResets.current < MAX_LOCK_RESETS) { lockCounter.current = 0; lockResets.current++; }
       if (!isOnGround()) isLanding.current = false;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playerHold = useCallback(() => {
@@ -795,9 +816,11 @@ export default function BlockfallBoard({ excel = false }: Props) {
     const canvas = boardRef.current;
     const nc = nextRef.current;
     const hc = holdRef.current;
+    const bp = bagPanelRef.current;
     if (canvas) { const ctx = canvas.getContext('2d'); if (ctx) ctx.scale(CELL, CELL); }
     if (nc)     { const ctx = nc.getContext('2d');     if (ctx) ctx.scale(CELL, CELL); }
     if (hc)     { const ctx = hc.getContext('2d');     if (ctx) ctx.scale(CELL, CELL); }
+    if (bp)     { const ctx = bp.getContext('2d');     if (ctx) ctx.scale(CELL, CELL); }
     arena.current = createMatrix(BOARD_W, BOARD_H);
     draw();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -865,7 +888,6 @@ export default function BlockfallBoard({ excel = false }: Props) {
   useEffect(() => {
     loadRanking('normal');
     loadAlltime('normal');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ===== 랭킹 등록 =====
@@ -955,7 +977,6 @@ export default function BlockfallBoard({ excel = false }: Props) {
   newGameFnRef.current = () => startGame();
   useEffect(() => {
     if (excel) registerNewGame(() => newGameFnRef.current());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [excel, registerNewGame]);
 
   // ===== 엑셀 모드: ranking 시트 활성 시 랭킹 로드 =====
@@ -967,15 +988,15 @@ export default function BlockfallBoard({ excel = false }: Props) {
   }, [excel, activeSheet]);
 
   // ===== 상태 텍스트 =====
-  const statusText =
-    gameStatus === 'idle'   ? '▶ 시작 버튼을 눌러주세요' :
-    gameStatus === 'over'   ? 'GAME OVER' : '';
-
   const LEVELS: { value: Level; label: string }[] = [
     { value: 'easy',   label: '쉬움' },
     { value: 'normal', label: '보통' },
     { value: 'hard',   label: '어려움' },
   ];
+
+  const statusText =
+    gameStatus === 'idle'   ? difficulty.toUpperCase() :
+    gameStatus === 'over'   ? 'GAME OVER' : '';
 
   // 엑셀 모드: 시트에 따라 보이는 영역 결정
   const showGameArea  = !excel || activeSheet === 'game';
@@ -983,6 +1004,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
 
   return (
     <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
+    <div className={styles.playWrapper}>
       {/* 난이도 — 일반 모드에서만 */}
       {!excel && (
         <div className={styles.diffRow}>
@@ -1008,14 +1030,28 @@ export default function BlockfallBoard({ excel = false }: Props) {
       {/* 상태 바 — 일반 모드에서만 */}
       {!excel && (
         <div className={styles.infoBar}>
-          <div className={styles.infoItem}><div className={styles.infoLabel}>점수</div><div className={styles.infoValue}>{score.toLocaleString()}</div></div>
-          <div className={styles.infoItem}><div className={styles.infoLabel}>레벨</div><div className={styles.infoValue}>{gameLevel}</div></div>
-          <div className={styles.infoItem}><div className={styles.infoLabel}>줄</div><div className={styles.infoValue}>{lines}</div></div>
-          <div className={styles.infoItem}><div className={styles.infoLabel}>콤보</div><div className={styles.infoValue} style={{ color: combo >= 2 ? '#e67e22' : undefined }}>{combo >= 2 ? `x${combo}` : '-'}</div></div>
+          <div className={`${styles.infoItem} ${styles.infoScore}`}>
+            <div className={styles.infoLabel}>점수</div>
+            <div className={styles.infoValue}>{score.toLocaleString()}</div>
+          </div>
+          <div className={`${styles.infoItem} ${styles.infoLines}`}>
+            <div className={styles.infoLabel}>줄</div>
+            <div className={styles.infoValue}>{lines}</div>
+          </div>
+          <div className={`${styles.infoItem} ${styles.infoSmall}`}>
+            <div className={styles.infoLabel}>레벨</div>
+            <div className={styles.infoValue}>{gameLevel}</div>
+          </div>
+          <div className={`${styles.infoItem} ${styles.infoSmall}`}>
+            <div className={styles.infoLabel}>콤보</div>
+            <div className={`${styles.infoValue} ${combo >= 2 ? styles.infoComboActive : ''}`}>
+              {combo >= 2 ? `x${combo}` : '-'}
+            </div>
+          </div>
         </div>
       )}
 
-      {!excel && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
+      {/* 상태 메시지는 boardBox 안으로 이동 */}
 
       {/* 세션 생성 실패 경고 배너 */}
       {!excel && sessionFailed && gameStatus === 'playing' && (
@@ -1049,32 +1085,43 @@ export default function BlockfallBoard({ excel = false }: Props) {
                   <div className={styles.tsideValue}>{lines}</div>
                 </>
               )}
-              <div className={`${styles.sideBox} ${styles.hintsBox}`}>
-                <div className={styles.sideTitle}>키</div>
-                <div className={styles.hints}>
-                  ← → 이동<br />
-                  ↑ 회전<br />
-                  ↓ 내리기<br />
-                  Space 급강하<br />
-                  Shift 홀드<br />
-                  P 일시정지
-                </div>
-              </div>
             </div>
 
             {/* 엑셀 모드: 사이드패널과 보드 사이 gap 컬럼 (원본: #blockfall-col-gap) */}
             {excel && <div className={styles.blockfallColGap} />}
 
-            {/* 보드 */}
-            <div className={styles.boardWrapper}>
-              <canvas
-                ref={boardRef}
-                width={BOARD_W * CELL}
-                height={BOARD_H * CELL}
-                className={styles.board}
-              />
-              {gameStatus === 'paused' && <div className={styles.pauseOverlay}>PAUSE</div>}
+            {/* 보드 — 흰 박스로 감싸고 상태 메시지를 내부 헤더로 표시 */}
+            <div className={styles.boardBox}>
+              {!excel && (
+                <div className={`${styles.boardStatusLine} ${gameStatus === 'over' ? styles.boardStatusOver : gameStatus === 'idle' ? styles.boardStatusIdle : ''}`}>
+                  {statusText}
+                </div>
+              )}
+              <div className={styles.boardWrapper}>
+                <canvas
+                  ref={boardRef}
+                  width={BOARD_W * CELL}
+                  height={BOARD_H * CELL}
+                  className={styles.board}
+                />
+                {gameStatus === 'paused' && <div className={styles.pauseOverlay}>PAUSE</div>}
+              </div>
             </div>
+
+            {/* BAG 패널 — 일반 모드 전용 */}
+            {!excel && (
+              <div className={styles.bagPanel}>
+                <div className={styles.sideBox}>
+                  <div className={styles.sideTitle}>BAG</div>
+                  <canvas
+                    ref={bagPanelRef}
+                    width={4 * CELL}
+                    height={BOARD_H * CELL}
+                    className={styles.bagPanelCanvas}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 버튼 */}
@@ -1093,14 +1140,24 @@ export default function BlockfallBoard({ excel = false }: Props) {
               {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
             </button>
             {!excel && (
-              <button
-                className={styles.pauseBtn}
-                onClick={bgm.toggleMute}
-                aria-label={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
-                title={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
-              >
-                {bgm.muted ? '🔇 BGM' : '🔊 BGM'}
-              </button>
+              <div className={styles.bgmControl}>
+                <button
+                  className={styles.bgmMuteBtn}
+                  onClick={bgm.toggleMute}
+                  aria-label={bgm.muted ? '음소거 해제' : '음소거'}
+                >
+                  {bgm.muted ? '🔇' : '🔊'}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={Math.round(bgm.volume * 100)}
+                  onChange={e => bgm.setVolume(Number(e.target.value) / 100)}
+                  className={styles.bgmSlider}
+                  aria-label="BGM 볼륨"
+                />
+              </div>
             )}
           </div>
 
@@ -1422,6 +1479,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
           </div>
         );
       })()}
+
+    </div>{/* end playWrapper */}
 
       {/* 게임 오버 모달 */}
       {modalOpen && (

@@ -1,12 +1,18 @@
 .wrap {
-  max-width: 600px;
+  max-width: 640px; /* 594px 플레이 영역 + 좌우 패딩 여유 */
   margin: 0 auto;
   padding: 20px 16px;
   font-family: 'Segoe UI', sans-serif;
 }
 
+/* 플레이 영역 너비(594px) 기준 중앙 정렬 컨테이너 */
+.playWrapper {
+  width: 594px;
+  margin: 0 auto;
+}
+
 /* 난이도 */
-.diffRow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.diffRow { display: flex; gap: 8px; margin-bottom: 10px; }
 
 .diffBtn {
   padding: 7px 16px;
@@ -26,7 +32,6 @@
 .insaneBtn {
   border-color: #ff2d55;
   color: #ff2d55;
-  margin-left: auto;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -39,22 +44,32 @@
 /* 정보 바 */
 .infoBar {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 10px;
-  justify-content: center;
+  width: 100%;
 }
 
 .infoItem {
   text-align: center;
   background: white;
   border-radius: 8px;
-  padding: 6px 14px;
-  border: 1px solid #ddd;
-  min-width: 70px;
+  padding: 6px 8px;
+  border: 1px solid #bbb;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
+/* 항목별 flex 비율 */
+.infoScore { flex: 3; }
+.infoLines { flex: 2; }
+.infoSmall { flex: 1; }
+
 .infoLabel { font-size: 0.72em; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
-.infoValue { font-size: 1.4em; font-weight: bold; color: #2c3e50; }
+.infoValue { font-weight: bold; color: #2c3e50; }
+.infoScore .infoValue { font-size: 1.6em; }
+.infoLines .infoValue { font-size: 1.3em; }
+.infoSmall .infoValue { font-size: 1.05em; }
+.infoComboActive { color: #e67e22; }
 
 /* 상태 */
 .status {
@@ -72,7 +87,6 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  justify-content: center;
   margin-bottom: 10px;
 }
 
@@ -88,7 +102,7 @@
 .sideBox {
   background: white;
   border-radius: 8px;
-  border: 1px solid #ddd;
+  border: 1px solid #bbb;
   padding: 10px;
   text-align: center;
   display: flex;
@@ -115,13 +129,32 @@
   height: 120px;
 }
 
-.hintsBox { } /* hide on mobile via media query */
-.hints {
-  font-size: 0.76em;
-  color: #555;
-  text-align: left;
-  line-height: 2;
+
+/* 보드 박스 — NEXT/HOLD/BAG 패널과 동일한 흰 박스 스타일 */
+.boardBox {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #bbb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 10px 0 10px;
 }
+
+/* 보드 박스 내 상태 메시지 — sideTitle과 동일한 높이 구조 */
+.boardStatusLine {
+  font-size: 0.72em;
+  color: #888;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  font-weight: bold;
+  min-height: 1.2em;
+  text-align: center;
+  width: 100%;
+}
+.boardStatusIdle { color: #2c3e50; }
+.boardStatusOver { color: #e74c3c; }
 
 /* 보드 */
 .boardWrapper {
@@ -157,35 +190,88 @@
   white-space: nowrap;
 }
 
+/* BAG 패널 — sideBox와 동일한 흰 박스 스타일 */
+.bagPanel {
+  flex-shrink: 0;
+  width: 120px;
+}
+.bagPanelCanvas {
+  display: block;
+  background-color: #111827;
+  width: 120px;
+  height: 630px;
+}
+
+/* 뷰포트 < 626px: bag 패널 숨김 + 너비 제약 해제
+   (게임 영역 594px + wrap 좌우 패딩 32px = 626px 미만이면 공간 부족) */
+@media (max-width: 625px) {
+  .bagPanel { display: none; }
+  .playWrapper { width: auto; }
+}
+
 /* 버튼 */
-.controls { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.controls { display: flex; gap: 8px; margin-bottom: 8px; width: 100%; }
 
 .startBtn {
-  padding: 10px 22px;
+  flex: 1 1 0;
+  box-sizing: border-box;
+  padding: 10px 0;
   background: #8e44ad;
   color: #fff;
-  border: none;
+  border: 2px solid #8e44ad;
   border-radius: 5px;
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
   touch-action: manipulation;
 }
-.startBtn:hover { background: #7d3c98; }
+.startBtn:hover { background: #7d3c98; border-color: #7d3c98; }
 
 .pauseBtn {
-  padding: 10px 22px;
-  background: #f39c12;
-  color: #fff;
-  border: none;
+  flex: 1 1 0;
+  box-sizing: border-box;
+  padding: 10px 0;
+  background: #fff;
+  color: #8e44ad;
+  border: 2px solid #8e44ad;
   border-radius: 5px;
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
   touch-action: manipulation;
 }
-.pauseBtn:hover:not(:disabled) { background: #d68910; }
-.pauseBtn:disabled { background: #95a5a6; cursor: default; }
+.pauseBtn:hover:not(:disabled) { background: #f3e9f9; }
+.pauseBtn:disabled { background: #fff; color: #c9a0dc; border-color: #8e44ad; cursor: default; }
+
+/* BGM 인라인 컨트롤 — 뮤트 버튼 + 슬라이더 */
+.bgmControl {
+  flex: 1 1 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 2px solid #8e44ad;
+  border-radius: 5px;
+  padding: 0 10px;
+  min-width: 0;
+}
+.bgmMuteBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.bgmSlider {
+  flex: 1;
+  min-width: 0;
+  accent-color: #8e44ad;
+  cursor: pointer;
+  height: 4px;
+}
 
 /* 모바일 컨트롤 — 터치 기기에서만 표시 */
 .mobileControls { display: none; margin-top: 10px; }
@@ -210,13 +296,12 @@
 
 @media (hover: none) and (pointer: coarse) {
   .mobileControls { display: block; }
-  .hintsBox { display: none; }
 }
 
-/* ===== 모바일 반응형: 480px 미만 (일반 스마트폰 세로 모드) ===== */
-/* gameArea 기본 너비: 120px(side) + 12px(gap) + 330px(board) = 462px */
-/* 480px 이하 화면에서 보드·사이드패널 축소 (약 0.67 배율) */
-@media (max-width: 479px) {
+/* ===== 모바일 반응형: 493px 미만 (일반 스마트폰 세로 모드) ===== */
+/* gameArea(bag 없음) 너비: 120px(side) + 12px(gap) + 330px(board) = 462px */
+/* wrap 패딩 32px 포함 시 494px 뷰포트부터 수용 가능 → 493px 이하 축소 */
+@media (max-width: 493px) {
   .wrap {
     padding: 10px 6px;
   }
@@ -266,6 +351,7 @@
 }
 
 /* ===== 360px 미만 초소형 화면 추가 축소 ===== */
+/* 360px 뷰포트 → 내부 360-12=348px > 308px(모바일 게임영역) ✓ */
 @media (max-width: 359px) {
   .sidePanel { width: 70px; }
   .miniCanvas { width: 70px; height: 70px; }
@@ -279,8 +365,8 @@
   .gameArea { gap: 4px; }
 }
 
-/* 랭킹 */
-.rankSection { margin-top: 28px; width: 100%; max-width: min(560px, 100%); overflow-x: auto; }
+/* 랭킹 — playWrapper 안에서 100% = 594px로 맞춤 */
+.rankSection { margin-top: 28px; width: 100%; overflow-x: auto; }
 .rankTitle   { text-align: center; margin: 0 0 10px; color: #2c3e50; font-size: 1rem; font-weight: bold; }
 
 .alltimeBanner {
@@ -599,6 +685,9 @@
 .xrankFilterBtn:hover { background: #e8e8e8; }
 .xrankFilterBtnActive { background: #217346; color: white; border-color: #217346; }
 
+/* 엑셀 모드에서 playWrapper 너비 제약 해제 */
+.excelMode .playWrapper { width: auto; margin: 0; }
+
 /* ===== 엑셀 모드 ===== */
 .excelMode {
   font-family: 'Calibri', 'Segoe UI', sans-serif;
@@ -659,6 +748,9 @@
   height: 120px;
 }
 .excelMode .hintsBox  { display: none; }
+
+/* 보드 박스 — 엑셀 모드에서 초기화 */
+.excelMode .boardBox { background: none; padding: 0; border-radius: 0; }
 
 /* 보드 */
 .excelMode .board { border: 3px solid #d0d0d0; border-top: 1px solid #d0d0d0; border-radius: 0; }
