@@ -1050,10 +1050,18 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           }
         }
 
-        // 리셋 시: 정착 파티클 제거 + 피스 위치 보정
+        // 리셋 시: 정착 파티클 제거 + 제거 수만큼 점수 부여 + 피스 위치 보정
         // — 보드 축소로 인해 collide()가 즉시 true를 반환해 게임오버 나는 현상 방지
         if (isReset) {
+          const settledCount = particles.current.filter(p => p.state === 'settled').length;
           particles.current = particles.current.filter(p => p.state !== 'settled');
+          if (settledCount > 0) {
+            const bonus = settledCount * 10 * gameLevelRef.current;
+            scoreRef.current += bonus;
+            comboText.current = `BONUS  +${bonus.toLocaleString()}`;
+            comboAlpha.current = 2.0;
+            updateDisplay();
+          }
           if (player.current.matrix) {
             const ph = player.current.matrix.length;
             player.current.pos.y = Math.min(
