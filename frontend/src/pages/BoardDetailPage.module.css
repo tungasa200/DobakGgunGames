@@ -193,6 +193,12 @@
   margin: 12px 0;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: zoom-in;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.boardContent :global(img:hover) {
+  opacity: 0.92;
+  transform: scale(1.01);
 }
 .boardContent :global(a) {
   color: #7c3aed;

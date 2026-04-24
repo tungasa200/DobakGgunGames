@@ -221,6 +221,13 @@ export default function BoardDetailPage() {
                 <div
                   className={s.boardContent}
                   dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.tagName === 'IMG') {
+                      const src = (target as HTMLImageElement).src;
+                      window.open(src, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
                 />
               )}
             </div>
