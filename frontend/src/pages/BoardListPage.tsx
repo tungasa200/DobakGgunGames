@@ -85,7 +85,7 @@ export default function BoardListPage() {
   const canWrite = user && (user.role === 'FRIEND' || user.role === 'ADMIN');
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#f0f2f5', display: 'flex', flexDirection: 'column' }}>
       <NormalHeader />
       <div className={s.page}>
         <div className={s.inner}>
@@ -97,38 +97,41 @@ export default function BoardListPage() {
             )}
           </div>
 
-          {/* 탭 필터 */}
-          <div className={s.tabs}>
-            {TABS.map(t => (
-              <button
-                key={t.key}
-                className={`${s.tab} ${tabParam === t.key ? s.tabActive : ''}`}
-                onClick={() => setTab(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          {/* 탭 + 목록 통합 카드 */}
+          <div className={s.boardCard}>
+            {/* 탭 필터 */}
+            <div className={s.tabs}>
+              {TABS.map(t => (
+                <button
+                  key={t.key}
+                  className={`${s.tab} ${tabParam === t.key ? s.tabActive : ''}`}
+                  onClick={() => setTab(t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-          {/* 목록 */}
-          {loading ? (
-            <div className={s.skeleton}>
-              {[0, 1, 2].map(i => <div key={i} className={s.skeletonCard} />)}
-            </div>
-          ) : error ? (
-            <div className={s.emptyMsg}>
-              {error}{' '}
-              <button className={s.retryBtn} onClick={() => loadPosts(tabParam, pageParam)}>
-                다시 시도
-              </button>
-            </div>
-          ) : posts.length === 0 ? (
-            <p className={s.emptyMsg}>아직 게시글이 없습니다</p>
-          ) : (
-            <div className={s.list}>
-              {posts.map(p => <PostCard key={p.id} post={p} />)}
-            </div>
-          )}
+            {/* 목록 */}
+            {loading ? (
+              <div className={s.skeleton}>
+                {[0, 1, 2].map(i => <div key={i} className={s.skeletonCard} />)}
+              </div>
+            ) : error ? (
+              <div className={s.emptyMsg}>
+                {error}{' '}
+                <button className={s.retryBtn} onClick={() => loadPosts(tabParam, pageParam)}>
+                  다시 시도
+                </button>
+              </div>
+            ) : posts.length === 0 ? (
+              <p className={s.emptyMsg}>아직 게시글이 없습니다</p>
+            ) : (
+              <div className={s.list}>
+                {posts.map(p => <PostCard key={p.id} post={p} />)}
+              </div>
+            )}
+          </div>
 
           {/* 페이지네이션 */}
           {!loading && !error && totalPages > 1 && (

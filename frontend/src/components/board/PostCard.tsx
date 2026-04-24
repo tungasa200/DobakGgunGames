@@ -46,7 +46,7 @@ export default function PostCard({ post }: Props) {
           <span className={s.title}>{post.title}</span>
         </span>
         {post.commentCount > 0 && (
-          <span className={s.commentBadge}>💬 {post.commentCount}</span>
+          <span className={s.commentBadge}>댓글 {post.commentCount}</span>
         )}
       </div>
       <div className={s.meta}>

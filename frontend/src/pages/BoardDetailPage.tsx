@@ -137,7 +137,7 @@ export default function BoardDetailPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ minHeight: '100vh', background: '#f0f2f5', display: 'flex', flexDirection: 'column' }}>
         <NormalHeader />
         <div className={s.page}><div className={s.inner}><div className={s.loadingMsg}>불러오는 중…</div></div></div>
         <Footer />
@@ -148,90 +148,97 @@ export default function BoardDetailPage() {
   if (!post) return null;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#f0f2f5', display: 'flex', flexDirection: 'column' }}>
       <NormalHeader />
       <div className={s.page}>
         <div className={s.inner}>
           <Link to="/board" className={s.backLink}>← 게시판 목록</Link>
 
-          {/* 제목 영역 */}
-          <div className={s.postHeader}>
-            <PostTypeBadge postType={post.postType} style={{ marginBottom: 8 }} />
-            <h1 className={s.postTitle}>{post.title}</h1>
-            <div className={s.metaRow}>
-              <Avatar src={post.author.profileImage} nickname={post.author.nickname} />
-              <span className={s.nickname}>{post.author.nickname}</span>
-              <span className={s.dot}>·</span>
-              <span className={s.date}>{formatDate(post.createdAt)}</span>
-              {post.updatedAt !== post.createdAt && (
-                <span className={s.edited}>(수정됨)</span>
-              )}
-              <div style={{ flex: 1 }} />
-              {(isOwner || isAdmin) && (
-                <div className={s.actionBtns}>
-                  {isOwner && (
-                    <button
-                      className={s.editBtn}
-                      onClick={() => navigate(`/board/${postId}/edit`)}
-                    >수정</button>
+          {/* 게시글 본체 카드 */}
+          <div className={s.postCard}>
+            <div className={s.postCardInner}>
+              {/* 제목 영역 */}
+              <div className={s.postHeader}>
+                <PostTypeBadge postType={post.postType} style={{ marginBottom: 10 }} />
+                <h1 className={s.postTitle}>{post.title}</h1>
+                <div className={s.metaRow}>
+                  <Avatar src={post.author.profileImage} nickname={post.author.nickname} />
+                  <span className={s.nickname}>{post.author.nickname}</span>
+                  <span className={s.dot}>·</span>
+                  <span className={s.date}>{formatDate(post.createdAt)}</span>
+                  {post.updatedAt !== post.createdAt && (
+                    <span className={s.edited}>(수정됨)</span>
                   )}
-                  <button
-                    className={s.deleteBtn}
-                    onClick={handleDeletePost}
-                    disabled={deleting}
-                  >{deleting ? '삭제 중…' : '삭제'}</button>
+                  <div style={{ flex: 1 }} />
+                  {(isOwner || isAdmin) && (
+                    <div className={s.actionBtns}>
+                      {isOwner && (
+                        <button
+                          className={s.editBtn}
+                          onClick={() => navigate(`/board/${postId}/edit`)}
+                        >수정</button>
+                      )}
+                      <button
+                        className={s.deleteBtn}
+                        onClick={handleDeletePost}
+                        disabled={deleting}
+                      >{deleting ? '삭제 중…' : '삭제'}</button>
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              <hr className={s.divider} />
+
+              {/* TOURNAMENT 정형 카드 */}
+              {post.postType === 'TOURNAMENT' && post.tournamentData && (
+                <div className={s.tournamentCard}>
+                  <div className={s.tournamentTitle}>대회 정보</div>
+                  <hr className={s.cardDivider} />
+                  {[
+                    { label: '대회 날짜', value: post.tournamentData.tournamentDate },
+                    { label: '게임', value: gameDifficultyLabel(post.tournamentData.gameKey, post.tournamentData.difficultyKey) },
+                    { label: '우승자', value: post.tournamentData.winner },
+                    { label: '준우승자', value: post.tournamentData.runnerUp },
+                    { label: '순위', value: post.tournamentData.ranking, preWrap: true },
+                    { label: '참가인원', value: post.tournamentData.participantCount != null ? `${post.tournamentData.participantCount}명` : null },
+                    { label: '참가자', value: post.tournamentData.participants },
+                    { label: '상품', value: post.tournamentData.prize },
+                    { label: '스폰서', value: post.tournamentData.sponsor },
+                  ].filter(row => row.value != null && row.value !== '').map(row => (
+                    <div key={row.label} className={s.tournamentRow}>
+                      <span className={s.tournamentLabel}>{row.label}</span>
+                      <span className={s.tournamentValue} style={row.preWrap ? { whiteSpace: 'pre-wrap' } : undefined}>
+                        {row.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* HTML 본문 */}
+              {post.contentHtml && (
+                <div
+                  className={s.boardContent}
+                  dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+                />
               )}
             </div>
           </div>
 
-          <hr className={s.divider} />
-
-          {/* TOURNAMENT 정형 카드 */}
-          {post.postType === 'TOURNAMENT' && post.tournamentData && (
-            <div className={s.tournamentCard}>
-              <div className={s.tournamentTitle}>대회 정보</div>
-              <hr className={s.cardDivider} />
-              {[
-                { label: '대회 날짜', value: post.tournamentData.tournamentDate },
-                { label: '게임', value: gameDifficultyLabel(post.tournamentData.gameKey, post.tournamentData.difficultyKey) },
-                { label: '우승자', value: post.tournamentData.winner },
-                { label: '준우승자', value: post.tournamentData.runnerUp },
-                { label: '순위', value: post.tournamentData.ranking, preWrap: true },
-                { label: '참가인원', value: post.tournamentData.participantCount != null ? `${post.tournamentData.participantCount}명` : null },
-                { label: '참가자', value: post.tournamentData.participants },
-                { label: '상품', value: post.tournamentData.prize },
-                { label: '스폰서', value: post.tournamentData.sponsor },
-              ].filter(row => row.value != null && row.value !== '').map(row => (
-                <div key={row.label} className={s.tournamentRow}>
-                  <span className={s.tournamentLabel}>{row.label}</span>
-                  <span className={s.tournamentValue} style={row.preWrap ? { whiteSpace: 'pre-wrap' } : undefined}>
-                    {row.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* HTML 본문 */}
-          {post.contentHtml && (
-            <div
-              className={`${s.boardContent}`}
-              dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+          {/* 댓글 카드 */}
+          <div className={s.commentCard}>
+            <CommentList
+              comments={comments}
+              totalCount={commentTotalCount}
+              hasNext={commentHasNext}
+              loadingMore={loadingMore}
+              onLoadMore={handleLoadMore}
+              user={user}
+              onDelete={handleCommentDelete}
+              onSubmit={handleCommentSubmit}
             />
-          )}
-
-          {/* 댓글 */}
-          <CommentList
-            comments={comments}
-            totalCount={commentTotalCount}
-            hasNext={commentHasNext}
-            loadingMore={loadingMore}
-            onLoadMore={handleLoadMore}
-            user={user}
-            onDelete={handleCommentDelete}
-            onSubmit={handleCommentSubmit}
-          />
+          </div>
         </div>
       </div>
       <Footer />

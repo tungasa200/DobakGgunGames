@@ -53,8 +53,8 @@
 }
 
 .input:focus {
-  border-color: #2c3e50;
-  box-shadow: 0 0 0 2px rgba(44,62,80,0.15);
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
 }
 
 .inputError {

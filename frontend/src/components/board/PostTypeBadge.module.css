@@ -1,0 +1,26 @@
+/* ===== PostTypeBadge ===== */
+.badge {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.2px;
+}
+
+.TOURNAMENT {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.NOTICE {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.FREE {
+  background: #ede9fe;
+  color: #5b21b6;
+}

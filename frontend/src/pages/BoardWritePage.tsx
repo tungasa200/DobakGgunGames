@@ -151,7 +151,7 @@ export default function BoardWritePage() {
   if (!user) return null;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#f0f2f5', display: 'flex', flexDirection: 'column' }}>
       <NormalHeader />
       <div className={s.page}>
         <div className={s.inner}>
@@ -162,6 +162,7 @@ export default function BoardWritePage() {
             <PostTypeBadge postType={postType} />
           </div>
 
+          <div className={s.formCard}>
           <form onSubmit={handleSubmit} className={s.form}>
             {/* 제목 */}
             <div className={s.fieldGroup}>
@@ -219,6 +220,7 @@ export default function BoardWritePage() {
               </button>
             </div>
           </form>
+          </div>
         </div>
       </div>
       <Footer />

@@ -1,6 +1,6 @@
 .wrap {
   padding: 16px 0;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid #f0f2f5;
 }
 
 .header {
@@ -19,7 +19,7 @@
 
 .nickname {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
 }
 
@@ -32,22 +32,24 @@
 .deleteBtn {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 12px;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: color 0.15s;
+  padding: 3px 8px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  font-weight: 500;
 }
 .deleteBtn:hover {
   color: #ef4444;
+  background: #fef2f2;
 }
 
 .body {
   margin: 0 0 0 46px;
   font-size: 14px;
   color: #334155;
-  line-height: 1.6;
+  line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-word;
   text-align: left;
@@ -55,6 +57,6 @@
 
 @media (max-width: 767px) {
   .wrap {
-    padding: 12px 0;
+    padding: 14px 0;
   }
 }

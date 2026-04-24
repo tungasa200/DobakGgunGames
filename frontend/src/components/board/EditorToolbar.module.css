@@ -3,10 +3,10 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 2px;
-  padding: 6px 8px;
-  border-bottom: 1px solid #e2e8f0;
-  background: white;
-  border-radius: 8px 8px 0 0;
+  padding: 6px 10px;
+  border-bottom: 1px solid #f0f2f5;
+  background: #fafafa;
+  border-radius: 10px 10px 0 0;
 }
 
 .btn {
@@ -14,26 +14,28 @@
   align-items: center;
   justify-content: center;
   min-width: 32px;
-  height: 32px;
+  height: 30px;
   padding: 0 6px;
   border: none;
   background: transparent;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #0f172a;
+  color: #475569;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.1s, color 0.1s;
   white-space: nowrap;
 }
 
 .btn:hover {
-  background: #f1f5f9;
+  background: #ede9fe;
+  color: #7c3aed;
 }
 
 .active {
-  background: #e2e8f0;
-  color: #2c3e50;
+  background: #ede9fe;
+  color: #7c3aed;
+  font-weight: 700;
 }
 
 .disabled {
@@ -45,7 +47,7 @@
 .sep {
   display: inline-block;
   width: 1px;
-  height: 20px;
+  height: 18px;
   background: #e2e8f0;
   margin: 0 4px;
   flex-shrink: 0;
@@ -60,13 +62,13 @@
 
 .linkPopover {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  border: 1px solid #ede9fe;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.12);
   z-index: 100;
   min-width: 280px;
 }
@@ -75,14 +77,15 @@
   width: 100%;
   box-sizing: border-box;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 7px 10px;
+  border-radius: 7px;
+  padding: 8px 10px;
   font-size: 13px;
   outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .linkInput:focus {
-  border-color: #2c3e50;
-  box-shadow: 0 0 0 2px rgba(44,62,80,0.15);
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
 }
 
 .linkError {
@@ -98,26 +101,32 @@
 }
 
 .linkInsertBtn {
-  background: #2c3e50;
+  background: linear-gradient(135deg, #aa3bff, #7c3aed);
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
+  border-radius: 7px;
+  padding: 7px 16px;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.15s;
 }
-.linkInsertBtn:hover { background: #34495e; }
+.linkInsertBtn:hover { opacity: 0.88; }
 
 .linkCancelBtn {
   background: white;
   color: #475569;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 6px 14px;
+  border-radius: 7px;
+  padding: 7px 14px;
   font-size: 13px;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
-.linkCancelBtn:hover { background: #f8fafc; }
+.linkCancelBtn:hover {
+  background: #f8fafc;
+  border-color: #c4b5fd;
+}
 
 @media (max-width: 767px) {
   .btn {

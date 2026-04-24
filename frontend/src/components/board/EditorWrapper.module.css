@@ -1,27 +1,28 @@
 .wrap {
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: white;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   overflow: hidden;
 }
 
 .wrap:focus-within {
-  border-color: #2c3e50;
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
 }
 
 .dragging {
-  border-color: #2c3e50 !important;
+  border-color: #a78bfa !important;
   border-width: 2px;
-  background: rgba(44,62,80,0.04);
+  background: rgba(167, 139, 250, 0.04);
 }
 
 /* EditorContent 내부 ProseMirror */
 .content :global(.ProseMirror) {
-  padding: 16px;
+  padding: 16px 18px;
   outline: none;
   font-size: 15px;
-  line-height: 1.7;
+  line-height: 1.75;
   color: #0f172a;
 }
 
@@ -37,33 +38,37 @@
 /* 에디터 내 스타일 */
 .content :global(.ProseMirror h2) {
   font-size: 1.4em;
-  font-weight: 700;
+  font-weight: 800;
   margin: 12px 0 6px;
 }
 .content :global(.ProseMirror h3) {
   font-size: 1.2em;
-  font-weight: 600;
+  font-weight: 700;
   margin: 10px 0 4px;
 }
 .content :global(.ProseMirror blockquote) {
-  border-left: 3px solid #e2e8f0;
-  padding-left: 12px;
+  border-left: 3px solid #c4b5fd;
+  padding: 8px 12px;
   color: #64748b;
   margin: 8px 0;
+  background: #faf5ff;
+  border-radius: 0 6px 6px 0;
 }
 .content :global(.ProseMirror code) {
   background: #f1f5f9;
-  border-radius: 3px;
-  padding: 1px 4px;
+  border-radius: 4px;
+  padding: 1px 5px;
   font-family: monospace;
-  font-size: 0.9em;
+  font-size: 0.88em;
+  color: #7c3aed;
 }
 .content :global(.ProseMirror img) {
   max-width: 100%;
   height: auto;
   display: block;
-  margin: 8px 0;
-  border-radius: 4px;
+  margin: 10px 0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 /* 업로드 에러 이미지 표시 */
 .content :global(.ProseMirror img[title="__upload_error__"]) {
@@ -76,8 +81,9 @@
   line-height: 1.8;
 }
 .content :global(.ProseMirror a) {
-  color: #2c3e50;
+  color: #7c3aed;
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .content :global(.ProseMirror p) {
   margin: 0 0 4px;
