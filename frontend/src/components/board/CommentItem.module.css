@@ -50,6 +50,7 @@
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+  text-align: left;
 }
 
 @media (max-width: 767px) {

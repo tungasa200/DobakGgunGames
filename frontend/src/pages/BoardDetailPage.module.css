@@ -134,6 +134,7 @@
   line-height: 1.8;
   color: #0f172a;
   padding: 8px 0 24px;
+  text-align: left;
 }
 .boardContent :global(img) {
   max-width: 100%;
