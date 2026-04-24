@@ -195,7 +195,7 @@ function createInsanePiece(type: string): Matrix {
 type PieceEntry = { matrix: Matrix; weight: number };
 const PIECE_POOL: PieceEntry[] = [
   ...['T','O','L','J','I','S','Z'].map(t => ({ matrix: createStandardPiece(t), weight: 1 })),
-  { matrix: createInsanePiece('WIDE_I'),    weight: 1.5 },
+  { matrix: createInsanePiece('WIDE_I'),    weight: 1.2 },
   { matrix: createInsanePiece('DOT'),       weight: 1.5 },
   { matrix: createInsanePiece('DOMINO'),    weight: 1.5 },
   { matrix: createInsanePiece('MINI_L'),    weight: 1.5 },
@@ -205,6 +205,16 @@ const PIECE_POOL: PieceEntry[] = [
   { matrix: createInsanePiece('MIDDLE'),    weight: 1 },
 ];
 
+
+// PIECE_POOL 전체를 Fisher-Yates 셔플 → Matrix 배열 반환 (딥카피)
+function shuffleInsaneBag(): Matrix[] {
+  const pool = PIECE_POOL.map(e => e.matrix.map(row => [...row]));
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool;
+}
 
 // recent: 최근 스폰된 피스 인덱스 배열 (recent[0]=1번 전, recent[1]=2번 전)
 // 히스토리에 있는 피스는 가중치에 패널티 적용 (1번 전 ×0.3, 2번 전 ×0.6)
@@ -271,12 +281,20 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     phase3Bgm.toggleMute();
   }, [defaultBgm, insaneBgm, phase2Bgm, phase3Bgm]);
 
+  function handleVolumeChange(v: number) {
+    defaultBgm.setVolume(v);
+    insaneBgm.setVolume(v);
+    phase2Bgm.setVolume(v);
+    phase3Bgm.setVolume(v);
+  }
+
   // ===== 캔버스 refs =====
   const boardRef        = useRef<HTMLCanvasElement>(null);
   const nextRef         = useRef<HTMLCanvasElement>(null);
   const holdRef         = useRef<HTMLCanvasElement>(null);
   const timerBarRef     = useRef<HTMLDivElement>(null);
   const flashOverlayRef = useRef<HTMLDivElement>(null);
+  const mockBagRef      = useRef<HTMLCanvasElement>(null);
 
   // ===== 보드 크기 =====
   const boardW = useRef(INIT_BOARD_W);
@@ -288,7 +306,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const player      = useRef<Player>({ pos: { x: 0, y: 0 }, matrix: null });
   const nextPiece      = useRef<Matrix | null>(null);
   const nextPieceIdx   = useRef<number>(0);
-  const recentPieces   = useRef<number[]>([]); // 최근 스폰 인덱스 (최대 2개)
+  const recentPieces   = useRef<number[]>([]); // 최근 스폰 인덱스 (최대 2개) — 인세인 페이즈 랜덤 모드에서만 사용
+  const bagQueueRef    = useRef<Matrix[]>([]);  // 일반 페이즈 7-bag 큐
+  const bagActiveRef   = useRef<boolean>(true); // true=bag 사용, false=랜덤 전환됨
   const holdPiece   = useRef<Matrix | null>(null);
   const holdUsed    = useRef(false);
   const scoreRef    = useRef(0);
@@ -408,6 +428,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const [lines, setLines]       = useState(0);
   const [combo, setCombo]       = useState(0);
   const [showHorrorBg, setShowHorrorBg] = useState(false);
+  const [bagVisible, setBagVisible] = useState(true); // 일반 페이즈 bag UI 표시 여부
   const bannerExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 랭킹
@@ -1117,6 +1138,32 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     fireEvent(pool[pool.length - 1]);
   }
 
+  // ===== 피스 드로우: 일반 페이즈=bag, 인세인 페이즈 bag 소진 후=랜덤 =====
+  function drawNext(): { matrix: Matrix; index: number } {
+    if (bagActiveRef.current) {
+      // bag이 비었으면
+      if (bagQueueRef.current.length === 0) {
+        if (themePhaseRef.current === 'normal') {
+          // 일반 페이즈: bag 재충전
+          bagQueueRef.current = shuffleInsaneBag();
+        } else {
+          // 인세인 페이즈: bag 소진 → 랜덤 전환
+          bagActiveRef.current = false;
+          setBagVisible(false);
+          recentPieces.current = [];
+          const r = randomInsanePiece([]);
+          return { matrix: r.matrix, index: r.index };
+        }
+      }
+      return { matrix: bagQueueRef.current.shift()!, index: -1 };
+    } else {
+      // 랜덤 모드 (인세인 페이즈)
+      const r = randomInsanePiece(recentPieces.current);
+      recentPieces.current = [r.index, ...recentPieces.current].slice(0, 2);
+      return { matrix: r.matrix, index: r.index };
+    }
+  }
+
   // ===== 플레이어 리셋 =====
   function playerReset() {
     holdUsed.current = false;
@@ -1129,22 +1176,20 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     randomLockPending.current = false;
     if (activeEventId.current === 'SPIN_BLOCK') clearActiveEvent();
 
-    // 현재 피스 확정 + 히스토리 업데이트
-    const currentIdx = nextPieceIdx.current;
-    player.current.matrix = nextPiece.current ?? randomInsanePiece(recentPieces.current).matrix;
-    recentPieces.current = [currentIdx, ...recentPieces.current].slice(0, 2);
-    // 다음 피스 미리 뽑기 (히스토리 기반 패널티 적용)
-    const next = randomInsanePiece(recentPieces.current);
+    // 현재 피스 확정
+    player.current.matrix = nextPiece.current ?? drawNext().matrix;
+    // 다음 피스 미리 뽑기
+    const next = drawNext();
     nextPiece.current = next.matrix;
     nextPieceIdx.current = next.index;
-    isPieceT.current = player.current.matrix.some(row => row.includes(1));
+    const pm = player.current.matrix!;
+    isPieceT.current = pm.some(row => row.includes(1));
     player.current.pos.y = 0;
-    player.current.pos.x = (boardW.current / 2 | 0) - (player.current.matrix[0].length / 2 | 0);
+    player.current.pos.x = (boardW.current / 2 | 0) - (pm[0].length / 2 | 0);
 
     // 스폰 위치에 정착한 파티클(모래·파편) 제거
     // — 이벤트 파편이 스폰존에 쌓여 의문의 게임오버가 나는 현상 방지
     // — 아레나 셀이 막힌 경우(진짜 게임오버)는 collide에서 별도 판정
-    const pm = player.current.matrix;
     const px = player.current.pos.x;
     const py = player.current.pos.y;
     particles.current = particles.current.filter(p => {
@@ -1389,6 +1434,32 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         }
       }
     }
+
+    // BAG 패널 캔버스 — 일반 페이즈에서 bag 큐 앞 5개 미리보기
+    // mockBagRef는 초기 scale 미설정 → setTransform으로 매 프레임 명시적 지정
+    const bp = mockBagRef.current;
+    if (bp) {
+      const bctx = bp.getContext('2d');
+      if (bctx) {
+        bctx.setTransform(CELL, 0, 0, CELL, 0, 0); // 1단위 = CELL px
+        bctx.fillStyle = '#0a0a0a';
+        bctx.fillRect(0, 0, 4, INIT_BOARD_H);
+        if (bagActiveRef.current) {
+          const remaining = bagQueueRef.current;
+          const maxShow = 5; // 최대 5개 — INIT_BOARD_H/5=4.2셀, MIDDLE(4행) 수용 가능
+          const slotH = INIT_BOARD_H / maxShow;
+          for (let i = 0; i < Math.min(remaining.length, maxShow); i++) {
+            const m = remaining[i];
+            const ox = (4 - m[0].length) / 2;
+            const oy = slotH * i + (slotH - m.length) / 2;
+            m.forEach((row, ry) => row.forEach((val, rx) => {
+              if (val !== 0) drawCell(bctx, rx + ox, ry + oy, val, 1);
+            }));
+          }
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function drawCell(context: CanvasRenderingContext2D, x: number, y: number, colorIndex: number, alpha: number) {
@@ -1805,9 +1876,14 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     dropInterval.current = sp[0];
     player.current.matrix = null;
     recentPieces.current = [];
-    const firstNext = randomInsanePiece([]);
-    nextPiece.current = firstNext.matrix;
-    nextPieceIdx.current = firstNext.index;
+    // bag 초기화 (일반 페이즈 시작)
+    bagQueueRef.current = shuffleInsaneBag();
+    bagActiveRef.current = true;
+    setBagVisible(true);
+    // 첫 next 피스를 bag에서 뽑아 설정 (playerReset이 이것을 current로 사용)
+    const firstBagDraw = drawNext();
+    nextPiece.current = firstBagDraw.matrix;
+    nextPieceIdx.current = firstBagDraw.index;
     playerReset();
     updateDisplay();
     setGameStatus('playing');
@@ -1977,6 +2053,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       if (bgAnimRef.current) cancelAnimationFrame(bgAnimRef.current);
       flashTimerIds.current.forEach(id => clearTimeout(id));
       // BUG-02: 배너 퇴장 타이머 누수 방지
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (bannerExitTimerRef.current) clearTimeout(bannerExitTimerRef.current);
       // Lv9 색상반전 언마운트 시 원복
       document.documentElement.style.filter = '';
@@ -2151,8 +2228,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   }
 
   const statusText =
-    gameStatus === 'idle'   ? '▶ 시작 버튼을 눌러주세요' :
-    gameStatus === 'over'   ? 'GAME OVER' : '';
+    gameStatus === 'idle'   ? 'INSANE' :
+    gameStatus === 'over'   ? 'YOU DIED' : '';
 
   // I: 랭킹 행 클래스 판별
   function getRankRowClass(r: RankEntry, idx: number): string {
@@ -2183,17 +2260,43 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       />
     )}
     <div className={styles.wrap} data-theme={themePhase} style={{ position: 'relative', zIndex: 1 }}>
-      {/* 상태 바 */}
-      <div className={styles.infoBar}>
-        <div className={styles.infoItem}><div className={styles.infoLabel}>점수</div><div className={styles.infoValue}>{score.toLocaleString()}</div></div>
-        <div className={styles.infoItem}><div className={styles.infoLabel}>레벨</div><div className={styles.infoValue}>{gameLevel}</div></div>
-        <div className={styles.infoItem}><div className={styles.infoLabel}>줄</div><div className={styles.infoValue}>{lines}</div></div>
-        <div className={styles.infoItem}><div className={styles.infoLabel}>콤보</div>
-          <div className={styles.infoValue} style={{ color: combo >= 2 ? '#ff6b00' : undefined }}>{combo >= 2 ? `x${combo}` : '-'}</div>
-        </div>
+      {/* 인세인 모드 난이도 표시 */}
+      <div className={`${styles.diffRow} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+        {themePhase === 'insane' ? (
+          <>
+            <span className={`${styles.diffBtn} ${styles.diffActive}`}>INSANE</span>
+            <span className={`${styles.diffBtn} ${styles.diffActive}`}>INSANE</span>
+            <span className={`${styles.diffBtn} ${styles.diffActive}`}>INSANE</span>
+            <span className={`${styles.diffBtn} ${styles.diffActive}`}>INSANE</span>
+          </>
+        ) : (
+          <button className={`${styles.diffBtn} ${styles.diffActive}`} disabled>
+            🔥 INSANE
+          </button>
+        )}
       </div>
 
-      <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>
+      {/* 상태 바 */}
+      <div className={`${styles.infoBar} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+        <div className={`${styles.infoItem} ${styles.infoScore}`}>
+          <div className={styles.infoLabel}>점수</div>
+          <div className={styles.infoValue}>{score.toLocaleString()}</div>
+        </div>
+        <div className={`${styles.infoItem} ${styles.infoLines}`}>
+          <div className={styles.infoLabel}>줄</div>
+          <div className={styles.infoValue}>{lines}</div>
+        </div>
+        <div className={`${styles.infoItem} ${styles.infoSmall}`}>
+          <div className={styles.infoLabel}>레벨</div>
+          <div className={styles.infoValue}>{gameLevel}</div>
+        </div>
+        <div className={`${styles.infoItem} ${styles.infoSmall}`}>
+          <div className={styles.infoLabel}>콤보</div>
+          <div className={`${styles.infoValue} ${combo >= 2 ? styles.infoComboActive : ''}`}>
+            {combo >= 2 ? `x${combo}` : '-'}
+          </div>
+        </div>
+      </div>
 
       {/* 이벤트 타이머 바 */}
       <div className={`${styles.eventTimerBar} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
@@ -2223,39 +2326,73 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           </div>
         </div>
 
-        {/* F: .boardWrapper 신규 래퍼 */}
-        <div className={`${styles.boardWrapper} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
-          <canvas
-            ref={boardRef}
-            width={INIT_BOARD_W * CELL}
-            height={INIT_BOARD_H * CELL}
-            className={styles.board}
-          />
-          {/* E: Flash Overlay */}
-          <div ref={flashOverlayRef} className={styles.flashOverlay} />
-          {gameStatus === 'paused' && <div className={styles.pauseOverlay}>PAUSE</div>}
+        {/* 보드 박스 — 흰 박스와 동일 구조, 인세인 다크 테마 */}
+        <div className={`${styles.boardBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
+          <div className={`${styles.boardStatusLine} ${gameStatus === 'over' ? styles.boardStatusOver : gameStatus === 'idle' ? styles.boardStatusIdle : ''}`}>
+            {statusText}
+          </div>
+          <div className={styles.boardWrapper}>
+            <canvas
+              ref={boardRef}
+              width={INIT_BOARD_W * CELL}
+              height={INIT_BOARD_H * CELL}
+              className={styles.board}
+            />
+            {/* E: Flash Overlay */}
+            <div ref={flashOverlayRef} className={styles.flashOverlay} />
+            {gameStatus === 'paused' && <div className={styles.pauseOverlay}>PAUSE</div>}
+          </div>
         </div>
+
+        {/* BAG 패널 — 일반 페이즈에서 bag 큐 미리보기, 인세인 페이즈 bag 소진 후 숨김 */}
+        {bagVisible && (
+          <div className={styles.bagPanel}>
+            <div className={styles.sideBox}>
+              <div className={styles.sideTitle}>BAG</div>
+              <canvas
+                ref={mockBagRef}
+                width={4 * CELL}
+                height={INIT_BOARD_H * CELL}
+                className={styles.bagPanelCanvas}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 버튼 */}
-      <div className={styles.controls}>
+      <div className={`${styles.controls} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
         <button
           className={styles.startBtn}
           onClick={(e) => { e.currentTarget.blur(); startGame(); }}
         >
           {gameStatus === 'idle' ? '▶ 시작' : '↺ 다시하기'}
         </button>
-        <button className={styles.pauseBtn}
+        <button
+          className={styles.pauseBtn}
           disabled={gameStatus !== 'playing' && gameStatus !== 'paused'}
-          onClick={togglePause}>
+          onClick={togglePause}
+        >
           {gameStatus === 'paused' ? '▶ 계속' : '⏸ 일시정지'}
         </button>
-        <button className={styles.pauseBtn}
-          onClick={toggleBgmMute}
-          aria-label={defaultBgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
-          title={defaultBgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}>
-          {defaultBgm.muted ? '🔇 BGM' : '🔊 BGM'}
-        </button>
+        <div className={styles.bgmControl}>
+          <button
+            className={styles.bgmMuteBtn}
+            onClick={toggleBgmMute}
+            aria-label={defaultBgm.muted ? '음소거 해제' : '음소거'}
+          >
+            {defaultBgm.muted ? '🔇' : '🔊'}
+          </button>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(defaultBgm.volume * 100)}
+            onChange={e => handleVolumeChange(Number(e.target.value) / 100)}
+            className={styles.bgmSlider}
+            aria-label="BGM 볼륨"
+          />
+        </div>
       </div>
 
       {/* 이벤트 수동 테스트 패널 — 어드민 전용 */}

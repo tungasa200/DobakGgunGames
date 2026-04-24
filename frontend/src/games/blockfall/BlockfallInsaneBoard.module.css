@@ -13,20 +13,43 @@
 }
 
 .wrap {
-  max-width: 600px;
+  max-width: 640px;
   margin: 0 auto;
   padding: 20px 16px;
   font-family: 'Segoe UI', sans-serif;
   color: #e0e0e0;
 }
 
+/* 난이도 표시 (인세인 고정) */
+.diffRow { display: flex; gap: 8px; margin-bottom: 10px; }
+.diffBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 16px;
+  border: 2px solid #444;
+  border-radius: 5px;
+  background: #1a1a2e;
+  color: #888;
+  font-weight: bold;
+  cursor: default;
+  font-size: 0.9rem;
+  touch-action: manipulation;
+  user-select: none;
+}
+.diffActive {
+  background: #ff2d55;
+  color: #fff;
+  border-color: #ff2d55;
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.4);
+}
+
 /* 정보 바 */
 .infoBar {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 10px;
-  justify-content: center;
+  width: 100%;
 }
 
 .infoItem {
@@ -34,22 +57,22 @@
   background: #1a1a2e;
   border-radius: 8px;
   padding: 6px 14px;
-  border: 1px solid #333;
-  min-width: 70px;
+  border: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-.infoLabel { font-size: 0.72em; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
-.infoValue { font-size: 1.4em; font-weight: bold; color: #e0e0e0; }
+/* 항목별 flex 비율 */
+.infoScore { flex: 3; }
+.infoLines { flex: 2; }
+.infoSmall { flex: 1; }
 
-/* 상태 */
-.status {
-  text-align: center;
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #e0e0e0;
-  min-height: 1.5em;
-  margin: 4px 0 8px;
-}
-.statusOver { color: #ff2d55; }
+.infoLabel { font-size: 0.72em; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.infoValue { font-weight: bold; color: #e0e0e0; }
+.infoScore .infoValue { font-size: 1.6em; }
+.infoLines .infoValue { font-size: 1.3em; }
+.infoSmall .infoValue { font-size: 1.05em; }
+.infoComboActive { color: #ff6b00; }
 
 /* ===== 이벤트 배너 오버레이 구조 ===== */
 
@@ -217,12 +240,47 @@
   transition: width 0.1s linear;
 }
 
+/* 보드 박스 — 인세인 다크 테마 */
+.boardBox {
+  background: #1a1a2e;
+  border-radius: 8px;
+  border: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 10px 0 10px;
+}
+.boardStatusLine {
+  font-size: 0.72em;
+  color: #888;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  font-weight: bold;
+  min-height: 1.2em;
+  text-align: center;
+  width: 100%;
+}
+.boardStatusIdle { color: #ff2d55; }
+.boardStatusOver { color: #ff2d55; }
+
+/* Mock BAG 패널 */
+.bagPanel {
+  flex-shrink: 0;
+  width: 120px;
+}
+.bagPanelCanvas {
+  display: block;
+  background-color: #0a0a0a;
+  width: 120px;
+  height: 630px;
+}
+
 /* 게임 영역 */
 .gameArea {
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  justify-content: center;
   margin-bottom: 10px;
 }
 
@@ -282,34 +340,68 @@
 }
 
 /* 버튼 */
-.controls { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.controls { display: flex; gap: 8px; margin-bottom: 8px; width: 100%; }
 
 .startBtn {
-  padding: 10px 22px;
+  flex: 1 1 0;
+  box-sizing: border-box;
+  padding: 10px 0;
   background: #ff2d55;
   color: #fff;
-  border: none;
+  border: 2px solid #ff2d55;
   border-radius: 5px;
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
   touch-action: manipulation;
 }
-.startBtn:hover { background: #e0244a; }
+.startBtn:hover { background: #e0244a; border-color: #e0244a; }
 
 .pauseBtn {
-  padding: 10px 22px;
-  background: #f39c12;
-  color: #fff;
-  border: none;
+  flex: 1 1 0;
+  box-sizing: border-box;
+  padding: 10px 0;
+  background: #1a1a2e;
+  color: #ff2d55;
+  border: 2px solid #ff2d55;
   border-radius: 5px;
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
   touch-action: manipulation;
 }
-.pauseBtn:hover:not(:disabled) { background: #d68910; }
-.pauseBtn:disabled { background: #444; cursor: default; }
+.pauseBtn:hover:not(:disabled) { background: #2a0a1a; }
+.pauseBtn:disabled { background: #1a1a2e; color: rgba(255,45,85,0.4); border-color: #ff2d55; cursor: default; }
+
+/* BGM 인라인 컨트롤 */
+.bgmControl {
+  flex: 1 1 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1a1a2e;
+  border: 2px solid #ff2d55;
+  border-radius: 5px;
+  padding: 0 10px;
+  min-width: 0;
+}
+.bgmMuteBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.bgmSlider {
+  flex: 1;
+  min-width: 0;
+  accent-color: #ff2d55;
+  cursor: pointer;
+  height: 4px;
+}
 
 /* 모바일 컨트롤 */
 .mobileControls { display: none; margin-top: 10px; }
@@ -338,8 +430,14 @@
   .hintsBox { display: none; }
 }
 
-/* ===== 모바일 반응형: 480px 미만 ===== */
-@media (max-width: 479px) {
+/* 뷰포트 < 626px: BAG 패널 숨김 (게임 영역 + wrap 패딩 626px 미만이면 공간 부족) */
+@media (max-width: 625px) {
+  .bagPanel { display: none; }
+}
+
+/* ===== 모바일 반응형: 493px 미만 ===== */
+/* gameArea(bag 없음) 462px + wrap 패딩 32px = 494px 뷰포트부터 수용 가능 */
+@media (max-width: 493px) {
   .wrap { padding: 10px 6px; }
   .gameArea { gap: 6px; }
   .sidePanel { width: 82px; gap: 6px; }
@@ -348,7 +446,7 @@
   .miniCanvas { width: 82px; height: 82px; }
   .board { width: 220px; }
   .hints { font-size: 0.68em; line-height: 1.8; }
-  .infoItem { min-width: 58px; padding: 5px 8px; }
+  .infoItem { padding: 5px 8px; }
 
   /* 배너 오버라이드 */
   .insaneBannerBox {
