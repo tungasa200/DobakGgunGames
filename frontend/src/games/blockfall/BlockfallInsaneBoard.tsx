@@ -344,6 +344,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // ===== 이벤트 시스템 refs =====
   const activeEventId   = useRef<EventId | null>(null);
   const activeEventDur  = useRef(0);
+  const activeEventDurInit = useRef(0); // 타이머바 비율 계산용 (레벨 스케일 적용된 초기값)
   const eventCooldown   = useRef(20000);
 
   // 시각 이벤트 플래그
@@ -357,6 +358,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const evExplodePending  = useRef(false);
   const evControlFreeze   = useRef(false);
   const floorDropCount    = useRef(0);  // FLOOR_DROP 발동 횟수 (3의 배수: 원복)
+  const cleanseLineAccum  = useRef(0);  // 정화 누적 (5개당 라인 1개 크레딧 → 레벨 진행)
   const evSpinBlock     = useRef(false);
   const randomLockPending = useRef(false); // RANDOM_LOCK 대기 중 (조건 충족 시 발동)
   const evSpinTimer     = useRef(0);
@@ -638,8 +640,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     setGameLevel(gameLevelRef.current);
     setLines(linesRef.current);
     setCombo(comboCount.current);
-    // Lv11 + 20만점 초과: 페이지 배경 눈 기믹 발동
-    if (gameLevelRef.current === 11 && scoreRef.current > 200000 && !showHorrorBgRef.current) {
+    // Lv11 + 444,444점 초과: 페이지 배경 눈 기믹 발동
+    if (gameLevelRef.current === 11 && scoreRef.current > 444444 && !showHorrorBgRef.current) {
       showHorrorBgRef.current = true;
       setShowHorrorBg(true);
     }
@@ -683,12 +685,14 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       const R2 = 4.5 * 4.5; // 직경 9 = 반경 4.5, r²=20.25
       triggerShake(18, 700);  // 고정 시 진동
       setBoardFilter('hue-rotate(90deg) contrast(1.6) brightness(1.3)', 500);
+      let explosionCleansed = 0; // [Feature 1] 폭발 반경 내 죽은 블럭/샌드 제거 수
       for (let dy = -R; dy <= R; dy++) {
         for (let dx = -R; dx <= R; dx++) {
           if (dx * dx + dy * dy > R2) continue;
           const ex = Math.round(cx + dx), ey = Math.round(cy + dy);
           if (ey < 0 || ey >= boardH.current || ex < 0 || ex >= boardW.current) continue;
           if (arena.current[ey][ex] !== 0) {
+            if (arena.current[ey][ex] === DEAD_COLOR) explosionCleansed++;
             const dist = Math.sqrt(dx * dx + dy * dy);
             particles.current.push({
               type: 'shatter', x: ex, y: ey,
@@ -702,13 +706,31 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           }
         }
       }
-      // settled 파티클도 범위 내 제거
+      // settled 파티클도 범위 내 제거 — 제거 전 DEAD 여부 카운트
+      explosionCleansed += particles.current.filter(p => {
+        if (p.state !== 'settled' || p.colorIndex !== DEAD_COLOR) return false;
+        const dx = p.x - cx, dy = p.y - cy;
+        return dx * dx + dy * dy <= R2;
+      }).length;
       particles.current = particles.current.filter(p => {
         if (p.state !== 'settled') return true;
         const dx = p.x - cx, dy = p.y - cy;
         return dx * dx + dy * dy > R2;
       });
       recheckSettled();
+      // [Feature 1] 폭발로 죽은 블럭/샌드를 처치했을 때 보너스
+      if (explosionCleansed > 0) {
+        const cleanseBonus = explosionCleansed * 30 * gameLevelRef.current;
+        scoreRef.current += cleanseBonus;
+        const text = `CLEANSE x${explosionCleansed}  +${cleanseBonus.toLocaleString()}`;
+        comboText.current = text;
+        comboAlpha.current = 2.0;
+        setComboOverlay({ text, key: ++comboOverlayKey.current });
+        // [Feature 1+] 정화 누적 → 라인 크레딧 → 레벨업 체크
+        applyCleanseLineCredit(explosionCleansed);
+        checkLevelUp();
+        updateDisplay();
+      }
       evExplodePending.current = false;
     } else {
       mergeInto();
@@ -799,6 +821,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // ===== 줄 클리어 =====
   function arenaSweepInsane(tspin: 'full' | 'mini' | null, eventActive: boolean, fromLock = false) {
     let count = 0;
+    // [Feature 1] 클리어 과정에서 제거된 죽은 블럭/샌드 수집 (보너스용)
+    let cleansedDead = 0; // 죽은 블럭(DEAD_COLOR 사각 + settled DEAD 샌드) 제거 수
 
     for (let y = boardH.current - 1; y > 0; y--) {
       if (!isRowFull(y)) continue;
@@ -809,13 +833,16 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         for (let x = 0; x < boardW.current; x++) {
           if (arena.current[adjY]?.[x] === DEAD_COLOR) {
             arena.current[adjY][x] = 0;
+            cleansedDead++;
           }
         }
       }
+      const beforeLen = particles.current.length;
       particles.current = particles.current.filter(p =>
         !(p.state === 'settled' && p.colorIndex === DEAD_COLOR &&
           (Math.round(p.y) === y - 1 || Math.round(p.y) === y + 1))
       );
+      cleansedDead += beforeLen - particles.current.length;
 
       const row = arena.current.splice(y, 1)[0].fill(0);
       arena.current.unshift(row);
@@ -866,6 +893,17 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     }
 
     if (eventActive) baseScore *= 2;
+    // [Lv11 Phase 3 Ramp] Lv11에서 누적 점수가 Phase 3(444,444) 에 가까워질수록 라인 점수 배수 증가.
+    // 100k ×1.1 / 200k ×1.3 / 300k ×1.5 / 400k+ ×1.7 — 체감 거리 단축, 후반 페이스 유지.
+    if (gameLevelRef.current === 11) {
+      const s = scoreRef.current;
+      const rampMul =
+        s >= 400000 ? 1.7 :
+        s >= 300000 ? 1.5 :
+        s >= 200000 ? 1.3 :
+        s >= 100000 ? 1.1 : 1.0;
+      if (rampMul > 1.0) baseScore = Math.round(baseScore * rampMul);
+    }
 
     comboCount.current++;
     const comboBonus = comboCount.current >= 2 ? 50 * (comboCount.current - 1) * gameLevelRef.current : 0;
@@ -878,6 +916,32 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       comboAlpha.current = 1.5;
       setComboOverlay({ text, key: ++comboOverlayKey.current });
     }
+    // [Feature 1] 죽은 블럭/샌드 제거 보너스 — 라인 클리어 부수 효과로 처치 불가 요소를 치웠을 때 추가 점수
+    if (cleansedDead > 0) {
+      const cleanseBonus = cleansedDead * 30 * gameLevelRef.current;
+      scoreRef.current += cleanseBonus;
+      const text = `CLEANSE x${cleansedDead}  +${cleanseBonus.toLocaleString()}`;
+      comboText.current = text;
+      comboAlpha.current = 2.0;
+      setComboOverlay({ text, key: ++comboOverlayKey.current });
+      // [Feature 1+] 정화 누적 → 5개마다 라인 1개 크레딧 (레벨 진행 완화)
+      applyCleanseLineCredit(cleansedDead);
+    }
+    checkLevelUp();
+    updateDisplay();
+  }
+
+  // 정화 누적을 라인 크레딧으로 환산 (5개 = 1 라인)
+  function applyCleanseLineCredit(cleansedCount: number) {
+    cleanseLineAccum.current += cleansedCount;
+    while (cleanseLineAccum.current >= 5) {
+      cleanseLineAccum.current -= 5;
+      linesRef.current += 1;
+    }
+  }
+
+  // 레벨업 체크 + 진입 효과 (라인 클리어·정화 양쪽에서 호출)
+  function checkLevelUp() {
     const newLv = Math.min(Math.floor(linesRef.current / 10) + 1, 11);
     if (newLv > gameLevelRef.current) {
       gameLevelRef.current = newLv;
@@ -900,7 +964,6 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         };
       }
     }
-    updateDisplay();
   }
 
   // ===== 이벤트 시스템 =====
@@ -936,6 +999,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
     activeEventId.current = null;
     activeEventDur.current = 0;
+    activeEventDurInit.current = 0;
   }
 
   function fireEvent(def: EventDef) {
@@ -1195,11 +1259,18 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     // 지속형 이벤트 관리
     if (def.duration > 0) {
       activeEventId.current = id;
-      activeEventDur.current = def.duration;
+      // Lv4부터 레벨당 10%씩 지속시간 감소, 최소 20% (난이도 완화)
+      // Lv1-3: 100% / Lv4: 90% / ... / Lv10: 30% / Lv11: 20%
+      const lv = gameLevelRef.current;
+      const durMul = lv < 4 ? 1 : Math.max(0.2, 1 - (lv - 3) * 0.1);
+      const scaledDur = def.duration * durMul;
+      activeEventDur.current = scaledDur;
+      activeEventDurInit.current = scaledDur;
     }
     if (def.duration === -1) {
       activeEventId.current = id;
       activeEventDur.current = -1;
+      activeEventDurInit.current = -1;
     }
   }
 
@@ -1208,17 +1279,25 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     // Lv10+ 에서는 바닥 붕괴/측면 붕괴의 가중치를 대폭 낮춰 아주 낮은 확률로 발동
     // — 고레벨에서 shatter 기반 초기화 이벤트가 빈발하면 오히려 난이도가 하락하는 문제 완화
     const highLevel = gameLevelRef.current >= 10;
+    // Lv9+ 에서는 조작 마비 제외 — 고속 낙하 구간에서 2초 조작 불가는 거의 즉사 수준
+    const midHighLevel = gameLevelRef.current >= 9;
     // SIDE_EXPAND는 bag UI가 숨겨진 상태(인세인 페이즈 bag 소진 후)에서만 발동.
     // 확장 시 bag 패널 자리를 회수하므로, bag이 보이는 중에는 레이아웃 충돌 방지를 위해 제외.
     const bagHidden = !bagVisibleRef.current;
     const pool = EVENT_POOL.filter(e => {
       if (isMobile && e.mobileExcluded) return false;
       if (!bagHidden && e.id === 'SIDE_EXPAND') return false;
+      if (midHighLevel && e.id === 'CONTROL_FREEZE') return false;
       return true;
     });
-    // Lv10+ 가중치 보정: FLOOR_DROP/SIDE_EXPAND → 0.1 (원래 1 대비 약 1/10, 전체 확률 ≈ 0.9%)
-    const getWeight = (e: EventDef) =>
-      highLevel && (e.id === 'FLOOR_DROP' || e.id === 'SIDE_EXPAND') ? 0.1 : e.weight;
+    // 가중치 보정:
+    //  - Lv10+: FLOOR_DROP/SIDE_EXPAND → 0.1 (원래 1 대비 약 1/10)
+    //  - Lv9+: RANDOM_LOCK → 0.5 (원래 1 대비 약 1/2, 고속 낙하 구간에서 원치 않은 고정 완화)
+    const getWeight = (e: EventDef) => {
+      if (highLevel && (e.id === 'FLOOR_DROP' || e.id === 'SIDE_EXPAND')) return 0.1;
+      if (midHighLevel && e.id === 'RANDOM_LOCK') return 0.5;
+      return e.weight;
+    };
     const totalW = pool.reduce((s, e) => s + getWeight(e), 0);
     let r = Math.random() * totalW;
     for (const def of pool) {
@@ -1701,13 +1780,25 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     simulateShatter();
 
     // 지속형 이벤트 타이머
-    if (activeEventId.current && activeEventDur.current > 0) {
+    if (activeEventId.current && activeEventDur.current > 0 && activeEventDurInit.current > 0) {
       activeEventDur.current -= dt;
       const def = EVENT_POOL.find(e => e.id === activeEventId.current);
       if (def && def.duration > 0 && timerBarRef.current) {
-        timerBarRef.current.style.width = `${Math.max(0, activeEventDur.current / def.duration) * 100}%`;
+        timerBarRef.current.style.width = `${Math.max(0, activeEventDur.current / activeEventDurInit.current) * 100}%`;
       }
-      if (activeEventDur.current <= 0) clearActiveEvent();
+      if (activeEventDur.current <= 0) {
+        // [Feature 3] 이벤트 생존 보너스 — 지속형 이벤트를 자연 종료까지 버텼을 때 추가 점수
+        // 보너스는 이벤트 스케일된 지속시간(초)에 비례: 50 × 초 × 레벨
+        const survivedSec = Math.max(1, Math.round(activeEventDurInit.current / 1000));
+        const survivalBonus = 50 * survivedSec * gameLevelRef.current;
+        scoreRef.current += survivalBonus;
+        const text = `EVENT SURVIVED  +${survivalBonus.toLocaleString()}`;
+        comboText.current = text;
+        comboAlpha.current = 2.0;
+        setComboOverlay({ text, key: ++comboOverlayKey.current });
+        updateDisplay();
+        clearActiveEvent();
+      }
     }
 
     // 이벤트 쿨다운
@@ -1949,6 +2040,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     evExplodePending.current = false;
     evControlFreeze.current = false;
     floorDropCount.current = 0;
+    cleanseLineAccum.current = 0;
     setBoardExpanded(false);
     randomLockPending.current = false;
     eventCooldown.current = getEventInterval(1);
@@ -2042,7 +2134,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameLevel]);
 
-  // ===== Lv11 + 20만점 초과 → phase3 BGM 교체 =====
+  // ===== Lv11 + 444,444점 초과 → phase3 BGM 교체 =====
   useEffect(() => {
     if (!showHorrorBg) return;
     if (activeBgmRef.current === 'phase3') return;
