@@ -248,14 +248,13 @@ export default function HomePage() {
                 </div>
               </div>
               <div className={styles.cardRanking}>
-                <div className={styles.btns}>
-                  <Link to="/dbgchat" className={`${styles.btn} ${styles.btnNormal}`} style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    💬 실시간 채팅 랩
-                  </Link>
-                  <Link to="/online-rps" className={`${styles.btn} ${styles.btnNormal}`} style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px' }}>
-                    Online RPS
-                  </Link>
-                </div>
+                <Link to="/dbgchat" className={`${styles.btn} ${styles.btnNormal}`} style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  💬 실시간 채팅 랩
+                </Link>
+                <hr className={styles.labDivider} />
+                <Link to="/online-rps" className={`${styles.btn} ${styles.btnNormal}`} style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Online RPS
+                </Link>
               </div>
             </div>
           )}

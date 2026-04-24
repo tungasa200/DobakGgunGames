@@ -111,6 +111,12 @@
 .btnExcel { background: #217346; color: white; border-color: #217346; }
 .btnExcel:hover { background: #1a5c38; }
 
+.labDivider {
+  border: none;
+  border-top: 1px solid #dde1e7;
+  margin: 10px 0;
+}
+
 .cardRanking { padding: 10px 14px 13px; }
 
 .tabs { display: flex; gap: 4px; margin-bottom: 9px; }
