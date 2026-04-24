@@ -431,6 +431,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const [combo, setCombo]       = useState(0);
   const [showHorrorBg, setShowHorrorBg] = useState(false);
   const [bagVisible, setBagVisible] = useState(true); // 일반 페이즈 bag UI 표시 여부
+  // 보드 위에 띄우는 콤보/보너스 오버레이 (canvas 밖으로 잘리지 않도록 HTML로 표시)
+  const [comboOverlay, setComboOverlay] = useState<{ text: string; key: number } | null>(null);
+  const comboOverlayKey = useRef(0);
   const difficulty = 'hard' as const; // 인세인은 hard 고정 (버튼은 일반 모드로 네비게이션)
   const bannerExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -867,8 +870,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     linesRef.current += count;
 
     if (comboCount.current >= 2) {
-      comboText.current = `COMBO x${comboCount.current}  +${comboBonus.toLocaleString()}`;
+      const text = `COMBO x${comboCount.current}  +${comboBonus.toLocaleString()}`;
+      comboText.current = text;
       comboAlpha.current = 1.5;
+      setComboOverlay({ text, key: ++comboOverlayKey.current });
     }
     const newLv = Math.min(Math.floor(linesRef.current / 10) + 1, 11);
     if (newLv > gameLevelRef.current) {
@@ -1093,8 +1098,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           if (settledCount > 0) {
             const bonus = settledCount * 10 * gameLevelRef.current;
             scoreRef.current += bonus;
-            comboText.current = `BONUS  +${bonus.toLocaleString()}`;
+            const text = `BONUS  +${bonus.toLocaleString()}`;
+            comboText.current = text;
             comboAlpha.current = 2.0;
+            setComboOverlay({ text, key: ++comboOverlayKey.current });
             updateDisplay();
           }
           if (player.current.matrix) {
@@ -1386,19 +1393,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       tspinAlpha.current -= 0.025;
     }
 
-    // 콤보 오버레이
-    if (comboAlpha.current > 0) {
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, comboAlpha.current);
-      ctx.font = 'bold 1.2px sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 0.12;
-      ctx.strokeText(comboText.current, bw / 2, bh / 2 - 2);
-      ctx.fillStyle = '#ffd60a';
-      ctx.fillText(comboText.current, bw / 2, bh / 2 - 2);
-      ctx.restore();
-      comboAlpha.current -= 0.025;
-    }
+    // 콤보/보너스 오버레이는 canvas 밖으로 잘리는 것을 방지하기 위해 HTML div 오버레이로 이동
+    // (.comboOverlay + comboOverlayPop 애니메이션 참고)
 
     ctx.restore();
 
@@ -2365,6 +2361,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
             {/* E: Flash Overlay */}
             <div ref={flashOverlayRef} className={styles.flashOverlay} />
             {gameStatus === 'paused' && <div className={styles.pauseOverlay}>PAUSE</div>}
+            {comboOverlay && (
+              <div
+                key={comboOverlay.key}
+                className={styles.comboOverlay}
+                onAnimationEnd={() => setComboOverlay(null)}
+              >
+                {comboOverlay.text}
+              </div>
+            )}
           </div>
         </div>
 

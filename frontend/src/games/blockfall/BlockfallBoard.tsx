@@ -224,6 +224,9 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const [lines, setLines]       = useState(0);
   const [combo, setCombo]       = useState(0);
   const [difficulty, setDifficulty] = useState<Level>(initDifficulty ?? 'normal');
+  // 보드 위에 띄우는 콤보/보너스 오버레이 (canvas 밖으로 잘리지 않도록 HTML로 표시)
+  const [comboOverlay, setComboOverlay] = useState<{ text: string; key: number } | null>(null);
+  const comboOverlayKey = useRef(0);
 
   // ===== 랭킹 =====
   const [rankLevel, setRankLevel] = useState<Level>('normal');
@@ -373,22 +376,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
       tspinAlpha.current -= 0.025;
     }
 
-    // 콤보 오버레이
-    if (comboAlpha.current > 0) {
-      const alpha = Math.min(1, comboAlpha.current);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.font = 'bold 1.2px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-      ctx.lineWidth = 0.12;
-      ctx.strokeText(comboText.current, BOARD_W / 2, BOARD_H / 2 - 2);
-      ctx.fillStyle = '#FFE138';
-      ctx.fillText(comboText.current, BOARD_W / 2, BOARD_H / 2 - 2);
-      ctx.restore();
-      comboAlpha.current -= 0.025;
-    }
+    // 콤보 오버레이는 canvas 밖으로 잘리는 것을 방지하기 위해 HTML div 오버레이로 이동
+    // (.comboOverlay + comboOverlayPop 애니메이션 참고)
 
     // NEXT 캔버스 — 게임 전(nextPiece=null)에도 배경을 항상 채움
     const nc = nextRef.current;
@@ -512,8 +501,10 @@ export default function BlockfallBoard({ excel = false }: Props) {
       scoreRef.current += baseScore + comboBonus;
       linesRef.current += count;
       if (comboCount.current >= 2) {
-        comboText.current = `COMBO x${comboCount.current}  +${comboBonus.toLocaleString()}`;
+        const text = `COMBO x${comboCount.current}  +${comboBonus.toLocaleString()}`;
+        comboText.current = text;
         comboAlpha.current = 1.5;
+        setComboOverlay({ text, key: ++comboOverlayKey.current });
       }
       const newLv = Math.min(Math.floor(linesRef.current / 10) + 1, 11);
       if (newLv > gameLevelRef.current) {
@@ -1107,6 +1098,15 @@ export default function BlockfallBoard({ excel = false }: Props) {
                   className={styles.board}
                 />
                 {gameStatus === 'paused' && <div className={styles.pauseOverlay}>PAUSE</div>}
+                {comboOverlay && (
+                  <div
+                    key={comboOverlay.key}
+                    className={styles.comboOverlay}
+                    onAnimationEnd={() => setComboOverlay(null)}
+                  >
+                    {comboOverlay.text}
+                  </div>
+                )}
               </div>
             </div>
 
