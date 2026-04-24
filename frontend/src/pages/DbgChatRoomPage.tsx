@@ -5,8 +5,6 @@ import { chatApi, ChatApiError } from '../api/chat';
 import type { ChatMessageData, StompErrorData } from '../api/chat';
 import { createStompClient } from '../lib/stompClient';
 import type { ConnectionStatus } from '../lib/stompClient';
-import NormalHeader from '../components/normal/NormalHeader';
-import Footer from '../components/normal/Footer';
 import ConnectionStatusBadge from '../components/chat/ConnectionStatus';
 import ChatMessageList from '../components/chat/ChatMessageList';
 import ChatInput from '../components/chat/ChatInput';
@@ -30,7 +28,11 @@ export default function DbgChatRoomPage() {
   const stompRef = useRef<ReturnType<typeof createStompClient> | null>(null);
 
   const handleRoomDeleted = useCallback(() => {
-    navigate('/dbgchat', { replace: true, state: { toast: '채팅방이 종료되었습니다.' } });
+    if (window.opener) {
+      window.close();
+    } else {
+      navigate('/dbgchat', { replace: true, state: { toast: '채팅방이 종료되었습니다.' } });
+    }
   }, [navigate]);
 
   const handleMessage = useCallback((msg: ChatMessageData) => {
@@ -44,7 +46,11 @@ export default function DbgChatRoomPage() {
   const handleStatusChange = useCallback((status: ConnectionStatus) => {
     setConnectionStatus(status);
     if (status === 'error') {
-      navigate('/dbgchat', { replace: true, state: { toast: '서버와 연결이 끊어졌습니다.' } });
+      if (window.opener) {
+        window.close();
+      } else {
+        navigate('/dbgchat', { replace: true, state: { toast: '서버와 연결이 끊어졌습니다.' } });
+      }
     }
   }, [navigate]);
 
@@ -118,7 +124,6 @@ export default function DbgChatRoomPage() {
 
   return (
     <div className={styles.roomPage}>
-      <NormalHeader />
       <div className={styles.roomHeader}>
         <Link to="/dbgchat" className={styles.backLink}>← 목록</Link>
         <span className={styles.roomName}>💬 {roomName || '채팅방'}</span>
@@ -160,7 +165,6 @@ export default function DbgChatRoomPage() {
         serverError={serverError}
       />
 
-      <Footer />
     </div>
   );
 }

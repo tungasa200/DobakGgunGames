@@ -89,7 +89,7 @@ export default function ChatInput({ disabled, onSend, serverError }: ChatInputPr
           disabled={disabled || text.trim() === ''}
           aria-label="메시지 전송"
         >
-          전송
+          ➤
         </button>
       </div>
       <div className={styles.inputMeta}>

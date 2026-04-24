@@ -1,17 +1,18 @@
 .bubble {
-  padding: 10px 14px;
+  padding: 9px 13px;
   font-size: 14px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  max-width: min(480px, 75vw);
+  max-width: min(280px, 78vw);
 }
 
 .timestamp {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 10px;
+  color: #9ca3af;
   flex-shrink: 0;
   align-self: flex-end;
+  padding-bottom: 2px;
 }
 
 /* 내 메시지 */
@@ -19,14 +20,15 @@
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 5px;
+  margin-bottom: 3px;
 }
 
 .myBubble {
-  background: #9333ea;
+  background: #7c3aed;
   color: white;
-  border-radius: 12px 2px 12px 12px;
+  border-radius: 16px 4px 16px 16px;
+  box-shadow: 0 1px 2px rgba(124, 58, 237, 0.25);
 }
 
 /* 타인 메시지 */
@@ -34,46 +36,41 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .nickname {
-  font-size: 12px;
-  color: #64748b;
-  font-weight: 500;
-  margin-bottom: 4px;
-  padding-left: 2px;
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+  margin-bottom: 3px;
+  padding-left: 4px;
 }
 
 .otherBubbleRow {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: 5px;
 }
 
 .otherBubble {
-  background: #f1f5f9;
-  color: #0f172a;
-  border-radius: 2px 12px 12px 12px;
+  background: #ffffff;
+  color: #1e293b;
+  border-radius: 4px 16px 16px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* 시스템 메시지 */
 .systemMsgWrap {
   display: flex;
   justify-content: center;
-  margin: 8px 0;
+  margin: 10px 0;
 }
 
 .systemText {
-  font-size: 12px;
-  color: #94a3b8;
-  background: #f8fafc;
+  font-size: 11px;
+  color: #9ca3af;
+  background: rgba(0, 0, 0, 0.05);
   padding: 4px 12px;
   border-radius: 12px;
-}
-
-@media (max-width: 480px) {
-  .bubble {
-    max-width: 90vw;
-  }
 }
