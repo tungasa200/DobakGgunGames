@@ -20,7 +20,7 @@
   gap: 6px;
 }
 .headingLogo {
-  height: clamp(72px, 14vw, 110px);
+  height: clamp(64px, 12vw, 80px);
   width: auto;
   display: block;
 }

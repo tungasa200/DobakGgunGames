@@ -132,12 +132,20 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
       >
         <Link className={styles.logo} to="/">
           <img src="/common/logo.png" alt="" className={styles.logoImg} />
-          DobakGgun
+          <span className={styles.logoText}>DobakGgun</span>
         </Link>
 
         <button ref={btnRef} className={styles.menuBtn} onClick={() => setOpen(o => !o)}>
           게임 목록 ▾
         </button>
+
+        {gameName && currentGame !== 'blockfall-insane' && (
+          <Link
+            className={styles.excelBtn}
+            style={{ color: accentColor }}
+            to={currentGame ? `/${currentGame}/excel` : '/excel'}
+          >📊 엑셀 모드</Link>
+        )}
 
         {open && (
           <div ref={dropRef} className={styles.dropdown}>
@@ -183,14 +191,6 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
         )}
 
         <div className={styles.center}>{gameName ? `도박꾼 ${gameName}` : ''}</div>
-
-        {gameName && currentGame !== 'blockfall-insane' && (
-          <Link
-            className={styles.excelBtn}
-            style={{ color: accentColor }}
-            to={currentGame ? `/${currentGame}/excel` : '/excel'}
-          >📊 엑셀 모드</Link>
-        )}
 
         {/* 게시판 링크 — FRIEND/ADMIN만 노출 */}
         {user && (user.role === 'FRIEND' || user.role === 'ADMIN') && (

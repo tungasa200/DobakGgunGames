@@ -219,7 +219,7 @@ export default function HomePage() {
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <NormalHeader currentGame="" gameName="게임 목록" accentColor="#2c3e50" />
+      <NormalHeader currentGame="" gameName="게임즈" accentColor="#2c3e50" />
       <div className={styles.page}>
         <h1 className={styles.heading}>
           <img src="/common/logo.png" alt="" className={styles.headingLogo} />
