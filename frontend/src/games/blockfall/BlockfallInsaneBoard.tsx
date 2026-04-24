@@ -2273,24 +2273,34 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       />
     )}
     <div className={styles.wrap} data-theme={themePhase} style={{ position: 'relative', zIndex: 1 }}>
-      {/* 난이도 버튼 — 일반 페이즈: 쉬움/보통/어려움 기능 버튼, 인세인 페이즈: 텍스트 변경 기믹 */}
+      {/* 난이도 버튼 — 일반 페이즈: 일반 모드와 동일 UI + 인세인 active, 인세인 페이즈: 텍스트 변경 기믹 */}
       <div className={`${styles.diffRow} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
         {themePhase === 'insane' ? (
-          INSANE_LEVELS.map(lv => (
-            <span key={lv.value} className={`${styles.diffBtn} ${styles.diffBtnInsanePhase} ${difficulty === lv.value ? styles.diffBtnInsaneActive : ''}`}>
+          <>
+            {INSANE_LEVELS.map(lv => (
+              <span key={lv.value} className={`${styles.diffBtn} ${styles.diffBtnInsanePhase}`}>
+                 INSANE
+              </span>
+            ))}
+            <span className={`${styles.diffBtn} ${styles.diffBtnInsanePhase} ${styles.diffBtnInsaneActive}`}>
                INSANE
             </span>
-          ))
+          </>
         ) : (
-          INSANE_LEVELS.map(lv => (
-            <button
-              key={lv.value}
-              className={`${styles.diffBtn} ${difficulty === lv.value ? styles.diffActive : ''}`}
-              onClick={() => handleDifficultyChange(lv.value)}
-            >
-              {lv.label}
+          <>
+            {INSANE_LEVELS.map(lv => (
+              <button
+                key={lv.value}
+                className={styles.diffBtn}
+                onClick={() => handleDifficultyChange(lv.value)}
+              >
+                {lv.label}
+              </button>
+            ))}
+            <button className={`${styles.diffBtn} ${styles.insaneActiveDiffBtn}`} disabled>
+              🔥 인세인
             </button>
-          ))
+          </>
         )}
       </div>
 

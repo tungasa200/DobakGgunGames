@@ -251,9 +251,9 @@
   transition: width 0.1s linear;
 }
 
-/* 보드 박스 — 인세인 다크 테마 */
+/* 보드 박스 — 인세인 빨강 테마 */
 .boardBox {
-  background: #1a1a2e;
+  background: #ff2d55;
   border-radius: 8px;
   border: 1px solid #ff2d55;
   display: flex;
@@ -264,7 +264,7 @@
 }
 .boardStatusLine {
   font-size: 0.72em;
-  color: #888;
+  color: rgba(255,255,255,0.8);
   letter-spacing: 0.05em;
   margin-bottom: 6px;
   font-weight: bold;
@@ -272,8 +272,8 @@
   text-align: center;
   width: 100%;
 }
-.boardStatusIdle { color: #ff2d55; }
-.boardStatusOver { color: #ff2d55; }
+.boardStatusIdle { color: #fff; }
+.boardStatusOver { color: #fff; }
 
 /* Mock BAG 패널 */
 .bagPanel {
@@ -305,7 +305,7 @@
 }
 
 .sideBox {
-  background: #1a1a2e;
+  background: #ff2d55;
   border-radius: 8px;
   border: 1px solid #ff2d55;
   padding: 10px;
@@ -317,7 +317,7 @@
 
 .sideTitle {
   font-size: 0.72em;
-  color: #888;
+  color: #fff;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 6px;
@@ -787,13 +787,39 @@
   transition: border-color 0.5s ease;
 }
 
-/* ===== 첫 이벤트 전 — 일반 블록폴 테마 ===== */
+/* ===== 첫 이벤트 전 — 일반 블록폴 테마 (완전 동일) ===== */
 .wrap[data-theme="normal"] {
   color: #2c3e50;
 }
+/* 난이도 버튼 */
+.wrap[data-theme="normal"] .diffBtn {
+  background: #fff;
+  color: #8e44ad;
+  border-color: #8e44ad;
+  box-shadow: none;
+}
+.wrap[data-theme="normal"] .diffBtn:hover {
+  background: #8e44ad;
+  color: #fff;
+}
+.wrap[data-theme="normal"] .diffActive {
+  background: #8e44ad;
+  color: #fff;
+  border-color: #8e44ad;
+  box-shadow: none;
+}
+/* 🔥 인세인 버튼 — 현재 모드이므로 active(선택됨) 표시 */
+.wrap[data-theme="normal"] .insaneActiveDiffBtn {
+  background: #ff2d55;
+  color: #fff;
+  border-color: #ff2d55;
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.4);
+  cursor: default;
+}
+/* 정보 바 */
 .wrap[data-theme="normal"] .infoItem {
   background: white;
-  border-color: #ddd;
+  border-color: #bbb;
 }
 .wrap[data-theme="normal"] .infoValue {
   color: #2c3e50;
@@ -801,29 +827,60 @@
 .wrap[data-theme="normal"] .status {
   color: #2c3e50;
 }
+/* 패널 박스 */
 .wrap[data-theme="normal"] .sideBox {
-  border-color: rgba(255, 45, 85, 0.4);
+  background: white;
+  border-color: #bbb;
+}
+.wrap[data-theme="normal"] .sideTitle {
+  color: #888;
 }
 .wrap[data-theme="normal"] .boardBox {
-  border-color: rgba(255, 45, 85, 0.4);
+  background: white;
+  border-color: #bbb;
+}
+.wrap[data-theme="normal"] .boardStatusIdle {
+  color: #2c3e50;
+}
+.wrap[data-theme="normal"] .boardStatusOver {
+  color: #e74c3c;
 }
 .wrap[data-theme="normal"] .miniCanvas {
-  border-color: rgba(255, 45, 85, 0.3);
+  border-color: #bbb;
   background-color: #111827;
 }
+.wrap[data-theme="normal"] .board {
+  border-color: #bbb;
+}
+/* 액션 버튼 — 보라 테마 */
+.wrap[data-theme="normal"] .startBtn {
+  background: #8e44ad;
+  border-color: #8e44ad;
+}
+.wrap[data-theme="normal"] .startBtn:hover { background: #7d3c98; border-color: #7d3c98; }
+.wrap[data-theme="normal"] .pauseBtn {
+  background: #fff;
+  color: #8e44ad;
+  border-color: #8e44ad;
+}
+.wrap[data-theme="normal"] .pauseBtn:hover:not(:disabled) { background: #f3e9f9; }
+.wrap[data-theme="normal"] .pauseBtn:disabled { background: #fff; color: #c9a0dc; border-color: #8e44ad; }
+.wrap[data-theme="normal"] .bgmControl {
+  background: #fff;
+  border-color: #8e44ad;
+}
+.wrap[data-theme="normal"] .bgmSlider { accent-color: #8e44ad; }
 .wrap[data-theme="normal"] .mobileBtn {
   background: #f5f5f5;
   color: #2c3e50;
   border-color: #ddd;
 }
-.wrap[data-theme="normal"] .mobileBtn:active {
-  background: #e0e0e0;
-}
+.wrap[data-theme="normal"] .mobileBtn:active { background: #e0e0e0; }
 
 /* 프로그레스 바 */
 .wrap[data-theme="normal"] .eventTimerBar { display: none; }
 
-/* 버튼 — normal phase도 insane 테마(빨강) 동일 적용 */
+/* 시작 버튼 레이블 */
 
 /* 랭킹 섹션 */
 .wrap[data-theme="normal"] .rankSection {
