@@ -1,4 +1,4 @@
-import GameDifficultyPicker from './GameDifficultyPicker';
+import GameDifficultyPicker, { GAME_DIFFICULTY_MAP } from './GameDifficultyPicker';
 import s from './TournamentFields.module.css';
 
 export interface TournamentFormData {
@@ -51,7 +51,11 @@ export default function TournamentFields({ data, errors, onChange }: Props) {
           <GameDifficultyPicker
             gameKey={data.gameKey}
             difficultyKey={data.difficultyKey}
-            onGameChange={v => onChange({ ...data, gameKey: v, difficultyKey: '' })}
+            onGameChange={v => {
+              const newDiffs = GAME_DIFFICULTY_MAP[v]?.difficulties ?? [];
+              const newDiffKey = newDiffs.length === 1 ? newDiffs[0].key : '';
+              onChange({ ...data, gameKey: v, difficultyKey: newDiffKey });
+            }}
             onDifficultyChange={v => set('difficultyKey', v)}
             gameError={errors.gameKey}
             difficultyError={errors.difficultyKey}

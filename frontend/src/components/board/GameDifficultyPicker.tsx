@@ -77,15 +77,8 @@ export default function GameDifficultyPicker({
   const isSingleDifficulty = difficulties.length === 1;
 
   function handleGameChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const newGame = e.target.value;
-    onGameChange(newGame);
-    // 2뎁스 초기화 또는 단일이면 자동 선택
-    const newDiffs = GAME_DIFFICULTY_MAP[newGame]?.difficulties ?? [];
-    if (newDiffs.length === 1) {
-      onDifficultyChange(newDiffs[0].key);
-    } else {
-      onDifficultyChange('');
-    }
+    // difficultyKey 리셋/자동선택은 부모(onGameChange)에서 한 번에 처리
+    onGameChange(e.target.value);
   }
 
   return (
