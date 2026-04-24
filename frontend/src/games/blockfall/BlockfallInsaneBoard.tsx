@@ -893,12 +893,12 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     }
 
     if (eventActive) baseScore *= 2;
-    // [Lv11 Phase 3 Ramp] Lv11에서 누적 점수가 Phase 3(444,444) 에 가까워질수록 라인 점수 배수 증가.
-    // 100k ×1.1 / 200k ×1.3 / 300k ×1.5 / 400k+ ×1.7 — 체감 거리 단축, 후반 페이스 유지.
+    // [Lv11 Phase 3 Ramp] Lv11에서 Phase 3(444,444)까지의 "grind 구간"(100k-400k)에만 점수 배수 적용.
+    // 100k ×1.1 / 200k ×1.3 / 300k ×1.5 / 400k+ 기본(×1.0) — home stretch는 원래 난이도로 마무리.
     if (gameLevelRef.current === 11) {
       const s = scoreRef.current;
       const rampMul =
-        s >= 400000 ? 1.7 :
+        s >= 400000 ? 1.0 :
         s >= 300000 ? 1.5 :
         s >= 200000 ? 1.3 :
         s >= 100000 ? 1.1 : 1.0;
