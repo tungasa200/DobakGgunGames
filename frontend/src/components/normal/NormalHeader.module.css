@@ -153,14 +153,9 @@
 }
 .dropExcelSame:hover { background: #d0ecd4; border-color: #81c784; color: #1b5e20; }
 
-/* 중앙 타이틀 */
-.center {
+/* 중앙 스페이서 (우측 요소를 오른쪽으로 밀어냄) */
+.spacer {
   flex: 1;
-  text-align: center;
-  font-size: 15px;
-  font-weight: bold;
-  pointer-events: none;
-  color: white;
 }
 
 /* CTA 계열 버튼 통일 (흰 배경) */
@@ -277,6 +272,5 @@
 .profileDropLogout { color: #e53935; }
 .profileDropLogout:hover { background: #fff5f5; }
 
-@media (max-width: 520px) { .center { display: none; } }
 @media (max-width: 480px) { .nickname { display: none; } }
 @media (max-width: 380px) { .logoText { display: none; } }

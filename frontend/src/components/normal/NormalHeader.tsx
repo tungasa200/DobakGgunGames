@@ -190,7 +190,7 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
           </div>
         )}
 
-        <div className={styles.center}>{gameName ? `도박꾼 ${gameName}` : ''}</div>
+        <div className={styles.spacer} aria-hidden="true" />
 
         {/* 게시판 링크 — FRIEND/ADMIN만 노출 */}
         {user && (user.role === 'FRIEND' || user.role === 'ADMIN') && (
