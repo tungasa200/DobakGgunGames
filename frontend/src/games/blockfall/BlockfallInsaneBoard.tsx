@@ -136,6 +136,8 @@ const DROP_SPEEDS: Record<string, number[]> = {
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 const TSPIN_SCORES = { full: [400, 800, 1200, 1600], mini: [100, 200, 400] };
+// 싹슬이(Perfect Clear) 보너스 — 줄 제거 후 보드가 완전히 빈 상태일 때 추가 지급
+const PERFECT_CLEAR_BONUS = [0, 800, 1200, 1800, 2000];
 const T_FRONT_CORNERS = [[0, 1], [1, 3], [2, 3], [0, 2]];
 const LOCK_DELAY = 500;
 const MAX_LOCK_RESETS = 15;
@@ -874,6 +876,20 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       comboText.current = text;
       comboAlpha.current = 1.5;
       setComboOverlay({ text, key: ++comboOverlayKey.current });
+    }
+    // 싹슬이(Perfect Clear) 판정 — 줄 제거 후 arena 전체가 비었는지 검사.
+    // 남아있는 정착 파티클(DEAD_COLOR·Sand 등)도 빈 상태여야 싹슬이로 인정
+    const arenaEmpty = arena.current.every(row => row.every(cell => cell === 0));
+    const noSettledParticles = !particles.current.some(p => p.state === 'settled');
+    if (arenaEmpty && noSettledParticles) {
+      let pcBonus = (PERFECT_CLEAR_BONUS[Math.min(count, 4)] ?? PERFECT_CLEAR_BONUS[4]) * gameLevelRef.current;
+      if (eventActive) pcBonus *= 2; // 이벤트 중이면 2배
+      scoreRef.current += pcBonus;
+      const text = `ALL CLEAR BONUS  +${pcBonus.toLocaleString()}`;
+      comboText.current = text;
+      comboAlpha.current = 2.0;
+      setComboOverlay({ text, key: ++comboOverlayKey.current });
+      triggerShake(10, 400); // 싹슬이 시 추가 shake
     }
     const newLv = Math.min(Math.floor(linesRef.current / 10) + 1, 11);
     if (newLv > gameLevelRef.current) {
@@ -2516,6 +2532,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
             <ul>
               <li>1줄: 100 × 레벨, 2줄: 300, 3줄: 500, 4줄: 800</li>
               <li>콤보: 50 × (콤보-1) × 레벨</li>
+              <li>싹슬이(Perfect Clear): 보드가 완전히 비면 800~2000 × 레벨 추가 (이벤트 중 2배)</li>
             </ul>
           </div>
         ) : rankLoading ? (

@@ -81,6 +81,9 @@ const TSPIN_SCORES = {
   full: [400, 800, 1200, 1600],
   mini: [100, 200, 400],
 };
+// 싹슬이(Perfect Clear) 보너스 — 줄 제거 후 보드가 완전히 빈 상태일 때 추가 지급
+// 표준 테트리스 가이드라인 기반: [미사용, 1줄, 2줄, 3줄, 4줄]
+const PERFECT_CLEAR_BONUS = [0, 800, 1200, 1800, 2000];
 
 const T_FRONT_CORNERS = [
   [0, 1], [1, 3], [2, 3], [0, 2],
@@ -504,6 +507,17 @@ export default function BlockfallBoard({ excel = false }: Props) {
         const text = `COMBO x${comboCount.current}  +${comboBonus.toLocaleString()}`;
         comboText.current = text;
         comboAlpha.current = 1.5;
+        setComboOverlay({ text, key: ++comboOverlayKey.current });
+      }
+      // 싹슬이(Perfect Clear) 판정 — 줄 제거 후 arena 전체가 비었는지 검사.
+      // 발동 시 콤보 오버레이를 ALL CLEAR 메시지로 덮어씀 (기존 score/combo 로직은 유지)
+      const isPerfectClear = arena.current.every(row => row.every(cell => cell === 0));
+      if (isPerfectClear) {
+        const pcBonus = (PERFECT_CLEAR_BONUS[Math.min(count, 4)] ?? PERFECT_CLEAR_BONUS[4]) * gameLevelRef.current;
+        scoreRef.current += pcBonus;
+        const text = `ALL CLEAR BONUS  +${pcBonus.toLocaleString()}`;
+        comboText.current = text;
+        comboAlpha.current = 2.0;
         setComboOverlay({ text, key: ++comboOverlayKey.current });
       }
       const newLv = Math.min(Math.floor(linesRef.current / 10) + 1, 11);
@@ -1232,6 +1246,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
               <h4>콤보 · 레벨</h4>
               <ul>
                 <li>연속 줄 제거 시 콤보 보너스: 50 × (콤보-1) × 레벨</li>
+                <li>싹슬이(Perfect Clear): 줄 제거 후 보드가 비었을 때 800~2000 × 레벨 추가</li>
                 <li>10줄 제거마다 레벨 상승, 최대 레벨 11</li>
               </ul>
               <h4>난이도별 초기 낙하속도</h4>
