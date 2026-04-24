@@ -1,13 +1,13 @@
 .wrap {
-  max-width: 640px; /* 594px 플레이 영역 + 좌우 패딩 여유 */
+  max-width: 832px; /* 800px 플레이 영역 + 좌우 패딩 32px */
   margin: 0 auto;
   padding: 20px 16px;
   font-family: 'Segoe UI', sans-serif;
 }
 
-/* 플레이 영역 너비(594px) 기준 중앙 정렬 컨테이너 */
+/* 플레이 영역 너비(800px) 기준 중앙 정렬 컨테이너 */
 .playWrapper {
-  width: 594px;
+  width: 800px;
   margin: 0 auto;
 }
 
@@ -202,11 +202,15 @@
   height: 630px;
 }
 
-/* 뷰포트 < 626px: bag 패널 숨김 + 너비 제약 해제
-   (게임 영역 594px + wrap 좌우 패딩 32px = 626px 미만이면 공간 부족) */
+/* 뷰포트 < 832px: playWrapper 너비 제약 해제
+   (playWrapper 800px + wrap 좌우 패딩 32px = 832px 미만이면 공간 부족) */
+@media (max-width: 831px) {
+  .playWrapper { width: auto; }
+}
+/* 뷰포트 < 626px: bag 패널 숨김
+   (게임 영역 598px + wrap 좌우 패딩 32px ≈ 626px 미만이면 공간 부족) */
 @media (max-width: 625px) {
   .bagPanel { display: none; }
-  .playWrapper { width: auto; }
 }
 
 /* 버튼 */
@@ -365,7 +369,7 @@
   .gameArea { gap: 4px; }
 }
 
-/* 랭킹 — playWrapper 안에서 100% = 594px로 맞춤 */
+/* 랭킹 — playWrapper 안에서 100% = 800px로 맞춤 */
 .rankSection { margin-top: 28px; width: 100%; overflow-x: auto; }
 .rankTitle   { text-align: center; margin: 0 0 10px; color: #2c3e50; font-size: 1rem; font-weight: bold; }
 
@@ -405,7 +409,6 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.88rem;
-  white-space: nowrap;
 }
 .table th {
   background: #8e44ad;
@@ -416,9 +419,16 @@
   padding: 5px 10px;
   border-bottom: 1px solid #eee;
   text-align: center;
+  white-space: nowrap;
 }
 .table tr:nth-child(even) td { background: #f9f9f9; }
 .table tr:first-child td     { color: #e67e22; font-weight: bold; }
+/* 이름 열: 긴 닉네임이 테이블을 뷰포트 밖으로 밀지 않도록 줄바꿈 허용 */
+.table th:nth-child(2), .table td:nth-child(2) {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 
 .placeholder { color: #aaa; font-style: italic; text-align: center; }
 

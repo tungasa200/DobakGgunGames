@@ -126,9 +126,15 @@
 
 .rankTable { width: 100%; border-collapse: collapse; font-size: 0.9em; }
 .rankTable th { background: #1e3a6e; color: white; padding: 7px 8px; }
-.rankTable td { padding: 6px 8px; border-bottom: 1px solid #dde3f0; text-align: center; }
+.rankTable td { padding: 6px 8px; border-bottom: 1px solid #dde3f0; text-align: center; white-space: nowrap; }
 .rankTable tr:nth-child(even) td { background: #f0f3fa; }
 .rankTable tr:first-child td { color: #1e3a6e; font-weight: bold; }
+/* 이름 열: 긴 닉네임이 테이블을 뷰포트 밖으로 밀지 않도록 줄바꿈 허용 */
+.rankTable th:nth-child(2), .rankTable td:nth-child(2) {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 
 /* 역대 1위 배너 */
 .alltimeBanner {

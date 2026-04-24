@@ -309,8 +309,14 @@
 /* 랭킹 테이블 — 원본: #ranking-table */
 .rankTable { width: 100%; border-collapse: collapse; font-size: 0.9em; }
 .rankTable th { background: #3498db; color: white; padding: 7px 8px; }
-.rankTable td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: center; }
+.rankTable td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: center; white-space: nowrap; }
 .rankTable tr:first-child td { color: #e67e22; font-weight: bold; }
+/* 이름 열: 긴 닉네임이 테이블을 뷰포트 밖으로 밀지 않도록 줄바꿈 허용 */
+.rankTable th:nth-child(2), .rankTable td:nth-child(2) {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 
 .placeholder { color: #aaa; font-style: italic; text-align: center; padding: 12px; }
 

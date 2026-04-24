@@ -13,7 +13,7 @@
 }
 
 .wrap {
-  max-width: 640px;
+  max-width: 832px; /* 800px 랭킹 + 좌우 패딩 32px, 일반 모드와 동일 */
   margin: 0 auto;
   padding: 20px 16px;
   font-family: 'Segoe UI', sans-serif;
@@ -482,10 +482,11 @@
 }
 
 /* ===== 랭킹 ===== */
+/* 일반 모드 playWrapper(800px)와 동일 폭 */
 .rankSection {
   margin-top: 28px;
   width: 100%;
-  max-width: min(560px, 100%);
+  max-width: min(800px, 100%);
   overflow-x: auto;
   background: var(--insane-bg-deep);
   border-radius: 10px;
