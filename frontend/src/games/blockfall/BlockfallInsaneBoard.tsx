@@ -1792,10 +1792,11 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         const survivedSec = Math.max(1, Math.round(activeEventDurInit.current / 1000));
         const survivalBonus = 50 * survivedSec * gameLevelRef.current;
         scoreRef.current += survivalBonus;
-        const text = `EVENT SURVIVED  +${survivalBonus.toLocaleString()}`;
-        comboText.current = text;
-        comboAlpha.current = 2.0;
-        setComboOverlay({ text, key: ++comboOverlayKey.current });
+        // 오버레이 표시는 주석 처리 — 점수만 조용히 지급
+        // const text = `EVENT SURVIVED  +${survivalBonus.toLocaleString()}`;
+        // comboText.current = text;
+        // comboAlpha.current = 2.0;
+        // setComboOverlay({ text, key: ++comboOverlayKey.current });
         updateDisplay();
         clearActiveEvent();
       }
