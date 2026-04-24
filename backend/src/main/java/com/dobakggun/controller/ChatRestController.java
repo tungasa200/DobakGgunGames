@@ -13,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -53,6 +55,7 @@ public class ChatRestController {
         }
         Map<Object, Object> meta = metaOpt.get();
         String roomName = (String) meta.get("name");
+        String creatorId = (String) meta.get("creatorId");
 
         boolean degraded = false;
         List<ChatMessageResponse> messages;
@@ -66,13 +69,30 @@ public class ChatRestController {
         return ResponseEntity.ok(ChatHistoryResponse.builder()
                 .roomId(roomId)
                 .roomName(roomName)
+                .creatorId(creatorId)
                 .messages(messages)
                 .degraded(degraded)
                 .build());
     }
 
     @DeleteMapping("/rooms/{roomId}")
-    public ResponseEntity<Void> deleteRoom(@PathVariable String roomId) {
+    public ResponseEntity<Void> deleteRoom(@PathVariable String roomId, Principal principal) {
+        Optional<Map<Object, Object>> metaOpt = chatRedisService.getRoomMeta(roomId);
+        if (metaOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "ROOM_NOT_FOUND");
+        }
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        String creatorId = (String) metaOpt.get().get("creatorId");
+        boolean isCreator = principal.getName().equals(creatorId);
+
+        if (!isAdmin && !isCreator) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "FORBIDDEN");
+        }
+
         chatRoomService.deleteRoom(roomId);
         return ResponseEntity.noContent().build();
     }

@@ -11,6 +11,7 @@ public class ChatHistoryResponse {
 
     private String roomId;
     private String roomName;
+    private String creatorId;
     private List<ChatMessageResponse> messages;
     private boolean degraded;
 }

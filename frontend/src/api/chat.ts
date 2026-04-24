@@ -4,6 +4,7 @@ const BASE = `${API_ORIGIN}/api/chat`;
 export interface ChatRoomSummary {
   roomId: string;
   name: string;
+  creatorId: string;
   creatorNick: string;
   createdAt: string;
   lastActiveAt: string;
@@ -36,6 +37,7 @@ export interface ChatMessageData {
 export interface ChatHistoryResponse {
   roomId: string;
   roomName: string;
+  creatorId: string;
   messages: ChatMessageData[];
   degraded: boolean;
 }

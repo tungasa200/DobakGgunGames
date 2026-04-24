@@ -9,6 +9,9 @@
   text-decoration: none;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
 }
 
 .card:hover,

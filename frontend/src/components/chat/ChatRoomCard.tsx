@@ -1,10 +1,12 @@
-import { Link } from 'react-router-dom';
 import type { ChatRoomSummary } from '../../api/chat';
 import styles from './ChatRoomCard.module.css';
 
 interface ChatRoomCardProps {
   room: ChatRoomSummary;
 }
+
+const POPUP_W = 400;
+const POPUP_H = 780;
 
 function relativeTime(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime();
@@ -22,10 +24,21 @@ function relativeTime(isoString: string): string {
 }
 
 export default function ChatRoomCard({ room }: ChatRoomCardProps) {
+  const handleEnter = () => {
+    const left = Math.round(window.screenX + (window.outerWidth - POPUP_W) / 2);
+    const top = Math.round(window.screenY + (window.outerHeight - POPUP_H) / 2);
+    window.open(
+      `/dbgchat/${room.roomId}`,
+      `chat_${room.roomId}`,
+      `width=${POPUP_W},height=${POPUP_H},left=${left},top=${top},resizable=yes,scrollbars=no`,
+    );
+  };
+
   return (
-    <Link
-      to={`/dbgchat/${room.roomId}`}
+    <button
+      type="button"
       className={styles.card}
+      onClick={handleEnter}
       aria-label={`${room.name} 채팅방 입장`}
     >
       <div className={styles.cardMain}>
@@ -35,6 +48,6 @@ export default function ChatRoomCard({ room }: ChatRoomCardProps) {
         </span>
       </div>
       <span className={styles.enterHint}>입장 →</span>
-    </Link>
+    </button>
   );
 }

@@ -18,12 +18,14 @@ export default function DbgChatRoomPage() {
   const { user, accessToken } = useAuth();
 
   const [roomName, setRoomName] = useState('');
+  const [creatorId, setCreatorId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [historyLoading, setHistoryLoading] = useState(true);
   const [degraded, setDegraded] = useState(false);
   const [degradedDismissed, setDegradedDismissed] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const stompRef = useRef<ReturnType<typeof createStompClient> | null>(null);
 
@@ -57,6 +59,7 @@ export default function DbgChatRoomPage() {
         const history = await chatApi.getHistory(accessToken, roomId);
         if (cancelled) return;
         setRoomName(history.roomName);
+        setCreatorId(history.creatorId ?? null);
         setMessages(history.messages);
         setDegraded(history.degraded);
       } catch (err) {
@@ -99,6 +102,20 @@ export default function DbgChatRoomPage() {
     setServerError('');
   };
 
+  const canDelete = user && (user.role === 'ADMIN' || String(user.id) === creatorId);
+
+  const handleDelete = async () => {
+    if (!accessToken || !roomId) return;
+    if (!window.confirm('채팅방을 삭제하시겠습니까?')) return;
+    setIsDeleting(true);
+    try {
+      await chatApi.deleteRoom(accessToken, roomId);
+    } catch {
+      // 삭제 후 서버에서 SYSTEM 메시지로 navigate 처리되므로 에러만 무시
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className={styles.roomPage}>
       <NormalHeader />
@@ -106,6 +123,16 @@ export default function DbgChatRoomPage() {
         <Link to="/dbgchat" className={styles.backLink}>← 목록</Link>
         <span className={styles.roomName}>💬 {roomName || '채팅방'}</span>
         <ConnectionStatusBadge status={connectionStatus} />
+        {canDelete && (
+          <button
+            className={styles.deleteBtn}
+            onClick={handleDelete}
+            disabled={isDeleting}
+            aria-label="채팅방 삭제"
+          >
+            {isDeleting ? '삭제 중…' : '방 삭제'}
+          </button>
+        )}
       </div>
 
       {degraded && !degradedDismissed && (

@@ -94,6 +94,7 @@ public class ChatRoomService {
                 rooms.add(ChatRoomResponse.builder()
                         .roomId(roomId)
                         .name((String) meta.get("name"))
+                        .creatorId((String) meta.get("creatorId"))
                         .creatorNick((String) meta.get("creatorNick"))
                         .createdAt(epochMsToIso(createdAtEpoch))
                         .lastActiveAt(lastActiveAt)
