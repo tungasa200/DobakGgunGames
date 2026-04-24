@@ -35,18 +35,13 @@
   opacity: 0.8;
 }
 .logoImg {
-  height: 22px;
+  height: 20px;
   width: auto;
   display: block;
-  filter:
-    drop-shadow( 1px  0   0 #fff)
-    drop-shadow(-1px  0   0 #fff)
-    drop-shadow( 0    1px 0 #fff)
-    drop-shadow( 0   -1px 0 #fff)
-    drop-shadow( 1px  1px 0 #fff)
-    drop-shadow(-1px -1px 0 #fff)
-    drop-shadow( 1px -1px 0 #fff)
-    drop-shadow(-1px  1px 0 #fff);
+  background: #fff;
+  padding: 3px 5px;
+  border-radius: 5px;
+  box-sizing: content-box;
 }
 
 /* 게임 목록 버튼 */
