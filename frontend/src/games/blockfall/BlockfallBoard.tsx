@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
@@ -165,6 +165,8 @@ interface Props { excel?: boolean }
 export default function BlockfallBoard({ excel = false }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const initDifficulty = (location.state as { initDifficulty?: Level } | null)?.initDifficulty;
 
   const handleInsaneClick = useCallback(() => {
     if (!user) {
@@ -208,7 +210,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const isPieceT    = useRef(false);
   const holdPieceIsT = useRef(false);
   const holdPieceRot = useRef(0);
-  const currentLevelRef = useRef<Level>('normal');
+  const currentLevelRef = useRef<Level>(initDifficulty ?? 'normal');
 
   // 세션 ID
   const sessionIdRef = useRef<string>('');
@@ -221,7 +223,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const [gameLevel, setGameLevel] = useState(1);
   const [lines, setLines]       = useState(0);
   const [combo, setCombo]       = useState(0);
-  const [difficulty, setDifficulty] = useState<Level>('normal');
+  const [difficulty, setDifficulty] = useState<Level>(initDifficulty ?? 'normal');
 
   // ===== 랭킹 =====
   const [rankLevel, setRankLevel] = useState<Level>('normal');

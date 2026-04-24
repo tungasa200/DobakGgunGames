@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { rankingsApi, startSession } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useAuth } from '../../context/AuthContext';
@@ -267,6 +268,7 @@ interface InsaneBoardProps {
 // ===== 컴포넌트 =====
 export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // ===== BGM (normal / insane / insane-phase2 / insane-phase3 4단계) =====
   const defaultBgm = useBgm(BGM_DEFAULT_SRC, { volume: 0.4 });
@@ -429,6 +431,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const [combo, setCombo]       = useState(0);
   const [showHorrorBg, setShowHorrorBg] = useState(false);
   const [bagVisible, setBagVisible] = useState(true); // 일반 페이즈 bag UI 표시 여부
+  const difficulty = 'hard' as const; // 인세인은 hard 고정 (버튼은 일반 모드로 네비게이션)
   const bannerExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 랭킹
@@ -2227,8 +2230,18 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     } catch { setSubmitState('error'); }
   }
 
+  const INSANE_LEVELS: { value: 'easy' | 'normal' | 'hard'; label: string }[] = [
+    { value: 'easy',   label: '쉬움' },
+    { value: 'normal', label: '보통' },
+    { value: 'hard',   label: '어려움' },
+  ];
+
+  function handleDifficultyChange(lv: 'easy' | 'normal' | 'hard') {
+    navigate('/blockfall', { state: { initDifficulty: lv } });
+  }
+
   const statusText =
-    gameStatus === 'idle'   ? 'INSANE' :
+    gameStatus === 'idle'   ? difficulty.toUpperCase() :
     gameStatus === 'over'   ? 'YOU DIED' : '';
 
   // I: 랭킹 행 클래스 판별
@@ -2260,19 +2273,24 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       />
     )}
     <div className={styles.wrap} data-theme={themePhase} style={{ position: 'relative', zIndex: 1 }}>
-      {/* 인세인 모드 난이도 표시 */}
+      {/* 난이도 버튼 — 일반 페이즈: 쉬움/보통/어려움 기능 버튼, 인세인 페이즈: 텍스트 변경 기믹 */}
       <div className={`${styles.diffRow} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
         {themePhase === 'insane' ? (
-          <>
-            <span className={`${styles.diffBtn} ${styles.diffActive}`}>INSANE</span>
-            <span className={`${styles.diffBtn} ${styles.diffActive}`}>INSANE</span>
-            <span className={`${styles.diffBtn} ${styles.diffActive}`}>INSANE</span>
-            <span className={`${styles.diffBtn} ${styles.diffActive}`}>INSANE</span>
-          </>
+          INSANE_LEVELS.map(lv => (
+            <span key={lv.value} className={`${styles.diffBtn} ${styles.diffBtnInsanePhase} ${difficulty === lv.value ? styles.diffBtnInsaneActive : ''}`}>
+              🔥 INSANE
+            </span>
+          ))
         ) : (
-          <button className={`${styles.diffBtn} ${styles.diffActive}`} disabled>
-            🔥 INSANE
-          </button>
+          INSANE_LEVELS.map(lv => (
+            <button
+              key={lv.value}
+              className={`${styles.diffBtn} ${difficulty === lv.value ? styles.diffActive : ''}`}
+              onClick={() => handleDifficultyChange(lv.value)}
+            >
+              {lv.label}
+            </button>
+          ))
         )}
       </div>
 
@@ -2317,12 +2335,6 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           <div className={`${styles.sideBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
             <div className={styles.sideTitle}>HOLD</div>
             <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
-          </div>
-          <div className={`${styles.sideBox} ${styles.hintsBox} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
-            <div className={styles.sideTitle}>키</div>
-            <div className={styles.hints}>
-              ← → 이동<br />↑ 회전<br />↓ 내리기<br />Space 급강하<br />Shift 홀드<br />P 일시정지
-            </div>
           </div>
         </div>
 

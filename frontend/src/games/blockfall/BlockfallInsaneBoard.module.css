@@ -32,7 +32,7 @@
   background: #1a1a2e;
   color: #888;
   font-weight: bold;
-  cursor: default;
+  cursor: pointer;
   font-size: 0.9rem;
   touch-action: manipulation;
   user-select: none;
@@ -42,6 +42,17 @@
   color: #fff;
   border-color: #ff2d55;
   box-shadow: 0 0 12px rgba(255, 45, 85, 0.4);
+}
+/* 인세인 페이즈 버튼 — 검정 배경, 빨강 테두리/글씨, 클릭 불가 */
+.diffBtnInsanePhase {
+  background: #000;
+  color: #ff2d55;
+  border-color: #ff2d55;
+  cursor: default;
+}
+/* 인세인 페이즈 선택된 난이도 — 글로우 강조 */
+.diffBtnInsaneActive {
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.5);
 }
 
 /* 정보 바 */
@@ -244,7 +255,7 @@
 .boardBox {
   background: #1a1a2e;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid #ff2d55;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -296,7 +307,7 @@
 .sideBox {
   background: #1a1a2e;
   border-radius: 8px;
-  border: 1px solid #333;
+  border: 1px solid #ff2d55;
   padding: 10px;
   text-align: center;
   display: flex;
@@ -791,21 +802,14 @@
   color: #2c3e50;
 }
 .wrap[data-theme="normal"] .sideBox {
-  background: white;
-  border-color: #ddd;
+  border-color: rgba(255, 45, 85, 0.4);
 }
-.wrap[data-theme="normal"] .sideTitle {
-  color: #888;
-}
-.wrap[data-theme="normal"] .hints {
-  color: #888;
+.wrap[data-theme="normal"] .boardBox {
+  border-color: rgba(255, 45, 85, 0.4);
 }
 .wrap[data-theme="normal"] .miniCanvas {
-  border-color: #ddd;
+  border-color: rgba(255, 45, 85, 0.3);
   background-color: #111827;
-}
-.wrap[data-theme="normal"] .board {
-  border-color: #ddd;
 }
 .wrap[data-theme="normal"] .mobileBtn {
   background: #f5f5f5;
@@ -819,9 +823,7 @@
 /* 프로그레스 바 */
 .wrap[data-theme="normal"] .eventTimerBar { display: none; }
 
-/* 버튼 */
-.wrap[data-theme="normal"] .startBtn { background: #8e44ad; }
-.wrap[data-theme="normal"] .startBtn:hover { background: #7d3c98; }
+/* 버튼 — normal phase도 insane 테마(빨강) 동일 적용 */
 
 /* 랭킹 섹션 */
 .wrap[data-theme="normal"] .rankSection {
