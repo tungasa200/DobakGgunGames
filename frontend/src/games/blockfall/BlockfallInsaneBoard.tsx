@@ -56,7 +56,7 @@ type Particle = SandParticle | ShatterParticle;
 
 type EventId =
   | 'FLIP_H' | 'FLIP_V' | 'DARK_SPOTLIGHT' | 'INVISIBLE_PIECE' | 'COLOR_GRAY'
-  | 'SAND_BURST' | 'LIQUID_FLOOD' | 'EXPLODE' | 'FLOOR_DROP'
+  | 'SAND_BURST' | 'LIQUID_FLOOD' | 'EXPLODE' | 'FLOOR_DROP' | 'SIDE_EXPAND'
   | 'CONTROL_FREEZE' | 'PIECE_SHATTER' | 'RANDOM_LOCK' | 'SPIN_BLOCK';
 
 interface EventDef {
@@ -151,6 +151,7 @@ const EVENT_POOL: EventDef[] = [
   { id: 'LIQUID_FLOOD',    name: '모래 홍수',   emoji: '🌊',  duration: 0,     weight: 1,   type: 'physical',   sub: '즉발 — 상단 모래 유입' },
   { id: 'EXPLODE',         name: '폭발',        emoji: '💥',  duration: 0,     weight: 1,   type: 'physical',   sub: '블록 고정 시 — 반경 9칸 폭발' },
   { id: 'FLOOR_DROP',      name: '바닥 붕괴',   emoji: '🕳️', duration: 0,     weight: 1,   type: 'physical',   mobileExcluded: true, sub: '즉발 — 바닥 확장 + 파편' },
+  { id: 'SIDE_EXPAND',     name: '측면 붕괴',   emoji: '🧱',  duration: 0,     weight: 1,   type: 'physical',   mobileExcluded: true, sub: '즉발 — 보드 폭 확장 + 파편' },
   { id: 'CONTROL_FREEZE',  name: '조작 마비',   emoji: '🥶',  duration: 2000,  weight: 1,   type: 'disruptive', sub: '2초 동안 조작 불가' },
   { id: 'PIECE_SHATTER',   name: '블록 분해',   emoji: '🧨',  duration: 0,     weight: 1,   type: 'disruptive', sub: '즉발 — 현재 피스 분해' },
   { id: 'RANDOM_LOCK',     name: '강제 고정',   emoji: '🔒',  duration: 0,     weight: 1,   type: 'disruptive', sub: '즉발 — 현재 위치 고정' },
@@ -158,7 +159,7 @@ const EVENT_POOL: EventDef[] = [
 ];
 
 // HIGH flash 등급 이벤트
-const HIGH_FLASH_EVENTS = new Set<EventId>(['EXPLODE', 'FLOOR_DROP', 'CONTROL_FREEZE']);
+const HIGH_FLASH_EVENTS = new Set<EventId>(['EXPLODE', 'FLOOR_DROP', 'SIDE_EXPAND', 'CONTROL_FREEZE']);
 
 // ===== 헬퍼 =====
 function createMatrix(w: number, h: number): Matrix {
@@ -431,6 +432,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const [combo, setCombo]       = useState(0);
   const [showHorrorBg, setShowHorrorBg] = useState(false);
   const [bagVisible, setBagVisible] = useState(true); // 일반 페이즈 bag UI 표시 여부
+  const [boardExpanded, setBoardExpanded] = useState(false); // SIDE_EXPAND 이벤트로 보드 폭이 확장된 상태
+  const bagVisibleRef = useRef(true); // fireRandomEvent 내부에서 bagVisible 참조용
   // 보드 위에 띄우는 콤보/보너스 오버레이 (canvas 밖으로 잘리지 않도록 HTML로 표시)
   const [comboOverlay, setComboOverlay] = useState<{ text: string; key: number } | null>(null);
   const comboOverlayKey = useRef(0);
@@ -1117,6 +1120,76 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         break;
       }
 
+      case 'SIDE_EXPAND': {
+        // 11 ↔ 15 토글 방식: 현재 기본 폭이면 확장(+4), 이미 확장 중이면 원복
+        const isReset = boardW.current > INIT_BOARD_W;
+        const TARGET_EXPAND_W = INIT_BOARD_W + 4; // 15
+
+        if (isReset) {
+          // 원복: 기본 폭으로
+          boardW.current = INIT_BOARD_W;
+          for (let y = 0; y < arena.current.length; y++) {
+            arena.current[y] = arena.current[y].slice(0, INIT_BOARD_W);
+          }
+          // 늘어난 영역에 있던 정착 파티클 제거
+          particles.current = particles.current.filter(p =>
+            !(p.state === 'settled' && p.x >= INIT_BOARD_W)
+          );
+        } else {
+          // 확장: bag 패널 자리로 한 번에 +4 열
+          const addCols = TARGET_EXPAND_W - boardW.current;
+          boardW.current = TARGET_EXPAND_W;
+          for (let y = 0; y < arena.current.length; y++) {
+            for (let i = 0; i < addCols; i++) arena.current[y].push(0);
+          }
+        }
+
+        const canvas = boardRef.current;
+        if (canvas) {
+          canvas.width = boardW.current * CELL;
+          const ctx = canvas.getContext('2d');
+          if (ctx) ctx.scale(CELL, CELL);
+        }
+
+        triggerShake(isReset ? 18 : 8, isReset ? 600 : 300);
+        setBoardFilter('hue-rotate(270deg) contrast(1.4) saturate(1.8)', 400);
+
+        // 쌓인 블럭 전체 박살 (FLOOR_DROP과 동일한 파편 연출)
+        for (let y = 0; y < boardH.current; y++) {
+          for (let x = 0; x < boardW.current; x++) {
+            if (arena.current[y]?.[x] !== 0 && arena.current[y]?.[x] != null) {
+              particles.current.push({
+                type: 'shatter', x, y,
+                vx: Math.random() * 5 - 2.5,
+                vy: 0.5,
+                colorIndex: arena.current[y][x],
+                bounces: 5,
+                state: 'flying',
+              });
+              arena.current[y][x] = 0;
+            }
+          }
+        }
+
+        // 리셋 시: 정착 파티클 제거 + 피스 위치 보정
+        if (isReset) {
+          particles.current = particles.current.filter(p => p.state !== 'settled');
+          if (player.current.matrix) {
+            const pw = player.current.matrix[0].length;
+            player.current.pos.x = Math.min(
+              player.current.pos.x,
+              Math.max(0, boardW.current - pw)
+            );
+          }
+        }
+
+        // bag 패널 자리 회수 여부를 React 렌더에 반영
+        setBoardExpanded(boardW.current > INIT_BOARD_W);
+
+        setTimeout(() => triggerShake(18, 800), 200);
+        break;
+      }
+
     }
 
     // 지속형 이벤트 관리
@@ -1134,9 +1207,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const isMobile = isMobileRef.current;
     // Lv10+ 에서는 바닥붕괴 제외 — 고레벨 빈발 시 오히려 난이도 하락
     const highLevel = gameLevelRef.current >= 10;
+    // SIDE_EXPAND는 bag UI가 숨겨진 상태(인세인 페이즈 bag 소진 후)에서만 발동.
+    // 확장 시 bag 패널 자리를 회수하므로, bag이 보이는 중에는 레이아웃 충돌 방지를 위해 제외.
+    const bagHidden = !bagVisibleRef.current;
     const pool = EVENT_POOL.filter(e => {
       if (isMobile && e.mobileExcluded) return false;
       if (highLevel && e.id === 'FLOOR_DROP') return false;
+      if (!bagHidden && e.id === 'SIDE_EXPAND') return false;
       return true;
     });
     const totalW = pool.reduce((s, e) => s + e.weight, 0);
@@ -1160,6 +1237,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           // 인세인 페이즈: bag 소진 → 랜덤 전환
           bagActiveRef.current = false;
           setBagVisible(false);
+          bagVisibleRef.current = false;
           recentPieces.current = [];
           const r = randomInsanePiece([]);
           return { matrix: r.matrix, index: r.index };
@@ -1868,6 +1946,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     evExplodePending.current = false;
     evControlFreeze.current = false;
     floorDropCount.current = 0;
+    setBoardExpanded(false);
     randomLockPending.current = false;
     eventCooldown.current = getEventInterval(1);
 
@@ -1879,6 +1958,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     bagQueueRef.current = shuffleInsaneBag();
     bagActiveRef.current = true;
     setBagVisible(true);
+    bagVisibleRef.current = true;
     // 첫 next 피스를 bag에서 뽑아 설정 (playerReset이 이것을 current로 사용)
     const firstBagDraw = drawNext();
     nextPiece.current = firstBagDraw.matrix;
@@ -2374,21 +2454,24 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         </div>
 
         {/* BAG 패널 — 일반 페이즈에서 bag 큐 미리보기, 인세인 페이즈 bag 소진 후 내부만 숨김.
-            레이아웃 폭(132px)은 항상 유지하여 gameArea 너비가 655px로 고정되도록 함
-            (bag 숨김 시 너비가 655→511로 줄어 rankSection과 misalign 되는 현상 방지) */}
-        <div className={styles.bagPanel}>
-          {bagVisible && (
-            <div className={`${styles.sideBox} ${g}`}>
-              <div className={styles.sideTitle}>BAG</div>
-              <canvas
-                ref={mockBagRef}
-                width={4 * CELL}
-                height={INIT_BOARD_H * CELL}
-                className={styles.bagPanelCanvas}
-              />
-            </div>
-          )}
-        </div>
+            평소에는 레이아웃 폭(132px)을 항상 유지하여 gameArea 너비를 655px로 고정.
+            SIDE_EXPAND 이벤트로 보드가 확장된 경우에는 패널 자체를 제거해
+            확장된 board가 이 자리를 차지하도록 함. */}
+        {!boardExpanded && (
+          <div className={styles.bagPanel}>
+            {bagVisible && (
+              <div className={`${styles.sideBox} ${g}`}>
+                <div className={styles.sideTitle}>BAG</div>
+                <canvas
+                  ref={mockBagRef}
+                  width={4 * CELL}
+                  height={INIT_BOARD_H * CELL}
+                  className={styles.bagPanelCanvas}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 버튼 */}
@@ -2504,13 +2587,6 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
               <li>Space / 더블탭: 급강하 (+2점/칸)</li>
               <li>Shift / HOLD: 블록 홀드 (블록당 1회)</li>
               <li>P: 일시정지</li>
-            </ul>
-            <h4>인세인 이벤트</h4>
-            <ul>
-              <li>레벨이 높을수록 이벤트 발동 간격 감소</li>
-              <li>레벨 11: 매 블록 고정 시 이벤트 발동</li>
-              <li>이벤트 활성 중 라인 클리어 시 점수 2배</li>
-              <li>Sand 연쇄 클리어 시 콤보 보너스 적용</li>
             </ul>
             <h4>점수 계산</h4>
             <ul>
