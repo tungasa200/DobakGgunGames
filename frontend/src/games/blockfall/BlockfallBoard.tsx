@@ -113,8 +113,16 @@ function createPiece(type: string): Matrix {
   return P[type].map(row => [...row]);
 }
 
-function randomPiece(): Matrix {
-  const type = PIECES[Math.floor(PIECES.length * Math.random())];
+function shuffleBag(): string[] {
+  const bag = [...PIECES];
+  for (let i = bag.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [bag[i], bag[j]] = [bag[j], bag[i]];
+  }
+  return bag;
+}
+
+function pieceFromType(type: string): Matrix {
   if (type === 'I' && Math.random() < 1 / 30) {
     return createPiece('I').map(row => row.map(v => v !== 0 ? 8 : 0));
   }
@@ -176,6 +184,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const player      = useRef<Player>({ pos: { x: 0, y: 0 }, matrix: null });
   const nextPiece   = useRef<Matrix | null>(null);
   const holdPiece   = useRef<Matrix | null>(null);
+  const bagRef      = useRef<string[]>([]);
+  const bagIdxRef   = useRef<number>(0);
   const holdUsed    = useRef(false);
   const scoreRef    = useRef(0);
   const gameLevelRef = useRef(1);
@@ -492,6 +502,15 @@ export default function BlockfallBoard({ excel = false }: Props) {
     }
   }
 
+  // ===== 7-bag 드로우 =====
+  function drawFromBag(): Matrix {
+    if (bagIdxRef.current >= bagRef.current.length) {
+      bagRef.current = shuffleBag();
+      bagIdxRef.current = 0;
+    }
+    return pieceFromType(bagRef.current[bagIdxRef.current++]);
+  }
+
   // ===== 플레이어 리셋 =====
   function playerReset() {
     holdUsed.current = false;
@@ -500,8 +519,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
     lockResets.current = 0;
     lastActionRot.current = false;
     tPieceRot.current = 0;
-    player.current.matrix = nextPiece.current ?? randomPiece();
-    nextPiece.current = randomPiece();
+    player.current.matrix = nextPiece.current ?? drawFromBag();
+    nextPiece.current = drawFromBag();
     isPieceT.current = player.current.matrix.some(row => row.includes(1));
     player.current.pos.y = 0;
     player.current.pos.x = (BOARD_W / 2 | 0) - (player.current.matrix[0].length / 2 | 0);
@@ -703,7 +722,9 @@ export default function BlockfallBoard({ excel = false }: Props) {
     const sp = DROP_SPEEDS[level];
     dropInterval.current = sp[0];
     player.current.matrix = null;
-    nextPiece.current = randomPiece();
+    bagRef.current = shuffleBag();
+    bagIdxRef.current = 0;
+    nextPiece.current = drawFromBag();
     playerReset();
     updateDisplay();
     setGameStatus('playing');
@@ -994,7 +1015,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
         </div>
       )}
 
-      {!excel && statusText && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
+      {!excel && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
 
       {/* 세션 생성 실패 경고 배너 */}
       {!excel && sessionFailed && gameStatus === 'playing' && (

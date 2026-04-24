@@ -204,15 +204,24 @@ const PIECE_POOL: PieceEntry[] = [
   { matrix: createInsanePiece('THUMBS_UP'), weight: 1.5 },
   { matrix: createInsanePiece('MIDDLE'),    weight: 1 },
 ];
-const TOTAL_PIECE_WEIGHT = PIECE_POOL.reduce((s, p) => s + p.weight, 0);
 
-function randomInsanePiece(): Matrix {
-  let r = Math.random() * TOTAL_PIECE_WEIGHT;
-  for (const entry of PIECE_POOL) {
-    r -= entry.weight;
-    if (r <= 0) return entry.matrix.map(row => [...row]);
+
+// recent: 최근 스폰된 피스 인덱스 배열 (recent[0]=1번 전, recent[1]=2번 전)
+// 히스토리에 있는 피스는 가중치에 패널티 적용 (1번 전 ×0.3, 2번 전 ×0.6)
+function randomInsanePiece(recent: number[] = []): { matrix: Matrix; index: number } {
+  const weights = PIECE_POOL.map((entry, i) => {
+    let w = entry.weight;
+    if (i === recent[0]) w *= 0.3;
+    else if (i === recent[1]) w *= 0.6;
+    return w;
+  });
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < PIECE_POOL.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return { matrix: PIECE_POOL[i].matrix.map(row => [...row]), index: i };
   }
-  return PIECE_POOL[0].matrix.map(row => [...row]);
+  return { matrix: PIECE_POOL[0].matrix.map(row => [...row]), index: 0 };
 }
 
 function rotateMatrix(matrix: Matrix, dir: number) {
@@ -277,7 +286,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const arena       = useRef<Matrix>(createMatrix(INIT_BOARD_W, INIT_BOARD_H));
   const particles   = useRef<Particle[]>([]);
   const player      = useRef<Player>({ pos: { x: 0, y: 0 }, matrix: null });
-  const nextPiece   = useRef<Matrix | null>(null);
+  const nextPiece      = useRef<Matrix | null>(null);
+  const nextPieceIdx   = useRef<number>(0);
+  const recentPieces   = useRef<number[]>([]); // 최근 스폰 인덱스 (최대 2개)
   const holdPiece   = useRef<Matrix | null>(null);
   const holdUsed    = useRef(false);
   const scoreRef    = useRef(0);
@@ -1118,8 +1129,14 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     randomLockPending.current = false;
     if (activeEventId.current === 'SPIN_BLOCK') clearActiveEvent();
 
-    player.current.matrix = nextPiece.current ?? randomInsanePiece();
-    nextPiece.current = randomInsanePiece();
+    // 현재 피스 확정 + 히스토리 업데이트
+    const currentIdx = nextPieceIdx.current;
+    player.current.matrix = nextPiece.current ?? randomInsanePiece(recentPieces.current).matrix;
+    recentPieces.current = [currentIdx, ...recentPieces.current].slice(0, 2);
+    // 다음 피스 미리 뽑기 (히스토리 기반 패널티 적용)
+    const next = randomInsanePiece(recentPieces.current);
+    nextPiece.current = next.matrix;
+    nextPieceIdx.current = next.index;
     isPieceT.current = player.current.matrix.some(row => row.includes(1));
     player.current.pos.y = 0;
     player.current.pos.x = (boardW.current / 2 | 0) - (player.current.matrix[0].length / 2 | 0);
@@ -1787,7 +1804,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const sp = DROP_SPEEDS[level];
     dropInterval.current = sp[0];
     player.current.matrix = null;
-    nextPiece.current = randomInsanePiece();
+    recentPieces.current = [];
+    const firstNext = randomInsanePiece([]);
+    nextPiece.current = firstNext.matrix;
+    nextPieceIdx.current = firstNext.index;
     playerReset();
     updateDisplay();
     setGameStatus('playing');
@@ -2173,7 +2193,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         </div>
       </div>
 
-      {statusText && <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>}
+      <div className={`${styles.status} ${gameStatus === 'over' ? styles.statusOver : ''}`}>{statusText}</div>
 
       {/* 이벤트 타이머 바 */}
       <div className={`${styles.eventTimerBar} ${gameLevel >= 10 ? styles.chromaticGlitch : ''}`}>
