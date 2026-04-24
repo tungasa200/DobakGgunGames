@@ -1445,7 +1445,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       const bctx = bp.getContext('2d');
       if (bctx) {
         bctx.setTransform(CELL, 0, 0, CELL, 0, 0); // 1단위 = CELL px
-        bctx.fillStyle = '#0a0a0a';
+        bctx.fillStyle = themePhaseRef.current === 'normal' ? '#111827' : '#0a0a0a';
         bctx.fillRect(0, 0, 4, INIT_BOARD_H);
         if (bagActiveRef.current) {
           const remaining = bagQueueRef.current;

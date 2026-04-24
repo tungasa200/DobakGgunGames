@@ -286,6 +286,9 @@
   width: 120px;
   height: 630px;
 }
+.wrap[data-theme="normal"] .bagPanelCanvas {
+  background-color: #111827;
+}
 
 /* 게임 영역 */
 .gameArea {
