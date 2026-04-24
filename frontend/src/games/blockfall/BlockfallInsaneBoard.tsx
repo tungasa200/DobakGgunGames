@@ -2278,7 +2278,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         {themePhase === 'insane' ? (
           INSANE_LEVELS.map(lv => (
             <span key={lv.value} className={`${styles.diffBtn} ${styles.diffBtnInsanePhase} ${difficulty === lv.value ? styles.diffBtnInsaneActive : ''}`}>
-              🔥 INSANE
+               INSANE
             </span>
           ))
         ) : (
@@ -2529,7 +2529,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       {modalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
-            <h3>🔥 INSANE — 게임 오버</h3>
+            <h3> INSANE — 게임 오버</h3>
             <p>최종 점수: <strong>{score.toLocaleString()}점</strong> (레벨 {gameLevel}, {lines}줄)</p>
             <input className={styles.nameInput} type="text" placeholder="이름을 입력하세요"
               value={playerName}
