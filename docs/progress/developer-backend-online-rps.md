@@ -2,7 +2,7 @@
 
 - 소유 팀원: developer-backend
 - 기능 키: `online-rps`
-- 최종 업데이트: 2026-04-24 (QA 버그 수정)
+- 최종 업데이트: 2026-04-24 (세션 완료 — QA PASS, 커밋 367c623)
 - 기반 PRD: `docs/specs/online-rps-prd.md` (CP1 승인 완료)
 - 계획서: `docs/progress/developer-backend-online-rps-plan.md` (CP2 승인 완료)
 
@@ -10,7 +10,10 @@
 
 ## 현재 상태
 
-**QA 버그 수정 완료 + 테스트 전체 통과 (2026-04-24 재확인)**
+**세션 완료 — QA PASS, 커밋 367c623 (2026-04-24)**
+
+모든 구현, 버그 수정, 테스트 통과 확인. main 브랜치 머지 완료.
+신규 환경변수 없음. Railway 배포 후 사용자 수동 액션 1건 필요 (아래 참조).
 
 ### BUG-1 수정 (HIGH) — OnlineRpsWebSocketController.java
 - `sendError()` 메서드에서 `RpsEnvelopeDto` 래핑 제거
@@ -26,9 +29,9 @@
 
 ---
 
-## 구현 완료 + 테스트 통과 (2026-04-24 확인)**
+## 테스트 결과 (2026-04-24 최종 확인)
 
-`./gradlew clean test` → BUILD SUCCESSFUL
+`./gradlew clean test` → BUILD SUCCESSFUL (총 45개 통과)
 - DobakGgunGamesApplicationTests: 1개 통과
 - OnlineRpsControllerSecurityTest: 4개 통과
 - RpsGameServiceTest: 20개 통과
@@ -187,3 +190,20 @@ DROP TABLE IF EXISTS admin_rsp_play;
 1. developer-frontend에게 API 사용 가이드 전달
 2. qa-tester에게 검증 요청
 3. Railway 배포 후 drop-admin-rsp.sql 수동 실행 (필요 시)
+
+---
+
+## 세션 종료 로그
+
+| 항목 | 내용 |
+|---|---|
+| 세션 날짜 | 2026-04-24 |
+| 최종 커밋 | `367c623` (main 브랜치) |
+| 상태 | 세션 완료 — QA PASS |
+| 테스트 | 45개 통과 (`./gradlew clean test` BUILD SUCCESSFUL) |
+| 버그 수정 | BUG-1 (sendError envelope 제거), BUG-2 (leaveRoom HOST_CHANGED 로직) |
+| 삭제된 파일 | AdminRsp* 9개 파일 (구 admin-rsp 기능 전체 제거) |
+| 신규 구현 | Online RPS 24개 파일 (Entity/Repository/DTO/Service/Controller/SQL) |
+| 신규 환경변수 | 없음 — 기존 REDIS_URL, JWT_SECRET, DB 설정 재활용 |
+| 사용자 필요 액션 | Railway 배포 후 `drop-admin-rsp.sql` 수동 실행 (선택 사항) |
+| 기타 | `backend/gradle.properties` 추가 (Windows 한국어 경로 인코딩 수정, Railway CI 영향 없음) |

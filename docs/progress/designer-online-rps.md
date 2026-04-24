@@ -12,9 +12,17 @@
 
 ## 현재 상태
 
-- **CP2 완료 (2026-04-24) — UX 명세 작성 완료. developer-frontend 착수 가능.**
-- `docs/design/online-rps-design.md` 신규 작성 완료 (2026-04-24)
-- OQ-4, OQ-8 디자이너 결정 사항 확정 (PRD §16 → 명세 §8에 반영)
+- **세션 완료 — 커밋 367c623 (2026-04-24)**
+- `docs/design/online-rps-design.md` 신규 작성 완료 및 QA PASS 확인 (2026-04-24)
+- OQ-4 (결과 화면 표시 시간 3초), OQ-8 (모바일 햅틱) 디자이너 결정 사항 확정 (PRD §16 → 명세 §8에 반영)
+
+---
+
+## 산출물 목록
+
+| 파일 | 설명 | 상태 |
+|---|---|---|
+| `docs/design/online-rps-design.md` | UX 명세 전체 (카드 상태, 화면 레이아웃, 애니메이션, 접근성) | 완료 (QA PASS) |
 
 ---
 
@@ -79,6 +87,14 @@
 - **기존 `--color-*` 변수 정의 파일 미확인**: `frontend/src/styles/`에 excel.css 외 별도 CSS 변수 파일이 없으면 developer-frontend가 `--rps-` 변수 선언 위치 결정 필요.
 - **keyframes 구현 위치**: 모듈 CSS vs 글로벌 CSS 선택은 developer-frontend 결정.
 - **재도전 카운트다운 서버 연동**: OQ-4 결정은 서버가 `ROUND_RESULT` 후 `MATCH_COUNTDOWN`을 재발송한다는 가정 기반. developer-backend 구현 시 확인 필요.
+
+---
+
+## 세션 종료 로그
+
+| 세션 날짜 | 커밋 해시 | 브랜치 | 완료 내용 | 담당자 |
+|---|---|---|---|---|
+| 2026-04-24 | `367c623` | main | online-rps-design.md 작성, QA PASS, OQ-4/OQ-8 결정 확정 | designer |
 
 ---
 
