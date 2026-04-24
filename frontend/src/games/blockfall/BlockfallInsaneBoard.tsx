@@ -2368,9 +2368,11 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           </div>
         </div>
 
-        {/* BAG 패널 — 일반 페이즈에서 bag 큐 미리보기, 인세인 페이즈 bag 소진 후 숨김 */}
-        {bagVisible && (
-          <div className={styles.bagPanel}>
+        {/* BAG 패널 — 일반 페이즈에서 bag 큐 미리보기, 인세인 페이즈 bag 소진 후 내부만 숨김.
+            레이아웃 폭(132px)은 항상 유지하여 gameArea 너비가 655px로 고정되도록 함
+            (bag 숨김 시 너비가 655→511로 줄어 rankSection과 misalign 되는 현상 방지) */}
+        <div className={styles.bagPanel}>
+          {bagVisible && (
             <div className={`${styles.sideBox} ${g}`}>
               <div className={styles.sideTitle}>BAG</div>
               <canvas
@@ -2380,8 +2382,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
                 className={styles.bagPanelCanvas}
               />
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* 버튼 */}
