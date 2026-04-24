@@ -73,7 +73,7 @@ interface EventDef {
 // ===== 상수 =====
 const INIT_BOARD_W = 11;
 const INIT_BOARD_H = 21;
-const CELL = 30;
+const CELL = 40;
 
 // B: 파티클 수치 상수 — 강화
 const SAND_TICK_INTERVAL = 45;    // ms (60→45)

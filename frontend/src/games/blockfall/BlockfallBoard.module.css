@@ -1,13 +1,13 @@
 .wrap {
-  max-width: 832px; /* 800px 플레이 영역 + 좌우 패딩 32px */
+  max-width: 820px; /* 788px 플레이 영역 + 좌우 패딩 32px */
   margin: 0 auto;
   padding: 20px 16px;
   font-family: 'Segoe UI', sans-serif;
 }
 
-/* 플레이 영역 너비(800px) 기준 중앙 정렬 컨테이너 */
+/* 플레이 영역 너비(788px, gameArea 실측과 동일) 기준 중앙 정렬 컨테이너 */
 .playWrapper {
-  width: 800px;
+  width: 788px;
   margin: 0 auto;
 }
 
@@ -95,7 +95,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 120px;  /* miniCanvas 120px에 맞춤 (기존 110px → 120px) */
+  width: 160px;  /* miniCanvas 160px(4×CELL, CELL=40)에 맞춤 */
   flex-shrink: 0;
 }
 
@@ -119,14 +119,14 @@
   font-weight: bold;
 }
 
-/* 원본: canvas#blockfall-next, canvas#blockfall-hold { width:120px; height:120px; background-color:#111827; } */
+/* NEXT/HOLD 미니 캔버스 — 4×CELL (CELL=40 → 160px) */
 .miniCanvas {
   border: 1px solid #333;
   border-radius: 4px;
   background-color: #111827;
   display: block;
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
 }
 
 
@@ -193,24 +193,24 @@
 /* BAG 패널 — sideBox와 동일한 흰 박스 스타일 */
 .bagPanel {
   flex-shrink: 0;
-  width: 120px;
+  width: 160px;
 }
 .bagPanelCanvas {
   display: block;
   background-color: #111827;
-  width: 120px;
-  height: 630px;
+  width: 160px;
+  height: 840px;
 }
 
-/* 뷰포트 < 832px: playWrapper 너비 제약 해제
-   (playWrapper 800px + wrap 좌우 패딩 32px = 832px 미만이면 공간 부족) */
-@media (max-width: 831px) {
+/* 뷰포트 < 820px: playWrapper 너비 제약 해제 + bag 숨김 + CELL=40 확대 크기를 기존 30 크기로 롤백
+   (playWrapper 788px + wrap 좌우 패딩 32px = 820px 미만이면 공간 부족) */
+@media (max-width: 819px) {
   .playWrapper { width: auto; }
-}
-/* 뷰포트 < 626px: bag 패널 숨김
-   (게임 영역 598px + wrap 좌우 패딩 32px ≈ 626px 미만이면 공간 부족) */
-@media (max-width: 625px) {
   .bagPanel { display: none; }
+  .sidePanel { width: 120px; }
+  .miniCanvas { width: 120px; height: 120px; }
+  .bagPanelCanvas { width: 120px; height: 630px; }
+  .board { width: 330px; height: 630px; }
 }
 
 /* 버튼 */
@@ -369,7 +369,7 @@
   .gameArea { gap: 4px; }
 }
 
-/* 랭킹 — playWrapper 안에서 100% = 800px로 맞춤 */
+/* 랭킹 — playWrapper 안에서 100% = 788px로 맞춤 */
 .rankSection { margin-top: 28px; width: 100%; overflow-x: auto; }
 .rankTitle   { text-align: center; margin: 0 0 10px; color: #2c3e50; font-size: 1rem; font-weight: bold; }
 
