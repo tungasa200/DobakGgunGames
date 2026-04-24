@@ -77,9 +77,9 @@ export default function LoginPage() {
       <NormalHeader accentColor="#2c3e50" />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: 'max-content' }}>
         <div className={s.card}>
-          <div className={s.logo}><img src="/common/logo.png" alt="DobakGgun" /></div>
-          <h1 className={s.title}>로그인</h1>
-          <p className={s.subtitle}>도박꾼게임즈에 오신 걸 환영합니다</p>
+          {/* <div className={s.logo}><img src="/common/logo.png" alt="DobakGgun" /></div> */}
+          <h1 className={s.title}>Login</h1>
+          {/* <p className={s.subtitle}>도박꾼게임즈에 오신 걸 환영합니다</p> */}
 
           {error && <div className={s.error}>{error}</div>}
 
