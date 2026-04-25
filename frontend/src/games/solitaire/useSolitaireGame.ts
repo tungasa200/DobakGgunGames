@@ -188,7 +188,14 @@ function reducer(state: State, action: Action): State {
       return { ...state, status: 'won', timerRunning: false };
 
     case 'AUTO_COMPLETING':
-      return { ...state, autoCompleting: action.value };
+      if (action.value) {
+        return { ...state, autoCompleting: true, timerRunning: false };
+      }
+      return {
+        ...state,
+        autoCompleting: false,
+        timerRunning: state.status === 'playing' ? true : state.timerRunning,
+      };
 
     default:
       return state;
@@ -417,8 +424,11 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
   }
 
   function canAutoComplete(g: GameState): boolean {
-    if (g.stock.length > 0) return false;
-    return g.tableaus.every((pile) => pile.every((c) => c.faceUp));
+    const allFaceUp = g.tableaus.every((pile) => pile.every((c) => c.faceUp));
+    if (!allFaceUp) return false;
+    // draw1: 스톡이 남아있어도 모든 카드가 결국 waste를 거쳐 노출되므로 허용
+    if (state.drawMode === 'draw1') return true;
+    return g.stock.length === 0;
   }
 
   function maybeAutoComplete(g: GameState) {
@@ -427,7 +437,7 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
     runAutoStep(g);
   }
 
-  function runAutoStep(g: GameState) {
+  function runAutoStep(g: GameState, lastRecycleFoundationTotal = -1) {
     if (g.foundations.every((f) => f.length === 13)) {
       dispatch({ type: 'AUTO_COMPLETING', value: false });
       dispatch({ type: 'WIN' });
@@ -435,7 +445,7 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
     }
 
     let moved = false;
-    let next = cloneGame(g);
+    const next = cloneGame(g);
 
     // waste 먼저
     if (!moved && next.waste.length > 0) {
@@ -471,10 +481,34 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
     if (moved) {
       dispatch({ type: 'SET_GAME', game: next });
       dispatch({ type: 'INC_MOVES' });
-      autoTimerRef.current = setTimeout(() => runAutoStep(next), 80);
-    } else {
-      dispatch({ type: 'AUTO_COMPLETING', value: false });
+      autoTimerRef.current = setTimeout(() => runAutoStep(next, lastRecycleFoundationTotal), 80);
+      return;
     }
+
+    // draw1: 진행 불가 시 stock에서 한 장 뽑거나 waste를 stock으로 리사이클
+    if (state.drawMode === 'draw1' && (next.stock.length > 0 || next.waste.length > 0)) {
+      if (next.stock.length > 0) {
+        const card = next.stock.pop()!;
+        card.faceUp = true;
+        next.waste.push(card);
+        dispatch({ type: 'SET_GAME', game: next });
+        autoTimerRef.current = setTimeout(() => runAutoStep(next, lastRecycleFoundationTotal), 80);
+        return;
+      }
+      // stock 비었고 waste에 카드 남음 → 한 사이클 동안 진행 없으면 중단
+      const total = next.foundations.reduce((s, f) => s + f.length, 0);
+      if (total === lastRecycleFoundationTotal) {
+        dispatch({ type: 'AUTO_COMPLETING', value: false });
+        return;
+      }
+      next.stock = next.waste.reverse().map((c) => ({ ...c, faceUp: false }));
+      next.waste = [];
+      dispatch({ type: 'SET_GAME', game: next });
+      autoTimerRef.current = setTimeout(() => runAutoStep(next, total), 80);
+      return;
+    }
+
+    dispatch({ type: 'AUTO_COMPLETING', value: false });
   }
 
   const undo = useCallback(() => {
