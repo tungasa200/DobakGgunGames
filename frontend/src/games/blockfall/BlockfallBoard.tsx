@@ -533,9 +533,10 @@ export default function BlockfallBoard({ excel = false }: Props) {
   }
 
   // ===== 7-bag 드로우 =====
+  // 미리보기가 끊기지 않도록, 큐에 PIECES.length 미만 남으면 다음 bag을 즉시 이어 붙임
   function drawFromBag(): Matrix {
-    if (bagIdxRef.current >= bagRef.current.length) {
-      bagRef.current = shuffleBag();
+    if (bagRef.current.length - bagIdxRef.current < PIECES.length) {
+      bagRef.current = bagRef.current.slice(bagIdxRef.current).concat(shuffleBag());
       bagIdxRef.current = 0;
     }
     return pieceFromType(bagRef.current[bagIdxRef.current++]);

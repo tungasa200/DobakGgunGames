@@ -1310,10 +1310,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // ===== 피스 드로우: 일반 페이즈=bag, 인세인 페이즈 bag 소진 후=랜덤 =====
   function drawNext(): { matrix: Matrix; index: number } {
     if (bagActiveRef.current) {
+      // 일반 페이즈: 미리보기 5칸이 비지 않도록 큐가 6개 미만이면 즉시 다음 bag을 이어 붙임.
+      // 인세인 페이즈에서는 의도적으로 bag을 소진시켜 랜덤 전환을 유도하므로 미리 채우지 않음.
+      if (themePhaseRef.current === 'normal' && bagQueueRef.current.length < 6) {
+        bagQueueRef.current = bagQueueRef.current.concat(shuffleInsaneBag());
+      }
       // bag이 비었으면
       if (bagQueueRef.current.length === 0) {
         if (themePhaseRef.current === 'normal') {
-          // 일반 페이즈: bag 재충전
+          // 일반 페이즈: bag 재충전 (위 미리채움이 동작했다면 여기 도달하지 않음)
           bagQueueRef.current = shuffleInsaneBag();
         } else {
           // 인세인 페이즈: bag 소진 → 랜덤 전환
