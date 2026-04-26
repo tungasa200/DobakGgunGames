@@ -442,7 +442,6 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // 보드 위에 띄우는 콤보/보너스 오버레이 (canvas 밖으로 잘리지 않도록 HTML로 표시)
   const [comboOverlay, setComboOverlay] = useState<{ text: string; key: number } | null>(null);
   const comboOverlayKey = useRef(0);
-  const difficulty = 'hard' as const; // 인세인은 hard 고정 (버튼은 일반 모드로 네비게이션)
   const bannerExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 랭킹
@@ -2500,9 +2499,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     navigate('/blockfall', { state: { initDifficulty: lv } });
   }
 
+  // 게임 중에도 페이즈 라벨을 보드 헤더에 유지 (over 시점에만 'YOU DIED'로 교체)
   const statusText =
-    gameStatus === 'idle'   ? difficulty.toUpperCase() :
-    gameStatus === 'over'   ? 'YOU DIED' : '';
+    gameStatus === 'over' ? 'YOU DIED' :
+    themePhase === 'insane' ? 'INSANE' : 'NORMAL';
 
   // I: 랭킹 행 클래스 판별
   const g = gameLevel >= 10 ? styles.chromaticGlitch : ''; // 글리치 단축 변수
