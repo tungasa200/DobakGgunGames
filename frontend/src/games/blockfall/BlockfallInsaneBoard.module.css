@@ -491,7 +491,7 @@
   .sideBox { padding: 6px; }
   .sideTitle { font-size: 0.65em; margin-bottom: 4px; }
   .miniCanvas { width: 82px; height: 82px; }
-  .board { width: 220px; height: 420px; }
+  .board { width: 220px; height: 460px; } /* 11:23 비율 (visible 21 + buffer 2) */
   .hints { font-size: 0.68em; line-height: 1.8; }
   .infoItem { min-width: 58px; padding: 5px 8px; }
 
@@ -505,7 +505,7 @@
 @media (max-width: 359px) {
   .sidePanel { width: 70px; }
   .miniCanvas { width: 70px; height: 70px; }
-  .board { width: 198px; height: 378px; }
+  .board { width: 198px; height: 414px; } /* 11:23 비율 */
   .gameArea { gap: 4px; }
 
   /* 배너 오버라이드 */

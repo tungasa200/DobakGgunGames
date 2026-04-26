@@ -72,7 +72,9 @@ interface EventDef {
 
 // ===== 상수 =====
 const INIT_BOARD_W = 11;
-const INIT_BOARD_H = 21;
+const INIT_VISIBLE_H = 21;
+const BUFFER_H = 2;
+const INIT_BOARD_H = INIT_VISIBLE_H + BUFFER_H; // 23 — 내부 데이터 기준 (visible + buffer)
 const CELL = 30;
 
 // B: 파티클 수치 상수 — 강화
@@ -168,12 +170,13 @@ function createMatrix(w: number, h: number): Matrix {
 
 // ===== 피스 정의 =====
 function createStandardPiece(type: string): Matrix {
+  // 표준 SRS spawn 형태 — 모든 표준 7블록의 spawn 셀이 buffer zone(2줄) 안에 들어옴
   const P: Record<string, Matrix> = {
     T: [[0,1,0],[1,1,1],[0,0,0]],
     O: [[2,2],[2,2]],
-    L: [[0,3,0],[0,3,0],[0,3,3]],
-    J: [[0,4,0],[0,4,0],[4,4,0]],
-    I: [[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]],
+    L: [[0,0,3],[3,3,3],[0,0,0]],
+    J: [[4,0,0],[4,4,4],[0,0,0]],
+    I: [[0,0,0,0],[5,5,5,5],[0,0,0,0],[0,0,0,0]],
     S: [[0,6,6],[6,6,0],[0,0,0]],
     Z: [[7,7,0],[0,7,7],[0,0,0]],
   };
@@ -593,6 +596,26 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   function collidePlayer(): boolean {
     return collide(player.current.pos, player.current.matrix!);
+  }
+
+  // Block Out 전용: piece의 buffer zone 안 셀만 충돌 검사.
+  // visible 영역 셀이 막혀도 spawn 허용 → 사용자가 옆으로 빼낼 기회.
+  // 비표준 인세인 블록(X, THUMBS_UP, MIDDLE)은 spawn 시 visible 영역까지 점유하지만
+  // buffer 안 셀이 비어있다면 spawn 허용 (인세인 컨셉).
+  function collideInBuffer(pos: { x: number; y: number }, matrix: Matrix): boolean {
+    for (let y = 0; y < matrix.length; y++) {
+      for (let x = 0; x < matrix[y].length; x++) {
+        if (matrix[y][x] === 0) continue;
+        const ay = y + pos.y;
+        const ax = x + pos.x;
+        if (ay >= BUFFER_H) continue; // buffer 밖은 제외
+        if (ax < 0 || ax >= boardW.current) return true;
+        if (ay < 0) continue;
+        if ((arena.current[ay]?.[ax] ?? 0) !== 0) return true;
+        if (hasSettledAt(ax, ay)) return true;
+      }
+    }
+    return false;
   }
 
   function isOnGround(): boolean {
@@ -1364,7 +1387,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
     // 스폰 위치에 정착한 파티클(모래·파편) 제거
     // — 이벤트 파편이 스폰존에 쌓여 의문의 게임오버가 나는 현상 방지
-    // — 아레나 셀이 막힌 경우(진짜 게임오버)는 collide에서 별도 판정
+    // — 아레나 셀이 막힌 경우(진짜 게임오버)는 아래 collideInBuffer에서 판정
     const px = player.current.pos.x;
     const py = player.current.pos.y;
     particles.current = particles.current.filter(p => {
@@ -1374,6 +1397,11 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       if (ry < 0 || ry >= pm.length || rx < 0 || rx >= pm[0].length) return true;
       return pm[ry][rx] === 0; // 피스 셀이 있는 위치의 파티클만 제거
     });
+
+    // Block Out: buffer zone 안 spawn 셀이 막혀있으면 즉시 게임오버 (visible 영역 셀은 제외)
+    if (collideInBuffer(player.current.pos, pm)) {
+      doGameOver();
+    }
   }
 
   function clearParticlesOnPiece() {
@@ -1424,6 +1452,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     phase3Bgm.stop();
     activeBgmRef.current = 'default';
     setGameStatus('over');
+    // Block Out 직후 spawn된 piece 잔존 방지 — null 처리해 draw에서 그려지지 않게
+    player.current.matrix = null;
+    isLanding.current = false;
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
   }
@@ -1544,16 +1575,60 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       ctx.fillRect(0, 0, bw, bh);
     }
 
-    // T-스핀 오버레이
+    // ===== Buffer zone 반투명 박스 (vanish zone 시각 표시) =====
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.fillRect(0, 0, bw, BUFFER_H);
+    ctx.restore();
+
+    // ===== Block Out 위험 셀 X 마크 =====
+    // nextPiece의 spawn 셀 표시. 인세인 비표준 블록은 visible 영역까지 X 확장 (5b 정책).
+    // 위험 임계선: 보드 전체 최상단 블록이 buffer + 위 3줄 안일 때만 표시.
+    const DANGER_LIMIT_Y = BUFFER_H + 3;
+    let globalTopY = bh;
+    findTopX: for (let y = 0; y < DANGER_LIMIT_Y && y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        if ((arena.current[y]?.[x] ?? 0) !== 0) { globalTopY = y; break findTopX; }
+      }
+    }
+    const nextMx = nextPiece.current;
+    if (nextMx && globalTopY < DANGER_LIMIT_Y) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 80, 80, 0.95)';
+      ctx.lineWidth = 0.13;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([]);
+      const npx = (bw / 2 | 0) - (nextMx[0].length / 2 | 0);
+      for (let ny = 0; ny < nextMx.length; ny++) {
+        for (let nx = 0; nx < nextMx[ny].length; nx++) {
+          if (nextMx[ny][nx] === 0) continue;
+          const dx = nx + npx;
+          const dy = ny;
+          if (dx < 0 || dx >= bw || dy < 0 || dy >= bh) continue;
+          if ((arena.current[dy]?.[dx] ?? 0) !== 0) continue; // 빈 칸에만
+          if (hasSettledAt(dx, dy)) continue;
+          ctx.beginPath();
+          ctx.moveTo(dx + 0.25, dy + 0.25);
+          ctx.lineTo(dx + 0.75, dy + 0.75);
+          ctx.moveTo(dx + 0.75, dy + 0.25);
+          ctx.lineTo(dx + 0.25, dy + 0.75);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    // T-스핀 오버레이 — visible 영역 중앙에 표시 (buffer 보정)
     if (tspinAlpha.current > 0) {
       ctx.save();
       ctx.globalAlpha = Math.min(1, tspinAlpha.current);
       ctx.font = 'bold 1.1px sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 0.12;
-      ctx.strokeText(tspinText.current, bw / 2, bh / 2 - 4);
+      const tspinY = BUFFER_H + (bh - BUFFER_H) / 2 - 4;
+      ctx.strokeText(tspinText.current, bw / 2, tspinY);
       ctx.fillStyle = '#ff6ec7';
-      ctx.fillText(tspinText.current, bw / 2, bh / 2 - 4);
+      ctx.fillText(tspinText.current, bw / 2, tspinY);
       ctx.restore();
       tspinAlpha.current -= 0.025;
     }
@@ -1607,11 +1682,11 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       if (bctx) {
         bctx.setTransform(CELL, 0, 0, CELL, 0, 0); // 1단위 = CELL px
         bctx.fillStyle = themePhaseRef.current === 'normal' ? '#111827' : '#0a0a0a';
-        bctx.fillRect(0, 0, 4, INIT_BOARD_H);
+        bctx.fillRect(0, 0, 4, INIT_VISIBLE_H);
         if (bagActiveRef.current) {
           const remaining = bagQueueRef.current;
-          const maxShow = 5; // 최대 5개 — INIT_BOARD_H/5=4.2셀, MIDDLE(4행) 수용 가능
-          const slotH = INIT_BOARD_H / maxShow;
+          const maxShow = 5; // 최대 5개 — INIT_VISIBLE_H/5=4.2셀, MIDDLE(4행) 수용 가능
+          const slotH = INIT_VISIBLE_H / maxShow;
           for (let i = 0; i < Math.min(remaining.length, maxShow); i++) {
             const m = remaining[i];
             const ox = (4 - m[0].length) / 2;
@@ -1814,13 +1889,21 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       eventCooldown.current = getEventInterval(gameLevelRef.current);
     }
 
-    // RANDOM_LOCK 대기 — 피스가 중앙 상단 구간을 벗어나는 순간 발동
+    // RANDOM_LOCK 대기 — 피스가 중앙 상단 구간을 벗어나는 순간 발동.
+    // 단, buffer zone 안에선 lock하지 않음 (사용자 결정 2.b: visible로 끌어내릴 때까지 대기).
     if (randomLockPending.current && player.current.matrix) {
       const pm = player.current.matrix;
       const cx = player.current.pos.x + pm[0].length / 2;
       const inHorizCenter = cx >= Math.floor(boardW.current / 3) && cx <= Math.floor(boardW.current * 2 / 3);
       const inTopQuarter  = player.current.pos.y < Math.floor(boardH.current / 4);
-      if (!inHorizCenter || !inTopQuarter) {
+      // piece의 모든 채워진 셀이 visible 영역(y >= BUFFER_H)에 들어왔는지 확인
+      let allInVisible = true;
+      outerVis: for (let y = 0; y < pm.length; y++) {
+        for (let x = 0; x < pm[y].length; x++) {
+          if (pm[y][x] !== 0 && (y + player.current.pos.y) < BUFFER_H) { allInVisible = false; break outerVis; }
+        }
+      }
+      if ((!inHorizCenter || !inTopQuarter) && allInVisible) {
         randomLockPending.current = false;
         triggerShake(7, 300);
         lockPieceImmediate();
@@ -2566,7 +2649,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
                 <canvas
                   ref={mockBagRef}
                   width={4 * CELL}
-                  height={INIT_BOARD_H * CELL}
+                  height={INIT_VISIBLE_H * CELL}
                   className={styles.bagPanelCanvas}
                 />
               </div>
