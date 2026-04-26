@@ -1543,9 +1543,11 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     phase3Bgm.stop();
     activeBgmRef.current = 'default';
     setGameStatus('over');
-    // Block Out 직후 spawn된 piece 잔존 방지 — null 처리해 draw에서 그려지지 않게
+    // Block Out 직후 spawn된 piece 잔존 방지 — A/B 모두 null 처리
     player.current.matrix = null;
+    playerB.current.matrix = null;
     isLanding.current = false;
+    isLandingB.current = false;
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
   }
