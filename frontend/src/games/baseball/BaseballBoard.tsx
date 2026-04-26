@@ -410,17 +410,18 @@ export default function BaseballBoard({ excel = false }: Props) {
                 )}
                 {(rankings.weekly as Array<unknown>).length > displayCount && (
                   <tr>
-                    <td colSpan={5} style={{ padding: 0 }}>
+                    <td colSpan={5} style={{ padding: '10px', textAlign: 'center', background: '#fafafa' }}>
                       <button
                         type="button"
                         onClick={() => setDisplayCount(c => c + 10)}
                         style={{
-                          width: '100%', padding: '8px', cursor: 'pointer',
-                          background: 'transparent', border: 'none', borderTop: '1px solid #ddd',
-                          color: '#2980b9', fontSize: '13px', fontWeight: 600,
+                          padding: '6px 24px', cursor: 'pointer',
+                          background: '#fff', border: '1px solid #1e8449',
+                          borderRadius: '4px', color: '#1e8449',
+                          fontSize: '13px', fontWeight: 600,
                         }}
                       >
-                        더보기 ({Math.min((rankings.weekly as Array<unknown>).length - displayCount, 10)}개)
+                        더보기
                       </button>
                     </td>
                   </tr>
@@ -566,12 +567,21 @@ export default function BaseballBoard({ excel = false }: Props) {
                     className={styles.xrankCell}
                     style={{
                       gridColumn: `1 / span ${RANK_TOTAL}`,
-                      cursor: 'pointer', color: '#1e8449', fontWeight: 600,
-                      background: '#f5fbf7',
+                      background: '#fafafa',
                     }}
-                    onClick={() => setDisplayCount(c => c + 10)}
                   >
-                    더보기 ({Math.min(weeklyLen - displayCount, 10)}개) ▼
+                    <button
+                      type="button"
+                      onClick={() => setDisplayCount(c => c + 10)}
+                      style={{
+                        padding: '4px 18px', cursor: 'pointer',
+                        background: '#fff', border: '1px solid #1e8449',
+                        borderRadius: '4px', color: '#1e8449',
+                        fontSize: '12px', fontWeight: 600,
+                      }}
+                    >
+                      더보기
+                    </button>
                   </div>
                 )}
 

@@ -2803,17 +2803,18 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
               }
               {rankings.length > displayCount && (
                 <tr>
-                  <td colSpan={5} style={{ padding: 0 }}>
+                  <td colSpan={5} style={{ padding: '10px', textAlign: 'center', background: '#1a0a0a' }}>
                     <button
                       type="button"
                       onClick={() => setDisplayCount(c => c + 10)}
                       style={{
-                        width: '100%', padding: '8px', cursor: 'pointer',
-                        background: 'transparent', border: 'none', borderTop: '1px solid #555',
-                        color: '#ff6b6b', fontSize: '13px', fontWeight: 600,
+                        padding: '6px 24px', cursor: 'pointer',
+                        background: '#1a1a1a', border: '1px solid #ff6b6b',
+                        borderRadius: '4px', color: '#ff6b6b',
+                        fontSize: '13px', fontWeight: 600,
                       }}
                     >
-                      더보기 ({Math.min(rankings.length - displayCount, 10)}개)
+                      더보기
                     </button>
                   </td>
                 </tr>
