@@ -116,35 +116,6 @@ function createPiece(type: string): Matrix {
   return P[type].map(row => [...row]);
 }
 
-// ===== Block Out 위험 셀 (spawn 셀) =====
-// 7가지 블록이 spawn될 때 buffer zone 안(rows 0~1)에 점유하는 셀의 합집합.
-// 이 셀 중 하나라도 막히면 해당 블록 spawn 시 buffer 충돌 → Block Out 게임오버.
-// visible 영역의 spawn 셀(I의 rows 2~3, L/J의 row 2)은 게임오버 트리거에서 제외.
-const SPAWN_DANGER_CELLS: Array<[number, number]> = (() => {
-  const set = new Set<string>();
-  for (const type of PIECES) {
-    const m: Record<string, number[][]> = {
-      T: [[0,1,0],[1,1,1],[0,0,0]],
-      O: [[2,2],[2,2]],
-      L: [[0,3,0],[0,3,0],[0,3,3]],
-      J: [[0,4,0],[0,4,0],[4,4,0]],
-      I: [[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]],
-      S: [[0,6,6],[6,6,0],[0,0,0]],
-      Z: [[7,7,0],[0,7,7],[0,0,0]],
-    };
-    const piece = m[type];
-    const px = (BOARD_W / 2 | 0) - (piece[0].length / 2 | 0);
-    for (let y = 0; y < piece.length; y++) {
-      for (let x = 0; x < piece[y].length; x++) {
-        if (piece[y][x] !== 0 && y < BUFFER_H) {
-          set.add(`${x + px},${y}`);
-        }
-      }
-    }
-  }
-  return Array.from(set).map(s => s.split(',').map(Number) as [number, number]);
-})();
-
 function shuffleBag(): string[] {
   const bag = [...PIECES];
   for (let i = bag.length - 1; i > 0; i--) {
@@ -422,29 +393,30 @@ export default function BlockfallBoard({ excel = false }: Props) {
     ctx.restore();
 
     // ===== Block Out 위험 셀 X 마크 (TETR.IO 스타일) =====
-    // 보드 전체에서 가장 높은 블록이 위험 임계선 안에 있을 때만 X 표시
-    // (어느 컬럼이든 스택이 buffer + 위 5줄 안으로 들어오면 전반적 위험으로 간주)
-    const DANGER_LIMIT_Y = BUFFER_H + 5; // y < 7 (buffer 2줄 + 위 5줄)
-    let globalTopY = BOARD_H;
-    findTop: for (let y = 0; y < DANGER_LIMIT_Y && y < BOARD_H; y++) {
-      for (let x = 0; x < BOARD_W; x++) {
-        if (arena.current[y][x] !== 0) { globalTopY = y; break findTop; }
-      }
-    }
-    if (globalTopY < DANGER_LIMIT_Y) {
+    // 다음 블록(nextPiece)의 buffer zone 안 spawn 셀만 X로 표시.
+    // 블록 종류에 따라 X 위치가 달라지므로 사용자가 "다음에 어디가 막히면 죽는지" 정확히 인지 가능.
+    const next = nextPiece.current;
+    if (next) {
       ctx.save();
       ctx.strokeStyle = excel ? 'rgba(220, 0, 0, 0.85)' : 'rgba(255, 80, 80, 0.95)';
       ctx.lineWidth = 0.13;
       ctx.lineCap = 'round';
       ctx.setLineDash([]);
-      for (const [dx, dy] of SPAWN_DANGER_CELLS) {
-        if (!arena.current[dy] || arena.current[dy][dx] !== 0) continue;
-        ctx.beginPath();
-        ctx.moveTo(dx + 0.25, dy + 0.25);
-        ctx.lineTo(dx + 0.75, dy + 0.75);
-        ctx.moveTo(dx + 0.75, dy + 0.25);
-        ctx.lineTo(dx + 0.25, dy + 0.75);
-        ctx.stroke();
+      const npx = (BOARD_W / 2 | 0) - (next[0].length / 2 | 0);
+      for (let ny = 0; ny < next.length; ny++) {
+        if (ny >= BUFFER_H) break; // buffer zone 밖은 표시 대상 아님
+        for (let nx = 0; nx < next[ny].length; nx++) {
+          if (next[ny][nx] === 0) continue;
+          const dx = nx + npx;
+          const dy = ny;
+          if (!arena.current[dy] || arena.current[dy][dx] !== 0) continue; // 빈 칸에만
+          ctx.beginPath();
+          ctx.moveTo(dx + 0.25, dy + 0.25);
+          ctx.lineTo(dx + 0.75, dy + 0.75);
+          ctx.moveTo(dx + 0.75, dy + 0.25);
+          ctx.lineTo(dx + 0.25, dy + 0.75);
+          ctx.stroke();
+        }
       }
       ctx.restore();
     }
