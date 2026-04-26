@@ -116,6 +116,35 @@ function createPiece(type: string): Matrix {
   return P[type].map(row => [...row]);
 }
 
+// ===== Block Out 위험 셀 (spawn 셀) =====
+// 7가지 블록이 spawn될 때 점유하는 buffer zone 안의 모든 셀.
+// 이 칸이 막히면 해당 블록 spawn 시 충돌 → Block Out 게임오버.
+// TETR.IO 스타일 X 마크로 시각화.
+const SPAWN_DANGER_CELLS: Array<[number, number]> = (() => {
+  const set = new Set<string>();
+  for (const type of PIECES) {
+    const m: Record<string, number[][]> = {
+      T: [[0,1,0],[1,1,1],[0,0,0]],
+      O: [[2,2],[2,2]],
+      L: [[0,3,0],[0,3,0],[0,3,3]],
+      J: [[0,4,0],[0,4,0],[4,4,0]],
+      I: [[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]],
+      S: [[0,6,6],[6,6,0],[0,0,0]],
+      Z: [[7,7,0],[0,7,7],[0,0,0]],
+    };
+    const piece = m[type];
+    const px = (BOARD_W / 2 | 0) - (piece[0].length / 2 | 0);
+    for (let y = 0; y < piece.length; y++) {
+      for (let x = 0; x < piece[y].length; x++) {
+        if (piece[y][x] !== 0 && y < BUFFER_H) {
+          set.add(`${x + px},${y}`);
+        }
+      }
+    }
+  }
+  return Array.from(set).map(s => s.split(',').map(Number) as [number, number]);
+})();
+
 function shuffleBag(): string[] {
   const bag = [...PIECES];
   for (let i = bag.length - 1; i > 0; i--) {
@@ -376,6 +405,25 @@ export default function BlockfallBoard({ excel = false }: Props) {
     ctx.stroke();
     ctx.restore();
 
+    // ===== Block Out 위험 셀 X 마크 (TETR.IO 스타일) =====
+    // 비어있는 spawn 셀에만 표시. 막히면 그 칸을 점유하는 블록이 spawn 시 게임오버.
+    ctx.save();
+    ctx.strokeStyle = excel ? 'rgba(220, 0, 0, 0.85)' : 'rgba(255, 80, 80, 0.95)';
+    ctx.lineWidth = 0.13;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([]);
+    for (const [dx, dy] of SPAWN_DANGER_CELLS) {
+      if (arena.current[dy] && arena.current[dy][dx] === 0) {
+        ctx.beginPath();
+        ctx.moveTo(dx + 0.25, dy + 0.25);
+        ctx.lineTo(dx + 0.75, dy + 0.75);
+        ctx.moveTo(dx + 0.75, dy + 0.25);
+        ctx.lineTo(dx + 0.25, dy + 0.75);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
     // T-스핀 오버레이
     if (tspinAlpha.current > 0) {
       const alpha = Math.min(1, tspinAlpha.current);
@@ -577,33 +625,15 @@ export default function BlockfallBoard({ excel = false }: Props) {
     }
   }
 
-  // ===== Lock Out 판정 =====
-  // 블록이 visible 영역(y >= BUFFER_H)에 단 한 칸도 못 들어가고 buffer zone에서만 lock되면 게임오버
-  function isLockOut(): boolean {
-    const m = player.current.matrix;
-    if (!m) return false;
-    const py = player.current.pos.y;
-    for (let y = 0; y < m.length; y++) {
-      for (let x = 0; x < m[y].length; x++) {
-        if (m[y][x] !== 0 && (y + py) >= BUFFER_H) return false;
-      }
-    }
-    return true;
-  }
-
   // ===== 블록 고정 =====
+  // TETR.IO 스타일: Lock Out 룰 미사용. Block Out(다음 spawn 충돌)만으로 게임오버 판정.
   function lockPiece() {
     if (collide(arena.current, player.current)) {
       doGameOver();
       return;
     }
     const tspin = detectTspin();
-    const lockedOut = isLockOut();
     mergeInto(arena.current, player.current);
-    if (lockedOut) {
-      doGameOver();
-      return;
-    }
     playerReset();
     arenaSweep(tspin);
     isLanding.current = false;
@@ -707,12 +737,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
     player.current.pos.y = gy;
     const tspin = detectTspin();
     lastActionRot.current = false;
-    const lockedOut = isLockOut();
     mergeInto(arena.current, player.current);
-    if (lockedOut) {
-      doGameOver();
-      return;
-    }
     playerReset();
     arenaSweep(tspin);
     dropCounter.current = 0;
