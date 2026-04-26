@@ -694,7 +694,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   }
 
   function mergeInto(piece: Player = player.current) {
-    piece.matrix!.forEach((row, y) => {
+    if (!piece.matrix) return;
+    piece.matrix.forEach((row, y) => {
       row.forEach((val, x) => {
         if (val !== 0) arena.current[y + piece.pos.y][x + piece.pos.x] = val;
       });
@@ -703,9 +704,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   // SAND_BURST / EXPLODE — 고정 시 특수 처리. piece 인자로 어느 piece의 lock인지 지정.
   function mergePieceIntoBoard(piece: Player = player.current) {
+    if (!piece.matrix) return;
     if (evSandBurst.current) {
       triggerShake(10, 400);  // 고정 시 진동
-      piece.matrix!.forEach((row, y) => {
+      piece.matrix.forEach((row, y) => {
         row.forEach((val, x) => {
           if (val !== 0) {
             particles.current.push({
@@ -1234,6 +1236,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
               Math.max(0, boardH.current - ph)
             );
           }
+          if (playerB.current.matrix) {
+            const ph = playerB.current.matrix.length;
+            playerB.current.pos.y = Math.min(
+              playerB.current.pos.y,
+              Math.max(0, boardH.current - ph)
+            );
+          }
         }
 
         setTimeout(() => triggerShake(18, 800), 200);
@@ -1298,6 +1307,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
             const pw = player.current.matrix[0].length;
             player.current.pos.x = Math.min(
               player.current.pos.x,
+              Math.max(0, boardW.current - pw)
+            );
+          }
+          if (playerB.current.matrix) {
+            const pw = playerB.current.matrix[0].length;
+            playerB.current.pos.x = Math.min(
+              playerB.current.pos.x,
               Math.max(0, boardW.current - pw)
             );
           }
@@ -2006,8 +2022,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       }
     }
 
-    // 낙하 피스 로직
-    if (isLanding.current) {
+    // 낙하 피스 로직 — 각 piece 독립 lock 처리
+    if (player.current.matrix && isLanding.current) {
       lockCounter.current += dt;
       if (lockCounter.current >= LOCK_DELAY) {
         lockPlayerPiece(player.current);
@@ -2186,14 +2202,21 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     if (!player.current.matrix) return;
 
     // Atomic: A·B 둘 다 성공해야 commit. B가 실패하면 A도 원복.
-    // A의 회전을 먼저 시도 (B는 obstacle)
+    // A의 사전 백업 (kick 후 X도 원복하기 위해)
+    const aBackup = {
+      x: player.current.pos.x,
+      y: player.current.pos.y,
+      matrix: player.current.matrix.map(r => [...r]),
+    };
     const aOk = tryRotateOnePiece(player.current, dir, playerB.current.matrix ? playerB.current : null);
     if (!aOk) return;
     if (playerB.current.matrix) {
       const bOk = tryRotateOnePiece(playerB.current, dir, player.current);
       if (!bOk) {
-        // B 실패 → A 회전 원복
-        tryRotateOnePiece(player.current, -dir, playerB.current.matrix ? playerB.current : null);
+        // B 실패 → A 백업으로 복구 (un-rotate가 kick X를 못 되돌리므로 직접 복구)
+        player.current.pos.x = aBackup.x;
+        player.current.pos.y = aBackup.y;
+        player.current.matrix = aBackup.matrix;
         return;
       }
     }
