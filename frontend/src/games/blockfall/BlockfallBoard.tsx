@@ -44,7 +44,7 @@ function bfColLabel(i: number): string {
 }
 
 // ===== 상수 =====
-const BOARD_W = 11, BOARD_H = 21, CELL = 30;
+const BOARD_W = 11, VISIBLE_H = 21, BUFFER_H = 2, BOARD_H = VISIBLE_H + BUFFER_H, CELL = 30;
 
 const COLORS_NORMAL = [
   null,
@@ -82,7 +82,7 @@ const TSPIN_SCORES = {
   mini: [100, 200, 400],
 };
 // 싹슬이(Perfect Clear) 보너스 — 줄 제거 후 보드가 완전히 빈 상태일 때 추가 지급
-// 표준 테트리스 가이드라인 기반: [미사용, 1줄, 2줄, 3줄, 4줄]
+// 인덱스: [미사용, 1줄, 2줄, 3줄, 4줄]
 const PERFECT_CLEAR_BONUS = [0, 800, 1200, 1800, 2000];
 
 const T_FRONT_CORNERS = [
@@ -362,6 +362,20 @@ export default function BlockfallBoard({ excel = false }: Props) {
       });
     }
 
+    // ===== Buffer zone 시각 표시 =====
+    // 위 BUFFER_H 줄은 vanish zone — 반투명 박스로 흐리게 + 빨간 점선 경계로 위험 표시
+    ctx.save();
+    ctx.fillStyle = excel ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.22)';
+    ctx.fillRect(0, 0, BOARD_W, BUFFER_H);
+    ctx.strokeStyle = excel ? 'rgba(200, 0, 0, 0.5)' : 'rgba(255, 100, 100, 0.7)';
+    ctx.lineWidth = 0.06;
+    ctx.setLineDash([0.3, 0.2]);
+    ctx.beginPath();
+    ctx.moveTo(0, BUFFER_H);
+    ctx.lineTo(BOARD_W, BUFFER_H);
+    ctx.stroke();
+    ctx.restore();
+
     // T-스핀 오버레이
     if (tspinAlpha.current > 0) {
       const alpha = Math.min(1, tspinAlpha.current);
@@ -372,9 +386,11 @@ export default function BlockfallBoard({ excel = false }: Props) {
       ctx.textBaseline = 'middle';
       ctx.strokeStyle = 'rgba(0,0,0,0.8)';
       ctx.lineWidth = 0.12;
-      ctx.strokeText(tspinText.current, BOARD_W / 2, BOARD_H / 2 - 4);
+      // 캔버스 전체(BOARD_H) 중 buffer zone을 제외한 visible 영역의 중앙
+      const tspinY = BUFFER_H + VISIBLE_H / 2 - 4;
+      ctx.strokeText(tspinText.current, BOARD_W / 2, tspinY);
       ctx.fillStyle = '#ff6ec7';
-      ctx.fillText(tspinText.current, BOARD_W / 2, BOARD_H / 2 - 4);
+      ctx.fillText(tspinText.current, BOARD_W / 2, tspinY);
       ctx.restore();
       tspinAlpha.current -= 0.025;
     }
@@ -430,9 +446,9 @@ export default function BlockfallBoard({ excel = false }: Props) {
       const bctx = bp.getContext('2d');
       if (bctx) {
         bctx.fillStyle = '#111827';
-        bctx.fillRect(0, 0, 4, BOARD_H);
+        bctx.fillRect(0, 0, 4, VISIBLE_H);
         const remaining = bagRef.current.slice(bagIdxRef.current);
-        const slotH = BOARD_H / 5;
+        const slotH = VISIBLE_H / 5;
         remaining.forEach((type, i) => {
           const m = createPiece(type);
           const ox = Math.floor((4 - m[0].length) / 2);
@@ -555,6 +571,24 @@ export default function BlockfallBoard({ excel = false }: Props) {
     isPieceT.current = player.current.matrix.some(row => row.includes(1));
     player.current.pos.y = 0;
     player.current.pos.x = (BOARD_W / 2 | 0) - (player.current.matrix[0].length / 2 | 0);
+    // Block Out: 새 블록이 스폰되는 칸에 이미 블록이 있으면 즉시 게임오버
+    if (collide(arena.current, player.current)) {
+      doGameOver();
+    }
+  }
+
+  // ===== Lock Out 판정 =====
+  // 블록이 visible 영역(y >= BUFFER_H)에 단 한 칸도 못 들어가고 buffer zone에서만 lock되면 게임오버
+  function isLockOut(): boolean {
+    const m = player.current.matrix;
+    if (!m) return false;
+    const py = player.current.pos.y;
+    for (let y = 0; y < m.length; y++) {
+      for (let x = 0; x < m[y].length; x++) {
+        if (m[y][x] !== 0 && (y + py) >= BUFFER_H) return false;
+      }
+    }
+    return true;
   }
 
   // ===== 블록 고정 =====
@@ -564,7 +598,12 @@ export default function BlockfallBoard({ excel = false }: Props) {
       return;
     }
     const tspin = detectTspin();
+    const lockedOut = isLockOut();
     mergeInto(arena.current, player.current);
+    if (lockedOut) {
+      doGameOver();
+      return;
+    }
     playerReset();
     arenaSweep(tspin);
     isLanding.current = false;
@@ -668,7 +707,12 @@ export default function BlockfallBoard({ excel = false }: Props) {
     player.current.pos.y = gy;
     const tspin = detectTspin();
     lastActionRot.current = false;
+    const lockedOut = isLockOut();
     mergeInto(arena.current, player.current);
+    if (lockedOut) {
+      doGameOver();
+      return;
+    }
     playerReset();
     arenaSweep(tspin);
     dropCounter.current = 0;
@@ -1133,7 +1177,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
                   <canvas
                     ref={bagPanelRef}
                     width={4 * CELL}
-                    height={BOARD_H * CELL}
+                    height={VISIBLE_H * CELL}
                     className={styles.bagPanelCanvas}
                   />
                 </div>

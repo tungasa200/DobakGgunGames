@@ -11,7 +11,7 @@ public class BlockfallValidationService {
 
     // 레벨 1당 10줄 클리어 시 레벨업
     private static final int LINES_PER_LEVEL = 10;
-    // 4줄 동시 제거(테트리스) 기준 최대 점수: 800 * gameLevel
+    // 4줄 동시 제거 기준 최대 점수: 800 * gameLevel
     // T-스핀까지 감안하면 1600 * gameLevel, 콤보 보너스 포함 여유값으로 ×3 적용
     private static final int MAX_SCORE_MULTIPLIER = 3;
     // 소프트·하드 드롭 보너스 최대치: BOARD_H(20) × BOARD_W(10) × 2(하드드롭) = 400
