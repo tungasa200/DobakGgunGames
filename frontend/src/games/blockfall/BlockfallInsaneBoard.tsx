@@ -57,7 +57,8 @@ type Particle = SandParticle | ShatterParticle;
 type EventId =
   | 'FLIP_H' | 'FLIP_V' | 'DARK_SPOTLIGHT' | 'INVISIBLE_PIECE' | 'COLOR_GRAY'
   | 'SAND_BURST' | 'LIQUID_FLOOD' | 'EXPLODE' | 'FLOOR_DROP' | 'SIDE_EXPAND'
-  | 'CONTROL_FREEZE' | 'PIECE_SHATTER' | 'RANDOM_LOCK' | 'SPIN_BLOCK';
+  | 'CONTROL_FREEZE' | 'PIECE_SHATTER' | 'RANDOM_LOCK' | 'SPIN_BLOCK'
+  | 'DOUBLE_TROUBLE';
 
 interface EventDef {
   id: EventId;
@@ -158,10 +159,28 @@ const EVENT_POOL: EventDef[] = [
   { id: 'PIECE_SHATTER',   name: '블록 분해',   emoji: '🧨',  duration: 0,     weight: 1,   type: 'disruptive', sub: '즉발 — 현재 피스 분해' },
   { id: 'RANDOM_LOCK',     name: '강제 고정',   emoji: '🔒',  duration: 0,     weight: 1,   type: 'disruptive', sub: '즉발 — 현재 위치 고정' },
   { id: 'SPIN_BLOCK',      name: '자동 회전',   emoji: '🎡',  duration: -1,    weight: 1,   type: 'disruptive', sub: '피스 낙하 중 자동 회전' },
+  { id: 'DOUBLE_TROUBLE',  name: '쌍둥이 피스', emoji: '👯',  duration: 0,     weight: 0.8, type: 'disruptive', sub: '즉발 — 다음 피스가 쌍둥이로 낙하' },
 ];
 
 // HIGH flash 등급 이벤트
 const HIGH_FLASH_EVENTS = new Set<EventId>(['EXPLODE', 'FLOOR_DROP', 'SIDE_EXPAND', 'CONTROL_FREEZE']);
+
+// DOUBLE_TROUBLE — single piece matrix를 좌우 쌍둥이로 합성. gap=1 (1셀 간격).
+// 합성 결과가 보드 폭을 초과하면 null 반환 → 호출측에서 twin 적용 스킵.
+function buildTwinMatrix(single: Matrix, boardW: number, gap = 1): Matrix | null {
+  const sw = single[0].length;
+  const sh = single.length;
+  const totalW = sw * 2 + gap;
+  if (totalW > boardW) return null;
+  const twin: Matrix = Array.from({ length: sh }, () => new Array(totalW).fill(0));
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      twin[y][x] = single[y][x];
+      twin[y][x + sw + gap] = single[y][x];
+    }
+  }
+  return twin;
+}
 
 // ===== 헬퍼 =====
 function createMatrix(w: number, h: number): Matrix {
@@ -365,6 +384,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const evSpinBlock     = useRef(false);
   const randomLockPending = useRef(false); // RANDOM_LOCK 대기 중 (조건 충족 시 발동)
   const evSpinTimer     = useRef(0);
+  const evDoublePending = useRef(false);   // DOUBLE_TROUBLE 대기 — 다음 spawn에서 piece가 twin이 됨
+  const evTwinSingle    = useRef<Matrix | null>(null); // 현재 piece가 twin이면 single 원본 저장 (회전용)
 
   // 모바일 판정
   const isMobileRef = useRef(navigator.maxTouchPoints > 0);
@@ -1077,6 +1098,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         break;
       case 'SPIN_BLOCK': evSpinBlock.current = true; evSpinTimer.current = 0; break;
 
+      case 'DOUBLE_TROUBLE': {
+        evDoublePending.current = true;
+        triggerShake(10, 350);
+        setBoardFilter('hue-rotate(60deg) saturate(1.6) brightness(1.15)', 450);
+        break;
+      }
+
       case 'SAND_BURST':
         evSandBurst.current = true;
         break;
@@ -1380,6 +1408,19 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const next = drawNext();
     nextPiece.current = next.matrix;
     nextPieceIdx.current = next.index;
+
+    // DOUBLE_TROUBLE — pending 상태면 현재 piece를 좌우 쌍둥이로 합성
+    // 직전 piece의 twin 상태는 항상 리셋 (lockPiece 직후 호출되므로)
+    evTwinSingle.current = null;
+    if (evDoublePending.current) {
+      const twinMx = buildTwinMatrix(player.current.matrix!, boardW.current, 1);
+      if (twinMx) {
+        evTwinSingle.current = player.current.matrix!.map(r => [...r]);
+        player.current.matrix = twinMx;
+      }
+      evDoublePending.current = false;
+    }
+
     const pm = player.current.matrix!;
     isPieceT.current = pm.some(row => row.includes(1));
     player.current.pos.y = 0;
@@ -2000,6 +2041,48 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   const playerRotate = useCallback((dir: number) => {
     if (evControlFreeze.current) return;
+
+    // Twin 모드: original을 회전 → twin 재조립 → 중심 보정 → kick
+    if (evTwinSingle.current) {
+      const original = evTwinSingle.current;
+      const posX = player.current.pos.x;
+      const oldTwin = player.current.matrix!;
+      const oldOriginal = original.map(r => [...r]);
+      rotateMatrix(original, dir);
+      const newTwin = buildTwinMatrix(original, boardW.current, 1);
+      if (!newTwin) {
+        // 회전 후 보드 폭 초과 → 회전 취소
+        original.length = 0;
+        oldOriginal.forEach(r => original.push(r));
+        return;
+      }
+      const oldW = oldTwin[0].length;
+      const newW = newTwin[0].length;
+      player.current.matrix = newTwin;
+      player.current.pos.x = posX + Math.floor((oldW - newW) / 2);
+      // 좌우 kick
+      let offset = 1;
+      while (collide(player.current.pos, player.current.matrix!)) {
+        player.current.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (Math.abs(offset) > player.current.matrix![0].length) {
+          // kick 실패 → 전체 원복
+          original.length = 0;
+          oldOriginal.forEach(r => original.push(r));
+          player.current.matrix = oldTwin;
+          player.current.pos.x = posX;
+          return;
+        }
+      }
+      lastActionRot.current = true;
+      if (isPieceT.current) tPieceRot.current = (tPieceRot.current + (dir > 0 ? 1 : 3)) % 4;
+      if (isLanding.current) {
+        if (lockResets.current < MAX_LOCK_RESETS) { lockCounter.current = 0; lockResets.current++; }
+        if (!isOnGround()) isLanding.current = false;
+      }
+      return;
+    }
+
     const posX = player.current.pos.x;
     const posY = player.current.pos.y;
     const mtx = player.current.matrix!;
@@ -2036,6 +2119,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const playerHold = useCallback(() => {
     if (evControlFreeze.current) return;
     if (holdUsed.current) return;
+    // Twin 피스는 hold 불가 — single matrix만 hold하면 twin 상태 추적이 깨짐
+    if (evTwinSingle.current) return;
     holdUsed.current = true;
     if (!holdPiece.current) {
       holdPiece.current = player.current.matrix;
@@ -2132,6 +2217,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     cleanseLineAccum.current = 0;
     setBoardExpanded(false);
     randomLockPending.current = false;
+    evDoublePending.current = false;
+    evTwinSingle.current = null;
     eventCooldown.current = getEventInterval(1);
 
     const sp = DROP_SPEEDS[level];
