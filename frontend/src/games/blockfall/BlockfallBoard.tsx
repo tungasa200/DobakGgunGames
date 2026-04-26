@@ -117,10 +117,9 @@ function createPiece(type: string): Matrix {
 }
 
 // ===== Block Out 위험 셀 (spawn 셀) =====
-// 7가지 블록이 spawn될 때 점유하는 모든 셀의 합집합 (buffer + visible 모두).
-// I/L/J는 매트릭스가 4행/3행이라 spawn 셀이 visible 영역(rows 2~3)까지 뻗으므로
-// buffer 안만 표시하면 게임오버 사유와 X 마크 위치가 어긋남.
-// 이 칸 중 하나라도 막히면 해당 블록 spawn 시 충돌 → Block Out 게임오버.
+// 7가지 블록이 spawn될 때 buffer zone 안(rows 0~1)에 점유하는 셀의 합집합.
+// 이 셀 중 하나라도 막히면 해당 블록 spawn 시 buffer 충돌 → Block Out 게임오버.
+// visible 영역의 spawn 셀(I의 rows 2~3, L/J의 row 2)은 게임오버 트리거에서 제외.
 const SPAWN_DANGER_CELLS: Array<[number, number]> = (() => {
   const set = new Set<string>();
   for (const type of PIECES) {
@@ -137,7 +136,7 @@ const SPAWN_DANGER_CELLS: Array<[number, number]> = (() => {
     const px = (BOARD_W / 2 | 0) - (piece[0].length / 2 | 0);
     for (let y = 0; y < piece.length; y++) {
       for (let x = 0; x < piece[y].length; x++) {
-        if (piece[y][x] !== 0) {
+        if (piece[y][x] !== 0 && y < BUFFER_H) {
           set.add(`${x + px},${y}`);
         }
       }
@@ -169,6 +168,22 @@ function collide(arena: Matrix, player: Player): boolean {
     for (let x = 0; x < m[y].length; x++) {
       if (m[y][x] !== 0 && (arena[y + o.y] === undefined || arena[y + o.y][x + o.x] !== 0)) {
         return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Block Out 전용: buffer zone 안의 piece 셀만 충돌 검사.
+// visible 영역 셀이 막혀있어도 spawn은 허용 → 사용자가 옆으로 빼낼 기회 부여.
+// 만약 옆으로 못 빼고 그대로 lockPiece로 가면 일반 collide 검사가 게임오버 처리.
+function collideInBuffer(arena: Matrix, player: Player): boolean {
+  const m = player.matrix!;
+  const o = player.pos;
+  for (let y = 0; y < m.length; y++) {
+    for (let x = 0; x < m[y].length; x++) {
+      if (m[y][x] !== 0 && (y + o.y) < BUFFER_H) {
+        if (arena[y + o.y] === undefined || arena[y + o.y][x + o.x] !== 0) return true;
       }
     }
   }
@@ -629,8 +644,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
     isPieceT.current = player.current.matrix.some(row => row.includes(1));
     player.current.pos.y = 0;
     player.current.pos.x = (BOARD_W / 2 | 0) - (player.current.matrix[0].length / 2 | 0);
-    // Block Out: 새 블록이 스폰되는 칸에 이미 블록이 있으면 즉시 게임오버
-    if (collide(arena.current, player.current)) {
+    // Block Out: buffer zone 안의 spawn 셀만 검사. visible 영역 spawn 셀이 막혀도 게임오버 X.
+    if (collideInBuffer(arena.current, player.current)) {
       doGameOver();
     }
   }
