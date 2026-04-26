@@ -101,6 +101,7 @@ export default function SudokuBoard({ excel = false }: Props) {
   const [alltime, setAlltime]     = useState<RankingEntry | null>(null);
   const [rankLevel, setRankLevel] = useState<Difficulty>('easy');
   const [rankLoading, setRankLoading] = useState(false);
+  const [displayCount, setDisplayCount] = useState(10);
   const [activeTab, setActiveTab] = useState<Difficulty | 'rules'>('easy');
 
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } =
@@ -280,6 +281,7 @@ export default function SudokuBoard({ excel = false }: Props) {
   /* ── 랭킹 로드 ── */
   const loadRanking = useCallback(async (diff: Difficulty) => {
     setRankLoading(true);
+    setDisplayCount(10);
     try {
       const [data, at] = await Promise.all([
         rankingsApi.getWeekly('sudoku', diff),
@@ -516,7 +518,7 @@ export default function SudokuBoard({ excel = false }: Props) {
                     <td colSpan={4} className={styles.placeholder}>기록 없음</td>
                   </tr>
                 ) : (
-                  rankings.map((row, i) => (
+                  rankings.slice(0, displayCount).map((row, i) => (
                     <tr key={row.id}>
                       <td>{i + 1}</td>
                       <td>{row.name}</td>
@@ -524,6 +526,23 @@ export default function SudokuBoard({ excel = false }: Props) {
                       <td>{new Date(row.createdAt).toLocaleDateString('ko-KR')}</td>
                     </tr>
                   ))
+                )}
+                {rankings.length > displayCount && (
+                  <tr>
+                    <td colSpan={4} style={{ padding: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setDisplayCount(c => c + 10)}
+                        style={{
+                          width: '100%', padding: '8px', cursor: 'pointer',
+                          background: 'transparent', border: 'none', borderTop: '1px solid #ddd',
+                          color: '#2980b9', fontSize: '13px', fontWeight: 600,
+                        }}
+                      >
+                        더보기 ({Math.min(rankings.length - displayCount, 10)}개)
+                      </button>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -544,7 +563,9 @@ export default function SudokuBoard({ excel = false }: Props) {
         const extraCols  = Math.max(10, Math.ceil(sheetSize.width / CELL));
         const totalHeaderCols = RANK_TOTAL + extraCols;
 
-        const dataRowCount = rankings.length > 0 ? rankings.length : 1;
+        const visibleRankCount = Math.min(rankings.length, displayCount);
+        const hasMore = rankings.length > displayCount;
+        const dataRowCount = (rankings.length > 0 ? visibleRankCount : 1) + (hasMore ? 1 : 0);
         const contentRows  = 3 + dataRowCount + 1;
         const extraRows    = Math.max(20, Math.ceil(sheetSize.height / CELL));
         const totalRows    = contentRows + extraRows;
@@ -623,7 +644,7 @@ export default function SudokuBoard({ excel = false }: Props) {
                 ) : rankings.length === 0 ? (
                   RankCell('기록 없음', 1, RANK_TOTAL, [], { color: '#aaa' }, 'empty')
                 ) : (
-                  rankings.map((row, i) => {
+                  rankings.slice(0, displayCount).map((row, i) => {
                     const alt = i % 2 === 1 ? styles.xrcAlt : '';
                     const top = i === 0 ? styles.xrcTop : '';
                     const date = new Date(row.createdAt).toLocaleDateString('ko-KR');
@@ -642,6 +663,22 @@ export default function SudokuBoard({ excel = false }: Props) {
                       );
                     });
                   })
+                )}
+
+                {/* 더보기 행 */}
+                {hasMore && (
+                  <div
+                    key="more"
+                    className={styles.xrankCell}
+                    style={{
+                      gridColumn: `1 / span ${RANK_TOTAL}`,
+                      cursor: 'pointer', color: '#217346', fontWeight: 600,
+                      background: '#f5fbf7',
+                    }}
+                    onClick={() => setDisplayCount(c => c + 10)}
+                  >
+                    더보기 ({Math.min(rankings.length - displayCount, 10)}개) ▼
+                  </div>
                 )}
 
                 {/* 역대 1위 */}

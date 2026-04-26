@@ -13,7 +13,7 @@ public interface MinesweeperRankingRepository extends RankingRepository<Mineswee
         SELECT r FROM MinesweeperRanking r
         WHERE r.level = :level AND r.createdAt >= :weekStart
         ORDER BY r.time ASC
-        LIMIT 10
+        LIMIT 100
     """)
     List<MinesweeperRanking> findWeekly(@Param("level") String level, @Param("weekStart") LocalDateTime weekStart);
 

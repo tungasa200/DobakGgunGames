@@ -255,6 +255,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   const [rankLoading, setRankLoading] = useState(false);
   const [alltimeBest, setAlltimeBest] = useState<RankEntry | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [displayCount, setDisplayCount] = useState(10);
 
   // ===== 모달 =====
   const [modalOpen, setModalOpen]     = useState(false);
@@ -949,6 +950,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   // ===== 랭킹 로드 =====
   async function loadRanking(lv: Level) {
     setRankLoading(true);
+    setDisplayCount(10);
     try {
       const data = await rankingsApi.getWeekly('blockfall', lv);
       setRankings(data as RankEntry[]);
@@ -1336,7 +1338,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
               <tbody>
                 {rankings.length === 0 ? (
                   <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
-                ) : rankings.map((r, i) => (
+                ) : rankings.slice(0, displayCount).map((r, i) => (
                   <tr key={r.id}>
                     <td>{i + 1}</td>
                     <td>{r.name}</td>
@@ -1345,6 +1347,23 @@ export default function BlockfallBoard({ excel = false }: Props) {
                     <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
                   </tr>
                 ))}
+                {rankings.length > displayCount && (
+                  <tr>
+                    <td colSpan={5} style={{ padding: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setDisplayCount(c => c + 10)}
+                        style={{
+                          width: '100%', padding: '8px', cursor: 'pointer',
+                          background: 'transparent', border: 'none', borderTop: '1px solid #ddd',
+                          color: '#2980b9', fontSize: '13px', fontWeight: 600,
+                        }}
+                      >
+                        더보기 ({Math.min(rankings.length - displayCount, 10)}개)
+                      </button>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}
@@ -1355,7 +1374,9 @@ export default function BlockfallBoard({ excel = false }: Props) {
       {excel && activeSheet === 'ranking' && (() => {
         const extraCols = Math.max(10, Math.ceil((sheetSize.width || 600) / XL_CELL));
         const totalHeaderCols = RANK_TOTAL_BF + extraCols;
-        const dataRowCount = rankings.length > 0 ? rankings.length : 1;
+        const visibleRankCount = Math.min(rankings.length, displayCount);
+        const hasMore = rankings.length > displayCount;
+        const dataRowCount = (rankings.length > 0 ? visibleRankCount : 1) + (hasMore ? 1 : 0);
         const contentRows = 3 + dataRowCount + 1; // title + filter + header + data + alltime
         const extraRows = Math.max(20, Math.ceil((sheetSize.height || 400) / XL_CELL));
         const totalRows = contentRows + extraRows;
@@ -1430,7 +1451,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
                   ? RCell('불러오는 중...', 1, RANK_TOTAL_BF, [], { color: '#888' }, 'loading')
                   : rankings.length === 0
                     ? RCell('기록 없음', 1, RANK_TOTAL_BF, [], { color: '#aaa' }, 'empty')
-                    : rankings.map((row, i) => {
+                    : rankings.slice(0, displayCount).map((row, i) => {
                         const alt = i % 2 === 1 ? styles.xrcAlt : '';
                         const top = i === 0 ? styles.xrcTop : '';
                         const date = row.createdAt ? new Date(row.createdAt).toLocaleDateString('ko-KR') : '-';
@@ -1450,6 +1471,22 @@ export default function BlockfallBoard({ excel = false }: Props) {
                         });
                       })
                 }
+
+                {/* 더보기 행 */}
+                {hasMore && (
+                  <div
+                    key="more"
+                    className={styles.xrankCell}
+                    style={{
+                      gridColumn: `1 / span ${RANK_TOTAL_BF}`,
+                      cursor: 'pointer', color: '#217346', fontWeight: 600,
+                      background: '#f5fbf7',
+                    }}
+                    onClick={() => setDisplayCount(c => c + 10)}
+                  >
+                    더보기 ({Math.min(rankings.length - displayCount, 10)}개) ▼
+                  </div>
+                )}
 
                 {/* 역대 1위 */}
                 {alltimeBest

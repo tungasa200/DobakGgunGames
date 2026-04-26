@@ -13,7 +13,7 @@ public interface BlockfallInsaneRankingRepository extends RankingRepository<Bloc
         SELECT r FROM BlockfallInsaneRanking r
         WHERE r.level = :level AND r.createdAt >= :weekStart
         ORDER BY r.score DESC
-        LIMIT 10
+        LIMIT 100
     """)
     List<BlockfallInsaneRanking> findWeekly(@Param("level") String level, @Param("weekStart") LocalDateTime weekStart);
 

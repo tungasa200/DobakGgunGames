@@ -449,6 +449,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const [rankLoading, setRankLoading] = useState(false);
   const [alltimeBest, setAlltimeBest] = useState<RankEntry | null>(null);
   const [showRules, setShowRules]     = useState(false);
+  const [displayCount, setDisplayCount] = useState(10);
   // 제출 성공 후 반환된 id (본인 행 판별)
   const submittedIdRef = useRef<number | null>(null);
 
@@ -2455,6 +2456,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // ===== 랭킹 (A: hard 고정) =====
   async function loadRanking() {
     setRankLoading(true);
+    setDisplayCount(10);
     try { setRankings(await rankingsApi.getWeekly('blockfall-insane', 'hard') as RankEntry[]); }
     catch { setRankings([]); }
     finally { setRankLoading(false); }
@@ -2786,7 +2788,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
             <tbody>
               {rankings.length === 0
                 ? <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
-                : rankings.map((r, i) => (
+                : rankings.slice(0, displayCount).map((r, i) => (
                   <tr
                     key={r.id}
                     className={getRankRowClass(r, i)}
@@ -2799,6 +2801,23 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
                   </tr>
                 ))
               }
+              {rankings.length > displayCount && (
+                <tr>
+                  <td colSpan={5} style={{ padding: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => setDisplayCount(c => c + 10)}
+                      style={{
+                        width: '100%', padding: '8px', cursor: 'pointer',
+                        background: 'transparent', border: 'none', borderTop: '1px solid #555',
+                        color: '#ff6b6b', fontSize: '13px', fontWeight: 600,
+                      }}
+                    >
+                      더보기 ({Math.min(rankings.length - displayCount, 10)}개)
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         )}

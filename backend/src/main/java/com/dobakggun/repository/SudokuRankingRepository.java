@@ -13,7 +13,7 @@ public interface SudokuRankingRepository extends RankingRepository<SudokuRanking
         SELECT r FROM SudokuRanking r
         WHERE r.level = :level AND r.createdAt >= :weekStart
         ORDER BY r.clearTime ASC
-        LIMIT 10
+        LIMIT 100
     """)
     List<SudokuRanking> findWeekly(@Param("level") String level, @Param("weekStart") LocalDateTime weekStart);
 

@@ -13,7 +13,7 @@ public interface BaseballRankingRepository extends RankingRepository<BaseballRan
         SELECT r FROM BaseballRanking r
         WHERE r.level = :level AND r.createdAt >= :weekStart
         ORDER BY r.attempts ASC, r.time ASC
-        LIMIT 10
+        LIMIT 100
     """)
     List<BaseballRanking> findWeekly(@Param("level") String level, @Param("weekStart") LocalDateTime weekStart);
 

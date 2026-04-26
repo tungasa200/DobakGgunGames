@@ -208,6 +208,7 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
   const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({ weekly: [], alltime: null });
   const [rankLoading, setRankLoading] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [displayCount, setDisplayCount] = useState(10);
 
   // 이동 수 변화 감지 → 500ms 디바운스 후 배치 전송
   useEffect(() => {
@@ -418,6 +419,7 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
 
   async function loadRanking(lv: DrawMode) {
     setRankLoading(true);
+    setDisplayCount(10);
     try {
       const [weekly, alltime] = await Promise.all([
         rankingsApi.getWeekly('solitaire', lv),
@@ -732,7 +734,10 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
           : 30;
         const extraCols = Math.max(10, Math.ceil((sheetSize.width || 600) / xcell));
         const totalHeaderCols = RANK_TOTAL + extraCols;
-        const dataRows = (rankings.weekly as Array<unknown>).length > 0 ? (rankings.weekly as Array<unknown>).length : 1;
+        const weeklyLen = (rankings.weekly as Array<unknown>).length;
+        const visibleRankCount = Math.min(weeklyLen, displayCount);
+        const hasMore = weeklyLen > displayCount;
+        const dataRows = (weeklyLen > 0 ? visibleRankCount : 1) + (hasMore ? 1 : 0);
         const contentRows = 3 + dataRows + 1; // title + filter + header + data + alltime
         const extraRows = Math.max(20, Math.ceil((sheetSize.height || 400) / XCH));
         const totalRows = contentRows + extraRows;
@@ -811,7 +816,7 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
                   ? RCell('불러오는 중...', 1, RANK_TOTAL, [], { color: '#888' }, 'loading')
                   : (rankings.weekly as RankRow[]).length === 0
                     ? RCell('기록 없음', 1, RANK_TOTAL, [], { color: '#aaa' }, 'empty')
-                    : (rankings.weekly as RankRow[]).map((row, i) => {
+                    : (rankings.weekly as RankRow[]).slice(0, displayCount).map((row, i) => {
                         const alt = i % 2 === 1 ? styles.xrcAlt : '';
                         const top = i === 0 ? styles.xrcTop : '';
                         const date = new Date(row.createdAt).toLocaleDateString('ko-KR');
@@ -833,6 +838,22 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
                         });
                       })
                 }
+
+                {/* 더보기 행 */}
+                {hasMore && (
+                  <div
+                    key="more"
+                    className={styles.xrankCell}
+                    style={{
+                      gridColumn: `1 / span ${RANK_TOTAL}`,
+                      cursor: 'pointer', color: '#217346', fontWeight: 600,
+                      background: '#f5fbf7',
+                    }}
+                    onClick={() => setDisplayCount(c => c + 10)}
+                  >
+                    더보기 ({Math.min(weeklyLen - displayCount, 10)}개) ▼
+                  </div>
+                )}
 
                 {/* 역대 1위 — alltime이 {} (기록 없음) 일 때는 id 없음 */}
                 {(rankings.alltime as { id?: number })?.id
@@ -1080,7 +1101,7 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
                 {(rankings.weekly as Array<{ id: number; name: string; time: number; moves: number; createdAt: string }>).length === 0 ? (
                   <tr><td colSpan={5} className={styles.placeholder}>기록 없음</td></tr>
                 ) : (
-                  (rankings.weekly as Array<{ id: number; name: string; time: number; moves: number; createdAt: string }>).map((r, i) => (
+                  (rankings.weekly as Array<{ id: number; name: string; time: number; moves: number; createdAt: string }>).slice(0, displayCount).map((r, i) => (
                     <tr key={r.id}>
                       <td>{i + 1}</td><td>{r.name}</td>
                       <td>{formatTime(Math.round(r.time))}</td>
@@ -1088,6 +1109,23 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
                       <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
                     </tr>
                   ))
+                )}
+                {(rankings.weekly as Array<unknown>).length > displayCount && (
+                  <tr>
+                    <td colSpan={5} style={{ padding: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setDisplayCount(c => c + 10)}
+                        style={{
+                          width: '100%', padding: '8px', cursor: 'pointer',
+                          background: 'transparent', border: 'none', borderTop: '1px solid #ddd',
+                          color: '#2980b9', fontSize: '13px', fontWeight: 600,
+                        }}
+                      >
+                        더보기 ({Math.min((rankings.weekly as Array<unknown>).length - displayCount, 10)}개)
+                      </button>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>

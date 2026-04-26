@@ -13,7 +13,7 @@ public interface SolitaireRankingRepository extends RankingRepository<SolitaireR
         SELECT r FROM SolitaireRanking r
         WHERE r.level = :level AND r.createdAt >= :weekStart
         ORDER BY r.time ASC, r.moves ASC
-        LIMIT 10
+        LIMIT 100
     """)
     List<SolitaireRanking> findWeekly(@Param("level") String level, @Param("weekStart") LocalDateTime weekStart);
 

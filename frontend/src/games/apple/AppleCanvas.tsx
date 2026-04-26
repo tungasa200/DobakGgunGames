@@ -162,11 +162,13 @@ export default function AppleCanvas({ excel = false }: Props) {
   const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({ weekly: [], alltime: null });
   const [rankLoading, setRankLoading] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [displayCount, setDisplayCount] = useState(10);
 
   // 엑셀 모드 랭킹
   const [excelRankings, setExcelRankings] = useState<unknown[]>([]);
   const [excelAlltime, setExcelAlltime] = useState<unknown | null>(null);
   const [excelRankLoading, setExcelRankLoading] = useState(false);
+  const [excelDisplayCount, setExcelDisplayCount] = useState(10);
 
   // 레이아웃 계산 — 원본 setupLayout() 에 대응
   const calcLayout = useCallback(() => {
@@ -608,6 +610,7 @@ export default function AppleCanvas({ excel = false }: Props) {
 
   async function loadRanking() {
     setRankLoading(true);
+    setDisplayCount(10);
     try {
       const [weekly, alltime] = await Promise.all([
         rankingsApi.getWeekly('apple', 'normal'),
@@ -624,6 +627,7 @@ export default function AppleCanvas({ excel = false }: Props) {
 
   async function loadExcelRanking() {
     setExcelRankLoading(true);
+    setExcelDisplayCount(10);
     try {
       const [weekly, alltime] = await Promise.all([
         rankingsApi.getWeekly('apple', 'normal'),
@@ -772,13 +776,30 @@ export default function AppleCanvas({ excel = false }: Props) {
                 {(rankings.weekly as Array<{ id: number; name: string; score: number; createdAt: string }>).length === 0 ? (
                   <tr><td colSpan={4} className={styles.placeholder}>기록 없음</td></tr>
                 ) : (
-                  (rankings.weekly as Array<{ id: number; name: string; score: number; createdAt: string }>).map((r, i) => (
+                  (rankings.weekly as Array<{ id: number; name: string; score: number; createdAt: string }>).slice(0, displayCount).map((r, i) => (
                     <tr key={r.id}>
                       <td>{i + 1}</td><td>{r.name}</td>
                       <td>{r.score.toLocaleString()}점</td>
                       <td>{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
                     </tr>
                   ))
+                )}
+                {(rankings.weekly as Array<unknown>).length > displayCount && (
+                  <tr>
+                    <td colSpan={4} style={{ padding: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setDisplayCount(c => c + 10)}
+                        style={{
+                          width: '100%', padding: '8px', cursor: 'pointer',
+                          background: 'transparent', border: 'none', borderTop: '1px solid #ddd',
+                          color: '#2980b9', fontSize: '13px', fontWeight: 600,
+                        }}
+                      >
+                        더보기 ({Math.min((rankings.weekly as Array<unknown>).length - displayCount, 10)}개)
+                      </button>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -790,7 +811,10 @@ export default function AppleCanvas({ excel = false }: Props) {
       {excel && showRankingArea && (() => {
         const extraCols = Math.max(8, Math.ceil(sheetSize.width / RANK_CELL_W));
         const totalHeaderCols = RANK_TOTAL + extraCols;
-        const dataRowCount = (excelRankings as unknown[]).length > 0 ? (excelRankings as unknown[]).length : 1;
+        const excelLen = (excelRankings as unknown[]).length;
+        const visibleRankCount = Math.min(excelLen, excelDisplayCount);
+        const hasMore = excelLen > excelDisplayCount;
+        const dataRowCount = (excelLen > 0 ? visibleRankCount : 1) + (hasMore ? 1 : 0);
         const contentRows = 3 + dataRowCount + 1; // title + header + data + alltime
         const extraRows = Math.max(20, Math.ceil(sheetSize.height / RANK_ROW_H));
         const totalRows = contentRows + extraRows;
@@ -854,7 +878,7 @@ export default function AppleCanvas({ excel = false }: Props) {
                 ) : rows.length === 0 ? (
                   RankCell('기록 없음', 1, RANK_TOTAL, [], { color: '#aaa' }, 'empty')
                 ) : (
-                  rows.map((row, i) => {
+                  rows.slice(0, excelDisplayCount).map((row, i) => {
                     const alt = i % 2 === 1 ? styles.xrcAlt : '';
                     const top = i === 0 ? styles.xrcTop : '';
                     const date = new Date(row.createdAt).toLocaleDateString('ko-KR');
@@ -875,6 +899,22 @@ export default function AppleCanvas({ excel = false }: Props) {
                       );
                     });
                   })
+                )}
+
+                {/* 더보기 행 */}
+                {hasMore && (
+                  <div
+                    key="more"
+                    className={styles.xrankCell}
+                    style={{
+                      gridColumn: `1 / span ${RANK_TOTAL}`,
+                      cursor: 'pointer', color: '#1b5e20', fontWeight: 600,
+                      background: '#f5fbf7',
+                    }}
+                    onClick={() => setExcelDisplayCount(c => c + 10)}
+                  >
+                    더보기 ({Math.min(excelLen - excelDisplayCount, 10)}개) ▼
+                  </div>
                 )}
 
                 {/* 역대 1위 — 원본: background:#e8f5e9; color:#1b5e20 */}

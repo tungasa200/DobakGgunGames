@@ -13,7 +13,7 @@ public interface AppleRankingRepository extends RankingRepository<AppleRanking> 
         SELECT r FROM AppleRanking r
         WHERE r.level = :level AND r.createdAt >= :weekStart
         ORDER BY r.score DESC
-        LIMIT 10
+        LIMIT 100
     """)
     List<AppleRanking> findWeekly(@Param("level") String level, @Param("weekStart") LocalDateTime weekStart);
 
