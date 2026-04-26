@@ -96,7 +96,7 @@ const CARD_BACK_BY_BG: Record<string, { bg: string; border: string }> = {
   '#0b5e20': { bg: '#1565c0', border: '#64b5f6' },  // 초록 → 파랑 (기본)
   '#f5ead6': { bg: '#7d1a1a', border: '#b94747' },  // 미색 → 와인
   '#ffffff': { bg: '#616161', border: '#9e9e9e' },  // 흰색 → 회색
-  '#c0c0c0': { bg: '#4a148c', border: '#7b1fa2' },  // 회색 → 퍼플
+  '#c0c0c0': { bg: '#1b5e20', border: '#388e3c' },  // 회색 → 초록
 };
 const DEFAULT_CARD_BACK = CARD_BACK_BY_BG['#0b5e20'];
 
