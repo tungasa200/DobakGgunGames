@@ -217,11 +217,11 @@
   touch-action: manipulation;
 }
 
-/* 카드 뒷면 — 원본: .card.back { background: #1565c0; border: 2px solid #64b5f6; } */
+/* 카드 뒷면 — 색상은 배경색에 따라 CSS 변수로 주입 (CardBoard.tsx CARD_BACK_BY_BG) */
 .cardBack {
   border-radius: 5px;
-  background: #1565c0;
-  border: 2px solid #64b5f6;
+  background: var(--card-back-bg, #1565c0);
+  border: 2px solid var(--card-back-border, #64b5f6);
   box-shadow: 1px 2px 4px rgba(0,0,0,0.25);
   cursor: pointer;
   user-select: none;

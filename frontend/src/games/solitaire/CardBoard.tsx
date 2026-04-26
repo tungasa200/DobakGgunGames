@@ -91,6 +91,15 @@ const BG_OPTIONS: { color: string; label: string }[] = [
 // 밝은 배경 기준 (이 색들에서는 본문 텍스트를 어둡게 표시)
 const LIGHT_BG_SET = new Set(['#f5ead6', '#ffffff', '#c0c0c0']);
 
+// 배경색에 어울리는 카드 뒷면 색상 (bg=면, border=테두리)
+const CARD_BACK_BY_BG: Record<string, { bg: string; border: string }> = {
+  '#0b5e20': { bg: '#1565c0', border: '#64b5f6' },  // 초록 → 파랑 (기본)
+  '#f5ead6': { bg: '#7d1a1a', border: '#b94747' },  // 미색 → 와인
+  '#ffffff': { bg: '#616161', border: '#9e9e9e' },  // 흰색 → 회색
+  '#c0c0c0': { bg: '#4a148c', border: '#7b1fa2' },  // 회색 → 퍼플
+};
+const DEFAULT_CARD_BACK = CARD_BACK_BY_BG['#0b5e20'];
+
 interface XCellInfo {
   text: string;
   bg: string;
@@ -147,6 +156,7 @@ function CardEl({
 // ══════════════════════════════════════════════════════════════════════
 export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColorChange }: Props) {
   const lightBg = LIGHT_BG_SET.has(bgColor);
+  const cardBack = CARD_BACK_BY_BG[bgColor] ?? DEFAULT_CARD_BACK;
   const { user } = useAuth();
   const [drawMode, setDrawMode] = useState<DrawMode>('draw1');
   const {
@@ -566,6 +576,10 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
     <div
       className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && lightBg ? styles.lightBg : ''}`}
       ref={wrapRef}
+      style={{
+        ['--card-back-bg' as string]: cardBack.bg,
+        ['--card-back-border' as string]: cardBack.border,
+      } as CSSProperties}
     >
 
       {/* ── 일반 모드 전용: 컨트롤 바 ── */}
