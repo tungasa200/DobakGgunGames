@@ -325,6 +325,12 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 마운트 시 자동 세션/서버덱 발급 — 사용자가 "새 게임" 누르지 않아도 랭킹 등록 가능
+  useEffect(() => {
+    handleStartGame(drawMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 랭킹 시트 전환 시 자동 로드
   useEffect(() => {
     if (!excel) return;
