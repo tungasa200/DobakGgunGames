@@ -2589,8 +2589,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
             <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
           </div>
 
-          {/* 스탯 영역 — 일반 모드와 동일 패턴 (TETR.IO 스타일) */}
-          <div className={styles.statsArea}>
+          {/* 스탯 영역 — 일반/인세인 페이즈 모두 적용. Lv≥10 글리치(g) 적용. */}
+          <div className={`${styles.statsArea} ${g}`}>
             <div className={styles.statRow}>
               <div className={styles.statLabel}>SCORE</div>
               <div className={styles.statValue}>{score.toLocaleString()}</div>

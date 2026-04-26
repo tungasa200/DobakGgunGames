@@ -896,7 +896,7 @@
   box-shadow: 0 0 12px rgba(255, 45, 85, 0.4);
   cursor: default;
 }
-/* 정보 바 */
+/* 정보 바 (구버전 — infoBar는 제거되었으나 다른 곳 참조 가능성 대비 유지) */
 .wrap[data-theme="normal"] .infoItem {
   background: white;
   border-color: #bbb;
@@ -906,6 +906,19 @@
 }
 .wrap[data-theme="normal"] .status {
   color: #2c3e50;
+}
+/* 일반 페이즈 statsArea — 일반 모드와 동일 톤 (네이비/빨강) */
+.wrap[data-theme="normal"] .statsArea {
+  border-bottom-color: #888;
+}
+.wrap[data-theme="normal"] .statLabel {
+  color: #888;
+}
+.wrap[data-theme="normal"] .statValue {
+  color: #2c3e50;
+}
+.wrap[data-theme="normal"] .statCombo {
+  color: #e74c3c;
 }
 /* 패널 박스 */
 .wrap[data-theme="normal"] .sideBox {
