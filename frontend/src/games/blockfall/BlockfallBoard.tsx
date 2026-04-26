@@ -389,8 +389,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
 
     // ===== Block Out 위험 셀 X 마크 (TETR.IO 스타일) =====
     // 다음 블록(nextPiece)의 buffer zone 안 spawn 셀만 X로 표시 (4셀 고정).
-    // 위험 임계선: 보드 전체 최상단 블록이 buffer + 위 5줄 안(y < 7)에 있을 때만 표시.
-    const DANGER_LIMIT_Y = BUFFER_H + 5;
+    // 위험 임계선: 보드 전체 최상단 블록이 buffer + 위 3줄 안(y < 5)에 있을 때만 표시.
+    const DANGER_LIMIT_Y = BUFFER_H + 3;
     let globalTopY = BOARD_H;
     findTop: for (let y = 0; y < DANGER_LIMIT_Y && y < BOARD_H; y++) {
       for (let x = 0; x < BOARD_W; x++) {
@@ -1145,12 +1145,12 @@ export default function BlockfallBoard({ excel = false }: Props) {
                     <div className={styles.statLabel}>LEVEL</div>
                     <div className={styles.statValue}>{gameLevel}</div>
                   </div>
-                  {combo >= 2 && (
-                    <div className={styles.statRow}>
-                      <div className={styles.statLabel}>COMBO</div>
-                      <div className={`${styles.statValue} ${styles.statCombo}`}>x{combo}</div>
+                  <div className={styles.statRow}>
+                    <div className={styles.statLabel}>COMBO</div>
+                    <div className={`${styles.statValue} ${combo >= 2 ? styles.statCombo : ''}`}>
+                      {combo >= 2 ? `x${combo}` : '-'}
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
               {/* 엑셀 모드: 점수/레벨/줄 — 원본 tside-label/tside-value */}

@@ -194,18 +194,21 @@
 /* TETR.IO 스타일 스탯 영역 — 사이드패널 하단(NEXT/HOLD 아래)에 위치 */
 .statsArea {
   margin-top: auto; /* 사이드패널 stretch 시 자동으로 바닥으로 밀려남 */
+  margin-bottom: 15px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   align-items: flex-end; /* 보드 좌측 가장자리에 정렬되도록 우측 정렬 */
   text-align: right;
-  padding: 6px 4px;
+  padding: 10px 4px 6px;
   line-height: 1;
+  border-bottom: 1px solid #888; 
 }
 .statRow {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  width: 100%;
 }
 .statLabel {
   font-size: 0.62rem;
