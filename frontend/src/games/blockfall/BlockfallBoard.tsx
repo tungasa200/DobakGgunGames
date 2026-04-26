@@ -381,17 +381,10 @@ export default function BlockfallBoard({ excel = false }: Props) {
     }
 
     // ===== Buffer zone 시각 표시 =====
-    // 위 BUFFER_H 줄은 vanish zone — 반투명 박스로 흐리게 + 빨간 점선 경계로 위험 표시
+    // 위 BUFFER_H 줄은 vanish zone — 반투명 박스로 흐리게 표시
     ctx.save();
     ctx.fillStyle = excel ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.22)';
     ctx.fillRect(0, 0, BOARD_W, BUFFER_H);
-    ctx.strokeStyle = excel ? 'rgba(200, 0, 0, 0.5)' : 'rgba(255, 100, 100, 0.7)';
-    ctx.lineWidth = 0.06;
-    ctx.setLineDash([0.3, 0.2]);
-    ctx.beginPath();
-    ctx.moveTo(0, BUFFER_H);
-    ctx.lineTo(BOARD_W, BUFFER_H);
-    ctx.stroke();
     ctx.restore();
 
     // ===== Block Out 위험 셀 X 마크 (TETR.IO 스타일) =====
