@@ -165,22 +165,6 @@ const EVENT_POOL: EventDef[] = [
 // HIGH flash 등급 이벤트
 const HIGH_FLASH_EVENTS = new Set<EventId>(['EXPLODE', 'FLOOR_DROP', 'SIDE_EXPAND', 'CONTROL_FREEZE']);
 
-// DOUBLE_TROUBLE — single piece matrix를 좌우 쌍둥이로 합성. gap=1 (1셀 간격).
-// 합성 결과가 보드 폭을 초과하면 null 반환 → 호출측에서 twin 적용 스킵.
-function buildTwinMatrix(single: Matrix, boardW: number, gap = 1): Matrix | null {
-  const sw = single[0].length;
-  const sh = single.length;
-  const totalW = sw * 2 + gap;
-  if (totalW > boardW) return null;
-  const twin: Matrix = Array.from({ length: sh }, () => new Array(totalW).fill(0));
-  for (let y = 0; y < sh; y++) {
-    for (let x = 0; x < sw; x++) {
-      twin[y][x] = single[y][x];
-      twin[y][x + sw + gap] = single[y][x];
-    }
-  }
-  return twin;
-}
 
 // ===== 헬퍼 =====
 function createMatrix(w: number, h: number): Matrix {
@@ -329,6 +313,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const arena       = useRef<Matrix>(createMatrix(INIT_BOARD_W, INIT_BOARD_H));
   const particles   = useRef<Particle[]>([]);
   const player      = useRef<Player>({ pos: { x: 0, y: 0 }, matrix: null });
+  // DOUBLE_TROUBLE — 트윈 시 B piece (matrix=null이면 트윈 아님)
+  const playerB     = useRef<Player>({ pos: { x: 0, y: 0 }, matrix: null });
   const nextPiece      = useRef<Matrix | null>(null);
   const nextPieceIdx   = useRef<number>(0);
   const recentPieces   = useRef<number[]>([]); // 최근 스폰 인덱스 (최대 2개) — 인세인 페이즈 랜덤 모드에서만 사용
@@ -351,6 +337,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const isLanding   = useRef(false);
   const lockCounter = useRef(0);
   const lockResets  = useRef(0);
+  // 트윈 B piece per-piece state
+  const isLandingB  = useRef(false);
+  const lockCounterB = useRef(0);
+  const lockResetsB  = useRef(0);
   const lastActionRot = useRef(false);
   const tPieceRot   = useRef(0);
   const isPieceT    = useRef(false);
@@ -384,8 +374,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const evSpinBlock     = useRef(false);
   const randomLockPending = useRef(false); // RANDOM_LOCK 대기 중 (조건 충족 시 발동)
   const evSpinTimer     = useRef(0);
-  const evDoublePending = useRef(false);   // DOUBLE_TROUBLE 대기 — 다음 spawn에서 piece가 twin이 됨
-  const evTwinSingle    = useRef<Matrix | null>(null); // 현재 piece가 twin이면 single 원본 저장 (회전용)
+  const evDoublePending = useRef(false);   // DOUBLE_TROUBLE 대기 — 다음 spawn에서 B piece 동시 스폰
 
   // 모바일 판정
   const isMobileRef = useRef(navigator.maxTouchPoints > 0);
@@ -601,7 +590,12 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   }
 
   // ===== 충돌 판정 =====
-  function collide(pos: { x: number; y: number }, matrix: Matrix): boolean {
+  // otherPiece: 트윈 시 다른 piece도 충돌체로 인식 (서로 겹침 방지)
+  function collide(
+    pos: { x: number; y: number },
+    matrix: Matrix,
+    otherPiece?: { pos: { x: number; y: number }; matrix: Matrix | null }
+  ): boolean {
     for (let y = 0; y < matrix.length; y++) {
       for (let x = 0; x < matrix[y].length; x++) {
         if (matrix[y][x] === 0) continue;
@@ -610,13 +604,17 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         if (ny < 0) continue;
         if ((arena.current[ny]?.[nx] ?? 0) !== 0) return true;
         if (hasSettledAt(nx, ny)) return true;
+        // 다른 piece와의 겹침 체크
+        if (otherPiece && otherPiece.matrix) {
+          const ox = nx - otherPiece.pos.x;
+          const oy = ny - otherPiece.pos.y;
+          if (ox >= 0 && ox < otherPiece.matrix[0].length &&
+              oy >= 0 && oy < otherPiece.matrix.length &&
+              otherPiece.matrix[oy][ox] !== 0) return true;
+        }
       }
     }
     return false;
-  }
-
-  function collidePlayer(): boolean {
-    return collide(player.current.pos, player.current.matrix!);
   }
 
   // Block Out 전용: piece의 buffer zone 안 셀만 충돌 검사.
@@ -640,7 +638,11 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   }
 
   function isOnGround(): boolean {
-    return collide({ x: player.current.pos.x, y: player.current.pos.y + 1 }, player.current.matrix!);
+    return collide({ x: player.current.pos.x, y: player.current.pos.y + 1 }, player.current.matrix!, playerB.current);
+  }
+  function isOnGroundB(): boolean {
+    if (!playerB.current.matrix) return false;
+    return collide({ x: playerB.current.pos.x, y: playerB.current.pos.y + 1 }, playerB.current.matrix, player.current);
   }
 
   // ===== 라인 클리어 판정 =====
@@ -691,75 +693,25 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     }
   }
 
-  function mergeInto() {
-    player.current.matrix!.forEach((row, y) => {
+  function mergeInto(piece: Player = player.current) {
+    piece.matrix!.forEach((row, y) => {
       row.forEach((val, x) => {
-        if (val !== 0) arena.current[y + player.current.pos.y][x + player.current.pos.x] = val;
+        if (val !== 0) arena.current[y + piece.pos.y][x + piece.pos.x] = val;
       });
     });
   }
 
-  // DOUBLE_TROUBLE — 비대칭 착지 처리.
-  // 한쪽 twin만 다음 칸 collide면 그쪽만 arena에 bake하고 piece matrix에서 제거.
-  // 이후 호출자(낙하 루프)는 isLanding 진입 X → 나머지 half가 계속 낙하.
-  // 호출 조건: 결합 matrix가 y+1에서 collide된 직후 (한 칸 더 못 내려가는 상태).
-  // 반환 true = bake 완료, 계속 낙하 / false = 둘 다 stuck or twin 아님 → 정상 lock 진입.
-  function tryAsymmetricTwinLock(): boolean {
-    if (!evTwinSingle.current) return false;
-    if (!player.current.matrix) return false;
-
-    const matrix = player.current.matrix;
-    const sw = evTwinSingle.current[0].length;
-    const gap = 1;
-    const rightStart = sw + gap;
-
-    const leftOnly  = matrix.map(row => row.map((c, x) => x < sw ? c : 0));
-    const rightOnly = matrix.map(row => row.map((c, x) => x >= rightStart ? c : 0));
-
-    const leftHasCells  = leftOnly.some(r => r.some(c => c !== 0));
-    const rightHasCells = rightOnly.some(r => r.some(c => c !== 0));
-    if (!leftHasCells || !rightHasCells) return false;
-
-    const nextY = { x: player.current.pos.x, y: player.current.pos.y + 1 };
-    const leftStuck  = collide(nextY, leftOnly);
-    const rightStuck = collide(nextY, rightOnly);
-
-    const bakeHalf = (half: Matrix) => {
-      half.forEach((row, y) => row.forEach((val, x) => {
-        if (val !== 0) arena.current[y + player.current.pos.y][x + player.current.pos.x] = val;
-      }));
-    };
-
-    if (leftStuck && !rightStuck) {
-      bakeHalf(leftOnly);
-      // 남은 right half를 compact (sw 폭 매트릭스로 축소) → 회전 pivot 정상화
-      // pos.x를 rightStart만큼 우측으로 이동하여 시각 위치 유지
-      player.current.matrix = matrix.map(row => row.slice(rightStart, rightStart + sw));
-      player.current.pos.x += rightStart;
-      evTwinSingle.current = null;
-      return true;
-    }
-    if (rightStuck && !leftStuck) {
-      bakeHalf(rightOnly);
-      // 남은 left half를 compact (cols 0..sw-1만 추출). pos.x는 그대로.
-      player.current.matrix = matrix.map(row => row.slice(0, sw));
-      evTwinSingle.current = null;
-      return true;
-    }
-    return false;
-  }
-
-  // SAND_BURST / EXPLODE — 고정 시 특수 처리
-  function mergePieceIntoBoard() {
+  // SAND_BURST / EXPLODE — 고정 시 특수 처리. piece 인자로 어느 piece의 lock인지 지정.
+  function mergePieceIntoBoard(piece: Player = player.current) {
     if (evSandBurst.current) {
       triggerShake(10, 400);  // 고정 시 진동
-      player.current.matrix!.forEach((row, y) => {
+      piece.matrix!.forEach((row, y) => {
         row.forEach((val, x) => {
           if (val !== 0) {
             particles.current.push({
               type: 'sand',
-              x: x + player.current.pos.x,
-              y: y + player.current.pos.y,
+              x: x + piece.pos.x,
+              y: y + piece.pos.y,
               vx: Math.random() * 3 - 1.5,
               vy: Math.random() * -0.8,
               colorIndex: DEAD_COLOR,  // 모래폭발은 죽은 블럭
@@ -771,10 +723,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       evSandBurst.current = false;
     } else if (evExplodePending.current) {
       // 피스를 먼저 보드에 합성한 뒤 피스 중심 기준 직경 9칸(반경 4.5) 폭발
-      mergeInto();
-      const pm = player.current.matrix!;
-      const cx = player.current.pos.x + pm[0].length / 2;
-      const cy = player.current.pos.y + pm.length / 2;
+      mergeInto(piece);
+      const pm = piece.matrix!;
+      const cx = piece.pos.x + pm[0].length / 2;
+      const cy = piece.pos.y + pm.length / 2;
       const R = 4;          // 루프 범위: ±4
       const R2 = 4.5 * 4.5; // 직경 9 = 반경 4.5, r²=20.25
       triggerShake(18, 700);  // 고정 시 진동
@@ -1185,15 +1137,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       case 'PIECE_SHATTER': {
         triggerShake(8, 250);
         setBoardFilter('brightness(1.3)', 200);
-        if (player.current.matrix) {
-          player.current.matrix.forEach((row, y) => {
+        const shatterOne = (piece: Player) => {
+          if (!piece.matrix) return;
+          piece.matrix.forEach((row, y) => {
             row.forEach((val, x) => {
               if (val !== 0) {
-                // B: 초기 vx/vy 부여
                 particles.current.push({
                   type: 'sand',
-                  x: x + player.current.pos.x,
-                  y: y + player.current.pos.y,
+                  x: x + piece.pos.x,
+                  y: y + piece.pos.y,
                   vx: Math.random() * 3 - 1.5,
                   vy: Math.random() * -0.8,
                   colorIndex: val,
@@ -1202,7 +1154,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
               }
             });
           });
-        }
+          piece.matrix = null;
+        };
+        shatterOne(player.current);
+        shatterOne(playerB.current);
         playerReset();
         break;
       }
@@ -1446,12 +1401,30 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     }
   }
 
+  // 스폰 위치 settled 파티클 제거 (특정 piece 기준)
+  function clearSettledAtSpawn(piece: Player) {
+    const pm = piece.matrix;
+    if (!pm) return;
+    const px = piece.pos.x;
+    const py = piece.pos.y;
+    particles.current = particles.current.filter(p => {
+      if (p.state !== 'settled') return true;
+      const rx = Math.round(p.x) - px;
+      const ry = Math.round(p.y) - py;
+      if (ry < 0 || ry >= pm.length || rx < 0 || rx >= pm[0].length) return true;
+      return pm[ry][rx] === 0;
+    });
+  }
+
   // ===== 플레이어 리셋 =====
   function playerReset() {
     holdUsed.current = false;
     isLanding.current = false;
     lockCounter.current = 0;
     lockResets.current = 0;
+    isLandingB.current = false;
+    lockCounterB.current = 0;
+    lockResetsB.current = 0;
     lastActionRot.current = false;
     tPieceRot.current = 0;
     evSpinBlock.current = false;
@@ -1465,46 +1438,49 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     nextPiece.current = next.matrix;
     nextPieceIdx.current = next.index;
 
-    // DOUBLE_TROUBLE — pending 상태면 현재 piece를 좌우 쌍둥이로 합성
-    // 직전 piece의 twin 상태는 항상 리셋 (lockPiece 직후 호출되므로)
-    evTwinSingle.current = null;
-    if (evDoublePending.current) {
-      const twinMx = buildTwinMatrix(player.current.matrix!, boardW.current, 1);
-      if (twinMx) {
-        evTwinSingle.current = player.current.matrix!.map(r => [...r]);
-        player.current.matrix = twinMx;
-      }
-      evDoublePending.current = false;
-    }
-
     const pm = player.current.matrix!;
     isPieceT.current = pm.some(row => row.includes(1));
     player.current.pos.y = 0;
-    player.current.pos.x = (boardW.current / 2 | 0) - (pm[0].length / 2 | 0);
 
-    // 스폰 위치에 정착한 파티클(모래·파편) 제거
-    // — 이벤트 파편이 스폰존에 쌓여 의문의 게임오버가 나는 현상 방지
-    // — 아레나 셀이 막힌 경우(진짜 게임오버)는 아래 collideInBuffer에서 판정
-    const px = player.current.pos.x;
-    const py = player.current.pos.y;
-    particles.current = particles.current.filter(p => {
-      if (p.state !== 'settled') return true;
-      const rx = Math.round(p.x) - px;
-      const ry = Math.round(p.y) - py;
-      if (ry < 0 || ry >= pm.length || rx < 0 || rx >= pm[0].length) return true;
-      return pm[ry][rx] === 0; // 피스 셀이 있는 위치의 파티클만 제거
-    });
+    // DOUBLE_TROUBLE — pending이고 보드 폭 여유가 있으면 B piece 동시 스폰
+    // 두 piece는 독립 운영 — 같은 X 입력/회전 받지만 Y/lock은 각자
+    playerB.current.matrix = null;
+    if (evDoublePending.current) {
+      const sw = pm[0].length;
+      const totalW = sw * 2 + 1; // gap 1
+      if (totalW <= boardW.current) {
+        const leftX = (boardW.current / 2 | 0) - (totalW / 2 | 0);
+        player.current.pos.x = leftX;
+        playerB.current.matrix = pm.map(r => [...r]);
+        playerB.current.pos = { x: leftX + sw + 1, y: 0 };
+      } else {
+        // 보드 폭 초과 → twin 스킵, single로 spawn
+        player.current.pos.x = (boardW.current / 2 | 0) - (pm[0].length / 2 | 0);
+      }
+      evDoublePending.current = false;
+    } else {
+      player.current.pos.x = (boardW.current / 2 | 0) - (pm[0].length / 2 | 0);
+    }
 
-    // Block Out: buffer zone 안 spawn 셀이 막혀있으면 즉시 게임오버 (visible 영역 셀은 제외)
+    // 스폰 위치 settled 파티클 제거 (양쪽)
+    clearSettledAtSpawn(player.current);
+    if (playerB.current.matrix) clearSettledAtSpawn(playerB.current);
+
+    // Block Out: 양쪽 piece 중 하나라도 buffer zone 막히면 게임오버
     if (collideInBuffer(player.current.pos, pm)) {
       doGameOver();
+      return;
+    }
+    if (playerB.current.matrix && collideInBuffer(playerB.current.pos, playerB.current.matrix)) {
+      doGameOver();
+      return;
     }
   }
 
-  function clearParticlesOnPiece() {
-    const pm = player.current.matrix;
+  function clearParticlesOnPiece(piece: Player = player.current) {
+    const pm = piece.matrix;
     if (!pm) return;
-    const px = player.current.pos.x, py = player.current.pos.y;
+    const px = piece.pos.x, py = piece.pos.y;
     particles.current = particles.current.filter(p => {
       if (p.state !== 'settled') return true;
       const rx = Math.round(p.x) - px, ry = Math.round(p.y) - py;
@@ -1513,30 +1489,32 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     });
   }
 
-  function lockPieceImmediate() {
-    if (!player.current.matrix) return;
-    clearParticlesOnPiece();
-    if (collidePlayer()) { doGameOver(); return; }
-    mergePieceIntoBoard();
-    playerReset();
-    arenaSweepInsane(null, activeEventId.current !== null, true);
-    isLanding.current = false;
-    lockCounter.current = 0;
+  // 단일 piece lock — arena 머지 + sweep, 해당 piece의 matrix=null 처리.
+  // 양쪽이 모두 lock된 후에만 다음 piece spawn (playerReset 호출).
+  // SAND_BURST/EXPLODE pending은 첫 lock에서 소진 (그 piece 기준).
+  function lockPlayerPiece(piece: Player) {
+    if (!piece.matrix) return;
+    const isA = piece === player.current;
+    clearParticlesOnPiece(piece);
+    // 자기 외 다른 piece도 obstacle로 간주해 collide 검사 (충돌 시 게임오버)
+    const other = isA ? playerB.current : player.current;
+    if (collide(piece.pos, piece.matrix, other)) { doGameOver(); return; }
+    const tspin = isA ? detectTspin() : null;
+    mergePieceIntoBoard(piece);
+    piece.matrix = null;
+    if (isA) { isLanding.current = false; lockCounter.current = 0; }
+    else     { isLandingB.current = false; lockCounterB.current = 0; }
+    arenaSweepInsane(tspin, activeEventId.current !== null, true);
+    // 양쪽 모두 lock 완료 → 다음 spawn
+    if (!player.current.matrix && !playerB.current.matrix) {
+      playerReset();
+    }
   }
 
-  function lockPiece() {
-    if (!player.current.matrix) return;
-    clearParticlesOnPiece();
-    if (collidePlayer()) { doGameOver(); return; }
-
-    const tspin = detectTspin();
-
-    mergePieceIntoBoard();
-    playerReset();
-    arenaSweepInsane(tspin, activeEventId.current !== null, true);
-    isLanding.current = false;
-    lockCounter.current = 0;
-
+  // 즉시 lock (RANDOM_LOCK 등) — 양쪽 모두 동시 lock
+  function lockPieceImmediate() {
+    if (player.current.matrix) lockPlayerPiece(player.current);
+    if (playerB.current.matrix) lockPlayerPiece(playerB.current);
   }
 
   // ===== 게임 오버 =====
@@ -1652,11 +1630,17 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       drawCell(ctx, p.x, p.y, p.colorIndex, 0.7 + energy * 0.3); // B: 0.6+e*0.4 → 0.7+e*0.3
     }
 
-    // === Layer 6: 낙하 피스 ===
+    // === Layer 6: 낙하 피스 (A + B) ===
     const pm = player.current.matrix;
     if (pm && !evInvisible.current) {
       pm.forEach((row, y) => row.forEach((val, x) => {
         if (val !== 0) drawCell(ctx, x + player.current.pos.x, y + player.current.pos.y, val, 1);
+      }));
+    }
+    const pmB = playerB.current.matrix;
+    if (pmB && !evInvisible.current) {
+      pmB.forEach((row, y) => row.forEach((val, x) => {
+        if (val !== 0) drawCell(ctx, x + playerB.current.pos.x, y + playerB.current.pos.y, val, 1);
       }));
     }
 
@@ -1989,18 +1973,24 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     // RANDOM_LOCK 대기 — 피스가 중앙 상단 구간을 벗어나는 순간 발동.
     // 단, buffer zone 안에선 lock하지 않음 (사용자 결정 2.b: visible로 끌어내릴 때까지 대기).
     if (randomLockPending.current && player.current.matrix) {
-      const pm = player.current.matrix;
-      const cx = player.current.pos.x + pm[0].length / 2;
-      const inHorizCenter = cx >= Math.floor(boardW.current / 3) && cx <= Math.floor(boardW.current * 2 / 3);
-      const inTopQuarter  = player.current.pos.y < Math.floor(boardH.current / 4);
-      // piece의 모든 채워진 셀이 visible 영역(y >= BUFFER_H)에 들어왔는지 확인
-      let allInVisible = true;
-      outerVis: for (let y = 0; y < pm.length; y++) {
-        for (let x = 0; x < pm[y].length; x++) {
-          if (pm[y][x] !== 0 && (y + player.current.pos.y) < BUFFER_H) { allInVisible = false; break outerVis; }
+      // 트윈 시 양쪽 모두 중앙 이탈해야 발동 (한쪽이라도 중앙이면 대기)
+      const checkOutOfCenter = (piece: Player): { out: boolean; visible: boolean } => {
+        if (!piece.matrix) return { out: true, visible: true };
+        const pm = piece.matrix;
+        const cx = piece.pos.x + pm[0].length / 2;
+        const inHorizCenter = cx >= Math.floor(boardW.current / 3) && cx <= Math.floor(boardW.current * 2 / 3);
+        const inTopQuarter  = piece.pos.y < Math.floor(boardH.current / 4);
+        let allInVisible = true;
+        outerVis: for (let y = 0; y < pm.length; y++) {
+          for (let x = 0; x < pm[y].length; x++) {
+            if (pm[y][x] !== 0 && (y + piece.pos.y) < BUFFER_H) { allInVisible = false; break outerVis; }
+          }
         }
-      }
-      if ((!inHorizCenter || !inTopQuarter) && allInVisible) {
+        return { out: !inHorizCenter || !inTopQuarter, visible: allInVisible };
+      };
+      const a = checkOutOfCenter(player.current);
+      const b = checkOutOfCenter(playerB.current);
+      if (a.out && b.out && a.visible && b.visible) {
         randomLockPending.current = false;
         triggerShake(7, 300);
         lockPieceImmediate();
@@ -2020,26 +2010,41 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     if (isLanding.current) {
       lockCounter.current += dt;
       if (lockCounter.current >= LOCK_DELAY) {
-        lockPiece();
+        lockPlayerPiece(player.current);
+        if (animId.current === null) return;
+      }
+    }
+    if (playerB.current.matrix && isLandingB.current) {
+      lockCounterB.current += dt;
+      if (lockCounterB.current >= LOCK_DELAY) {
+        lockPlayerPiece(playerB.current);
         if (animId.current === null) return;
       }
     }
 
     dropCounter.current += dt;
     if (dropCounter.current > dropInterval.current) {
-      player.current.pos.y++;
-      if (collide(player.current.pos, player.current.matrix!)) {
-        player.current.pos.y--;
-        // Twin 비대칭 착지 — 한쪽 bake 후 나머지 half 계속 낙하
-        if (tryAsymmetricTwinLock()) {
+      // A 자연 낙하
+      if (player.current.matrix) {
+        player.current.pos.y++;
+        if (collide(player.current.pos, player.current.matrix, playerB.current)) {
+          player.current.pos.y--;
+          if (!isLanding.current) { isLanding.current = true; lockCounter.current = 0; }
+        } else {
           isLanding.current = false;
           lockCounter.current = 0;
-        } else if (!isLanding.current) {
-          isLanding.current = true; lockCounter.current = 0;
         }
-      } else {
-        isLanding.current = false;
-        lockCounter.current = 0;
+      }
+      // B 자연 낙하 — 독립
+      if (playerB.current.matrix) {
+        playerB.current.pos.y++;
+        if (collide(playerB.current.pos, playerB.current.matrix, player.current)) {
+          playerB.current.pos.y--;
+          if (!isLandingB.current) { isLandingB.current = true; lockCounterB.current = 0; }
+        } else {
+          isLandingB.current = false;
+          lockCounterB.current = 0;
+        }
       }
       dropCounter.current = 0;
       updateDisplay();
@@ -2051,36 +2056,61 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   }, [draw]);
 
   // ===== 컨트롤 =====
+  // 트윈일 땐 atomic — A/B 둘 다 이동 가능해야 commit (한쪽이라도 막히면 둘 다 안 움직임)
+  // 같은 dir로 이동하므로 두 piece 사이 collide는 발생하지 않음 (translation invariance)
   const playerMove = useCallback((dir: number) => {
     if (evControlFreeze.current) return;
-    player.current.pos.x += dir;
-    if (collide(player.current.pos, player.current.matrix!)) {
-      player.current.pos.x -= dir;
-    } else {
-      lastActionRot.current = false;
-      if (isLanding.current) {
-        if (lockResets.current < MAX_LOCK_RESETS) { lockCounter.current = 0; lockResets.current++; }
-        if (!isOnGround()) isLanding.current = false;
-      }
+    if (!player.current.matrix) return;
+    const aHasPiece = !!player.current.matrix;
+    const bHasPiece = !!playerB.current.matrix;
+    // 양쪽 가상 이동 후 충돌 검사 (서로는 obstacle로 보지 않음 — 같이 이동)
+    const aOk = !aHasPiece || !collide(
+      { x: player.current.pos.x + dir, y: player.current.pos.y },
+      player.current.matrix!
+    );
+    const bOk = !bHasPiece || !collide(
+      { x: playerB.current.pos.x + dir, y: playerB.current.pos.y },
+      playerB.current.matrix!
+    );
+    if (!aOk || !bOk) return; // atomic: 한쪽 실패 → 전체 취소
+    if (aHasPiece) player.current.pos.x += dir;
+    if (bHasPiece) playerB.current.pos.x += dir;
+    lastActionRot.current = false;
+    // lock delay reset — 각 piece 독립
+    if (isLanding.current) {
+      if (lockResets.current < MAX_LOCK_RESETS) { lockCounter.current = 0; lockResets.current++; }
+      if (!isOnGround()) isLanding.current = false;
+    }
+    if (bHasPiece && isLandingB.current) {
+      if (lockResetsB.current < MAX_LOCK_RESETS) { lockCounterB.current = 0; lockResetsB.current++; }
+      if (!isOnGroundB()) isLandingB.current = false;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playerDrop = useCallback((isSoft = false) => {
     if (evControlFreeze.current) return;
-    player.current.pos.y++;
-    if (collide(player.current.pos, player.current.matrix!)) {
-      player.current.pos.y--;
-      // Twin 비대칭 착지 — 한쪽만 bake 후 나머지 half 계속 낙하
-      if (tryAsymmetricTwinLock()) {
+    // A piece 자체 낙하
+    if (player.current.matrix) {
+      player.current.pos.y++;
+      if (collide(player.current.pos, player.current.matrix, playerB.current)) {
+        player.current.pos.y--;
+        if (!isLanding.current) { isLanding.current = true; lockCounter.current = 0; }
+      } else {
         isLanding.current = false;
         lockCounter.current = 0;
-      } else if (!isLanding.current) {
-        isLanding.current = true; lockCounter.current = 0;
       }
-    } else {
-      isLanding.current = false;
-      lockCounter.current = 0;
+    }
+    // B piece 자체 낙하 — 독립
+    if (playerB.current.matrix) {
+      playerB.current.pos.y++;
+      if (collide(playerB.current.pos, playerB.current.matrix, player.current)) {
+        playerB.current.pos.y--;
+        if (!isLandingB.current) { isLandingB.current = true; lockCounterB.current = 0; }
+      } else {
+        isLandingB.current = false;
+        lockCounterB.current = 0;
+      }
     }
     if (isSoft) scoreRef.current++;
     dropCounter.current = 0;
@@ -2090,95 +2120,80 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   const playerHardDrop = useCallback(() => {
     if (evControlFreeze.current) return;
+    if (!player.current.matrix) return;
     let totalDrop = 0;
-    // Twin 비대칭: drop → bake stuck half → 남은 half로 다시 drop. 둘 다 stuck이면 break.
-    // 일반 piece는 한 번에 break.
-    while (true) {
+    // A piece — 자기 gy까지 (B를 obstacle로 봄)
+    {
       let gy = player.current.pos.y;
-      while (!collide({ x: player.current.pos.x, y: gy + 1 }, player.current.matrix!)) gy++;
-      if (collide({ x: player.current.pos.x, y: gy }, player.current.matrix!)) {
+      while (!collide({ x: player.current.pos.x, y: gy + 1 }, player.current.matrix, playerB.current)) gy++;
+      if (collide({ x: player.current.pos.x, y: gy }, player.current.matrix, playerB.current)) {
         doGameOver(); return;
       }
       totalDrop += gy - player.current.pos.y;
       player.current.pos.y = gy;
-      if (!tryAsymmetricTwinLock()) break;
+    }
+    // B piece — 자기 gy까지 (A의 새 위치를 obstacle로 봄)
+    if (playerB.current.matrix) {
+      let gy = playerB.current.pos.y;
+      while (!collide({ x: playerB.current.pos.x, y: gy + 1 }, playerB.current.matrix, player.current)) gy++;
+      totalDrop += gy - playerB.current.pos.y;
+      playerB.current.pos.y = gy;
     }
     scoreRef.current += totalDrop * 2;
-    const tspin = detectTspin();
     lastActionRot.current = false;
-    mergePieceIntoBoard();
-    playerReset();
-    arenaSweepInsane(tspin, activeEventId.current !== null, true);
+    // A 먼저 lock (EXPLODE/SAND_BURST 첫 lock에서 소진), 이어 B lock
+    lockPlayerPiece(player.current);
+    if (playerB.current.matrix) lockPlayerPiece(playerB.current);
     dropCounter.current = 0;
     updateDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const playerRotate = useCallback((dir: number) => {
-    if (evControlFreeze.current) return;
-
-    // Twin 모드: original을 회전 → twin 재조립 → 중심 보정 → kick
-    if (evTwinSingle.current) {
-      const original = evTwinSingle.current;
-      const posX = player.current.pos.x;
-      const oldTwin = player.current.matrix!;
-      const oldOriginal = original.map(r => [...r]);
-      rotateMatrix(original, dir);
-      const newTwin = buildTwinMatrix(original, boardW.current, 1);
-      if (!newTwin) {
-        // 회전 후 보드 폭 초과 → 회전 취소
-        original.length = 0;
-        oldOriginal.forEach(r => original.push(r));
-        return;
-      }
-      const oldW = oldTwin[0].length;
-      const newW = newTwin[0].length;
-      player.current.matrix = newTwin;
-      player.current.pos.x = posX + Math.floor((oldW - newW) / 2);
-      // 좌우 kick
-      let offset = 1;
-      while (collide(player.current.pos, player.current.matrix!)) {
-        player.current.pos.x += offset;
-        offset = -(offset + (offset > 0 ? 1 : -1));
-        if (Math.abs(offset) > player.current.matrix![0].length) {
-          // kick 실패 → 전체 원복
-          original.length = 0;
-          oldOriginal.forEach(r => original.push(r));
-          player.current.matrix = oldTwin;
-          player.current.pos.x = posX;
-          return;
-        }
-      }
-      lastActionRot.current = true;
-      if (isPieceT.current) tPieceRot.current = (tPieceRot.current + (dir > 0 ? 1 : 3)) % 4;
-      if (isLanding.current) {
-        if (lockResets.current < MAX_LOCK_RESETS) { lockCounter.current = 0; lockResets.current++; }
-        if (!isOnGround()) isLanding.current = false;
-      }
-      return;
-    }
-
-    const posX = player.current.pos.x;
-    const posY = player.current.pos.y;
-    const mtx = player.current.matrix!;
+  // 단일 piece 회전 시도 (kick 포함). 성공 시 piece에 적용된 채로 true.
+  // 실패 시 matrix와 pos 원복 후 false.
+  // 다른 piece도 obstacle로 보고 kick 검사.
+  function tryRotateOnePiece(piece: Player, dir: number, other: Player | null): boolean {
+    if (!piece.matrix) return false;
+    const posX = piece.pos.x;
+    const posY = piece.pos.y;
+    const mtx = piece.matrix;
     const isWideI = mtx.some(row => row.some(c => c === 8));
     const prevW = mtx[0].length;
     const prevH = mtx.length;
-    let offset = 1;
     rotateMatrix(mtx, dir);
     if (isWideI) {
       const newW = mtx[0].length;
       const newH = mtx.length;
-      player.current.pos.x += Math.floor((prevW - newW) / 2);
-      player.current.pos.y += Math.floor((prevH - newH) / 2);
+      piece.pos.x += Math.floor((prevW - newW) / 2);
+      piece.pos.y += Math.floor((prevH - newH) / 2);
     }
-    while (collide(player.current.pos, player.current.matrix!)) {
-      player.current.pos.x += offset;
+    let offset = 1;
+    while (collide(piece.pos, piece.matrix, other ?? undefined)) {
+      piece.pos.x += offset;
       offset = -(offset + (offset > 0 ? 1 : -1));
-      if (Math.abs(offset) > player.current.matrix![0].length) {
-        rotateMatrix(player.current.matrix!, -dir);
-        player.current.pos.x = posX;
-        if (isWideI) player.current.pos.y = posY;
+      if (Math.abs(offset) > piece.matrix[0].length) {
+        rotateMatrix(piece.matrix, -dir);
+        piece.pos.x = posX;
+        if (isWideI) piece.pos.y = posY;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  const playerRotate = useCallback((dir: number) => {
+    if (evControlFreeze.current) return;
+    if (!player.current.matrix) return;
+
+    // Atomic: A·B 둘 다 성공해야 commit. B가 실패하면 A도 원복.
+    // A의 회전을 먼저 시도 (B는 obstacle)
+    const aOk = tryRotateOnePiece(player.current, dir, playerB.current.matrix ? playerB.current : null);
+    if (!aOk) return;
+    if (playerB.current.matrix) {
+      const bOk = tryRotateOnePiece(playerB.current, dir, player.current);
+      if (!bOk) {
+        // B 실패 → A 회전 원복
+        tryRotateOnePiece(player.current, -dir, playerB.current.matrix ? playerB.current : null);
         return;
       }
     }
@@ -2188,14 +2203,18 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       if (lockResets.current < MAX_LOCK_RESETS) { lockCounter.current = 0; lockResets.current++; }
       if (!isOnGround()) isLanding.current = false;
     }
+    if (playerB.current.matrix && isLandingB.current) {
+      if (lockResetsB.current < MAX_LOCK_RESETS) { lockCounterB.current = 0; lockResetsB.current++; }
+      if (!isOnGroundB()) isLandingB.current = false;
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playerHold = useCallback(() => {
     if (evControlFreeze.current) return;
     if (holdUsed.current) return;
-    // Twin 피스는 hold 불가 — single matrix만 hold하면 twin 상태 추적이 깨짐
-    if (evTwinSingle.current) return;
+    // Twin 동안 hold 차단 (양쪽 piece를 다루는 모호함 회피)
+    if (playerB.current.matrix) return;
     holdUsed.current = true;
     if (!holdPiece.current) {
       holdPiece.current = player.current.matrix;
@@ -2293,12 +2312,15 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     setBoardExpanded(false);
     randomLockPending.current = false;
     evDoublePending.current = false;
-    evTwinSingle.current = null;
     eventCooldown.current = getEventInterval(1);
 
     const sp = DROP_SPEEDS[level];
     dropInterval.current = sp[0];
     player.current.matrix = null;
+    playerB.current.matrix = null;
+    isLandingB.current = false;
+    lockCounterB.current = 0;
+    lockResetsB.current = 0;
     recentPieces.current = [];
     // bag 초기화 (일반 페이즈 시작)
     bagQueueRef.current = shuffleInsaneBag();
