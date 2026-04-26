@@ -699,6 +699,52 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     });
   }
 
+  // DOUBLE_TROUBLE — 비대칭 착지 처리.
+  // 한쪽 twin만 다음 칸 collide면 그쪽만 arena에 bake하고 piece matrix에서 제거.
+  // 이후 호출자(낙하 루프)는 isLanding 진입 X → 나머지 half가 계속 낙하.
+  // 호출 조건: 결합 matrix가 y+1에서 collide된 직후 (한 칸 더 못 내려가는 상태).
+  // 반환 true = bake 완료, 계속 낙하 / false = 둘 다 stuck or twin 아님 → 정상 lock 진입.
+  function tryAsymmetricTwinLock(): boolean {
+    if (!evTwinSingle.current) return false;
+    if (!player.current.matrix) return false;
+
+    const matrix = player.current.matrix;
+    const sw = evTwinSingle.current[0].length;
+    const gap = 1;
+    const rightStart = sw + gap;
+
+    const leftOnly  = matrix.map(row => row.map((c, x) => x < sw ? c : 0));
+    const rightOnly = matrix.map(row => row.map((c, x) => x >= rightStart ? c : 0));
+
+    const leftHasCells  = leftOnly.some(r => r.some(c => c !== 0));
+    const rightHasCells = rightOnly.some(r => r.some(c => c !== 0));
+    if (!leftHasCells || !rightHasCells) return false;
+
+    const nextY = { x: player.current.pos.x, y: player.current.pos.y + 1 };
+    const leftStuck  = collide(nextY, leftOnly);
+    const rightStuck = collide(nextY, rightOnly);
+
+    const bakeHalf = (half: Matrix) => {
+      half.forEach((row, y) => row.forEach((val, x) => {
+        if (val !== 0) arena.current[y + player.current.pos.y][x + player.current.pos.x] = val;
+      }));
+    };
+
+    if (leftStuck && !rightStuck) {
+      bakeHalf(leftOnly);
+      player.current.matrix = matrix.map(row => row.map((c, x) => x < sw ? 0 : c));
+      evTwinSingle.current = null;
+      return true;
+    }
+    if (rightStuck && !leftStuck) {
+      bakeHalf(rightOnly);
+      player.current.matrix = matrix.map(row => row.map((c, x) => x >= rightStart ? 0 : c));
+      evTwinSingle.current = null;
+      return true;
+    }
+    return false;
+  }
+
   // SAND_BURST / EXPLODE — 고정 시 특수 처리
   function mergePieceIntoBoard() {
     if (evSandBurst.current) {
@@ -1980,7 +2026,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       player.current.pos.y++;
       if (collide(player.current.pos, player.current.matrix!)) {
         player.current.pos.y--;
-        if (!isLanding.current) { isLanding.current = true; lockCounter.current = 0; }
+        // Twin 비대칭 착지 — 한쪽 bake 후 나머지 half 계속 낙하
+        if (tryAsymmetricTwinLock()) {
+          isLanding.current = false;
+          lockCounter.current = 0;
+        } else if (!isLanding.current) {
+          isLanding.current = true; lockCounter.current = 0;
+        }
       } else {
         isLanding.current = false;
         lockCounter.current = 0;
@@ -2015,7 +2067,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     player.current.pos.y++;
     if (collide(player.current.pos, player.current.matrix!)) {
       player.current.pos.y--;
-      if (!isLanding.current) { isLanding.current = true; lockCounter.current = 0; }
+      // Twin 비대칭 착지 — 한쪽만 bake 후 나머지 half 계속 낙하
+      if (tryAsymmetricTwinLock()) {
+        isLanding.current = false;
+        lockCounter.current = 0;
+      } else if (!isLanding.current) {
+        isLanding.current = true; lockCounter.current = 0;
+      }
     } else {
       isLanding.current = false;
       lockCounter.current = 0;
@@ -2028,13 +2086,20 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
   const playerHardDrop = useCallback(() => {
     if (evControlFreeze.current) return;
-    let gy = player.current.pos.y;
-    while (!collide({ x: player.current.pos.x, y: gy + 1 }, player.current.matrix!)) gy++;
-    if (collide({ x: player.current.pos.x, y: gy }, player.current.matrix!)) {
-      doGameOver(); return;
+    let totalDrop = 0;
+    // Twin 비대칭: drop → bake stuck half → 남은 half로 다시 drop. 둘 다 stuck이면 break.
+    // 일반 piece는 한 번에 break.
+    while (true) {
+      let gy = player.current.pos.y;
+      while (!collide({ x: player.current.pos.x, y: gy + 1 }, player.current.matrix!)) gy++;
+      if (collide({ x: player.current.pos.x, y: gy }, player.current.matrix!)) {
+        doGameOver(); return;
+      }
+      totalDrop += gy - player.current.pos.y;
+      player.current.pos.y = gy;
+      if (!tryAsymmetricTwinLock()) break;
     }
-    scoreRef.current += (gy - player.current.pos.y) * 2;
-    player.current.pos.y = gy;
+    scoreRef.current += totalDrop * 2;
     const tspin = detectTspin();
     lastActionRot.current = false;
     mergePieceIntoBoard();
