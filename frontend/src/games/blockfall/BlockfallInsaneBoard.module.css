@@ -338,6 +338,49 @@
   gap: 10px;
   width: 120px;  /* miniCanvas 120px(4×CELL, CELL=30)에 맞춤 */
   flex-shrink: 0;
+  align-self: stretch; /* 보드 높이만큼 늘어남 → statsArea가 margin-top:auto로 바닥 정렬 */
+}
+
+/* TETR.IO 스타일 스탯 영역 — 사이드패널 하단(NEXT/HOLD 아래) */
+.statsArea {
+  margin-top: auto;
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  text-align: right;
+  padding: 10px 4px 6px;
+  line-height: 1;
+  border-bottom: 1px solid #888;
+}
+.statRow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 100%;
+}
+.statLabel {
+  font-size: 0.62rem;
+  color: #aaa;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.statValue {
+  font-size: 1.5rem;
+  color: #fff;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.statCombo {
+  color: #ff2d55;
+}
+@media (max-width: 492px) {
+  .statsArea { gap: 6px; padding: 6px 2px 4px; margin-bottom: 10px; }
+  .statLabel { font-size: 0.5rem; margin-bottom: 1px; }
+  .statValue { font-size: 1rem; }
 }
 
 .sideBox {

@@ -2566,27 +2566,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
         )}
       </div>
 
-      {/* 상태 바 */}
-      <div className={styles.infoBar}>
-        <div className={`${styles.infoItem} ${styles.infoScore} ${g}`}>
-          <div className={styles.infoLabel}>점수</div>
-          <div className={styles.infoValue}>{score.toLocaleString()}</div>
-        </div>
-        <div className={`${styles.infoItem} ${styles.infoLines} ${g}`}>
-          <div className={styles.infoLabel}>줄</div>
-          <div className={styles.infoValue}>{lines}</div>
-        </div>
-        <div className={`${styles.infoItem} ${styles.infoSmall} ${g}`}>
-          <div className={styles.infoLabel}>레벨</div>
-          <div className={styles.infoValue}>{gameLevel}</div>
-        </div>
-        <div className={`${styles.infoItem} ${styles.infoSmall} ${g}`}>
-          <div className={styles.infoLabel}>콤보</div>
-          <div className={`${styles.infoValue} ${combo >= 2 ? styles.infoComboActive : ''}`}>
-            {combo >= 2 ? `x${combo}` : '-'}
-          </div>
-        </div>
-      </div>
+      {/* 상단 infoBar 제거 — 점수/줄/레벨/콤보는 사이드패널 하단으로 이동 (TETR.IO 스타일) */}
 
       {/* 이벤트 타이머 바 */}
       <div className={`${styles.eventTimerBar} ${g}`}>
@@ -2607,6 +2587,28 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
           <div className={`${styles.sideBox} ${g}`}>
             <div className={styles.sideTitle}>HOLD</div>
             <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
+          </div>
+
+          {/* 스탯 영역 — 일반 모드와 동일 패턴 (TETR.IO 스타일) */}
+          <div className={styles.statsArea}>
+            <div className={styles.statRow}>
+              <div className={styles.statLabel}>SCORE</div>
+              <div className={styles.statValue}>{score.toLocaleString()}</div>
+            </div>
+            <div className={styles.statRow}>
+              <div className={styles.statLabel}>LINES</div>
+              <div className={styles.statValue}>{lines}</div>
+            </div>
+            <div className={styles.statRow}>
+              <div className={styles.statLabel}>LEVEL</div>
+              <div className={styles.statValue}>{gameLevel}</div>
+            </div>
+            <div className={styles.statRow}>
+              <div className={styles.statLabel}>COMBO</div>
+              <div className={`${styles.statValue} ${combo >= 2 ? styles.statCombo : ''}`}>
+                {combo >= 2 ? `x${combo}` : '-'}
+              </div>
+            </div>
           </div>
         </div>
 
