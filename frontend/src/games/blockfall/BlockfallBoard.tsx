@@ -1074,8 +1074,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
   ];
 
   const statusText =
-    gameStatus === 'idle'   ? difficulty.toUpperCase() :
-    gameStatus === 'over'   ? 'GAME OVER' : '';
+    gameStatus === 'over' ? 'GAME OVER' : difficulty.toUpperCase();
 
   // 엑셀 모드: 시트에 따라 보이는 영역 결정
   const showGameArea  = !excel || activeSheet === 'game';
