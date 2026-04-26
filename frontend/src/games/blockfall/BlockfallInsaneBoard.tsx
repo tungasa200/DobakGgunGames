@@ -2815,7 +2815,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
               onChange={e => { setPlayerName(e.target.value); setNameBanned(false); }}
               onKeyDown={e => { if (e.key === 'Enter') handleSubmitRanking(); }}
               autoFocus maxLength={50} />
-            <p className={styles.ipNotice}>랭킹 등록 시 어뷰징 방지를 위해 IP 주소가 수집됩니다.</p>
+            <p className={styles.ipNotice}>어뷰징 방지를 위해 IP 주소가 수집됩니다.</p>
             {nameBanned && <p className={styles.hint}>사용할 수 없는 닉네임입니다.</p>}
             {submitState === 'error' && <p className={styles.hint}>등록 실패. 다시 시도해 주세요.</p>}
             <div className={styles.modalBtns}>
