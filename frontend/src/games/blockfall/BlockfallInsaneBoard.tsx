@@ -2499,10 +2499,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     navigate('/blockfall', { state: { initDifficulty: lv } });
   }
 
-  // 게임 중에도 페이즈 라벨을 보드 헤더에 유지 (over 시점에만 'YOU DIED'로 교체)
-  const statusText =
-    gameStatus === 'over' ? 'YOU DIED' :
-    themePhase === 'insane' ? 'INSANE' : 'NORMAL';
+  // 보드 헤더는 모든 페이즈에서 'INSANE' 고정 (over 시점에만 'YOU DIED')
+  const statusText = gameStatus === 'over' ? 'YOU DIED' : 'INSANE';
 
   // I: 랭킹 행 클래스 판별
   const g = gameLevel >= 10 ? styles.chromaticGlitch : ''; // 글리치 단축 변수
@@ -2589,8 +2587,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
             <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
           </div>
 
-          {/* 스탯 영역 — 일반/인세인 페이즈 모두 적용. Lv≥10 글리치(g) 적용. */}
-          <div className={`${styles.statsArea} ${g}`}>
+          {/* 스탯 영역 — Lv≥10 시 영역 글리치가 아닌 텍스트별 RGB 분리 글리치 적용 */}
+          <div className={`${styles.statsArea} ${gameLevel >= 10 ? styles.chromaticTextGlitch : ''}`}>
             <div className={styles.statRow}>
               <div className={styles.statLabel}>SCORE</div>
               <div className={styles.statValue}>{score.toLocaleString()}</div>
