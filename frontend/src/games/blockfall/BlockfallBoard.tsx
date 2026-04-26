@@ -1106,29 +1106,7 @@ export default function BlockfallBoard({ excel = false }: Props) {
         </div>
       )}
 
-      {/* 상태 바 — 일반 모드에서만 */}
-      {!excel && (
-        <div className={styles.infoBar}>
-          <div className={`${styles.infoItem} ${styles.infoScore}`}>
-            <div className={styles.infoLabel}>점수</div>
-            <div className={styles.infoValue}>{score.toLocaleString()}</div>
-          </div>
-          <div className={`${styles.infoItem} ${styles.infoLines}`}>
-            <div className={styles.infoLabel}>줄</div>
-            <div className={styles.infoValue}>{lines}</div>
-          </div>
-          <div className={`${styles.infoItem} ${styles.infoSmall}`}>
-            <div className={styles.infoLabel}>레벨</div>
-            <div className={styles.infoValue}>{gameLevel}</div>
-          </div>
-          <div className={`${styles.infoItem} ${styles.infoSmall}`}>
-            <div className={styles.infoLabel}>콤보</div>
-            <div className={`${styles.infoValue} ${combo >= 2 ? styles.infoComboActive : ''}`}>
-              {combo >= 2 ? `x${combo}` : '-'}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 상단 infoBar 제거 — 점수/줄/레벨/콤보는 boardWrapper 내부 좌하단으로 이동 (TETR.IO 스타일) */}
 
       {/* 상태 메시지는 boardBox 안으로 이동 */}
 
@@ -1153,6 +1131,29 @@ export default function BlockfallBoard({ excel = false }: Props) {
                 <div className={styles.sideTitle}>HOLD</div>
                 <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
               </div>
+              {/* 일반 모드 스탯 — TETR.IO 스타일 (사이드패널 하단으로 밀려남) */}
+              {!excel && (
+                <div className={styles.statsArea}>
+                  <div className={styles.statRow}>
+                    <div className={styles.statLabel}>SCORE</div>
+                    <div className={styles.statValue}>{score.toLocaleString()}</div>
+                  </div>
+                  <div className={styles.statRow}>
+                    <div className={styles.statLabel}>LINES</div>
+                    <div className={styles.statValue}>{lines}</div>
+                  </div>
+                  <div className={styles.statRow}>
+                    <div className={styles.statLabel}>LEVEL</div>
+                    <div className={styles.statValue}>{gameLevel}</div>
+                  </div>
+                  {combo >= 2 && (
+                    <div className={styles.statRow}>
+                      <div className={styles.statLabel}>COMBO</div>
+                      <div className={`${styles.statValue} ${styles.statCombo}`}>x{combo}</div>
+                    </div>
+                  )}
+                </div>
+              )}
               {/* 엑셀 모드: 점수/레벨/줄 — 원본 tside-label/tside-value */}
               {excel && (
                 <>
