@@ -406,21 +406,27 @@ export default function BlockfallBoard({ excel = false }: Props) {
     ctx.restore();
 
     // ===== Block Out 위험 셀 X 마크 (TETR.IO 스타일) =====
-    // 비어있는 spawn 셀에만 표시. 막히면 그 칸을 점유하는 블록이 spawn 시 게임오버.
+    // 같은 컬럼의 최상단 블록이 위험 임계선 안에 있을 때만 X 표시 (스택이 위험할 때만 시각화)
+    const DANGER_LIMIT_Y = BUFFER_H + 3; // 컬럼 최상단 블록이 y < 5(buffer 2줄 + 위 3줄)이면 위험
     ctx.save();
     ctx.strokeStyle = excel ? 'rgba(220, 0, 0, 0.85)' : 'rgba(255, 80, 80, 0.95)';
     ctx.lineWidth = 0.13;
     ctx.lineCap = 'round';
     ctx.setLineDash([]);
     for (const [dx, dy] of SPAWN_DANGER_CELLS) {
-      if (arena.current[dy] && arena.current[dy][dx] === 0) {
-        ctx.beginPath();
-        ctx.moveTo(dx + 0.25, dy + 0.25);
-        ctx.lineTo(dx + 0.75, dy + 0.75);
-        ctx.moveTo(dx + 0.75, dy + 0.25);
-        ctx.lineTo(dx + 0.25, dy + 0.75);
-        ctx.stroke();
+      if (!arena.current[dy] || arena.current[dy][dx] !== 0) continue;
+      // 컬럼 dx의 최상단 블록 위치 탐색
+      let topY = BOARD_H;
+      for (let y = 0; y < BOARD_H; y++) {
+        if (arena.current[y][dx] !== 0) { topY = y; break; }
       }
+      if (topY >= DANGER_LIMIT_Y) continue; // 충분히 멀면 표시 안 함
+      ctx.beginPath();
+      ctx.moveTo(dx + 0.25, dy + 0.25);
+      ctx.lineTo(dx + 0.75, dy + 0.75);
+      ctx.moveTo(dx + 0.75, dy + 0.25);
+      ctx.lineTo(dx + 0.25, dy + 0.75);
+      ctx.stroke();
     }
     ctx.restore();
 
@@ -645,6 +651,9 @@ export default function BlockfallBoard({ excel = false }: Props) {
     if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
     if (!excel) bgm.stop();
     setGameStatus('over');
+    // Block Out 직후 spawn된 블록이 화면에 잔존해 "낙하 중"처럼 보이는 문제 방지
+    player.current.matrix = null;
+    isLanding.current = false;
     draw();
     if (!sessionFailedRef.current) setTimeout(() => setModalOpen(true), 100);
   }
