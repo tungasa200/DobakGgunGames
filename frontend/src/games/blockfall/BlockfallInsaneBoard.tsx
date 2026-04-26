@@ -732,13 +732,17 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
 
     if (leftStuck && !rightStuck) {
       bakeHalf(leftOnly);
-      player.current.matrix = matrix.map(row => row.map((c, x) => x < sw ? 0 : c));
+      // 남은 right half를 compact (sw 폭 매트릭스로 축소) → 회전 pivot 정상화
+      // pos.x를 rightStart만큼 우측으로 이동하여 시각 위치 유지
+      player.current.matrix = matrix.map(row => row.slice(rightStart, rightStart + sw));
+      player.current.pos.x += rightStart;
       evTwinSingle.current = null;
       return true;
     }
     if (rightStuck && !leftStuck) {
       bakeHalf(rightOnly);
-      player.current.matrix = matrix.map(row => row.map((c, x) => x >= rightStart ? 0 : c));
+      // 남은 left half를 compact (cols 0..sw-1만 추출). pos.x는 그대로.
+      player.current.matrix = matrix.map(row => row.slice(0, sw));
       evTwinSingle.current = null;
       return true;
     }
