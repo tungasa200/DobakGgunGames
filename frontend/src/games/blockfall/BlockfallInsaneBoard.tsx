@@ -1345,12 +1345,12 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     const floorExpanded = boardH.current > INIT_BOARD_H;
     const sideExpanded  = boardW.current > INIT_BOARD_W;
     // 가중치 보정 (우선순위 순):
-    //  1. 보드 확장 상태: FLOOR_DROP/SIDE_EXPAND → 4.0 (Lv10+ 감쇠도 무시)
+    //  1. 보드 확장 상태: FLOOR_DROP/SIDE_EXPAND → 2.0 (Lv10+ 감쇠도 무시, 평소 대비 약 2배)
     //  2. Lv10+: FLOOR_DROP/SIDE_EXPAND → 0.1 (원래 1 대비 약 1/10)
     //  3. Lv9+: RANDOM_LOCK → 0.5 (원래 1 대비 약 1/2, 고속 낙하 구간에서 원치 않은 고정 완화)
     const getWeight = (e: EventDef) => {
-      if (e.id === 'FLOOR_DROP'  && floorExpanded) return 4.0;
-      if (e.id === 'SIDE_EXPAND' && sideExpanded)  return 4.0;
+      if (e.id === 'FLOOR_DROP'  && floorExpanded) return 2.0;
+      if (e.id === 'SIDE_EXPAND' && sideExpanded)  return 2.0;
       if (highLevel && (e.id === 'FLOOR_DROP' || e.id === 'SIDE_EXPAND')) return 0.1;
       if (midHighLevel && e.id === 'RANDOM_LOCK') return 0.5;
       return e.weight;
