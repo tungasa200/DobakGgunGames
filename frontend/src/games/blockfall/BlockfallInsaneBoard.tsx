@@ -694,17 +694,30 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   }
 
   function mergeInto(piece: Player = player.current) {
-    if (!piece.matrix) return;
+    if (!piece.matrix) {
+      console.warn('[mergeInto] piece.matrix null', { isA: piece === player.current });
+      return;
+    }
+    let cellCount = 0;
     piece.matrix.forEach((row, y) => {
       row.forEach((val, x) => {
-        if (val !== 0) arena.current[y + piece.pos.y][x + piece.pos.x] = val;
+        if (val !== 0) {
+          arena.current[y + piece.pos.y][x + piece.pos.x] = val;
+          cellCount++;
+        }
       });
     });
+    if (cellCount === 0) {
+      console.warn('[mergeInto] 0 cells written', { isA: piece === player.current, pos: { ...piece.pos } });
+    }
   }
 
   // SAND_BURST / EXPLODE — 고정 시 특수 처리. piece 인자로 어느 piece의 lock인지 지정.
   function mergePieceIntoBoard(piece: Player = player.current) {
-    if (!piece.matrix) return;
+    if (!piece.matrix) {
+      console.warn('[mergePieceIntoBoard] piece.matrix null', { isA: piece === player.current });
+      return;
+    }
     if (evSandBurst.current) {
       triggerShake(10, 400);  // 고정 시 진동
       piece.matrix.forEach((row, y) => {
