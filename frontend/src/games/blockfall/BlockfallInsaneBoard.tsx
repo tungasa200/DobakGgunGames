@@ -1527,10 +1527,13 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     }
   }
 
-  // 즉시 lock (RANDOM_LOCK 등) — 양쪽 모두 동시 lock
+  // 즉시 lock (RANDOM_LOCK 등) — 양쪽 모두 동시 lock.
+  // 시작 시점 트윈 여부를 캡처해, A lock이 playerReset을 트리거해 NEW twin spawn된 경우
+  // NEW B를 잘못 lock하지 않도록 보호.
   function lockPieceImmediate() {
+    const startedAsTwin = !!playerB.current.matrix;
     if (player.current.matrix) lockPlayerPiece(player.current);
-    if (playerB.current.matrix) lockPlayerPiece(playerB.current);
+    if (startedAsTwin && playerB.current.matrix) lockPlayerPiece(playerB.current);
   }
 
   // ===== 게임 오버 =====
@@ -2139,6 +2142,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   const playerHardDrop = useCallback(() => {
     if (evControlFreeze.current) return;
     if (!player.current.matrix) return;
+    // 시작 시점의 트윈 여부 캡처 — A lock 후 playerReset이 NEW twin spawn 시
+    // NEW B가 이 hardDrop 사이클에서 잘못 lock되는 것 방지
+    const startedAsTwin = !!playerB.current.matrix;
     let totalDrop = 0;
     // A piece — 자기 gy까지 (B를 obstacle로 봄)
     {
@@ -2150,8 +2156,8 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
       totalDrop += gy - player.current.pos.y;
       player.current.pos.y = gy;
     }
-    // B piece — 자기 gy까지 (A의 새 위치를 obstacle로 봄)
-    if (playerB.current.matrix) {
+    // B piece — 자기 gy까지 (트윈으로 시작했을 때만)
+    if (startedAsTwin && playerB.current.matrix) {
       let gy = playerB.current.pos.y;
       while (!collide({ x: playerB.current.pos.x, y: gy + 1 }, playerB.current.matrix, player.current)) gy++;
       totalDrop += gy - playerB.current.pos.y;
@@ -2159,9 +2165,10 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     }
     scoreRef.current += totalDrop * 2;
     lastActionRot.current = false;
-    // A 먼저 lock (EXPLODE/SAND_BURST 첫 lock에서 소진), 이어 B lock
+    // A 먼저 lock (EXPLODE/SAND_BURST 첫 lock에서 소진), 이어 B lock — 단 originally twin이었을 때만.
+    // (single A의 lock이 playerReset을 트리거해 NEW twin이 spawn된 경우, NEW B는 lock하지 않음)
     lockPlayerPiece(player.current);
-    if (playerB.current.matrix) lockPlayerPiece(playerB.current);
+    if (startedAsTwin && playerB.current.matrix) lockPlayerPiece(playerB.current);
     dropCounter.current = 0;
     updateDisplay();
   // eslint-disable-next-line react-hooks/exhaustive-deps
