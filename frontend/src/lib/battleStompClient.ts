@@ -42,7 +42,7 @@ export interface BattleStompClientHandle {
   disconnect: () => void;
 }
 
-const WS_BATTLE_URL = import.meta.env.VITE_WS_BATTLE_URL as string | undefined;
+const WS_BATTLE_URL = (import.meta.env.VITE_WS_BATTLE_URL as string | undefined)?.trim();
 const MAX_RETRY = 3;
 const RETRY_DELAYS = [2000, 4000, 8000];
 
