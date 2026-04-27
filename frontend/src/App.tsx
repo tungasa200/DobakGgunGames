@@ -36,6 +36,7 @@ import AdminClearButton from './components/admin/AdminClearButton';
 import AuthRoute from './components/AuthRoute';
 import { AdminTestProvider } from './context/AdminTestContext';
 import OnlineRpsPage from './pages/OnlineRpsPage';
+import BlockfallBattlePage from './pages/BlockfallBattlePage';
 
 export default function App() {
   useEffect(() => {
@@ -91,6 +92,12 @@ export default function App() {
         <Route
           path="/online-rps"
           element={<AuthRoute><OnlineRpsPage /></AuthRoute>}
+        />
+
+        {/* Test Lab — 블록폴 배틀 (로그인/게스트 모두 허용, /:game 보다 위에 선언) */}
+        <Route
+          path="/test-lab/blockfall-battle"
+          element={<BlockfallBattlePage />}
         />
 
         {/* 어드민 */}

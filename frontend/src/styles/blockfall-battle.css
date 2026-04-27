@@ -1,0 +1,1173 @@
+/* ================================================================
+   Blockfall Battle — 전용 스타일
+   ================================================================ */
+
+/* ── CSS 변수 (--battle- 네임스페이스) ───────────────────── */
+:root {
+  --battle-accent              : #6366F1;
+  --battle-accent-dark         : #4F46E5;
+  --battle-accent-subtle       : rgba(99,102,241,0.12);
+
+  --battle-garbage-color       : #888888;
+
+  --battle-banner-bg           : #FEF3C7;
+  --battle-banner-border       : #F59E0B;
+  --battle-banner-text         : #92400E;
+
+  --battle-gameover-bg         : rgba(0, 0, 0, 0.55);
+  --battle-gameover-text       : #FFFFFF;
+
+  --battle-attack-color        : #EF4444;
+  --battle-combo-color         : #F59E0B;
+  --battle-combo-bg            : rgba(245,158,11,0.12);
+
+  --battle-result-rank1        : #F59E0B;
+  --battle-result-rank2        : #94A3B8;
+  --battle-result-rank3        : #CD7F32;
+  --battle-result-my-row-bg    : #EEF2FF;
+  --battle-result-my-row-border: #C7D2FE;
+  --battle-result-top10-my-bg  : #FEF3C7;
+  --battle-result-top10-my-border: #FDE68A;
+
+  --battle-toast-leave-bg      : #FFFBEB;
+  --battle-toast-leave-border  : #F59E0B;
+  --battle-toast-leave-text    : #92400E;
+  --battle-toast-error-bg      : #FEF2F2;
+  --battle-toast-info-bg       : #EFF6FF;
+
+  --color-text-primary         : #111827;
+  --color-text-secondary       : #6B7280;
+  --color-text-muted           : #9CA3AF;
+  --color-danger               : #DC2626;
+  --color-danger-subtle        : #FEF2F2;
+}
+
+/* ── keyframes ───────────────────────────────────────────── */
+@keyframes bb-icon-pulse {
+  0%   { transform: scale(1.0); }
+  50%  { transform: scale(1.1); }
+  100% { transform: scale(1.0); }
+}
+
+@keyframes bb-dot-blink {
+  0%,80%,100% { opacity: 0; }
+  40%         { opacity: 1; }
+}
+
+@keyframes bb-num-pop {
+  0%   { transform: scale(1.3); opacity: 0.5; }
+  100% { transform: scale(1.0); opacity: 1; }
+}
+
+@keyframes bb-garbage-in {
+  from { transform: translateY(100%); opacity: 0.7; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes bb-attack-flash {
+  0%   { opacity: 0; transform: scale(0.8) translateY(-10px); }
+  30%  { opacity: 1; transform: scale(1.1) translateY(0); }
+  70%  { opacity: 1; transform: scale(1.0) translateY(0); }
+  100% { opacity: 0; transform: scale(0.9) translateY(-5px); }
+}
+
+@keyframes bb-border-flash {
+  0%,100% { border-color: var(--battle-accent); }
+  25%,75% { border-color: #EF4444; }
+}
+
+@keyframes bb-gameover-in {
+  0%   { opacity: 0; transform: scale(0.9); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bb-toast-in {
+  from { transform: translateX(-50%) translateY(-16px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}
+
+/* ── 페이지 레이아웃 ─────────────────────────────────────── */
+.battle-page {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 헤더 배너 ───────────────────────────────────────────── */
+.battle-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.battle-header-back {
+  background: none;
+  border: 1.5px solid #30363d;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background 0.12s;
+}
+
+.battle-header-back:hover {
+  background: #21262d;
+}
+
+.battle-header-title {
+  font-weight: bold;
+  font-size: 1em;
+  color: #f0f6fc;
+  flex: 1;
+}
+
+/* 테스트 단계 배너 (헤더 인라인용 — 레거시, 신규 .battle-lab-banner 사용 권장) */
+.battle-test-banner {
+  background: #3d2b00;
+  border: 1px solid #9e6a03;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 0.78em;
+  color: #e3b341;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* 테스트 단계 경고 배너 — 전체 너비 sticky (디자인 명세 §2) */
+.battle-lab-banner {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--battle-banner-bg);
+  border-bottom: 3px solid var(--battle-banner-border);
+  color: var(--battle-banner-text);
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  z-index: 100;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+}
+
+.battle-lab-banner-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--battle-banner-border);
+  color: #FFFFFF;
+  font-weight: 900;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.battle-lab-banner-text {
+  flex: 1;
+}
+
+.battle-lab-banner-guest {
+  font-weight: 600;
+  display: block;
+  margin-top: 2px;
+}
+
+/* ── 메인 콘텐츠 영역 ────────────────────────────────────── */
+.battle-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: auto;
+}
+
+/* ── 대기 화면 ───────────────────────────────────────────── */
+.waiting-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  padding: 32px 16px;
+}
+
+/* 대기 아이콘 영역 */
+.waiting-icon {
+  font-size: 48px;
+  line-height: 1;
+  animation: bb-icon-pulse 1.4s ease-in-out infinite;
+}
+
+.waiting-icon.stopped {
+  animation: none;
+}
+
+/* 대기 로딩 점 3개 */
+.waiting-dots-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.waiting-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--battle-accent);
+  animation: bb-dot-blink 1.2s ease infinite;
+}
+
+.waiting-dot:nth-child(2) { animation-delay: 200ms; }
+.waiting-dot:nth-child(3) { animation-delay: 400ms; }
+
+.waiting-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.waiting-title-countdown {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.waiting-dots::after {
+  content: '';
+  animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+}
+
+/* 카운트다운 숫자 */
+.waiting-countdown-number {
+  font-size: 64px;
+  font-weight: 900;
+  color: var(--battle-accent);
+  text-align: center;
+  animation: bb-num-pop 200ms ease-out;
+  line-height: 1;
+  role: timer;
+}
+
+.waiting-sub {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* 인원 표시 */
+.waiting-player-count {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.waiting-player-count strong {
+  color: var(--battle-accent);
+  font-weight: 700;
+}
+
+.waiting-queue-count {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.waiting-queue-info {
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+}
+
+.waiting-queue-position {
+  color: var(--battle-accent);
+  font-size: 20px;
+  font-weight: 900;
+  animation: bb-num-pop 200ms ease-out;
+}
+
+/* 참가자 목록 */
+.waiting-player-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px auto 0;
+  width: 100%;
+  max-width: 400px;
+}
+
+.waiting-player-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 0.9em;
+}
+
+.waiting-player-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #CA8A04;
+  flex-shrink: 0;
+}
+
+.waiting-player-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.waiting-player-status {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-left: auto;
+}
+
+.waiting-player-me {
+  font-size: 11px;
+  background: #EEF2FF;
+  color: var(--battle-accent);
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.waiting-player-guest {
+  font-size: 11px;
+  background: var(--battle-banner-bg);
+  color: var(--battle-banner-text);
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+.waiting-leave-btn {
+  background: transparent;
+  border: 1.5px solid var(--color-danger);
+  color: var(--color-danger);
+  border-radius: 8px;
+  padding: 10px 32px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.12s;
+  margin-top: 24px;
+  font-family: sans-serif;
+}
+
+.waiting-leave-btn:hover {
+  background: var(--color-danger-subtle);
+}
+
+/* ── 카운트다운 오버레이 (레거시 — 현재는 인라인 카운트다운 사용) ── */
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.countdown-number {
+  font-size: clamp(80px, 20vw, 140px);
+  font-weight: 900;
+  color: #f0f6fc;
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(88, 166, 255, 0.8);
+  animation: countdown-pop 0.3s ease-out;
+}
+
+.countdown-start {
+  font-size: clamp(40px, 10vw, 72px);
+  font-weight: 900;
+  color: #3fb950;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(63, 185, 80, 0.8);
+  animation: countdown-pop 0.3s ease-out;
+}
+
+@keyframes countdown-pop {
+  from {
+    transform: scale(1.4);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ── 배틀 보드 컨테이너 ──────────────────────────────────── */
+.battle-board-container {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  max-width: 1200px;
+  align-items: start;
+}
+
+/* 2인: 1fr 1fr (디자인 명세 §5.3) */
+.battle-board-container.players-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* 3인: 3fr 2fr — 본인 보드 row span 2 (디자인 명세 §5.3) */
+.battle-board-container.players-3 {
+  grid-template-columns: 3fr 2fr;
+  grid-template-rows: auto;
+  gap: 12px;
+}
+
+.battle-board-container.players-3 .battle-board-item:first-child {
+  grid-row: 1 / span 2;
+}
+
+/* 4인: 2x2 (디자인 명세 §5.3) */
+.battle-board-container.players-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+}
+
+/* 모바일: 본인 보드 + 상대 보드 스트립 */
+@media (max-width: 480px) {
+  .battle-board-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .battle-board-item.mine {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .battle-opponents-strip {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 8px 0;
+    width: 100%;
+  }
+
+  .battle-opponents-strip .battle-board-item {
+    width: 80px;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+}
+
+/* 태블릿 */
+@media (min-width: 481px) and (max-width: 768px) {
+  .battle-board-container.players-3,
+  .battle-board-container.players-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+  }
+
+  .battle-board-container.players-3 .battle-board-item:first-child {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── 개별 보드 아이템 ────────────────────────────────────── */
+.battle-board-item {
+  background: #FFFFFF;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.battle-board-item.mine {
+  border-color: var(--battle-accent);
+  box-shadow: 0 0 0 2px var(--battle-accent-subtle);
+}
+
+.battle-board-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  min-height: 32px;
+  gap: 6px;
+}
+
+.battle-board-nickname {
+  font-weight: 600;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 8em;
+  font-size: 13px;
+}
+
+.battle-board-nickname.mine {
+  color: var(--battle-accent);
+}
+
+/* 보드 헤더 배지 */
+.battle-board-badge-me {
+  font-size: 11px;
+  background: #EEF2FF;
+  color: var(--battle-accent);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.battle-board-badge-guest {
+  font-size: 11px;
+  background: var(--battle-banner-bg);
+  color: var(--battle-banner-text);
+  padding: 1px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.battle-board-score {
+  color: #6B7280;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.battle-board-canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: #0d1117;
+}
+
+.battle-board-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* 게임오버 오버레이 (디자인 명세 §5.5) */
+.battle-board-item.eliminated .battle-board-canvas-wrap {
+  position: relative;
+}
+
+.eliminated-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--battle-gameover-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  z-index: 10;
+  pointer-events: none;
+  animation: bb-gameover-in 350ms ease-out;
+}
+
+.eliminated-text {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--battle-gameover-text);
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.eliminated-rank {
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+}
+
+/* Garbage 수신 보드 테두리 flash (디자인 명세 §6.3) */
+.garbage-flash {
+  animation: bb-border-flash 400ms ease;
+}
+
+/* ATTACK! 이펙트 오버레이 */
+.battle-attack-overlay {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.battle-attack-text {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--battle-attack-color);
+  text-shadow: 0 2px 8px rgba(239,68,68,0.5);
+  animation: bb-attack-flash 500ms ease-out forwards;
+}
+
+.battle-combo-badge {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--battle-combo-color);
+  background: var(--battle-combo-bg);
+  padding: 4px 10px;
+  border-radius: 20px;
+  animation: bb-attack-flash 500ms ease-out forwards;
+}
+
+@media (max-width: 480px) {
+  .eliminated-text { font-size: 14px; }
+  .battle-combo-badge { font-size: 13px; }
+}
+
+/* ── 로딩/에러 화면 ──────────────────────────────────────── */
+.battle-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #8b949e;
+}
+
+.battle-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #30363d;
+  border-top-color: #58a6ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.battle-error-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 400px;
+  text-align: center;
+}
+
+.battle-error-icon {
+  font-size: 3em;
+}
+
+.battle-error-title {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #f0f6fc;
+  margin: 0;
+}
+
+.battle-error-msg {
+  font-size: 0.9em;
+  color: #8b949e;
+  margin: 0;
+}
+
+.battle-error-btns {
+  display: flex;
+  gap: 10px;
+}
+
+/* ── 결과 화면 (디자인 명세 §8) ──────────────────────────── */
+.result-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 760px;
+  width: 100%;
+  padding: 20px 16px;
+}
+
+.result-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  text-align: center;
+}
+
+/* 결과 2열 그리드 (데스크톱) */
+.result-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .result-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 패널 공통 */
+.result-panel {
+  background: #FFFFFF;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.result-panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 12px;
+}
+
+/* 순위 목록 */
+.result-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #F5F5F5;
+}
+
+.result-item:last-child {
+  border-bottom: none;
+}
+
+/* 본인 행 강조 */
+.result-item.result-item-mine {
+  background: var(--battle-result-my-row-bg);
+  border-radius: 6px;
+  padding: 8px;
+  border: 1px solid var(--battle-result-my-row-border);
+  margin: 0 -2px;
+}
+
+.result-rank {
+  font-size: 24px;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.result-rank-text {
+  font-size: 14px;
+  color: #9CA3AF;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.result-nickname {
+  flex: 1;
+  font-weight: 500;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.result-me-badge {
+  font-size: 11px;
+  background: #EEF2FF;
+  color: var(--battle-accent);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.result-guest-badge {
+  font-size: 11px;
+  background: var(--battle-banner-bg);
+  color: var(--battle-banner-text);
+  padding: 1px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.result-score {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+/* TOP 10 랭킹 패널 */
+.ranking-panel {
+  background: #FFFFFF;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 16px;
+}
+
+.ranking-panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 12px;
+}
+
+.ranking-panel-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ranking-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #F5F5F5;
+  font-size: 13px;
+}
+
+.ranking-panel-item:last-child {
+  border-bottom: none;
+}
+
+/* 본인 행 강조 (TOP 10) */
+.ranking-panel-item.ranking-item-mine {
+  background: var(--battle-result-top10-my-bg);
+  border-radius: 4px;
+  padding: 4px 6px;
+  border: 1px solid var(--battle-result-top10-my-border);
+  font-weight: 700;
+  margin: 0 -2px;
+}
+
+.ranking-panel-rank {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9CA3AF;
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ranking-panel-rank.rank-1 { color: var(--battle-result-rank1); }
+.ranking-panel-rank.rank-2 { color: var(--battle-result-rank2); }
+.ranking-panel-rank.rank-3 { color: var(--battle-result-rank3); }
+
+.ranking-panel-nickname {
+  flex: 1;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.ranking-panel-wins {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--battle-accent);
+  flex-shrink: 0;
+}
+
+.ranking-panel-empty {
+  padding: 16px;
+  text-align: center;
+  color: #9CA3AF;
+  font-size: 13px;
+}
+
+/* 자동 전환 카운트다운 바 */
+.result-countdown-area {
+  width: 100%;
+  text-align: center;
+}
+
+.result-countdown-text {
+  font-size: 13px;
+  color: #9CA3AF;
+  margin: 0 0 8px;
+}
+
+.result-countdown-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: #E5E7EB;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.result-countdown-bar-fill {
+  height: 100%;
+  background: var(--battle-accent);
+  border-radius: 2px;
+  transition: width 1000ms linear;
+}
+
+/* 결과 버튼들 */
+.result-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+@media (max-width: 480px) {
+  .result-btns {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .result-btns .battle-btn-primary,
+  .result-btns .battle-btn-secondary {
+    width: 100%;
+  }
+}
+
+/* ── 플레이어 이탈 토스트 (디자인 명세 §9) ───────────────── */
+.battle-player-left-toast {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  width: min(340px, 90vw);
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+  background: var(--battle-toast-leave-bg);
+  border-left: 4px solid var(--battle-toast-leave-border);
+  color: var(--battle-toast-leave-text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  animation: bb-toast-in 200ms ease-out;
+}
+
+/* 큐 화면 대기 카운트다운 텍스트 */
+.queue-countdown-text {
+  font-size: 13px;
+  color: #9CA3AF;
+  text-align: center;
+  margin: 0;
+}
+
+.queue-countdown-bar-wrap {
+  width: 100%;
+  max-width: 280px;
+  height: 4px;
+  background: #E5E7EB;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.queue-countdown-bar-fill {
+  height: 100%;
+  background: var(--battle-accent);
+  border-radius: 2px;
+  transition: width 1000ms linear;
+}
+
+/* ── 공통 버튼 (디자인 명세 §8.7) ───────────────────────── */
+.battle-btn-primary {
+  background: var(--battle-accent);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 28px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.12s;
+  font-family: sans-serif;
+}
+
+.battle-btn-primary:hover {
+  background: var(--battle-accent-dark);
+}
+
+.battle-btn-secondary {
+  background: transparent;
+  color: #6B7280;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 8px;
+  padding: 11px 28px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.12s;
+  font-family: sans-serif;
+}
+
+.battle-btn-secondary:hover {
+  background: #F9FAFB;
+}
+
+/* ── 재연결 배너 (디자인 명세 §10.1) ────────────────────── */
+.battle-reconnect-banner {
+  height: 40px;
+  background: var(--battle-banner-bg);
+  border-bottom: 2px solid var(--battle-banner-border);
+  color: var(--battle-banner-text);
+  font-size: 13px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Test Lab 홈 섹션 ────────────────────────────────────── */
+.test-lab-divider {
+  width: 100%;
+  max-width: 920px;
+  border: none;
+  border-top: 1px dashed #d0d0d0;
+  margin: 4px 0 8px;
+}
+
+.test-lab-section-title {
+  width: 100%;
+  max-width: 920px;
+  font-size: 0.88em;
+  font-weight: bold;
+  color: #888;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.test-lab-badge {
+  display: inline-block;
+  background: #F59E0B;
+  color: #FFFFFF;
+  font-size: 0.65em;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 6px;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+  margin-left: 6px;
+  position: relative;
+  top: -1px;
+}
+
+/* BETA 배지 hover 시 (부모 hover 연동) */
+a:hover .test-lab-badge,
+button:hover .test-lab-badge {
+  background: #E07B00;
+}
+
+/* ── 인게임 상태 바 ──────────────────────────────────────── */
+.battle-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 12px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+  font-size: 0.78em;
+  color: #8b949e;
+  flex-shrink: 0;
+}
+
+.battle-stats-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.battle-stats-label {
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.battle-stats-value {
+  font-weight: bold;
+  color: #e6edf3;
+  font-size: 1.05em;
+}
+
+.battle-garbage-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #f85149;
+  font-weight: bold;
+  animation: garbage-pulse 0.5s ease-in-out 2;
+}
+
+@keyframes garbage-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
