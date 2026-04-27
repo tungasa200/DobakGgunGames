@@ -1,29 +1,70 @@
 # developer-frontend — blockfall-battle 진행 로그
 
 - 최초 작성일: 2026-04-27
-- 최종 업데이트: 2026-04-27
-- 상태: Block Out 감지 시 서버 player-finished 알림 구현 완료
+- 최종 업데이트: 2026-04-27 (세션 종료 업데이트)
+- 상태: 전체 신규 구현 완료 + Block Out 서버 알림(BUG-001) 완료, tsc+eslint PASS, main 커밋 완료
 
 ---
 
 ## 구현 완료 파일
 
-| 파일 | 설명 |
-|---|---|
-| `frontend/src/games/blockfall/types/battle.types.ts` | WebSocket/REST 타입 정의 전체 |
-| `frontend/src/lib/battleStompClient.ts` | STOMP 클라이언트 — 실제 백엔드 경로로 교체 완료 |
-| `frontend/src/api/blockfallBattleApi.ts` | REST 래퍼 + useBattleWebSocket 훅 |
-| `frontend/src/styles/blockfall-battle.css` | 배틀 전용 CSS — `--battle-` 변수 네임스페이스, keyframes, 디자인 명세 §11~15 반영 |
-| `frontend/src/games/blockfall/battle/OpponentBoard.tsx` | 상대 보드 렌더링 컴포넌트 (읽기 전용) |
-| `frontend/src/games/blockfall/battle/BlockfallBattleBoard.tsx` | 배틀 레이아웃 + 내 게임판 (싱글 로직 재구현) |
-| `frontend/src/pages/BlockfallBattlePage.tsx` | 배틀 라우트 페이지 (designer 명세 반영: 배너, 대기화면, 결과화면 2열, 10초 카운트다운 바) |
-| `frontend/src/App.tsx` | `/test-lab/blockfall-battle` 라우트 등록 |
-| `frontend/src/pages/HomePage.tsx` | Test Lab 카드에 블록폴 배틀 항목 추가 (디자인 명세 §1.2 와이어프레임 준수) |
-| `frontend/eslint.config.js` | `_` 접두사 미사용 파라미터 허용 규칙 추가 |
+| 파일 | 설명 | 최종 커밋 |
+|---|---|---|
+| `frontend/src/games/blockfall/types/battle.types.ts` | WebSocket/REST DTO 타입 전체 정의 | e85cd99 |
+| `frontend/src/lib/battleStompClient.ts` | `/ws-battle` STOMP 클라이언트 — JWT/게스트 `?token=` 통합, 개인채널 3개 구독, `sendPlayerFinished()` 포함 | fd66e31 |
+| `frontend/src/api/blockfallBattleApi.ts` | REST 래퍼(`joinBattle`, `getBattleRankings`) + `useBattleWebSocket` 훅 + `sendPlayerFinished` | fd66e31 |
+| `frontend/src/styles/blockfall-battle.css` | 배틀 전용 CSS — `--battle-` 변수 네임스페이스, keyframes 8종, 디자인 명세 §11~15 반영 | e85cd99 |
+| `frontend/src/games/blockfall/battle/OpponentBoard.tsx` | 상대 보드 Canvas 렌더링 (읽기 전용) | e85cd99 |
+| `frontend/src/games/blockfall/battle/BlockfallBattleBoard.tsx` | 2인/3인/4인 그리드 레이아웃 + 내 게임판 — `onBlockOut` prop, Garbage line 처리 포함 | fd66e31 |
+| `frontend/src/pages/BlockfallBattlePage.tsx` | 상태머신(loading/waiting/countdown/queued/playing/finished/error), `handleBlockOut` → `sendPlayerFinished()` 연결 | fd66e31 |
+| `frontend/src/App.tsx` | `/test-lab/blockfall-battle` 라우트 등록 | e85cd99 |
+| `frontend/src/pages/HomePage.tsx` | Test Lab 섹션 게스트 포함 노출, 블록폴 배틀 BETA 카드 추가 | e85cd99 |
+| `frontend/eslint.config.js` | `argsIgnorePattern: '^_'` 등 미사용 파라미터 허용 규칙 추가 | eeb812d |
 
 ---
 
-## 이번 세션 변경 내용 (Block Out 서버 알림 구현 — BUG-001 대응)
+## 이번 세션 변경 내용 (2026-04-27 세션 종료 기준)
+
+### 신규 구현 요약 (전체 구조 완성)
+
+이번 세션에서 blockfall-battle 기능의 모든 신규 파일을 최초 작성하고, BUG-001(Block Out 서버 미통보) 대응까지 완료했다.
+
+| 신규/수정 | 파일 | 핵심 내용 |
+|---|---|---|
+| 신규 | `battle/BlockfallBattleBoard.tsx` | 2인/3인/4인 그리드, Garbage line 처리, `onBlockOut` prop |
+| 신규 | `battle/OpponentBoard.tsx` | 상대 보드 Canvas 읽기 전용 렌더링 |
+| 신규 | `types/battle.types.ts` | DTO 타입 전체 (WebSocket 이벤트 + REST) |
+| 신규 | `lib/battleStompClient.ts` | `/ws-battle` STOMP, JWT/guest `?token=` 통합, 개인채널 3개 구독 |
+| 신규 | `api/blockfallBattleApi.ts` | `joinBattle`, `getBattleRankings`, `useBattleWebSocket` 훅, `sendPlayerFinished` |
+| 신규 | `styles/blockfall-battle.css` | `--battle-` CSS 변수 전체, 레이아웃, keyframes 8종 |
+| 신규 | `pages/BlockfallBattlePage.tsx` | 상태머신: loading/waiting/countdown/queued/playing/finished/error |
+| 수정 | `App.tsx` | `/test-lab/blockfall-battle` 라우트 등록 |
+| 수정 | `HomePage.tsx` | Test Lab 섹션 게스트 포함 노출, BETA 카드 추가 |
+| 수정 | `eslint.config.js` | `argsIgnorePattern` 추가 |
+
+### WebSocket 구독 경로 (확정)
+
+- `/topic/blockfall-battle/room/{roomId}` — 방 전체 브로드캐스트
+- `/user/queue/blockfall-battle/board` — 상대 보드 업데이트 (개인)
+- `/user/queue/blockfall-battle/queue` — 큐 포지션 (개인)
+- `/user/queue/blockfall-battle/errors` — 에러 메시지 (개인)
+
+### 커밋 이력
+
+| 커밋 해시 | 내용 |
+|---|---|
+| `e85cd99` | 배틀 신규 파일 최초 구현 |
+| `eeb812d` | eslint.config.js argsIgnorePattern 추가 |
+| `fd66e31` | BUG-001 대응: Block Out → sendPlayerFinished() 연결 |
+
+### 빌드 검증
+
+- `tsc -b`: PASS
+- `eslint .`: PASS
+
+---
+
+## 이전 세션 변경 내용 (Block Out 서버 알림 구현 — BUG-001 대응)
 
 ### 변경 파일 및 내용
 
@@ -150,7 +191,7 @@
 
 ## 진행 중
 
-없음
+없음 — 이번 세션에서 모든 구현 항목 완료
 
 ---
 
@@ -159,24 +200,27 @@
 1. **PLAYER_LEFT WS 이벤트 토스트 연결**
    - 현재 `useBattleWebSocket`이 PLAYER_LEFT payload를 외부로 노출하지 않음
    - `blockfallBattleApi.ts`에 `playerLeftNickname` 상태 추가 필요
+   - QA 검증 단계에서 확인 후 처리
 
-3. **OpponentBoard.tsx 보드 배경 색상**
+2. **OpponentBoard.tsx 보드 배경 색상**
    - 현재 다크 배경(`#0d1117`) — QA 검증 후 결정 요청
 
 ---
 
 ## 환경변수 추가 필요
 
-**Vercel 대시보드에 추가:**
+**Vercel 대시보드에 추가 (미완료):**
 - 변수명: `VITE_WS_BATTLE_URL`
 - 값 형식: `https://[backend-railway-domain]/ws-battle`
 - 설명: 배틀 WebSocket 엔드포인트 (기존 VITE_WS_URL과 분리)
-- 현재 코드: `frontend/src/lib/battleStompClient.ts`에서 참조
+- 참조 파일: `frontend/src/lib/battleStompClient.ts`
+- 상태: 사용자에게 Vercel 등록 안내 완료, 실제 등록은 사용자 직접 수행 필요
 
 ---
 
 ## 다음 세션에서 할 것
 
-1. qa-tester 검증 — 실제 WS 통신 테스트 (2인 이상 접속, Block Out 발생 시 PLAYER_FINISHED 서버 수신 확인)
-2. PLAYER_LEFT 토스트 연결
+1. qa-tester 검증 요청 — 실제 WS 통신 테스트 (2인 이상 접속, Block Out 발생 시 PLAYER_FINISHED 서버 수신 확인)
+2. PLAYER_LEFT 토스트 연결 (`useBattleWebSocket` 훅에 `playerLeftNickname` 상태 노출)
 3. 모바일 레이아웃 실기기 검증
+4. Vercel 환경변수 `VITE_WS_BATTLE_URL` 등록 확인

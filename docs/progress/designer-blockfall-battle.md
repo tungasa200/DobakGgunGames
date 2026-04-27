@@ -13,11 +13,16 @@
 
 ## 현재 상태
 
-- **CP2 완료 — 2026-04-27**
+- **CP2 완료 — 2026-04-27 (세션 2 추가 완료)**
 - `docs/design/blockfall-battle-flow.md` 신규 작성 완료
-- `docs/design/blockfall-battle-components.md` 신규 작성 완료
+- `docs/design/blockfall-battle-components.md` 신규 작성 완료 (세션 2에서 항목 보강)
 - OQ-5, OQ-6, OQ-7, OQ-8 디자이너 결정 사항 확정 (flow.md §7에 반영)
-- developer-frontend에게 인계 준비 완료
+- CSS 변수 네임스페이스 (`--battle-` 접두사) 적용, blockfall-battle.css 업데이트
+- 멀티 게임판 레이아웃 CSS Grid (2인/3인/4인) 명세 반영
+- 경고 배너 sticky 분리 및 게스트 안내 문구 추가
+- 결과 화면 2열 그리드 + 10초 카운트다운 진행 바 명세 추가
+- developer-frontend에게 UX 명세 전달 완료
+- 커밋 포함됨
 
 ---
 
@@ -26,13 +31,14 @@
 | 파일 | 설명 | 상태 |
 |---|---|---|
 | `docs/design/blockfall-battle-flow.md` | 배틀 전체 UX 플로우, 화면 전환, 데이터 흐름, 큐 플로우 | 완료 |
-| `docs/design/blockfall-battle-components.md` | 전체 컴포넌트 명세 (스타일, 레이아웃, 접근성, keyframes) | 완료 |
+| `docs/design/blockfall-battle-components.md` | 전체 컴포넌트 명세 (스타일, 레이아웃, 접근성, keyframes, 경고 배너 sticky, 결과 2열 그리드, 10초 진행 바) | 완료 |
+| `blockfall-battle.css` (명세 반영) | `--battle-` 접두사 CSS 변수 네임스페이스, 멀티 게임판 CSS Grid (2인/3인/4인) | 완료 |
 
 ---
 
 ## 작업 로그
 
-### 2026-04-27 (CP2 세션 — UX 명세 작성)
+### 2026-04-27 (CP2 세션 1 — UX 명세 작성)
 
 **읽은 파일**
 - `docs/specs/blockfall-battle-prd.md` — PRD 전체 검토 (§1~18 완독)
@@ -74,6 +80,25 @@
 13. 반응형 레이아웃 브레이크포인트 (desktop/tablet/mobile)
 14. 접근성 명세 (키보드, ARIA, 색상 대비)
 15. keyframes 요약
+
+---
+
+### 2026-04-27 (CP2 세션 2 — 명세 보강 및 CSS 업데이트)
+
+**작업 내용**
+- `blockfall-battle.css` CSS 변수 네임스페이스 적용: `--battle-` 접두사 전면 적용
+  - 기존 `--color-*` 충돌 방지, `--rps-*` 등 타 기능 변수와 분리 확인
+- 멀티 게임판 CSS Grid 레이아웃 명세 보강
+  - 2인: `grid-template-columns: 1fr 1fr`
+  - 3인: `grid-template-columns: 1fr 1fr 1fr`
+  - 4인: `grid-template-columns: repeat(2, 1fr)` (2x2)
+- 경고 배너 sticky 분리 처리: `position: sticky; top: 0; z-index: 100` 명세 추가
+- 게스트 안내 문구 추가: "게스트로 참여 중입니다. 결과가 기록에 반영되지 않습니다."
+- 결과 화면 레이아웃 2열 그리드 명세 추가 (순위 패널 | TOP 10 패널)
+- 결과 화면 10초 카운트다운 진행 바 명세 추가
+  - `--battle-countdown-progress` CSS 변수로 JS에서 `width` 제어
+  - `transition: width 1s linear` 적용
+- developer-frontend에 UX 명세 전달 완료 (커밋 포함)
 
 ---
 
@@ -137,7 +162,8 @@
 
 | 세션 날짜 | 작업 | 완료 내용 |
 |---|---|---|
-| 2026-04-27 | CP2 디자인 명세 작성 | blockfall-battle-flow.md, blockfall-battle-components.md 작성, OQ-5/6/7/8 결정 확정 |
+| 2026-04-27 세션 1 | CP2 디자인 명세 작성 | blockfall-battle-flow.md, blockfall-battle-components.md 작성, OQ-5/6/7/8 결정 확정 |
+| 2026-04-27 세션 2 | CP2 명세 보강 및 CSS 업데이트 | `--battle-` 접두사 CSS 변수 네임스페이스 적용, 멀티 Grid 레이아웃 보강, 경고 배너 sticky 분리, 게스트 안내 문구 추가, 결과 화면 2열 그리드 + 10초 카운트다운 진행 바 추가, developer-frontend 인계 완료, 커밋 포함 |
 
 ---
 

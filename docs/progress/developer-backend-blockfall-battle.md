@@ -2,7 +2,7 @@
 
 - 소유 팀원: developer-backend
 - 기능 키: `blockfall-battle`
-- 최종 업데이트: 2026-04-27 (Phase 2 구현 완료 → qa-tester 버그 수정 완료)
+- 최종 업데이트: 2026-04-27 (빌드 성공 + main 머지 완료 — Railway DB 마이그레이션 대기)
 - 기반 PRD: `docs/specs/blockfall-battle-prd.md` (CP1 완료)
 - 계획서: `docs/progress/developer-backend-blockfall-battle-plan.md`
 
@@ -10,7 +10,8 @@
 
 ## 현재 상태
 
-**qa-tester BUG-001~007 수정 완료 — `./gradlew build` 로컬 빌드 확인 필요 (사용자 실행 요청)**
+**`./gradlew build -x test BUILD SUCCESSFUL` + 커밋 1caad2b main 머지 완료**
+**잔여: Railway DB 마이그레이션(`blockfall-battle-schema.sql`) + 통합 테스트**
 
 ---
 
@@ -107,11 +108,26 @@
 
 ---
 
+## 세션 이력 (2026-04-27 최종 세션)
+
+| 단계 | 상태 | 비고 |
+|---|---|---|
+| B-1 API 계약 문서 | 완료 | `developer-backend-blockfall-battle-plan.md` |
+| B-2 Entity / Repository / Migration SQL | 완료 | BattleRoom, BattleRecord, blockfall-battle-schema.sql |
+| B-3 Service / Controller / Security | 완료 | BattleRoomManager, BattleRoomService, BattleRankingService, BlockfallBattleWebSocketController, BattleRoomController |
+| BUG-001~006 수정 | 완료 | 상세 이력은 아래 버그 수정 이력 참조 |
+| BUG-007 확인 | 완료 (수정 불필요) | User.java @Table(name="users") 확인 |
+| OQ-1 (방안 A 확정) | 완료 | /ws-battle 신규 엔드포인트 + BlockfallBattleHandshakeInterceptor |
+| OQ-3 (4인 즉시 만료) | 완료 | tryStartCountdown에서 4인 시 즉시 GAME_STARTED |
+| `./gradlew build -x test` | 빌드 성공 | BUILD SUCCESSFUL |
+| 커밋 1caad2b | main 머지 완료 | — |
+
+---
+
 ## 블로커 / 질문
 
-1. **빌드 테스트 필요**: 사용자가 `./gradlew build` 실행 후 결과 공유 요청
-2. **Railway DB 마이그레이션**: `blockfall-battle-schema.sql` Railway MySQL 콘솔에서 수동 실행 필요
-3. **SessionConnectEvent.getUser()**: StompChannelInterceptor에서 설정한 BattlePrincipal이 이벤트에서 정상 조회되는지 통합 테스트 필요
+1. **Railway DB 마이그레이션**: `blockfall-battle-schema.sql` Railway MySQL 콘솔에서 수동 실행 필요 (프로덕션 반영 전 필수)
+2. **SessionConnectEvent.getUser()**: StompChannelInterceptor에서 설정한 BattlePrincipal이 이벤트에서 정상 조회되는지 통합 테스트 필요
 
 ---
 
@@ -125,8 +141,14 @@
 
 ---
 
+## P3 잔여 기술 부채
+
+- **BUG-004 `voluntaryLeft` 플래그**: 기능상 동작하나 `PlayerSessionInfo` 내 dead code 구조 개선 필요 — 다음 스프린트
+
+---
+
 ## 다음 세션에서 할 것
 
-1. `./gradlew build` 결과 확인 후 컴파일/테스트 오류 수정
-2. 통합 테스트 (4인 게스트 혼합 시나리오)
+1. Railway MySQL 콘솔에서 `blockfall-battle-schema.sql` 실행 확인
+2. 통합 테스트 (4인 게스트 혼합 시나리오, SessionDisconnect 처리 검증)
 3. qa-tester에게 재검증 요청
