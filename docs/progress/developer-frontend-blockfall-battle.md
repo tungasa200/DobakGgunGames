@@ -2,7 +2,7 @@
 
 - 최초 작성일: 2026-04-27
 - 최종 업데이트: 2026-04-27
-- 상태: designer UX 명세 반영 완료 (CSS 변수/레이아웃/컴포넌트 디자인 명세 적용)
+- 상태: Block Out 감지 시 서버 player-finished 알림 구현 완료
 
 ---
 
@@ -11,7 +11,7 @@
 | 파일 | 설명 |
 |---|---|
 | `frontend/src/games/blockfall/types/battle.types.ts` | WebSocket/REST 타입 정의 전체 |
-| `frontend/src/lib/battleStompClient.ts` | STOMP 클라이언트 (/ws-battle 엔드포인트) |
+| `frontend/src/lib/battleStompClient.ts` | STOMP 클라이언트 — 실제 백엔드 경로로 교체 완료 |
 | `frontend/src/api/blockfallBattleApi.ts` | REST 래퍼 + useBattleWebSocket 훅 |
 | `frontend/src/styles/blockfall-battle.css` | 배틀 전용 CSS — `--battle-` 변수 네임스페이스, keyframes, 디자인 명세 §11~15 반영 |
 | `frontend/src/games/blockfall/battle/OpponentBoard.tsx` | 상대 보드 렌더링 컴포넌트 (읽기 전용) |
@@ -19,10 +19,61 @@
 | `frontend/src/pages/BlockfallBattlePage.tsx` | 배틀 라우트 페이지 (designer 명세 반영: 배너, 대기화면, 결과화면 2열, 10초 카운트다운 바) |
 | `frontend/src/App.tsx` | `/test-lab/blockfall-battle` 라우트 등록 |
 | `frontend/src/pages/HomePage.tsx` | Test Lab 카드에 블록폴 배틀 항목 추가 (디자인 명세 §1.2 와이어프레임 준수) |
+| `frontend/eslint.config.js` | `_` 접두사 미사용 파라미터 허용 규칙 추가 |
 
 ---
 
-## 이번 세션 변경 내용 (designer UX 명세 반영)
+## 이번 세션 변경 내용 (Block Out 서버 알림 구현 — BUG-001 대응)
+
+### 변경 파일 및 내용
+
+| 파일 | 변경 내용 |
+|---|---|
+| `frontend/src/lib/battleStompClient.ts` | `BattleStompClientHandle`에 `sendPlayerFinished()` 추가. `/app/blockfall-battle/room/${roomId}/player-finished`로 `'{}'` 발행 |
+| `frontend/src/api/blockfallBattleApi.ts` | `UseBattleWebSocketReturn`에 `sendPlayerFinished` 추가. 훅 내부 `useCallback` 구현 (`clientRef.current?.sendPlayerFinished()`) |
+| `frontend/src/games/blockfall/battle/BlockfallBattleBoard.tsx` | `BlockfallBattleBoardProps`에 `onBlockOut: () => void` 추가. `doGameOver` 내부에서 `onBlockOut()` 호출 (게임오버 감지 즉시, `onGameOver` 직전) |
+| `frontend/src/pages/BlockfallBattlePage.tsx` | `handleBlockOut` 콜백 추가 (`ws.sendPlayerFinished()` 호출). `BlockfallBattleBoard`에 `onBlockOut={handleBlockOut}` prop 전달 |
+
+### 설계 결정
+
+- `doGameOver`는 Block Out(보드 최상단 초과) 외에도 `lockPiece`에서 충돌 감지 시 호출되는데, 배틀에서 게임오버는 모두 실질적으로 Block Out과 동일한 의미이므로 단일 경로로 처리
+- `sendPlayerFinished`는 `sendLeave`와 별개 — leave는 자진 퇴장, player-finished는 게임오버 알림
+
+---
+
+## 이전 세션 변경 내용 (백엔드 실제 구현 경로 반영)
+
+### battleStompClient.ts
+
+1. **WebSocket URL 파라미터 통일**
+   - 이전: JWT 유저는 `?token=<JWT>`, 게스트는 `?guestToken=<token>` (분리)
+   - 변경: 유저/게스트 모두 `?token=<value>` 단일 파라미터 사용
+   - 게스트의 경우 `joinBattle` 응답의 `guestToken` 값(`guest_<uuid>`)을 그대로 전달
+
+2. **STOMP connectHeaders 정리**
+   - 이전: JWT 유저는 `Authorization: Bearer <JWT>`, 게스트는 `X-Guest-Token: <token>` 헤더 추가
+   - 변경: 인증은 URL 파라미터로만 수행 (헤더 제거, 빈 객체 유지)
+
+3. **개인 채널 구독 2개 추가**
+   - `/user/queue/blockfall-battle/board` — 상대 보드 업데이트 (BOARD_UPDATE, 발신자 에코 방지)
+   - `/user/queue/blockfall-battle/queue` — 큐 포지션 (QUEUE_POSITION)
+   - 기존 `/user/queue/blockfall-battle/errors` 유지
+
+4. **입장 발행 제거**
+   - 이전: 연결 직후 `/app/blockfall-battle/room/${roomId}/join` 발행
+   - 변경: REST `joinBattle`에서 이미 처리되므로 WS 연결 후 별도 발행 없음
+
+5. **미사용 파라미터 접두사 처리**
+   - `playerId` → `_playerId`, `isGuest` → `_isGuest` (인터페이스 호환 유지, TS 에러 해소)
+
+### eslint.config.js
+
+- `@typescript-eslint/no-unused-vars` 규칙에 `argsIgnorePattern: '^_'` 등 패턴 추가
+- `_payload` 등 의도적 미사용 파라미터에서 발생하던 기존 에러 해소
+
+---
+
+## 이전 세션 변경 내용 (designer UX 명세 반영)
 
 ### blockfall-battle.css 주요 변경
 
@@ -105,17 +156,12 @@
 
 ## 블로커 / 질문
 
-1. **developer-backend API 계약 완료 여부 확인 필요**
-   - `/api/blockfall-battle/join` REST 엔드포인트
-   - `/ws-battle` STOMP 엔드포인트
-
-2. **PLAYER_LEFT WS 이벤트 토스트 연결**
+1. **PLAYER_LEFT WS 이벤트 토스트 연결**
    - 현재 `useBattleWebSocket`이 PLAYER_LEFT payload를 외부로 노출하지 않음
-   - `blockfallBattleApi.ts`에 `playerLeftNickname` 상태 추가 필요 (developer-backend와 협의 후)
+   - `blockfallBattleApi.ts`에 `playerLeftNickname` 상태 추가 필요
 
 3. **OpponentBoard.tsx 보드 배경 색상**
-   - 현재 다크 배경(`#0d1117`) — 컴포넌트 명세 §5.4에서 흰 배경으로 변경 필요 여부 미결
-   - 게임 중 보드는 다크 유지가 가독성에 유리할 수 있음 — QA 검증 후 결정 요청
+   - 현재 다크 배경(`#0d1117`) — QA 검증 후 결정 요청
 
 ---
 
@@ -131,7 +177,6 @@
 
 ## 다음 세션에서 할 것
 
-1. developer-backend API 연결 완료 후 실제 WS 통신 검증
-2. PLAYER_LEFT 토스트 연결 (`useBattleWebSocket` 훅에 `playerLeftNickname` 노출 요청)
-3. OpponentBoard.tsx 보드 배경 색상 결정 (QA 피드백 후)
-4. 모바일 레이아웃 실기기 검증
+1. qa-tester 검증 — 실제 WS 통신 테스트 (2인 이상 접속, Block Out 발생 시 PLAYER_FINISHED 서버 수신 확인)
+2. PLAYER_LEFT 토스트 연결
+3. 모바일 레이아웃 실기기 검증

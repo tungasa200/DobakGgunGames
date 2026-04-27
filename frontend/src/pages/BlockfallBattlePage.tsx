@@ -274,6 +274,10 @@ export default function BlockfallBattlePage() {
     // 게임 오버 후 GAME_RESULT 대기
   }, []);
 
+  const handleBlockOut = useCallback(() => {
+    ws.sendPlayerFinished();
+  }, [ws]);
+
   const handleBoardChange = useCallback((
     board: number[][],
     score: number,
@@ -607,6 +611,7 @@ export default function BlockfallBattlePage() {
             eliminatedPlayers={eliminatedPlayers}
             garbagePending={garbagePending}
             onGameOver={handleGameOver}
+            onBlockOut={handleBlockOut}
             onBoardChange={handleBoardChange}
             onComboAttack={handleComboAttack}
             onGarbageConsumed={handleGarbageConsumed}

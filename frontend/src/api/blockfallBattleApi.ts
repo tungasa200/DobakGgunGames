@@ -96,6 +96,7 @@ export interface BattleWebSocketState {
 export interface UseBattleWebSocketReturn extends BattleWebSocketState {
   sendBoardState: (board: number[][], score: number, lines: number, level: number, combo: number) => void;
   sendComboAttack: (combo: number, targetPlayerId?: string | null) => void;
+  sendPlayerFinished: () => void;
   sendLeave: () => void;
 }
 
@@ -222,6 +223,10 @@ export function useBattleWebSocket(
     [],
   );
 
+  const sendPlayerFinished = useCallback(() => {
+    clientRef.current?.sendPlayerFinished();
+  }, []);
+
   const sendLeave = useCallback(() => {
     clientRef.current?.sendLeave();
   }, []);
@@ -238,6 +243,7 @@ export function useBattleWebSocket(
     wsStatus,
     sendBoardState,
     sendComboAttack,
+    sendPlayerFinished,
     sendLeave,
   };
 }

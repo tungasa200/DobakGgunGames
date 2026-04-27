@@ -122,6 +122,7 @@ interface BlockfallBattleBoardProps {
   eliminatedPlayers: Map<string, { rank: number }>;
   garbagePending: number;
   onGameOver: (score: number) => void;
+  onBlockOut: () => void;
   onBoardChange: (board: number[][], score: number, lines: number, level: number, combo: number) => void;
   onComboAttack: (combo: number) => void;
   onGarbageConsumed: () => void;
@@ -135,6 +136,7 @@ export default function BlockfallBattleBoard({
   eliminatedPlayers,
   garbagePending,
   onGameOver,
+  onBlockOut,
   onBoardChange,
   onComboAttack,
   onGarbageConsumed,
@@ -282,8 +284,9 @@ export default function BlockfallBattleBoard({
     }
     playerMatrix.current = null;
     draw();
+    onBlockOut();
     onGameOver(scoreRef.current);
-  }, [draw, onGameOver]);
+  }, [draw, onBlockOut, onGameOver]);
 
   // Garbage line 적용 (piece lock 시점에 호출)
   const applyGarbage = useCallback((lines: number) => {

@@ -37,6 +37,7 @@ export interface BattleEventHandlers {
 export interface BattleStompClientHandle {
   sendBoardState: (board: number[][], score: number, lines: number, level: number, combo: number) => void;
   sendComboAttack: (combo: number, targetPlayerId?: string | null) => void;
+  sendPlayerFinished: () => void;
   sendLeave: () => void;
   disconnect: () => void;
 }
@@ -47,9 +48,9 @@ const RETRY_DELAYS = [2000, 4000, 8000];
 
 export function connectBattle(
   roomId: string,
-  playerId: string,
-  authParam: string, // JWT token (logged-in) or guestToken
-  isGuest: boolean,
+  _playerId: string,
+  authParam: string, // JWT token (logged-in) or guest_<uuid>
+  _isGuest: boolean,
   handlers: BattleEventHandlers,
 ): BattleStompClientHandle {
   const {
@@ -74,17 +75,11 @@ export function connectBattle(
   const baseUrl = WS_BATTLE_URL
     ?? (import.meta.env.DEV ? 'http://localhost:8080/ws-battle' : '');
 
-  const tokenParam = isGuest
-    ? `guestToken=${encodeURIComponent(authParam)}`
-    : `token=${encodeURIComponent(authParam)}`;
-  const wsUrl = `${baseUrl}?${tokenParam}`;
+  // JWT 유저: ?token=<JWT>
+  // 게스트:   ?token=guest_<uuid>  (joinBattle 응답의 guestToken 값 그대로)
+  const wsUrl = `${baseUrl}?token=${encodeURIComponent(authParam)}`;
 
   const connectHeaders: Record<string, string> = {};
-  if (!isGuest) {
-    connectHeaders['Authorization'] = `Bearer ${authParam}`;
-  } else {
-    connectHeaders['X-Guest-Token'] = authParam;
-  }
 
   const client = new Client({
     webSocketFactory: () => new SockJS(wsUrl) as unknown as WebSocket,
@@ -94,7 +89,7 @@ export function connectBattle(
       retryCount = 0;
       onStatusChange('connected');
 
-      // 방 이벤트 구독
+      // 방 이벤트 구독 (ROOM_STATE, GAME_STARTED, PLAYER_FINISHED, GAME_RESULT, PLAYER_LEFT)
       client.subscribe(`/topic/blockfall-battle/room/${roomId}`, (frame) => {
         try {
           const msg = JSON.parse(frame.body) as BattleWsMessage<unknown>;
@@ -104,7 +99,27 @@ export function connectBattle(
         }
       });
 
-      // 개인 에러 구독
+      // 개인 채널: 상대 보드 업데이트 (발신자 에코 방지를 위해 개인 채널로 수신)
+      client.subscribe('/user/queue/blockfall-battle/board', (frame) => {
+        try {
+          const msg = JSON.parse(frame.body) as BattleWsMessage<unknown>;
+          dispatchEvent(msg.type, msg.payload);
+        } catch {
+          // 파싱 실패 무시
+        }
+      });
+
+      // 개인 채널: 큐 포지션
+      client.subscribe('/user/queue/blockfall-battle/queue', (frame) => {
+        try {
+          const msg = JSON.parse(frame.body) as BattleWsMessage<unknown>;
+          dispatchEvent(msg.type, msg.payload);
+        } catch {
+          // 파싱 실패 무시
+        }
+      });
+
+      // 개인 채널: 에러
       client.subscribe('/user/queue/blockfall-battle/errors', (frame) => {
         try {
           const err = JSON.parse(frame.body) as WsErrorPayload;
@@ -112,12 +127,6 @@ export function connectBattle(
         } catch {
           // 파싱 실패 무시
         }
-      });
-
-      // 방 입장 알림 발행
-      client.publish({
-        destination: `/app/blockfall-battle/room/${roomId}/join`,
-        body: JSON.stringify({ playerId }),
       });
     },
     onDisconnect: () => {
@@ -223,6 +232,13 @@ export function connectBattle(
           combo,
           targetPlayerId,
         }),
+      });
+    },
+    sendPlayerFinished: () => {
+      if (!client.connected) return;
+      client.publish({
+        destination: `/app/blockfall-battle/room/${roomId}/player-finished`,
+        body: '{}',
       });
     },
     sendLeave: () => {
