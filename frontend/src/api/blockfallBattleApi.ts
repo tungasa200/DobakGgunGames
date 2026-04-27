@@ -14,6 +14,7 @@ import type {
   PlayerLeftPayload,
   MatchCountdownPayload,
   MatchCountdownCancelledPayload,
+  ReadyStatePayload,
   ConnectionStatus,
 } from '../games/blockfall/types/battle.types';
 
@@ -90,6 +91,7 @@ export interface BattleWebSocketState {
   gameResult: GameResultPayload | null;
   queuePosition: QueuePositionPayload | null;
   countdown: number;
+  readyState: ReadyStatePayload | null;
   wsStatus: ConnectionStatus;
 }
 
@@ -98,6 +100,7 @@ export interface UseBattleWebSocketReturn extends BattleWebSocketState {
   sendComboAttack: (combo: number, targetPlayerId?: string | null) => void;
   sendPlayerFinished: () => void;
   sendLeave: () => void;
+  sendPlayerReady: () => void;
 }
 
 export function useBattleWebSocket(
@@ -115,6 +118,7 @@ export function useBattleWebSocket(
   const [gameResult, setGameResult] = useState<GameResultPayload | null>(null);
   const [queuePosition, setQueuePosition] = useState<QueuePositionPayload | null>(null);
   const [countdown, setCountdown] = useState(0);
+  const [readyState, setReadyState] = useState<ReadyStatePayload | null>(null);
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('connecting');
 
   const clientRef = useRef<BattleStompClientHandle | null>(null);
@@ -173,6 +177,10 @@ export function useBattleWebSocket(
     setCountdown(0);
   }, []);
 
+  const handleReadyState = useCallback((payload: ReadyStatePayload) => {
+    setReadyState(payload);
+  }, []);
+
   const handleError = useCallback((code: string, message: string) => {
     console.warn(`[BattleWS] Error ${code}: ${message}`);
   }, []);
@@ -195,6 +203,7 @@ export function useBattleWebSocket(
       onPlayerLeft: handlePlayerLeft,
       onMatchCountdown: handleMatchCountdown,
       onMatchCountdownCancelled: handleMatchCountdownCancelled,
+      onReadyState: handleReadyState,
       onError: handleError,
       onStatusChange: handleStatusChange,
     });
@@ -231,6 +240,10 @@ export function useBattleWebSocket(
     clientRef.current?.sendLeave();
   }, []);
 
+  const sendPlayerReady = useCallback(() => {
+    clientRef.current?.sendPlayerReady();
+  }, []);
+
   return {
     roomState,
     gameStarted,
@@ -240,10 +253,12 @@ export function useBattleWebSocket(
     gameResult,
     queuePosition,
     countdown,
+    readyState,
     wsStatus,
     sendBoardState,
     sendComboAttack,
     sendPlayerFinished,
     sendLeave,
+    sendPlayerReady,
   };
 }

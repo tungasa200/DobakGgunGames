@@ -13,6 +13,7 @@ import type {
   PlayerLeftPayload,
   MatchCountdownPayload,
   MatchCountdownCancelledPayload,
+  ReadyStatePayload,
   WsErrorPayload,
   ConnectionStatus,
 } from '../games/blockfall/types/battle.types';
@@ -30,6 +31,7 @@ export interface BattleEventHandlers {
   onPlayerLeft: (payload: PlayerLeftPayload) => void;
   onMatchCountdown: (payload: MatchCountdownPayload) => void;
   onMatchCountdownCancelled: (payload: MatchCountdownCancelledPayload) => void;
+  onReadyState: (payload: ReadyStatePayload) => void;
   onError: (code: string, message: string) => void;
   onStatusChange: (status: ConnectionStatus) => void;
 }
@@ -39,6 +41,7 @@ export interface BattleStompClientHandle {
   sendComboAttack: (combo: number, targetPlayerId?: string | null) => void;
   sendPlayerFinished: () => void;
   sendLeave: () => void;
+  sendPlayerReady: () => void;
   disconnect: () => void;
 }
 
@@ -64,6 +67,7 @@ export function connectBattle(
     onPlayerLeft,
     onMatchCountdown,
     onMatchCountdownCancelled,
+    onReadyState,
     onError,
     onStatusChange,
   } = handlers;
@@ -175,6 +179,9 @@ export function connectBattle(
       case 'MATCH_COUNTDOWN_CANCELLED':
         onMatchCountdownCancelled(payload as MatchCountdownCancelledPayload);
         break;
+      case 'READY_STATE':
+        onReadyState(payload as ReadyStatePayload);
+        break;
       case 'ERROR': {
         const errPayload = payload as WsErrorPayload;
         onError(errPayload.code, errPayload.message ?? '오류가 발생했습니다');
@@ -246,6 +253,13 @@ export function connectBattle(
       client.publish({
         destination: `/app/blockfall-battle/room/${roomId}/leave`,
         body: JSON.stringify({ type: 'LEAVE_BATTLE' }),
+      });
+    },
+    sendPlayerReady: () => {
+      if (!client.connected) return;
+      client.publish({
+        destination: `/app/blockfall-battle/room/${roomId}/player-ready`,
+        body: '{}',
       });
     },
     disconnect: () => {

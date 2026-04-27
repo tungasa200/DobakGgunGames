@@ -36,9 +36,6 @@ interface PlayerLeftToastState {
   nickname: string;
 }
 
-// 결과 자동 전환 카운트다운 (10초)
-const RESULT_AUTO_SECONDS = 10;
-
 export default function BlockfallBattlePage() {
   const { user, accessToken } = useAuth();
   const navigate = useNavigate();
@@ -63,17 +60,20 @@ export default function BlockfallBattlePage() {
   const [results, setResults] = useState<BattleResultEntry[]>([]);
   const [topRankings, setTopRankings] = useState<TopRankingEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
-  const [resultCountdown, setResultCountdown] = useState(RESULT_AUTO_SECONDS);
-
-  // 큐 카운트다운
-  const [queueCountdown, setQueueCountdown] = useState<number | null>(null);
 
   const startedRef = useRef(false);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const myGameOverRef = useRef(false);
   const myFinalScoreRef = useRef(0);
 
   // WS 활성 여부
-  const wsEnabled = joinInfo !== null && (phase === 'waiting' || phase === 'countdown' || phase === 'queued' || phase === 'playing');
+  const wsEnabled = joinInfo !== null && (
+    phase === 'waiting' ||
+    phase === 'countdown' ||
+    phase === 'queued' ||
+    phase === 'playing' ||
+    phase === 'finished'
+  );
 
   const authParam = joinInfo?.isGuest
     ? (joinInfo.guestToken ?? '')
@@ -197,7 +197,6 @@ export default function BlockfallBattlePage() {
 
     setResults(result.results);
     setTopRankings(result.topRankings);
-    setResultCountdown(RESULT_AUTO_SECONDS);
 
     // 내 순위
     const myResult = result.results.find(r => r.playerId === joinInfo?.playerId);
@@ -222,6 +221,26 @@ export default function BlockfallBattlePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.countdown]);
 
+  // 클라이언트 사이드 카운트다운 틱
+  useEffect(() => {
+    if (phase !== 'countdown') {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      return;
+    }
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+  }, [phase]);
+
   // WS 연결 에러
   useEffect(() => {
     if (ws.wsStatus === 'error') {
@@ -229,42 +248,6 @@ export default function BlockfallBattlePage() {
       setPhase('error');
     }
   }, [ws.wsStatus]);
-
-  // 결과 화면 10초 카운트다운
-  useEffect(() => {
-    if (phase !== 'finished') return;
-    if (resultCountdown <= 0) return;
-    const timer = setInterval(() => {
-      setResultCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [phase, resultCountdown]);
-
-  // 큐 대기 시 GAME_RESULT 후 카운트다운 처리
-  useEffect(() => {
-    if (phase !== 'queued' || !ws.gameResult) return;
-    setQueueCountdown(RESULT_AUTO_SECONDS);
-  }, [phase, ws.gameResult]);
-
-  useEffect(() => {
-    if (queueCountdown === null || queueCountdown <= 0) return;
-    const timer = setInterval(() => {
-      setQueueCountdown(prev => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [queueCountdown]);
 
   // ── 게임 이벤트 핸들러 ────────────────────────────────
 
@@ -299,8 +282,13 @@ export default function BlockfallBattlePage() {
   const handleLeave = useCallback(() => {
     ws.sendLeave();
     clearGuestToken();
-    navigate('/');
+    // STOMP LEAVE 프레임이 flush되도록 짧게 대기 후 이동
+    setTimeout(() => navigate('/'), 100);
   }, [ws, navigate]);
+
+  const handleReady = useCallback(() => {
+    ws.sendPlayerReady();
+  }, [ws]);
 
   const handleRetry = useCallback(() => {
     startedRef.current = false;
@@ -309,8 +297,6 @@ export default function BlockfallBattlePage() {
     setResults([]);
     setTopRankings([]);
     setMyRank(null);
-    setResultCountdown(RESULT_AUTO_SECONDS);
-    setQueueCountdown(null);
     setPlayers([]);
     setOpponents(new Map());
     setEliminatedPlayers(new Map());
@@ -410,7 +396,6 @@ export default function BlockfallBattlePage() {
         {phase === 'queued' ? (
           <span className="battle-status-text">
             현재 게임 진행 중 — 대기열 {qp?.position ?? '?'}번째
-            {queueCountdown !== null && queueCountdown > 0 && ` (약 ${queueCountdown}초)`}
           </span>
         ) : phase === 'countdown' ? (
           <span className="battle-status-text">
@@ -526,40 +511,25 @@ export default function BlockfallBattlePage() {
               </div>
             </div>
 
-            {/* 자동 전환 카운트다운 바 */}
-            <div className="result-countdown-area">
-              <p className="result-countdown-text">
-                {resultCountdown > 0
-                  ? `${resultCountdown}초 후 다음 라운드가 자동으로 시작됩니다`
-                  : '다음 라운드 대기 중...'}
+            {/* 준비 상태 표시 */}
+            {ws.readyState && (
+              <p style={{ textAlign: 'center', color: '#8b949e', fontSize: 13, margin: '8px 0 0' }}>
+                준비 완료: {ws.readyState.readyCount} / {ws.readyState.totalCount}명
               </p>
-              <div
-                className="result-countdown-bar-wrap"
-                role="progressbar"
-                aria-valuenow={resultCountdown}
-                aria-valuemin={0}
-                aria-valuemax={RESULT_AUTO_SECONDS}
-                aria-label="다음 라운드까지 남은 시간"
-              >
-                <div
-                  className="result-countdown-bar-fill"
-                  style={{ width: `${(resultCountdown / RESULT_AUTO_SECONDS) * 100}%` }}
-                />
-              </div>
-            </div>
+            )}
 
             {/* 버튼 */}
             <div className="result-btns">
               <button
                 className="battle-btn-primary"
-                onClick={handleRetry}
+                onClick={handleReady}
                 type="button"
               >
-                다시 배틀
+                다음 라운드 준비
               </button>
               <button
                 className="battle-btn-secondary"
-                onClick={() => navigate('/')}
+                onClick={handleLeave}
                 type="button"
               >
                 홈으로
@@ -580,6 +550,40 @@ export default function BlockfallBattlePage() {
               </p>
             )}
           </div>
+        </div>
+        {renderPlayerLeftToast()}
+      </div>
+    );
+  }
+
+  // 혼자 대기 중일 때 연습 게임 표시
+  if (phase === 'waiting' && players.length <= 1) {
+    return (
+      <div className="battle-page">
+        {renderHeader()}
+        {renderLabBanner()}
+        <div className="battle-content" style={{ flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <p style={{ color: '#8b949e', fontSize: 13, margin: 0 }}>
+            상대를 기다리는 중 — 연습 게임 중
+          </p>
+          <BlockfallBattleBoard
+            players={players.length > 0 ? players : [{
+              id: joinInfo?.playerId ?? '',
+              nickname: user?.nickname ?? '나',
+              isGuest: joinInfo?.isGuest ?? true,
+            }]}
+            myPlayerId={joinInfo?.playerId ?? ''}
+            opponents={new Map()}
+            eliminatedPlayers={new Map()}
+            garbagePending={0}
+            onGameOver={() => {}}
+            onBlockOut={() => {}}
+            onBoardChange={() => {}}
+            onComboAttack={() => {}}
+            onGarbageConsumed={() => {}}
+            isPlaying={true}
+            isPractice={true}
+          />
         </div>
         {renderPlayerLeftToast()}
       </div>

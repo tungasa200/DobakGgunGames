@@ -26,6 +26,7 @@ export type BattleEventType =
   | 'PLAYER_LEFT'
   | 'MATCH_COUNTDOWN'
   | 'MATCH_COUNTDOWN_CANCELLED'
+  | 'READY_STATE'
   | 'ERROR';
 
 export interface BattleWsMessage<T = unknown> {
@@ -164,6 +165,11 @@ export interface BattleAlreadyInRoomError {
 export interface WsErrorPayload {
   code: string;
   message: string;
+}
+
+export interface ReadyStatePayload {
+  readyCount: number;
+  totalCount: number;
 }
 
 // ── 클라이언트 측 보드 상태 ───────────────────────────────
