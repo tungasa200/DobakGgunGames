@@ -147,8 +147,21 @@
 
 ---
 
+## 통신 점검 세션 버그 수정 (2026-04-27)
+
+| 버그 ID | 내용 | 수정 파일 |
+|---|---|---|
+| BUG-COMM-01 | `MatchCountdownPayload.seconds` → `secondsRemaining` 필드명 통일 | `MatchCountdownPayload.java`, `BattleRoomService.java` (3곳) |
+| BUG-COMM-02 | `handleBoardState`에서 `PlayerSessionInfo.score` 미갱신 → 결과 화면 점수 모두 0 수정 | `BattleRoomService.java` |
+| BUG-COMM-03 | `boolean isGuest` Jackson 직렬화 시 `guest` 키로 출력 → `@JsonProperty("isGuest")` 추가 | `PlayerInfo.java`, `BattleJoinResponse.java`, `GameResultPayload.ResultEntry` |
+| BUG-COMM-04 | WS 재연결 시 방에서 즉시 제거 → grace period 15초 구현 (`handleExplicitLeave` 분리) | `BattleRoomService.java`, `BlockfallBattleWebSocketController.java` |
+
+빌드 결과: `./gradlew build -x test` BUILD SUCCESSFUL
+
+---
+
 ## 다음 세션에서 할 것
 
 1. Railway MySQL 콘솔에서 `blockfall-battle-schema.sql` 실행 확인
-2. 통합 테스트 (4인 게스트 혼합 시나리오, SessionDisconnect 처리 검증)
-3. qa-tester에게 재검증 요청
+2. 통합 테스트 (4인 게스트 혼합 시나리오, 재연결 grace period 검증)
+3. qa-tester에게 BUG-COMM 시리즈 재검증 요청

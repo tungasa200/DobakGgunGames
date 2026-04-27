@@ -1,5 +1,6 @@
 package com.dobakggun.dto.battle;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,5 +12,6 @@ import lombok.Getter;
 public class PlayerInfo {
     private String id;
     private String nickname;
+    @JsonProperty("isGuest")
     private boolean isGuest;
 }

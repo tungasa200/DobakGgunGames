@@ -1,5 +1,6 @@
 package com.dobakggun.dto.battle;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -12,6 +13,7 @@ public class BattleJoinResponse {
     private int maxPlayers;
     /** 즉시 참가 시 null, 큐 진입 시 1부터 시작 */
     private Integer queuePosition;
+    @JsonProperty("isGuest")
     private boolean isGuest;
     /** 게스트 신규 발급 시 토큰, 로그인 유저는 null */
     private String guestToken;

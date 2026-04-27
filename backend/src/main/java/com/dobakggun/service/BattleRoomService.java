@@ -33,6 +33,7 @@ public class BattleRoomService {
 
     private static final int COUNTDOWN_SECONDS = 5;
     private static final int RESULT_DISPLAY_SECONDS = 10;
+    private static final int RECONNECT_GRACE_SECONDS = 15;
     private static final String TOPIC_PREFIX = "/topic/blockfall-battle/room/";
     private static final int MAX_PLAYERS = 4;
 
@@ -200,6 +201,13 @@ public class BattleRoomService {
             return;
         }
 
+        // BUG-COMM-02 수정: PlayerSessionInfo.score 갱신 (handlePlayerFinished 에서 사용)
+        List<BattleRoomManager.PlayerSessionInfo> activePlayers = roomManager.getActivePlayers(roomId);
+        activePlayers.stream()
+                .filter(p -> p.getPlayerId().equals(senderPlayerId))
+                .findFirst()
+                .ifPresent(p -> p.setScore(msg.getScore()));
+
         BoardUpdatePayload payload = BoardUpdatePayload.builder()
                 .playerId(senderPlayerId)
                 .board(msg.getBoard())
@@ -270,11 +278,29 @@ public class BattleRoomService {
     }
 
     /**
-     * 플레이어 이탈 처리 (LEAVE 메시지 또는 SessionDisconnect).
-     * roomId를 removePlayer 호출 전에 미리 조회한다.
+     * 세션 끊김(SessionDisconnectEvent) 처리 — 15초 grace period 후 제거.
+     * 재연결 시 registerSession이 sessionRoomMap에서 old sessionId를 제거하므로
+     * removePlayer(oldSessionId) 가 null을 반환하여 제거가 취소됨.
      * PRD §10.3.8
      */
     public void handleLeaveBySession(String sessionId) {
+        String roomId = roomManager.getRoomIdBySession(sessionId);
+        if (roomId == null) return;
+
+        final String capturedRoomId = roomId;
+        taskScheduler.schedule(() -> {
+            // old sessionId가 여전히 map에 있으면 재연결 안 한 것 → 실제 제거
+            BattleRoomManager.PlayerSessionInfo player = roomManager.removePlayer(sessionId);
+            if (player == null) return; // 재연결 성공 → sessionId 이미 갱신됨 → 무시
+            handleLeaveInternal(capturedRoomId, player);
+        }, Instant.now().plusSeconds(RECONNECT_GRACE_SECONDS));
+    }
+
+    /**
+     * 자발적 이탈(LEAVE 메시지) 처리 — 즉시 제거.
+     * PRD §10.3.8
+     */
+    public void handleExplicitLeave(String sessionId) {
         String roomId = roomManager.getRoomIdBySession(sessionId);
         BattleRoomManager.PlayerSessionInfo player = roomManager.removePlayer(sessionId);
         if (player == null || roomId == null) return;
@@ -381,7 +407,7 @@ public class BattleRoomService {
             // 즉시 시작 (이미 카운트다운 중이면 취소 후 즉시)
             ScheduledFuture<?> existing = countdownFutures.remove(roomId);
             if (existing != null) existing.cancel(false);
-            broadcast(roomId, "MATCH_COUNTDOWN", MatchCountdownPayload.builder().seconds(0).build());
+            broadcast(roomId, "MATCH_COUNTDOWN", MatchCountdownPayload.builder().secondsRemaining(0).build());
             startGame(roomId);
             return;
         }
@@ -398,7 +424,7 @@ public class BattleRoomService {
             return;
         }
         // 원자적 등록 성공 후 브로드캐스트 (1회만 발생 보장)
-        broadcast(roomId, "MATCH_COUNTDOWN", MatchCountdownPayload.builder().seconds(COUNTDOWN_SECONDS).build());
+        broadcast(roomId, "MATCH_COUNTDOWN", MatchCountdownPayload.builder().secondsRemaining(COUNTDOWN_SECONDS).build());
         log.debug("BattleRoomService.tryStartCountdown: roomId={} seconds={}", roomId, COUNTDOWN_SECONDS);
     }
 
@@ -408,7 +434,7 @@ public class BattleRoomService {
             ScheduledFuture<?> future = countdownFutures.remove(roomId);
             if (future != null && !future.isDone()) {
                 future.cancel(false);
-                broadcast(roomId, "MATCH_COUNTDOWN_CANCELLED", MatchCountdownPayload.builder().seconds(0).build());
+                broadcast(roomId, "MATCH_COUNTDOWN_CANCELLED", MatchCountdownPayload.builder().secondsRemaining(0).build());
                 log.debug("BattleRoomService.cancelCountdown: roomId={}", roomId);
             }
         }

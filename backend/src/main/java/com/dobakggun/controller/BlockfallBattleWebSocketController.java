@@ -152,7 +152,7 @@ public class BlockfallBattleWebSocketController {
 
         String sessionId = headerAccessor.getSessionId();
         if (sessionId != null) {
-            battleRoomService.handleLeaveBySession(sessionId);
+            battleRoomService.handleExplicitLeave(sessionId);
         }
         log.debug("BlockfallBattle LEAVE: roomId={} playerId={}", roomId, bp.getPlayerId());
     }
