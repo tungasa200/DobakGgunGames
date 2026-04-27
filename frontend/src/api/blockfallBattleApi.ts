@@ -21,6 +21,7 @@ import type {
 const API_ORIGIN = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '');
 
 const GUEST_TOKEN_KEY = 'battleGuestToken';
+const JOIN_INFO_KEY = 'battleJoinInfo';
 
 // ── REST API 함수들 ──────────────────────────────────────
 
@@ -77,6 +78,28 @@ export function getStoredGuestToken(): string | null {
 }
 
 export function clearGuestToken(): void {
+  sessionStorage.removeItem(GUEST_TOKEN_KEY);
+}
+
+/** 매칭 성공 시 joinInfo를 sessionStorage에 저장 (리프레시 재연결용). */
+export function saveJoinInfo(info: BattleJoinResponse): void {
+  sessionStorage.setItem(JOIN_INFO_KEY, JSON.stringify(info));
+}
+
+/** 저장된 joinInfo 복원. 없거나 파싱 실패 시 null. */
+export function getStoredJoinInfo(): BattleJoinResponse | null {
+  const raw = sessionStorage.getItem(JOIN_INFO_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as BattleJoinResponse;
+  } catch {
+    return null;
+  }
+}
+
+/** 명시적 이탈 시 joinInfo + guestToken 모두 정리. */
+export function clearJoinInfo(): void {
+  sessionStorage.removeItem(JOIN_INFO_KEY);
   sessionStorage.removeItem(GUEST_TOKEN_KEY);
 }
 

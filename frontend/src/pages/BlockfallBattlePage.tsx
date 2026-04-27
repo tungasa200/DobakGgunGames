@@ -4,7 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import {
   joinBattle,
   getStoredGuestToken,
-  clearGuestToken,
+  saveJoinInfo,
+  getStoredJoinInfo,
+  clearJoinInfo,
 } from '../api/blockfallBattleApi';
 import { useBattleWebSocket } from '../api/blockfallBattleApi';
 import BlockfallBattleBoard from '../games/blockfall/battle/BlockfallBattleBoard';
@@ -95,6 +97,7 @@ export default function BlockfallBattlePage() {
     try {
       const existingToken = getStoredGuestToken();
       const res = await joinBattle(accessToken, existingToken);
+      saveJoinInfo(res);
       setJoinInfo(res);
 
       if (res.status === 'WAITING') {
@@ -106,7 +109,14 @@ export default function BlockfallBattlePage() {
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string };
       if (e.code === 'ALREADY_IN_ROOM') {
-        setErrorMessage('이미 다른 방에 참가 중입니다.');
+        // 리프레시 등으로 ALREADY_IN_ROOM → 저장된 joinInfo로 WS 재연결 시도
+        const stored = getStoredJoinInfo();
+        if (stored) {
+          setJoinInfo(stored);
+          setPhase('waiting'); // ROOM_STATE 수신 시 실제 phase로 보정됨
+          return;
+        }
+        setErrorMessage('이미 다른 방에 참가 중입니다. 잠시 후 다시 시도해 주세요.');
       } else {
         setErrorMessage(e.message ?? '배틀 참가에 실패했습니다.');
       }
@@ -136,11 +146,14 @@ export default function BlockfallBattlePage() {
       isGuest: p.isGuest,
     })));
 
-    if (rs.status === 'WAITING' && phase === 'queued') {
-      // 큐 대기자 → WAITING 화면으로 자동 전환
-      setPhase('waiting');
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // setPhase 콜백으로 현재 phase를 참조 — stale closure 방지
+    setPhase(prev => {
+      if (rs.status === 'WAITING' && prev === 'queued') return 'waiting';
+      // 재연결 시: 서버가 이미 PLAYING/FINISHED → 실제 상태로 보정
+      if (rs.status === 'PLAYING' && (prev === 'waiting' || prev === 'countdown')) return 'playing';
+      if (rs.status === 'FINISHED' && (prev === 'waiting' || prev === 'countdown')) return 'finished';
+      return prev;
+    });
   }, [ws.roomState]);
 
   // GAME_STARTED
@@ -202,8 +215,8 @@ export default function BlockfallBattlePage() {
     const myResult = result.results.find(r => r.playerId === joinInfo?.playerId);
     if (myResult) setMyRank(myResult.rank);
 
-    // 게스트 토큰 폐기
-    clearGuestToken();
+    // joinInfo는 유지 — Ready 시스템으로 다음 라운드 참여 가능
+    // 명시적 이탈(handleLeave) 시에만 clearJoinInfo() 호출
 
     setPhase('finished');
   }, [ws.gameResult, joinInfo?.playerId]);
@@ -281,8 +294,7 @@ export default function BlockfallBattlePage() {
 
   const handleLeave = useCallback(() => {
     ws.sendLeave();
-    clearGuestToken();
-    // STOMP LEAVE 프레임이 flush되도록 짧게 대기 후 이동
+    clearJoinInfo(); // joinInfo + guestToken 모두 정리 → 재연결 방지
     setTimeout(() => navigate('/'), 100);
   }, [ws, navigate]);
 
@@ -373,8 +385,19 @@ export default function BlockfallBattlePage() {
     if (!msg) return '알 수 없는 오류가 발생했습니다.';
     if (msg.includes('ROOM_NOT_FOUND')) return '방을 찾을 수 없습니다.';
     if (msg.includes('NOT_IN_ROOM')) return '참가 중인 방이 없습니다.';
-    if (msg.includes('UNAUTHORIZED')) return '인증 정보가 만료되었습니다. 다시 시도해 주세요.';
-    if (msg.includes('MATCH_UNAVAILABLE')) return '잠시 후 다시 시도해 주세요.';
+    if (msg.includes('ALREADY_IN_ROOM') || msg.includes('이미 다른 방에'))
+      return '이미 다른 방에 참가 중입니다. 잠시 후 다시 시도해 주세요.';
+    if (msg.includes('UNAUTHORIZED_GUEST_TOKEN'))
+      return '인증 정보가 올바르지 않습니다. 다시 시도해 주세요.';
+    if (msg.includes('UNAUTHORIZED'))
+      return '로그인 정보가 만료되었습니다. 다시 로그인 후 시도해 주세요.';
+    if (msg.includes('MATCH_UNAVAILABLE'))
+      return '일시적으로 매칭을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('fetch'))
+      return '서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.';
+    if (msg.includes('서버와의 연결이 실패')) return msg;
+    // 그 외 영문 에러코드가 그대로 노출되는 경우 대체
+    if (/^[A-Z_]+$/.test(msg.trim())) return '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
     return msg;
   };
 
@@ -524,8 +547,9 @@ export default function BlockfallBattlePage() {
                 className="battle-btn-primary"
                 onClick={handleReady}
                 type="button"
+                disabled={ws.wsStatus !== 'connected'}
               >
-                다음 라운드 준비
+                {ws.wsStatus !== 'connected' ? '재연결 중...' : '다음 라운드 준비'}
               </button>
               <button
                 className="battle-btn-secondary"

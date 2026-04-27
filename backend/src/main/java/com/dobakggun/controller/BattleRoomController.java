@@ -67,7 +67,10 @@ public class BattleRoomController {
                 nickname = jwtUtil.getNicknameFromToken(token);
                 isGuest = false;
             } else {
-                isGuest = true;
+                // JWT가 있는데 유효하지 않음 → 만료/조작 → 401 반환 (게스트 fallback 금지)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "UNAUTHORIZED",
+                                "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
             }
         } else {
             isGuest = true;
