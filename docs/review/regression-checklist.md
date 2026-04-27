@@ -17,7 +17,7 @@
 
 ## §1. 공통 모듈 변경 시 영향도 체크
 
-### 1-1. WebSocket 인프라 변경 (`/ws`, SockJS, STOMP, JwtHandshakeInterceptor)
+### 1-1. WebSocket 인프라 변경 (`/ws`, `/ws-battle`, SockJS, STOMP, JwtHandshakeInterceptor)
 
 | 확인 항목 | 우선순위 | 확인 방법 |
 |---|---|---|
@@ -25,8 +25,11 @@
 | 채팅 메시지 발행/수신 정상 (`/app/chat/**`) | Critical | 실제 채팅 메시지 전송 후 브로드캐스트 확인 |
 | 채팅 방 입장/퇴장 이벤트 정상 | Critical | SYSTEM 메시지 수신 확인 |
 | RPS WebSocket 연결 정상 (`/topic/rps/**`) | Critical | RPS 매칭 후 ROOM_STATE 수신 확인 |
-| 비인증 연결 여전히 거부 | Critical | JWT 없이 `/ws` 연결 시도 → 거부 확인 |
+| 비인증 연결 여전히 거부 (`/ws`) | Critical | JWT 없이 `/ws` 연결 시도 → 거부 확인 |
+| `/ws-battle` 엔드포인트 추가가 `/ws` 에 영향 없음 | Critical | 기존 `/ws` 채팅/RPS 연결 정상 확인 |
+| guestToken이 `/ws` 핸드셰이크에서 거부됨 | Critical | `guest_xxx` 토큰으로 `/ws` 연결 시도 → 거부 확인 |
 | `/user/queue/errors` 에러 채널 정상 작동 | High | 에러 상황 유발 후 에러 메시지 수신 확인 |
+| `/user/queue/blockfall-battle/errors` 에러 채널 분리 | High | 배틀 에러 수신 시 채팅/RPS 에러 채널에 영향 없음 확인 |
 
 ### 1-2. SecurityConfig 변경
 
@@ -44,7 +47,8 @@
 |---|---|---|
 | 채팅 끊김 처리 정상 (`subscribedRoomIds`) | Critical | 채팅방 접속 중 탭 닫기 → SYSTEM 퇴장 메시지 확인 |
 | RPS 끊김 처리 정상 (`rpsSubscribedRoomIds`) | Critical | RPS 대기방 접속 중 탭 닫기 → PLAYER_LEFT 확인 |
-| 두 키 간 간섭 없음 | High | 채팅 + RPS 동시 접속 후 한쪽만 끊김 시 반대쪽 정상 유지 |
+| 배틀 끊김 처리 정상 (배틀 세션 키) | Critical | 배틀 진행 중 탭 닫기 → PLAYER_LEFT 브로드캐스트, 기존 채팅/RPS 영향 없음 확인 |
+| 세 키 간 간섭 없음 | High | 채팅 + RPS + 배틀 동시 접속 후 각각 독립적 끊김 처리 확인 |
 
 ### 1-4. RankingService / 랭킹 API 변경
 
@@ -56,6 +60,8 @@
 | Baseball 랭킹 등록/조회 정상 | High | 게임 완료 후 랭킹 API 200 응답 확인 |
 | Minesweeper 랭킹 등록/조회 정상 | High | 게임 완료 후 랭킹 API 200 응답 확인 |
 | HMAC 검증 정상 유지 | Critical | 위조 점수 전송 시 400/403 응답 확인 |
+| `battle_record` 신규 테이블이 기존 `rankings` 테이블과 격리 | Critical | 솔로 랭킹 API (`/api/rankings/**`) 정상 응답, battle_record 데이터 혼입 없음 |
+| `GET /api/blockfall-battle/rankings` 새 엔드포인트 인증 없이 접근 가능 | High | 비인증으로 200 응답 확인 |
 
 ### 1-5. 인증 시스템 변경 (JWT, OAuth2, Spring Security)
 
@@ -144,7 +150,25 @@
 | rps_round_result DB 저장 확인 | High |
 | 기존 admin-rsp 라우트/API 404 확인 | Critical |
 
-### 2-9. 채팅 (chat-testroom)
+### 2-9. Blockfall Battle (신규 — 2026-04-27 추가)
+
+| 확인 항목 | 우선순위 |
+|---|---|
+| Test Lab 섹션에서 배틀 카드 표시 | Critical |
+| `/test-lab/blockfall-battle` 페이지 정상 로드 | Critical |
+| "테스트 단계" 배너 표시 | Critical |
+| 일반 게임 카드 목록에 배틀 카드 미노출 | Critical |
+| `POST /api/blockfall-battle/join` 정상 응답 (JWT 없이도 guestToken 발급) | Critical |
+| `/ws-battle` WebSocket 연결 + ROOM_STATE 수신 | Critical |
+| 2인 대기 후 카운트다운 → GAME_STARTED | Critical |
+| 2콤보 이상 시 GARBAGE_ATTACK 수신 | Critical |
+| 배틀 종료 후 GAME_RESULT + topRankings 수신 | Critical |
+| 로그인 유저 전적 battle_record DB 저장 확인 (읽기 전용) | High |
+| 게스트 전적 battle_record 미저장 확인 | Critical |
+| `GET /api/blockfall-battle/rankings` 정상 응답 | High |
+| 홈화면에 배틀 랭킹 요소 미노출 | Critical |
+
+### 2-10. 채팅 (chat-testroom)
 
 | 확인 항목 | 우선순위 |
 |---|---|
@@ -167,6 +191,7 @@
 | Sudoku | `frontend/src/games/sudoku/SudokuBoard.tsx` | — | |
 | Solitaire | `frontend/src/games/solitaire/CardBoard.tsx` | — | |
 | Online RPS | `frontend/src/games/` (예정) | 2026-04-24 (배포 예정) | 멀티플레이, Excel 없음 |
+| Blockfall Battle | `frontend/src/games/blockfall/` (예정) | 2026-04-27 (구현 예정) | Test Lab 전용, 멀티플레이, Excel 없음, 게스트 허용 |
 | ~~어드민 솔로 RSP~~ | ~~`frontend/src/games/rsp/RspBoard.tsx`~~ | — | **Online RPS로 대체 — 제거 예정** |
 
 ---
@@ -176,3 +201,4 @@
 | 날짜 | 변경 내용 | 작성자 |
 |---|---|---|
 | 2026-04-24 | 최초 작성. Online RPS 추가 및 어드민 솔로 RSP 제거 맥락에서 신규 생성. §1~3 전체 초안 작성. | qa-tester |
+| 2026-04-27 | Blockfall Battle 추가. §1-1에 `/ws-battle` 격리 항목 추가. §1-3에 배틀 끊김 처리 항목 추가. §1-4에 battle_record 분리 항목 추가. §2-9 배틀 smoke test 항목 신규 추가. §3 게임 목록에 배틀 행 추가. | qa-tester |

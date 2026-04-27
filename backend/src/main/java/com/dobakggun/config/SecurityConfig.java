@@ -88,8 +88,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/contacts").authenticated()
                 .requestMatchers("/api/contacts/my").authenticated()
                 .requestMatchers("/api/contacts/my/**").authenticated()
-                // WebSocket 엔드포인트 — 실제 인증은 JwtHandshakeInterceptor에서 처리
+                // WebSocket 엔드포인트 — 실제 인증은 JwtHandshakeInterceptor / BlockfallBattleHandshakeInterceptor에서 처리
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/ws-battle/**").permitAll()
+                // Blockfall Battle REST API — join은 게스트 허용, rankings는 공개
+                .requestMatchers("/api/blockfall-battle/join").permitAll()
+                .requestMatchers("/api/blockfall-battle/rankings").permitAll()
                 // 채팅 API — FRIEND 이상
                 .requestMatchers(HttpMethod.GET,    "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.POST,   "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
@@ -134,6 +138,7 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
         source.registerCorsConfiguration("/ws/**", config);
+        source.registerCorsConfiguration("/ws-battle/**", config);
         return source;
     }
 }

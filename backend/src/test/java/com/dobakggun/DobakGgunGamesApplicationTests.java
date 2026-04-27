@@ -1,5 +1,7 @@
 package com.dobakggun;
 
+import com.dobakggun.service.BattleRankingService;
+import com.dobakggun.service.BattleRoomService;
 import com.dobakggun.service.ChatRedisService;
 import com.dobakggun.service.IpBanService;
 import com.dobakggun.service.RedisTokenService;
@@ -46,6 +48,14 @@ class DobakGgunGamesApplicationTests {
 	/** RPS 방 서비스 — @PostConstruct DB 호출 및 @Scheduled mock */
 	@MockBean
 	private RpsRoomService rpsRoomService;
+
+	/** Battle 방 서비스 — SimpMessagingTemplate 순환 의존성 mock */
+	@MockBean
+	private BattleRoomService battleRoomService;
+
+	/** Battle 랭킹 서비스 */
+	@MockBean
+	private BattleRankingService battleRankingService;
 
 	@Test
 	void contextLoads() {

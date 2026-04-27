@@ -242,47 +242,48 @@ export default function HomePage() {
               />
             );
           })}
-          {/* Test Lab 카드 */}
-          {user && (
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <span className={styles.icon}>🧪</span>
-                <div className={styles.title}>
-                  <div className={styles.nameKo}>Test Lab</div>
-                </div>
-              </div>
-              <div className={styles.cardRanking}>
-                <Link
-                  to="/dbgchat"
-                  className={`${styles.btn} ${styles.btnNormal}`}
-                  style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  💬 실시간 채팅 랩
-                </Link>
-                <hr className={styles.labDivider} />
-                <Link
-                  to="/online-rps"
-                  className={`${styles.btn} ${styles.btnNormal}`}
-                  style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  Online RPS
-                </Link>
-                <hr className={styles.labDivider} />
-                {/* 블록폴 배틀 — 신규 추가 (디자인 명세 §1.2) */}
-                <Link
-                  to="/test-lab/blockfall-battle"
-                  className={`${styles.btn} ${styles.btnNormal}`}
-                  style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
-                >
-                  <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🟦</span>
-                  <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>블록폴 배틀</span>
-                  <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                    BETA
-                  </span>
-                </Link>
+          {/* Test Lab 카드 — 전체 방문자(게스트 포함) 노출 */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={styles.icon}>🧪</span>
+              <div className={styles.title}>
+                <div className={styles.nameKo}>Test Lab</div>
               </div>
             </div>
-          )}
+            <div className={styles.cardRanking}>
+              {user && (
+                <>
+                  <Link
+                    to="/dbgchat"
+                    className={`${styles.btn} ${styles.btnNormal}`}
+                    style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    💬 실시간 채팅 랩
+                  </Link>
+                  <hr className={styles.labDivider} />
+                  <Link
+                    to="/online-rps"
+                    className={`${styles.btn} ${styles.btnNormal}`}
+                    style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    Online RPS
+                  </Link>
+                  <hr className={styles.labDivider} />
+                </>
+              )}
+              <Link
+                to="/test-lab/blockfall-battle"
+                className={`${styles.btn} ${styles.btnNormal}`}
+                style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
+              >
+                <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🟦</span>
+                <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>블록폴 배틀</span>
+                <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
+                  BETA
+                </span>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
       <Footer />

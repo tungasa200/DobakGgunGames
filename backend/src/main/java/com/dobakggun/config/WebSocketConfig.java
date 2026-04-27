@@ -1,5 +1,6 @@
 package com.dobakggun.config;
 
+import com.dobakggun.security.BlockfallBattleHandshakeInterceptor;
 import com.dobakggun.security.JwtHandshakeInterceptor;
 import com.dobakggun.security.StompChannelInterceptor;
 import com.dobakggun.util.JwtUtil;
@@ -25,9 +26,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // 기존 /ws 엔드포인트 — 변경 없음 (회귀 방지)
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(allowedOrigins.split(","))
                 .addInterceptors(new JwtHandshakeInterceptor(jwtUtil))
+                .withSockJS();
+
+        // 신규 /ws-battle 엔드포인트 — JWT 또는 guestToken 허용
+        registry.addEndpoint("/ws-battle")
+                .setAllowedOriginPatterns(allowedOrigins.split(","))
+                .addInterceptors(new BlockfallBattleHandshakeInterceptor(jwtUtil))
                 .withSockJS();
     }
 

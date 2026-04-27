@@ -27,6 +27,10 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     private static final Pattern ROOM_TOPIC_PATTERN = Pattern.compile("^/topic/room/([a-z0-9]{8})$");
     private static final Pattern ROOM_APP_PATTERN = Pattern.compile("^/app/chat/([a-z0-9]{8})$");
 
+    // Blockfall Battle 경로 — StompChannelInterceptor 검사 제외 (별도 인터셉터가 처리)
+    private static final Pattern BATTLE_TOPIC_PATTERN = Pattern.compile("^/topic/blockfall-battle/.*$");
+    private static final Pattern BATTLE_APP_PATTERN = Pattern.compile("^/app/blockfall-battle/.*$");
+
     private final JwtUtil jwtUtil;
     private final ChatRedisService chatRedisService;
 
@@ -77,6 +81,33 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             return false;
         }
 
+        // /ws-battle 연결: isGuest 속성이 있으면 BattlePrincipal 설정 후 허용 (별도 인터셉터 처리)
+        Object isGuestAttr = sessionAttributes.get("isGuest");
+        if (isGuestAttr != null) {
+            boolean isGuest = Boolean.TRUE.equals(isGuestAttr);
+            BattlePrincipal battlePrincipal;
+            if (isGuest) {
+                String guestId = (String) sessionAttributes.get("guestId");
+                String nickname = (String) sessionAttributes.getOrDefault("nickname", "손님");
+                if (guestId == null) {
+                    log.warn("StompChannelInterceptor: Battle CONNECT - guestId null");
+                    return false;
+                }
+                battlePrincipal = new BattlePrincipal(guestId, nickname);
+            } else {
+                Long userId = (Long) sessionAttributes.get("userId");
+                String nickname = (String) sessionAttributes.getOrDefault("nickname", "");
+                if (userId == null) {
+                    log.warn("StompChannelInterceptor: Battle CONNECT - userId null");
+                    return false;
+                }
+                battlePrincipal = new BattlePrincipal(userId, nickname);
+            }
+            accessor.setUser(battlePrincipal);
+            log.debug("StompChannelInterceptor: Battle CONNECT OK playerId={}", battlePrincipal.getPlayerId());
+            return true;
+        }
+
         Long userId = (Long) sessionAttributes.get("userId");
         String nickname = (String) sessionAttributes.get("nickname");
         String role = (String) sessionAttributes.get("role");
@@ -115,6 +146,9 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         String destination = accessor.getDestination();
         if (destination == null) return true;
 
+        // Battle 경로는 BattlePrincipal 기반으로 별도 처리 — 여기서는 통과
+        if (BATTLE_TOPIC_PATTERN.matcher(destination).matches()) return true;
+
         var topicMatcher = ROOM_TOPIC_PATTERN.matcher(destination);
         if (!topicMatcher.matches()) return true;
 
@@ -140,6 +174,9 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     private boolean handleSend(StompHeaderAccessor accessor, Message<?> message) {
         String destination = accessor.getDestination();
         if (destination == null) return true;
+
+        // Battle 경로는 별도 처리 — 여기서는 통과
+        if (BATTLE_APP_PATTERN.matcher(destination).matches()) return true;
 
         var appMatcher = ROOM_APP_PATTERN.matcher(destination);
         if (!appMatcher.matches()) return true;
