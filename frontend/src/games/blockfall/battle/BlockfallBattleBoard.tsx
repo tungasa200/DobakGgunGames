@@ -8,6 +8,7 @@ const VISIBLE_H = 21;
 const BUFFER_H = 2;
 const BOARD_H = VISIBLE_H + BUFFER_H;
 const CELL = 24; // 배틀용 약간 작은 셀
+const CELL_MINI = 22; // NEXT/HOLD 사이드 캔버스용
 
 const COLORS_NORMAL: (string | null)[] = [
   null,
@@ -129,6 +130,51 @@ interface BlockfallBattleBoardProps {
   isPlaying: boolean;
 }
 
+// ── NEXT/HOLD 미니 캔버스 draw 헬퍼 ──────────────────────
+function drawMiniCell(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  colorIndex: number,
+  cell: number,
+) {
+  const px = x * cell;
+  const py = y * cell;
+  if (colorIndex === 8) {
+    const hue = (Date.now() / 500 * 60 + x * 36 + y * 18) % 360;
+    ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+  } else {
+    ctx.fillStyle = COLORS_NORMAL[colorIndex] ?? '#ccc';
+  }
+  ctx.fillRect(px, py, cell, cell);
+  const hi = Math.round(cell * 0.07);
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.fillRect(px, py, cell, hi);
+  ctx.fillRect(px, py, hi, cell);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(px, py + cell - hi, cell, hi);
+  ctx.fillRect(px + cell - hi, py, hi, cell);
+}
+
+function drawMiniCanvas(
+  canvas: HTMLCanvasElement,
+  matrix: Matrix | null,
+) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.fillStyle = '#0d1117';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!matrix) return;
+  const gridSize = 4;
+  const ox = Math.floor((gridSize - matrix[0].length) / 2);
+  const oy = Math.floor((gridSize - matrix.length) / 2);
+  matrix.forEach((row, y) => {
+    row.forEach((val, x) => {
+      if (val !== 0) drawMiniCell(ctx, x + ox, y + oy, val, CELL_MINI);
+    });
+  });
+}
+
 export default function BlockfallBattleBoard({
   players,
   myPlayerId,
@@ -143,6 +189,8 @@ export default function BlockfallBattleBoard({
   isPlaying,
 }: BlockfallBattleBoardProps) {
   const boardRef = useRef<HTMLCanvasElement>(null);
+  const nextCanvasRef = useRef<HTMLCanvasElement>(null);
+  const holdCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // ── 게임 상태 refs ──────────────────────────────────
   const arena = useRef<Matrix>(createMatrix(BOARD_W, BOARD_H));
@@ -262,6 +310,15 @@ export default function BlockfallBattleBoard({
     ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.fillRect(0, 0, BOARD_W * CELL, BUFFER_H * CELL);
     ctx.restore();
+
+    // NEXT 미니 캔버스 갱신
+    if (nextCanvasRef.current) {
+      drawMiniCanvas(nextCanvasRef.current, nextPiece.current);
+    }
+    // HOLD 캔버스 — hold 기능 미구현이므로 항상 빈 캔버스
+    if (holdCanvasRef.current) {
+      drawMiniCanvas(holdCanvasRef.current, null);
+    }
   }, [drawCell]);
 
   const updateDisplay = useCallback(() => {
@@ -599,6 +656,8 @@ export default function BlockfallBattleBoard({
   const myPlayer = players.find(p => p.id === myPlayerId);
   const opponentPlayers = players.filter(p => p.id !== myPlayerId);
 
+  const miniCanvasSize = CELL_MINI * 4;
+
   return (
     <div className={containerClass}>
       {/* 내 보드 */}
@@ -615,65 +674,90 @@ export default function BlockfallBattleBoard({
           <span className="battle-board-score">{score.toLocaleString()}</span>
         </div>
 
-        <div
-          className="battle-board-canvas-wrap"
-          style={{
-            position: 'relative',
-            overflow: 'hidden',
-            height: VISIBLE_H * CELL,
-            flexShrink: 0,
-          }}
-        >
-          <canvas
-            ref={boardRef}
-            width={BOARD_W * CELL}
-            height={BOARD_H * CELL}
-            style={{
-              display: 'block',
-              width: BOARD_W * CELL,
-              height: BOARD_H * CELL,
-              marginTop: -(BUFFER_H * CELL),
-            }}
-          />
-          {garbagePending > 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 4,
-                bottom: 4,
-                background: 'rgba(248,81,73,0.9)',
-                color: 'white',
-                borderRadius: 4,
-                padding: '2px 6px',
-                fontSize: '0.75em',
-                fontWeight: 'bold',
-                pointerEvents: 'none',
-              }}
-            >
-              -{garbagePending}
+        {/* 사이드패널 + 보드 캔버스 가로 래퍼 */}
+        <div className="battle-my-play-area">
+          {/* 사이드패널: NEXT, HOLD, 스탯 */}
+          <div className="battle-my-side-panel">
+            <div className="battle-side-box">
+              <div className="battle-side-title">NEXT</div>
+              <canvas
+                ref={nextCanvasRef}
+                width={miniCanvasSize}
+                height={miniCanvasSize}
+                style={{ display: 'block', border: '1px solid #30363d', borderRadius: 4 }}
+              />
             </div>
-          )}
-        </div>
+            <div className="battle-side-box">
+              <div className="battle-side-title">HOLD</div>
+              <canvas
+                ref={holdCanvasRef}
+                width={miniCanvasSize}
+                height={miniCanvasSize}
+                style={{ display: 'block', border: '1px solid #30363d', borderRadius: 4 }}
+              />
+            </div>
+            <div className="battle-stats-area">
+              <div className="battle-stat-row">
+                <span className="battle-stat-label">SCORE</span>
+                <span className="battle-stat-value">{score.toLocaleString()}</span>
+              </div>
+              <div className="battle-stat-row">
+                <span className="battle-stat-label">LINES</span>
+                <span className="battle-stat-value">{lines}</span>
+              </div>
+              <div className="battle-stat-row">
+                <span className="battle-stat-label">LEVEL</span>
+                <span className="battle-stat-value">{level}</span>
+              </div>
+              {combo >= 2 && (
+                <div className="battle-stat-row">
+                  <span className="battle-stat-label">COMBO</span>
+                  <span className="battle-stat-value combo">{combo}</span>
+                </div>
+              )}
+            </div>
+          </div>
 
-        {/* 하단 스탯 바 */}
-        <div className="battle-stats-bar">
-          <div className="battle-stats-item">
-            <span className="battle-stats-label">점수</span>
-            <span className="battle-stats-value">{score.toLocaleString()}</span>
+          {/* 보드 캔버스 래퍼 */}
+          <div
+            className="battle-board-canvas-wrap"
+            style={{
+              position: 'relative',
+              overflow: 'hidden',
+              height: VISIBLE_H * CELL,
+              flexShrink: 0,
+            }}
+          >
+            <canvas
+              ref={boardRef}
+              width={BOARD_W * CELL}
+              height={BOARD_H * CELL}
+              style={{
+                display: 'block',
+                width: BOARD_W * CELL,
+                height: BOARD_H * CELL,
+                marginTop: -(BUFFER_H * CELL),
+              }}
+            />
+            {garbagePending > 0 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  right: 4,
+                  bottom: 4,
+                  background: 'rgba(248,81,73,0.9)',
+                  color: 'white',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                  fontSize: '0.75em',
+                  fontWeight: 'bold',
+                  pointerEvents: 'none',
+                }}
+              >
+                -{garbagePending}
+              </div>
+            )}
           </div>
-          <div className="battle-stats-item">
-            <span className="battle-stats-label">레벨</span>
-            <span className="battle-stats-value">{level}</span>
-          </div>
-          <div className="battle-stats-item">
-            <span className="battle-stats-label">줄</span>
-            <span className="battle-stats-value">{lines}</span>
-          </div>
-          {combo >= 2 && (
-            <div className="battle-garbage-indicator">
-              COMBO x{combo}
-            </div>
-          )}
         </div>
       </div>
 

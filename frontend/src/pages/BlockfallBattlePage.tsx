@@ -403,7 +403,12 @@ export default function BlockfallBattlePage() {
         <div className="battle-content">
           <div className="battle-loading">
             <div className="battle-spinner" />
-            <p>매칭 중...</p>
+            <p className="battle-loading-text">매칭 중...</p>
+            <div className="waiting-dots-row" aria-hidden="true">
+              <span className="waiting-dot" />
+              <span className="waiting-dot" />
+              <span className="waiting-dot" />
+            </div>
           </div>
         </div>
       </div>

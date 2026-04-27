@@ -110,7 +110,7 @@ export default function OpponentBoard({
         <span className={`battle-board-nickname ${isMine ? 'mine' : ''}`}>
           {nickname}
           {isGuest && (
-            <span style={{ marginLeft: 4, fontSize: '0.78em', color: '#8b949e' }}>
+            <span className="battle-board-badge-guest" style={{ marginLeft: 4 }}>
               손님
             </span>
           )}

@@ -24,8 +24,8 @@
   --battle-result-rank1        : #F59E0B;
   --battle-result-rank2        : #94A3B8;
   --battle-result-rank3        : #CD7F32;
-  --battle-result-my-row-bg    : #EEF2FF;
-  --battle-result-my-row-border: #C7D2FE;
+  --battle-result-my-row-bg    : rgba(99,102,241,0.15);
+  --battle-result-my-row-border: rgba(99,102,241,0.4);
   --battle-result-top10-my-bg  : #FEF3C7;
   --battle-result-top10-my-border: #FDE68A;
 
@@ -35,7 +35,7 @@
   --battle-toast-error-bg      : #FEF2F2;
   --battle-toast-info-bg       : #EFF6FF;
 
-  --color-text-primary         : #111827;
+  --color-text-primary         : #f0f6fc;
   --color-text-secondary       : #6B7280;
   --color-text-muted           : #9CA3AF;
   --color-danger               : #DC2626;
@@ -244,14 +244,14 @@
 .waiting-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: #f0f6fc;
   margin: 0;
 }
 
 .waiting-title-countdown {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: #f0f6fc;
   margin: 0;
 }
 
@@ -275,12 +275,11 @@
   text-align: center;
   animation: bb-num-pop 200ms ease-out;
   line-height: 1;
-  role: timer;
 }
 
 .waiting-sub {
   font-size: 14px;
-  color: var(--color-text-muted);
+  color: #8b949e;
   margin: 0;
 }
 
@@ -305,13 +304,13 @@
 }
 
 .waiting-queue-info {
-  background: #F3F4F6;
-  border: 1px solid #E5E7EB;
+  background: #1c2128;
+  border: 1px solid #30363d;
   border-radius: 8px;
   padding: 12px 20px;
   font-size: 15px;
   font-weight: 600;
-  color: #374151;
+  color: #e6edf3;
   text-align: center;
 }
 
@@ -336,8 +335,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #F9FAFB;
-  border: 1px solid #E5E7EB;
+  background: #1c2128;
+  border: 1px solid #30363d;
   border-radius: 8px;
   margin-bottom: 6px;
   font-size: 0.9em;
@@ -355,7 +354,7 @@
   flex: 1;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #e6edf3;
 }
 
 .waiting-player-status {
@@ -522,8 +521,8 @@
 
 /* ── 개별 보드 아이템 ────────────────────────────────────── */
 .battle-board-item {
-  background: #FFFFFF;
-  border: 1.5px solid #E5E7EB;
+  background: #1c2128;
+  border: 1.5px solid #30363d;
   border-radius: 8px;
   overflow: hidden;
   position: relative;
@@ -541,18 +540,18 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background: #F9FAFB;
-  border-bottom: 1px solid #E5E7EB;
+  background: #21262d;
+  border-bottom: 1px solid #30363d;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: #e6edf3;
   min-height: 32px;
   gap: 6px;
 }
 
 .battle-board-nickname {
   font-weight: 600;
-  color: #374151;
+  color: #e6edf3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -585,7 +584,7 @@
 }
 
 .battle-board-score {
-  color: #6B7280;
+  color: #8b949e;
   font-size: 12px;
   flex-shrink: 0;
   margin-left: auto;
@@ -689,11 +688,17 @@
   color: #8b949e;
 }
 
+.battle-loading-text {
+  color: #e6edf3;
+  font-size: 15px;
+  margin: 0;
+}
+
 .battle-spinner {
   width: 40px;
   height: 40px;
   border: 3px solid #30363d;
-  border-top-color: #58a6ff;
+  border-top-color: #6366F1;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -713,6 +718,7 @@
 
 .battle-error-icon {
   font-size: 3em;
+  color: #EF4444;
 }
 
 .battle-error-title {
@@ -747,7 +753,7 @@
 .result-title {
   font-size: 22px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: #f0f6fc;
   margin: 0;
   text-align: center;
 }
@@ -768,8 +774,8 @@
 
 /* 패널 공통 */
 .result-panel {
-  background: #FFFFFF;
-  border: 1.5px solid #E5E7EB;
+  background: #1c2128;
+  border: 1.5px solid #30363d;
   border-radius: 12px;
   padding: 16px;
 }
@@ -777,7 +783,7 @@
 .result-panel-title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: #f0f6fc;
   margin: 0 0 12px;
 }
 
@@ -794,7 +800,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 0;
-  border-bottom: 1px solid #F5F5F5;
+  border-bottom: 1px solid #30363d;
 }
 
 .result-item:last-child {
@@ -828,7 +834,7 @@
 .result-nickname {
   flex: 1;
   font-weight: 500;
-  color: #374151;
+  color: #e6edf3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -863,8 +869,8 @@
 
 /* TOP 10 랭킹 패널 */
 .ranking-panel {
-  background: #FFFFFF;
-  border: 1.5px solid #E5E7EB;
+  background: #1c2128;
+  border: 1.5px solid #30363d;
   border-radius: 12px;
   overflow: hidden;
   padding: 16px;
@@ -873,7 +879,7 @@
 .ranking-panel-title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: #f0f6fc;
   margin: 0 0 12px;
 }
 
@@ -888,7 +894,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 0;
-  border-bottom: 1px solid #F5F5F5;
+  border-bottom: 1px solid #30363d;
   font-size: 13px;
 }
 
@@ -921,7 +927,7 @@
 
 .ranking-panel-nickname {
   flex: 1;
-  color: #374151;
+  color: #e6edf3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -957,7 +963,7 @@
 .result-countdown-bar-wrap {
   width: 100%;
   height: 4px;
-  background: #E5E7EB;
+  background: #30363d;
   border-radius: 2px;
   overflow: hidden;
 }
@@ -1023,7 +1029,7 @@
   width: 100%;
   max-width: 280px;
   height: 4px;
-  background: #E5E7EB;
+  background: #30363d;
   border-radius: 2px;
   overflow: hidden;
 }
@@ -1067,7 +1073,7 @@
 }
 
 .battle-btn-secondary:hover {
-  background: #F9FAFB;
+  background: #21262d;
 }
 
 /* ── 재연결 배너 (디자인 명세 §10.1) ────────────────────── */
@@ -1126,7 +1132,7 @@ button:hover .test-lab-badge {
   background: #E07B00;
 }
 
-/* ── 인게임 상태 바 ──────────────────────────────────────── */
+/* ── 인게임 상태 바 (레거시 — v2에서 사이드패널로 통합됨) ── */
 .battle-stats-bar {
   display: flex;
   align-items: center;
@@ -1170,4 +1176,85 @@ button:hover .test-lab-badge {
 @keyframes garbage-pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.5; }
+}
+
+/* ── 내 게임판 사이드패널 (v2) ───────────────────────────── */
+
+/* 내 게임판 가로 래퍼: 사이드패널 + 보드 캔버스 */
+.battle-my-play-area {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+/* 사이드패널 (일반모드 sidePanel 대응) */
+.battle-my-side-panel {
+  width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 6px 4px;
+  background: #161b22;
+  border-right: 1px solid #30363d;
+  flex-shrink: 0;
+  gap: 8px;
+  min-height: 100%;
+}
+
+/* NEXT / HOLD 박스 */
+.battle-side-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* NEXT / HOLD 레이블 */
+.battle-side-title {
+  font-size: 0.65rem;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* 스탯 영역 (사이드패널 하단 push) */
+.battle-stats-area {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  text-align: right;
+  padding: 8px 4px 4px;
+  border-top: 1px solid #30363d;
+}
+
+/* 각 스탯 항목 */
+.battle-stat-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.battle-stat-label {
+  font-size: 0.60rem;
+  color: #8b949e;
+  letter-spacing: 0.10em;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.battle-stat-value {
+  font-size: 1.3rem;
+  color: #e6edf3;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.battle-stat-value.combo {
+  color: #EF4444;
 }
