@@ -35,7 +35,7 @@ public class BattleRoomService {
     private static final int RESULT_DISPLAY_SECONDS = 10;
     private static final int RECONNECT_GRACE_SECONDS = 15;
     private static final String TOPIC_PREFIX = "/topic/blockfall-battle/room/";
-    private static final int MAX_PLAYERS = 4;
+    private static final int MAX_PLAYERS = 5;
 
     // ─── 카운트다운 Future 저장 ───────────────────────────────────────────────
     private final ConcurrentHashMap<String, ScheduledFuture<?>> countdownFutures = new ConcurrentHashMap<>();

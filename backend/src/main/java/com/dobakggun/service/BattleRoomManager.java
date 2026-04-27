@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 @Component
 public class BattleRoomManager {
 
+    private static final int MAX_PLAYERS = 5;
+
     // ─── 인메모리 저장소 ──────────────────────────────────────────────────────
 
     /** roomId → 참가자 목록 */
@@ -70,7 +72,7 @@ public class BattleRoomManager {
 
         List<PlayerSessionInfo> players = activePlayers.get(roomId);
         synchronized (players) {
-            if (players.size() < 4) {
+            if (players.size() < MAX_PLAYERS) {
                 players.add(player);
                 // BUG-003 수정: REST 단계에서 sessionId가 null일 수 있음.
                 // WebSocket 연결 시 registerSession()으로 실제 sessionId 등록.
@@ -179,7 +181,7 @@ public class BattleRoomManager {
             // 기존 참가자를 모두 제거하고 새 라운드 준비
             players.clear();
             // 큐에서 최대 4명 승격
-            while (!queue.isEmpty() && players.size() < 4) {
+            while (!queue.isEmpty() && players.size() < MAX_PLAYERS) {
                 PlayerSessionInfo p = queue.pollFirst();
                 if (p != null) {
                     p.setAlive(true);
@@ -214,7 +216,7 @@ public class BattleRoomManager {
                 p.setVoluntaryLeft(false);
             });
             // 빈 자리에 큐 승격
-            while (!queue.isEmpty() && players.size() < 4) {
+            while (!queue.isEmpty() && players.size() < MAX_PLAYERS) {
                 PlayerSessionInfo p = queue.pollFirst();
                 if (p != null) {
                     p.setAlive(true);
