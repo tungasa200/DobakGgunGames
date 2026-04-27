@@ -38,6 +38,7 @@ import { AdminTestProvider } from './context/AdminTestContext';
 import OnlineRpsPage from './pages/OnlineRpsPage';
 import BlockfallBattlePage from './pages/BlockfallBattlePage';
 import BattleUITestPage from './pages/BattleUITestPage';
+import MafiaDevPage from './pages/MafiaDevPage';
 
 export default function App() {
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function App() {
 
         {/* DEV — 배틀 UI 테스트 (통신 없이 로컬 확인용) */}
         <Route path="/dev/battle-ui" element={<BattleUITestPage />} />
+        <Route path="/dev/mafia" element={<MafiaDevPage />} />
 
         {/* 어드민 */}
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>

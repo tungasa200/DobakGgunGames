@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
+    "@react-three/postprocessing": "^3.0.4",
     "@stomp/stompjs": "^7.1.1",
     "@tiptap/extension-image": "^2.27.2",
     "@tiptap/extension-link": "^2.27.2",
@@ -18,12 +21,15 @@
     "@tiptap/pm": "^2.11.5",
     "@tiptap/react": "^2.27.2",
     "@tiptap/starter-kit": "^2.27.2",
+    "@types/three": "^0.184.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "gsap": "^3.15.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.0",
-    "sockjs-client": "^1.6.1"
+    "sockjs-client": "^1.6.1",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
