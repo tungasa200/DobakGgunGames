@@ -318,6 +318,15 @@ public class BattleRoomManager {
                 .findFirst();
     }
 
+    /** 활성 참가자 단건 조회 */
+    public Optional<PlayerSessionInfo> findActivePlayer(String roomId, String playerId) {
+        List<PlayerSessionInfo> players = activePlayers.get(roomId);
+        if (players == null) return Optional.empty();
+        return players.stream()
+                .filter(p -> p.getPlayerId().equals(playerId))
+                .findFirst();
+    }
+
     /** 방 참가자/큐 전체 정리 (방 close 시) */
     public void cleanupRoom(String roomId) {
         List<PlayerSessionInfo> players = activePlayers.remove(roomId);

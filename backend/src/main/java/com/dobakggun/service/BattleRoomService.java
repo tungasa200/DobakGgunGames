@@ -76,7 +76,16 @@ public class BattleRoomService {
         // EC-8: 이미 활성 방에 참가 중인지 확인
         Optional<String> existingRoom = roomManager.findActiveRoomByPlayerId(playerId);
         if (existingRoom.isPresent()) {
-            throw new AlreadyInRoomException(existingRoom.get());
+            String existingRoomId = existingRoom.get();
+            Optional<BattleRoomManager.PlayerSessionInfo> stale =
+                    roomManager.findActivePlayer(existingRoomId, playerId);
+            // sessionId == null: REST join 후 WS 연결 미완료(stale) → 제거 후 재진입 허용
+            if (stale.isPresent() && stale.get().getSessionId() == null) {
+                roomManager.removePlayerById(existingRoomId, playerId);
+                log.info("joinBattle: stale(sessionless) entry evicted roomId={} playerId={}", existingRoomId, playerId);
+            } else {
+                throw new AlreadyInRoomException(existingRoomId);
+            }
         }
 
         BattleRoomManager.PlayerSessionInfo player = new BattleRoomManager.PlayerSessionInfo(
