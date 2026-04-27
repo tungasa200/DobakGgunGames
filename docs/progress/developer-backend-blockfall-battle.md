@@ -2,7 +2,7 @@
 
 - 소유 팀원: developer-backend
 - 기능 키: `blockfall-battle`
-- 최종 업데이트: 2026-04-27 (빌드 성공 + main 머지 완료 — Railway DB 마이그레이션 대기)
+- 최종 업데이트: 2026-04-27 (게임 플로우 개선 + Ready 시스템 + MAX_PLAYERS=5 + BUG-COMM 시리즈 수정)
 - 기반 PRD: `docs/specs/blockfall-battle-prd.md` (CP1 완료)
 - 계획서: `docs/progress/developer-backend-blockfall-battle-plan.md`
 
@@ -160,8 +160,38 @@
 
 ---
 
+## 게임 플로우 개선 세션 (2026-04-27)
+
+### 수정된 파일
+
+| 파일 | 변경 내용 |
+|---|---|
+| `BattleRoomManager.java` | `readySets` 필드 + `markPlayerReady`, `getReadyCount`, `cleanupRoom`에 readySets.remove 추가 |
+| `BattleRoomService.java` | `finishGame` flush+try-catch, 자동재시작 제거, `handlePlayerReady` 추가, `handleExplicitLeave` 분리 |
+| `BlockfallBattleWebSocketController.java` | `/player-ready` 엔드포인트 추가, `handleLeave` → `handleExplicitLeave` 호출로 변경 |
+| `ReadyStatePayload.java` (신규) | `readyCount`, `totalCount` 두 필드 |
+
+### MAX_PLAYERS 5인으로 증가
+
+- `BattleRoomManager.MAX_PLAYERS = 5`
+- `joinRoom`, `promoteFromQueue`, `fillFromQueue` 모두 `< MAX_PLAYERS` 사용
+
+### 주요 수정 내용
+
+1. **finishGame 트랜잭션 롤백 버그 수정** — `battleRoomRepository.flush()` 후 `getTopRankings()` try-catch fallback
+2. **자동 재시작 제거** — `nextRoundFutures` 필드 완전 삭제, `finishGame`에서 스케줄 제거
+3. **Ready 시스템** — `/player-ready` → `handlePlayerReady` → `markPlayerReady` → 전원 준비 시 `prepareNextRound`
+4. **홈으로 이탈 처리** — `handleLeave`(STOMP)는 `handleExplicitLeave`(즉시 제거), `SessionDisconnect`는 `handleLeaveBySession`(15s grace)
+5. **players.isEmpty() 즉시 정리** — finishGame 후 활성 플레이어 0명이면 cleanupRoom 즉시 호출
+
+### 빌드 결과
+
+`./gradlew build -x test BUILD SUCCESSFUL`
+
+---
+
 ## 다음 세션에서 할 것
 
-1. Railway MySQL 콘솔에서 `blockfall-battle-schema.sql` 실행 확인
-2. 통합 테스트 (4인 게스트 혼합 시나리오, 재연결 grace period 검증)
-3. qa-tester에게 BUG-COMM 시리즈 재검증 요청
+1. Railway MySQL 콘솔에서 `blockfall-battle-schema.sql` 실행 확인 (battle_record 없으면 finishGame 실패)
+2. 통합 테스트 (5인 혼합 시나리오, Ready 시스템, grace period 재연결)
+3. qa-tester에게 BUG-COMM 시리즈 + 게임 플로우 개선 검증 요청

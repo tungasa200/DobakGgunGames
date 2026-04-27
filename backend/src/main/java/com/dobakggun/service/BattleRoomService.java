@@ -32,14 +32,12 @@ import java.util.stream.Collectors;
 public class BattleRoomService {
 
     private static final int COUNTDOWN_SECONDS = 5;
-    private static final int RESULT_DISPLAY_SECONDS = 10;
     private static final int RECONNECT_GRACE_SECONDS = 15;
     private static final String TOPIC_PREFIX = "/topic/blockfall-battle/room/";
     private static final int MAX_PLAYERS = 5;
 
     // ─── 카운트다운 Future 저장 ───────────────────────────────────────────────
     private final ConcurrentHashMap<String, ScheduledFuture<?>> countdownFutures = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, ScheduledFuture<?>> nextRoundFutures = new ConcurrentHashMap<>();
 
     // ─── 의존성 ───────────────────────────────────────────────────────────────
     private final BattleRoomManager roomManager;
@@ -514,11 +512,13 @@ public class BattleRoomService {
         BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
         if (room == null) return;
 
+        // ① 상태 먼저 FINISHED로 저장 후 flush — 이후 예외가 나도 롤백되지 않도록
         room.setStatus("FINISHED");
         room.setFinishedAt(LocalDateTime.now());
         battleRoomRepository.save(room);
+        battleRoomRepository.flush();
 
-        // 전적 업데이트 (로그인 유저만, BUG-004: 자발적 이탈자 제외)
+        // ② 전적 업데이트 (로그인 유저만, BUG-004: 자발적 이탈자 제외)
         List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
         players.stream()
                 .filter(p -> !p.isGuest() && p.getUserId() != null && !p.isVoluntaryLeft())
@@ -531,9 +531,16 @@ public class BattleRoomService {
                     }
                 });
 
-        // GAME_RESULT 브로드캐스트
-        List<BattleRankingResponse.RankingEntry> topRankings = rankingService.getTopRankings();
+        // ③ 상위 랭킹 조회 (실패해도 빈 리스트로 fallback — DB 미마이그레이션 방어)
+        List<BattleRankingResponse.RankingEntry> topRankings;
+        try {
+            topRankings = rankingService.getTopRankings();
+        } catch (Exception e) {
+            log.warn("BattleRoomService.finishGame: getTopRankings 실패 (DB 미마이그레이션?), 빈 리스트로 대체", e);
+            topRankings = Collections.emptyList();
+        }
 
+        // ④ GAME_RESULT 브로드캐스트
         List<GameResultPayload.ResultEntry> results = players.stream()
                 .sorted(Comparator.comparingInt(BattleRoomManager.PlayerSessionInfo::getRank))
                 .map(p -> GameResultPayload.ResultEntry.builder()
@@ -553,11 +560,42 @@ public class BattleRoomService {
         broadcast(roomId, "GAME_RESULT", resultPayload);
         log.info("BattleRoomService.finishGame: roomId={} GAME_RESULT 브로드캐스트", roomId);
 
-        // 10초 후 다음 라운드 준비
-        ScheduledFuture<?> nextRoundFuture = taskScheduler.schedule(
-                () -> prepareNextRound(roomId),
-                Instant.now().plusSeconds(RESULT_DISPLAY_SECONDS));
-        nextRoundFutures.put(roomId, nextRoundFuture);
+        // ⑤ 플레이어 없으면 방 즉시 정리, 있으면 Ready 시스템 대기 (자동 재시작 없음)
+        if (players.isEmpty()) {
+            room.setClosedAt(LocalDateTime.now());
+            battleRoomRepository.save(room);
+            roomManager.cleanupRoom(roomId);
+            log.info("BattleRoomService.finishGame: roomId={} 플레이어 없음 → 방 정리", roomId);
+        }
+        // 자동 prepareNextRound 스케줄 없음 — Ready 시스템으로 대체
+    }
+
+    /**
+     * 결과 화면에서 플레이어가 "준비" 클릭.
+     * 전원 준비 완료 시 다음 라운드 시작.
+     */
+    public void handlePlayerReady(String roomId, String playerId) {
+        BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
+        if (room == null || !"FINISHED".equals(room.getStatus())) {
+            log.debug("handlePlayerReady: roomId={} 방 없음 또는 FINISHED 아님, 무시", roomId);
+            return;
+        }
+
+        boolean allReady = roomManager.markPlayerReady(roomId, playerId);
+        int readyCount = roomManager.getReadyCount(roomId);
+        int totalCount = roomManager.getActivePlayers(roomId).size();
+
+        // READY_STATE 브로드캐스트
+        broadcast(roomId, "READY_STATE", ReadyStatePayload.builder()
+                .readyCount(readyCount)
+                .totalCount(totalCount)
+                .build());
+        log.debug("handlePlayerReady: roomId={} playerId={} readyCount={}/{}", roomId, playerId, readyCount, totalCount);
+
+        if (allReady) {
+            roomManager.clearReadySet(roomId);
+            prepareNextRound(roomId);
+        }
     }
 
     /**
@@ -566,7 +604,6 @@ public class BattleRoomService {
      */
     @Transactional
     public void prepareNextRound(String roomId) {
-        nextRoundFutures.remove(roomId);
         BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
         if (room == null) return;
 

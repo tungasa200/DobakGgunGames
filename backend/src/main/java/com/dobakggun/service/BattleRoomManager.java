@@ -30,6 +30,9 @@ public class BattleRoomManager {
     /** sessionId → roomId 역방향 조회 */
     private final ConcurrentHashMap<String, String> sessionRoomMap = new ConcurrentHashMap<>();
 
+    /** roomId → 준비 완료한 playerId Set */
+    private final ConcurrentHashMap<String, Set<String>> readySets = new ConcurrentHashMap<>();
+
     // ─── PlayerSessionInfo ────────────────────────────────────────────────────
 
     @Getter
@@ -339,7 +342,27 @@ public class BattleRoomManager {
         if (queue != null) {
             queue.forEach(p -> sessionRoomMap.remove(p.getSessionId()));
         }
+        readySets.remove(roomId);
         log.debug("BattleRoomManager.cleanupRoom: roomId={} 정리 완료", roomId);
+    }
+
+    /**
+     * 플레이어 준비 완료 등록.
+     * @return true: 전원 준비(2인 이상) → 다음 라운드 시작 가능
+     */
+    public boolean markPlayerReady(String roomId, String playerId) {
+        readySets.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet()).add(playerId);
+        int activeCount = getActivePlayers(roomId).size();
+        int readyCount = readySets.getOrDefault(roomId, Collections.emptySet()).size();
+        return activeCount >= 2 && readyCount >= activeCount;
+    }
+
+    public int getReadyCount(String roomId) {
+        return readySets.getOrDefault(roomId, Collections.emptySet()).size();
+    }
+
+    public void clearReadySet(String roomId) {
+        readySets.remove(roomId);
     }
 
     /**

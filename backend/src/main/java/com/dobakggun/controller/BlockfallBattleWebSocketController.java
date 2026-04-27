@@ -141,6 +141,22 @@ public class BlockfallBattleWebSocketController {
         battleRoomService.handlePlayerFinished(roomId, bp.getPlayerId());
     }
 
+    // ─── PLAYER_READY ─────────────────────────────────────────────────────────
+
+    /**
+     * 결과 화면에서 "준비" 클릭.
+     * 발행: /app/blockfall-battle/room/{roomId}/player-ready
+     * Body: {} (무시)
+     */
+    @MessageMapping("/blockfall-battle/room/{roomId}/player-ready")
+    public void handlePlayerReady(@DestinationVariable String roomId,
+                                   Principal principal) {
+        BattlePrincipal bp = toBattlePrincipal(principal);
+        if (bp == null) return;
+        log.debug("BlockfallBattle PLAYER_READY: roomId={} playerId={}", roomId, bp.getPlayerId());
+        battleRoomService.handlePlayerReady(roomId, bp.getPlayerId());
+    }
+
     // ─── LEAVE ────────────────────────────────────────────────────────────────
 
     @MessageMapping("/blockfall-battle/room/{roomId}/leave")

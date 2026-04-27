@@ -1,8 +1,8 @@
 # developer-frontend — blockfall-battle 진행 로그
 
 - 최초 작성일: 2026-04-27
-- 최종 업데이트: 2026-04-27 (세션 종료 업데이트)
-- 상태: 전체 신규 구현 완료 + Block Out 서버 알림(BUG-001) 완료, tsc+eslint PASS, main 커밋 완료
+- 최종 업데이트: 2026-04-27 (게임 플로우 개선 + Ready 시스템 적용)
+- 상태: 게임 플로우 전면 개선 완료 + Ready 시스템 연동, tsc+eslint PASS
 
 ---
 
@@ -218,9 +218,35 @@
 
 ---
 
+## 게임 플로우 개선 세션 (2026-04-27)
+
+### 수정된 파일
+
+| 파일 | 변경 내용 |
+|---|---|
+| `frontend/src/games/blockfall/types/battle.types.ts` | `BattleEventType`에 `'READY_STATE'` 추가, `ReadyStatePayload` 인터페이스 추가 |
+| `frontend/src/lib/battleStompClient.ts` | `onReadyState` 핸들러 + `sendPlayerReady` 추가 |
+| `frontend/src/api/blockfallBattleApi.ts` | `readyState` 상태 + `sendPlayerReady` hook return 추가 |
+| `frontend/src/pages/BlockfallBattlePage.tsx` | 연습모드, 카운트다운 틱, Ready UI, wsEnabled 'finished' 포함, handleLeave 100ms 딜레이 |
+
+### 주요 변경 내용
+
+1. **혼자 대기 시 연습 게임 즉시 시작** — `phase === 'waiting' && players.length <= 1` 분기로 연습 모드 렌더
+2. **카운트다운 클라이언트 틱** — `countdownIntervalRef`로 1초마다 감소, MATCH_COUNTDOWN 이벤트로 초기값 수신
+3. **자동 재시작 제거** — `resultCountdown`, `RESULT_AUTO_SECONDS`, 관련 useEffect 3개 전체 삭제
+4. **Ready 시스템** — "다시 배틀" → "다음 라운드 준비" 버튼 + 준비 완료 인원 표시
+5. **홈으로 연결 종료 수정** — `wsEnabled`에 `'finished'` 추가 + `navigate` 100ms 딜레이
+6. **queueCountdown UI 제거** — renderStatusBar에서 queueCountdown 참조 제거
+
+### 빌드 검증
+- `tsc -b --noEmit`: PASS
+- `eslint`: PASS
+
+---
+
 ## 다음 세션에서 할 것
 
-1. qa-tester 검증 요청 — 실제 WS 통신 테스트 (2인 이상 접속, Block Out 발생 시 PLAYER_FINISHED 서버 수신 확인)
-2. PLAYER_LEFT 토스트 연결 (`useBattleWebSocket` 훅에 `playerLeftNickname` 상태 노출)
-3. 모바일 레이아웃 실기기 검증
+1. Railway MySQL 콘솔에서 `blockfall-battle-schema.sql` 실행 확인 (battle_record 테이블 없으면 finishGame 실패)
+2. qa-tester 검증 요청 — 혼자 접속/카운트다운/Ready 시스템/홈으로 이탈 시나리오
+3. PLAYER_LEFT 토스트 연결 (`useBattleWebSocket` 훅에 `playerLeftNickname` 상태 노출)
 4. Vercel 환경변수 `VITE_WS_BATTLE_URL` 등록 확인
