@@ -36,8 +36,10 @@ public class BattleRoomService {
     private static final String TOPIC_PREFIX = "/topic/blockfall-battle/room/";
     private static final int MAX_PLAYERS = 5;
 
-    // ─── 카운트다운 Future 저장 ───────────────────────────────────────────────
+    // ─── 카운트다운 Future / 종료 시각 저장 ─────────────────────────────────────
     private final ConcurrentHashMap<String, ScheduledFuture<?>> countdownFutures = new ConcurrentHashMap<>();
+    /** 카운트다운 종료 예정 시각 (남은 초 계산용) */
+    private final ConcurrentHashMap<String, Instant> countdownEndTimes = new ConcurrentHashMap<>();
 
     // ─── 의존성 ───────────────────────────────────────────────────────────────
     private final BattleRoomManager roomManager;
@@ -412,15 +414,15 @@ public class BattleRoomService {
 
         // BUG-006 수정: putIfAbsent 원자적 등록 먼저 수행, 성공한 경우에만 브로드캐스트.
         // 브로드캐스트가 등록 전에 실행되면 동시 진입 시 MATCH_COUNTDOWN 중복 수신 가능.
-        ScheduledFuture<?> future = taskScheduler.schedule(
-                () -> startGame(roomId),
-                Instant.now().plusSeconds(COUNTDOWN_SECONDS));
+        Instant endTime = Instant.now().plusSeconds(COUNTDOWN_SECONDS);
+        ScheduledFuture<?> future = taskScheduler.schedule(() -> startGame(roomId), endTime);
         ScheduledFuture<?> prev = countdownFutures.putIfAbsent(roomId, future);
         if (prev != null) {
             // 이미 다른 Future 가 등록되어 있음 — 새로 만든 것 취소, 브로드캐스트 없음
             future.cancel(false);
             return;
         }
+        countdownEndTimes.put(roomId, endTime);
         // 원자적 등록 성공 후 브로드캐스트 (1회만 발생 보장)
         broadcast(roomId, "MATCH_COUNTDOWN", MatchCountdownPayload.builder().secondsRemaining(COUNTDOWN_SECONDS).build());
         log.debug("BattleRoomService.tryStartCountdown: roomId={} seconds={}", roomId, COUNTDOWN_SECONDS);
@@ -432,6 +434,7 @@ public class BattleRoomService {
             ScheduledFuture<?> future = countdownFutures.remove(roomId);
             if (future != null && !future.isDone()) {
                 future.cancel(false);
+                countdownEndTimes.remove(roomId);
                 broadcast(roomId, "MATCH_COUNTDOWN_CANCELLED", MatchCountdownPayload.builder().secondsRemaining(0).build());
                 log.debug("BattleRoomService.cancelCountdown: roomId={}", roomId);
             }
@@ -443,6 +446,7 @@ public class BattleRoomService {
     @Transactional
     public void startGame(String roomId) {
         countdownFutures.remove(roomId);
+        countdownEndTimes.remove(roomId);
         BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
         if (room == null) return;
 
@@ -639,6 +643,50 @@ public class BattleRoomService {
         }
 
         log.info("BattleRoomService.prepareNextRound: roomId={} WAITING 전이 promoted={}", roomId, promoted.size());
+    }
+
+    // ─── 상태 catch-up ────────────────────────────────────────────────────────
+
+    /**
+     * WS 연결 직후 요청자(플레이어)에게 현재 방 상태를 개인 채널로 전송.
+     * REST join → WS 구독 사이에 브로드캐스트된 MATCH_COUNTDOWN을 놓친 플레이어를 위한 catch-up.
+     */
+    public void handleRequestState(String roomId, String playerId) {
+        // ROOM_STATE 개인 전송
+        List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
+        BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
+        String status = room != null ? room.getStatus() : "WAITING";
+
+        List<PlayerInfo> playerInfos = players.stream()
+                .map(p -> PlayerInfo.builder()
+                        .id(p.getPlayerId())
+                        .nickname(p.getNickname())
+                        .isGuest(p.isGuest())
+                        .build())
+                .toList();
+
+        RoomStatePayload roomStatePayload = RoomStatePayload.builder()
+                .roomId(roomId)
+                .status(status)
+                .players(playerInfos)
+                .queueCount(roomManager.getQueueSize(roomId))
+                .build();
+        messagingTemplate.convertAndSendToUser(
+                playerId, "/queue/blockfall-battle/state", buildEnvelope("ROOM_STATE", roomStatePayload));
+
+        // 카운트다운 진행 중이면 남은 초 계산 후 개인 전송
+        Instant endTime = countdownEndTimes.get(roomId);
+        if (endTime != null) {
+            long remaining = endTime.getEpochSecond() - Instant.now().getEpochSecond();
+            if (remaining > 0) {
+                messagingTemplate.convertAndSendToUser(
+                        playerId, "/queue/blockfall-battle/state",
+                        buildEnvelope("MATCH_COUNTDOWN",
+                                MatchCountdownPayload.builder().secondsRemaining((int) remaining).build()));
+                log.debug("handleRequestState: catch-up MATCH_COUNTDOWN roomId={} playerId={} remaining={}",
+                        roomId, playerId, remaining);
+            }
+        }
     }
 
     // ─── 브로드캐스트 헬퍼 ───────────────────────────────────────────────────

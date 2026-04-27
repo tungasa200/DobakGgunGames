@@ -29,12 +29,15 @@ import java.util.Map;
  *   /app/blockfall-battle/room/{roomId}/combo-attack
  *   /app/blockfall-battle/room/{roomId}/leave
  *   /app/blockfall-battle/room/{roomId}/player-finished
+ *   /app/blockfall-battle/room/{roomId}/player-ready
+ *   /app/blockfall-battle/room/{roomId}/request-state   ← WS 연결 직후 catch-up
  *
  * 구독 경로:
  *   /topic/blockfall-battle/room/{roomId}
  *   /user/queue/blockfall-battle/errors
  *   /user/queue/blockfall-battle/board    (개인 BOARD_UPDATE)
  *   /user/queue/blockfall-battle/queue   (개인 QUEUE_POSITION)
+ *   /user/queue/blockfall-battle/state   (개인 catch-up: ROOM_STATE + MATCH_COUNTDOWN)
  */
 @Slf4j
 @Controller
@@ -155,6 +158,24 @@ public class BlockfallBattleWebSocketController {
         if (bp == null) return;
         log.debug("BlockfallBattle PLAYER_READY: roomId={} playerId={}", roomId, bp.getPlayerId());
         battleRoomService.handlePlayerReady(roomId, bp.getPlayerId());
+    }
+
+    // ─── REQUEST_STATE (WS 연결 직후 catch-up) ───────────────────────────────
+
+    /**
+     * WS 구독 직후 클라이언트가 요청하는 현재 방 상태 catch-up.
+     * REST join → WS 구독 사이의 타이밍 갭으로 놓친 MATCH_COUNTDOWN 등을 개인 채널로 재전송.
+     *
+     * 발행: /app/blockfall-battle/room/{roomId}/request-state
+     * Body: {} (무시)
+     * 응답: /user/queue/blockfall-battle/state → ROOM_STATE (+ MATCH_COUNTDOWN if active)
+     */
+    @MessageMapping("/blockfall-battle/room/{roomId}/request-state")
+    public void handleRequestState(@DestinationVariable String roomId, Principal principal) {
+        BattlePrincipal bp = toBattlePrincipal(principal);
+        if (bp == null) return;
+        log.debug("BlockfallBattle REQUEST_STATE: roomId={} playerId={}", roomId, bp.getPlayerId());
+        battleRoomService.handleRequestState(roomId, bp.getPlayerId());
     }
 
     // ─── LEAVE ────────────────────────────────────────────────────────────────

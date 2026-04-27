@@ -132,6 +132,23 @@ export function connectBattle(
           // 파싱 실패 무시
         }
       });
+
+      // 개인 채널: 상태 catch-up (WS 연결 직후 ROOM_STATE + MATCH_COUNTDOWN 수신)
+      client.subscribe('/user/queue/blockfall-battle/state', (frame) => {
+        try {
+          const msg = JSON.parse(frame.body) as BattleWsMessage<unknown>;
+          dispatchEvent(msg.type, msg.payload);
+        } catch {
+          // 파싱 실패 무시
+        }
+      });
+
+      // WS 구독 완료 직후 현재 방 상태 요청
+      // REST join → WS 구독 사이 타이밍 갭으로 놓친 MATCH_COUNTDOWN catch-up용
+      client.publish({
+        destination: `/app/blockfall-battle/room/${roomId}/request-state`,
+        body: '{}',
+      });
     },
     onDisconnect: () => {
       if (disconnectRequested) return;
