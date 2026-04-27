@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { getCachedWeekly, type RankingEntry } from '../api/rankings';
 import { fetchGameStatus } from '../api/games';
 import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
 import styles from './HomePage.module.css';
-import '../styles/blockfall-battle.css';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -173,7 +172,6 @@ function GameCard({ game, rankings, activeLevel, onLevelChange, disabled }: {
 
 export default function HomePage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [cache, setCache] = useState<RankCache>({});
   const [activeLevels, setActiveLevels] = useState<Record<string, string>>(
     Object.fromEntries(GAMES.map((g) => [g.key, g.defaultLevel]))
@@ -244,47 +242,47 @@ export default function HomePage() {
               />
             );
           })}
-          {/* Test Lab 카드 — 블록폴 배틀 (게스트 포함 모든 방문자) */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.icon}>🧪</span>
-              <div className={styles.title}>
-                <div className={styles.nameKo}>
-                  Test Lab
+          {/* Test Lab 카드 */}
+          {user && (
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <span className={styles.icon}>🧪</span>
+                <div className={styles.title}>
+                  <div className={styles.nameKo}>Test Lab</div>
                 </div>
               </div>
+              <div className={styles.cardRanking}>
+                <Link
+                  to="/dbgchat"
+                  className={`${styles.btn} ${styles.btnNormal}`}
+                  style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  💬 실시간 채팅 랩
+                </Link>
+                <hr className={styles.labDivider} />
+                <Link
+                  to="/online-rps"
+                  className={`${styles.btn} ${styles.btnNormal}`}
+                  style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  Online RPS
+                </Link>
+                <hr className={styles.labDivider} />
+                {/* 블록폴 배틀 — 신규 추가 (디자인 명세 §1.2) */}
+                <Link
+                  to="/test-lab/blockfall-battle"
+                  className={`${styles.btn} ${styles.btnNormal}`}
+                  style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
+                >
+                  <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🟦</span>
+                  <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>블록폴 배틀</span>
+                  <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
+                    BETA
+                  </span>
+                </Link>
+              </div>
             </div>
-            <div className={styles.cardRanking}>
-              {/* 블록폴 배틀 — 게스트 허용 */}
-              <button
-                type="button"
-                onClick={() => navigate('/test-lab/blockfall-battle')}
-                className={`${styles.btn} ${styles.btnNormal}`}
-                style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}
-              >
-                <span style={{ fontSize: '1.1em' }}>🟦</span>
-                블록폴 배틀
-                <span className="test-lab-badge">BETA</span>
-              </button>
-              <p style={{ margin: '6px 0 0', fontSize: '0.78em', color: '#999', textAlign: 'center' }}>
-                실시간 2~4인 통신 배틀
-              </p>
-
-              {/* 로그인 유저 전용 Test Lab 항목 */}
-              {user && (
-                <>
-                  <hr className={styles.labDivider} />
-                  <Link to="/dbgchat" className={`${styles.btn} ${styles.btnNormal}`} style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    💬 실시간 채팅 랩
-                  </Link>
-                  <hr className={styles.labDivider} />
-                  <Link to="/online-rps" className={`${styles.btn} ${styles.btnNormal}`} style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    Online RPS
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
       <Footer />
