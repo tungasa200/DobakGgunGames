@@ -1178,6 +1178,172 @@ button:hover .test-lab-badge {
   50%       { opacity: 0.5; }
 }
 
+/* ── 배틀 2컬럼 고정 레이아웃 ───────────────────────────── */
+
+/* 루트 레이아웃: 내 보드(좌) + 상대 슬롯 3개(우) */
+.battle-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+/* 좌측: 내 보드 섹션 */
+.battle-my-section {
+  flex-shrink: 0;
+}
+
+/* 우측: 상대 슬롯 3개 세로 배치 */
+.battle-opponents-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* 대기 중 슬롯 바디 */
+.battle-opp-waiting-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0d1117;
+  flex: 1;
+}
+
+.battle-opp-waiting-icon {
+  font-size: 1.4em;
+  opacity: 0.4;
+}
+
+/* NEXT 큐 5개 세로 배치 */
+.battle-next-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+/* 각 NEXT 미니 캔버스 */
+.battle-next-mini-canvas {
+  display: block;
+  border: 1px solid #30363d;
+  border-radius: 3px;
+}
+
+/* 가비지 뱃지 */
+.battle-garbage-badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  background: rgba(248, 81, 73, 0.9);
+  color: white;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75em;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+/* 모바일: 세로 스택 */
+@media (max-width: 600px) {
+  .battle-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .battle-opponents-section {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* ── 게임 레이아웃 오버레이 (대기/카운트다운/로딩) ───────── */
+
+/* 로딩 오버레이: 게임 위에 반투명 띠 */
+.battle-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(13, 17, 23, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 28px;
+  gap: 10px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 카운트다운 전체 화면 오버레이 */
+.battle-countdown-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 17, 23, 0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.battle-countdown-big {
+  font-size: 96px;
+  font-weight: 900;
+  color: var(--battle-accent);
+  line-height: 1;
+  animation: bb-num-pop 300ms ease-out;
+}
+
+.battle-countdown-label {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f0f6fc;
+}
+
+/* 상태 바: 헤더/배너 아래 compact 표시 */
+.battle-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background: #1c2128;
+  border-bottom: 1px solid #30363d;
+  font-size: 13px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.battle-status-text {
+  color: #8b949e;
+}
+
+.battle-status-text strong {
+  color: var(--battle-accent);
+  font-weight: 700;
+}
+
+.battle-status-leave-btn {
+  background: none;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+
+.battle-status-leave-btn:hover {
+  background: #21262d;
+  color: #e6edf3;
+}
+
 /* ── 내 게임판 사이드패널 (v2) ───────────────────────────── */
 
 /* 내 게임판 가로 래퍼: 사이드패널 + 보드 캔버스 */
@@ -1257,4 +1423,42 @@ button:hover .test-lab-badge {
 
 .battle-stat-value.combo {
   color: #EF4444;
+}
+
+/* ── 내 게임판 좌측 패널 (HOLD + NEXT 1개 + Stats) ──────── */
+.battle-my-left-panel {
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 4px;
+  background: #161b22;
+  border-right: 1px solid #30363d;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── 내 게임판 우측 패널 (NEXT 큐 3개) ──────────────────── */
+.battle-my-right-panel {
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 4px;
+  background: #161b22;
+  border-left: 1px solid #30363d;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.battle-right-next-title {
+  font-size: 0.6rem;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-weight: 700;
+}
+
+/* HOLD 사용 완료 — opacity로 흐리게 표시 */
+.battle-hold-used {
+  opacity: 0.35;
 }
