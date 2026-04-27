@@ -17,7 +17,7 @@ import type {
   BattleResultEntry,
   TopRankingEntry,
 } from '../games/blockfall/types/battle.types';
-import '../styles/blockfall-battle.css';
+import '../games/blockfall/battle/blockfall-battle.css';
 
 // ── 공통 타입 재수출 ──────────────────────────────────────
 export type { PlayerInfo, OpponentBoardData };
@@ -392,28 +392,42 @@ export default function BlockfallBattlePage() {
     return msg;
   };
 
-  // ── 렌더 ──────────────────────────────────────────────
+  // ── 상태 바 (waiting/queued/countdown 단계에서 헤더 아래 표시) ──
+  const renderStatusBar = () => {
+    if (
+      phase === 'loading' ||
+      phase === 'playing' ||
+      phase === 'error' ||
+      phase === 'finished'
+    ) return null;
 
-  // 로딩
-  if (phase === 'loading') {
+    const playerCount = players.length;
+    const queueCount = ws.roomState?.queueCount ?? 0;
+    const qp = ws.queuePosition;
+
     return (
-      <div className="battle-page">
-        {renderHeader(false)}
-        {renderLabBanner()}
-        <div className="battle-content">
-          <div className="battle-loading">
-            <div className="battle-spinner" />
-            <p className="battle-loading-text">매칭 중...</p>
-            <div className="waiting-dots-row" aria-hidden="true">
-              <span className="waiting-dot" />
-              <span className="waiting-dot" />
-              <span className="waiting-dot" />
-            </div>
-          </div>
-        </div>
+      <div className="battle-status-bar">
+        {phase === 'queued' ? (
+          <span className="battle-status-text">
+            현재 게임 진행 중 — 대기열 {qp?.position ?? '?'}번째
+            {queueCountdown !== null && queueCountdown > 0 && ` (약 ${queueCountdown}초)`}
+          </span>
+        ) : phase === 'countdown' ? (
+          <span className="battle-status-text">
+            게임 시작 준비 중! 플레이어 {playerCount}명
+          </span>
+        ) : (
+          <span className="battle-status-text">
+            플레이어 대기 중 <strong>{playerCount}/5</strong>
+            {queueCount > 0 && ` · 대기열 ${queueCount}명`}
+          </span>
+        )}
+        <button className="battle-status-leave-btn" onClick={handleLeave} type="button">나가기</button>
       </div>
     );
-  }
+  };
+
+  // ── 렌더 ──────────────────────────────────────────────
 
   // 에러
   if (phase === 'error') {
@@ -435,193 +449,6 @@ export default function BlockfallBattlePage() {
               </button>
             </div>
           </div>
-        </div>
-        {renderPlayerLeftToast()}
-      </div>
-    );
-  }
-
-  // 큐 대기
-  if (phase === 'queued') {
-    const qp = ws.queuePosition;
-    return (
-      <div className="battle-page">
-        {renderHeader()}
-        {renderLabBanner()}
-        {renderReconnectBanner()}
-        <div className="battle-content">
-          <div className="waiting-screen">
-            <div className="waiting-icon stopped" aria-hidden="true">⏳</div>
-
-            <p className="waiting-title">현재 게임 진행 중입니다</p>
-            <p className="waiting-sub">다음 라운드에 자동으로 참가됩니다</p>
-
-            {qp && (
-              <div
-                className="waiting-queue-info"
-                aria-live="polite"
-                aria-atomic="true"
-                aria-label={`대기열 위치: ${qp.position}번째 / 총 ${qp.totalInQueue}명`}
-              >
-                대기열 위치{' '}
-                <span className="waiting-queue-position" key={qp.position}>
-                  {qp.position}
-                </span>
-                번째 / 총 {qp.totalInQueue}명 대기
-              </div>
-            )}
-
-            {queueCountdown !== null && queueCountdown > 0 && (
-              <>
-                <p className="queue-countdown-text">다음 라운드까지 약 {queueCountdown}초</p>
-                <div
-                  className="queue-countdown-bar-wrap"
-                  role="progressbar"
-                  aria-valuenow={queueCountdown}
-                  aria-valuemin={0}
-                  aria-valuemax={RESULT_AUTO_SECONDS}
-                  aria-label="다음 라운드까지 남은 시간"
-                >
-                  <div
-                    className="queue-countdown-bar-fill"
-                    style={{ width: `${(queueCountdown / RESULT_AUTO_SECONDS) * 100}%` }}
-                  />
-                </div>
-              </>
-            )}
-
-            <button className="waiting-leave-btn" onClick={handleLeave} type="button">
-              나가기
-            </button>
-          </div>
-        </div>
-        {renderPlayerLeftToast()}
-      </div>
-    );
-  }
-
-  // 대기 + 카운트다운
-  if (phase === 'waiting' || phase === 'countdown') {
-    const isCountingDown = phase === 'countdown' && countdown > 0;
-    const playerCount = players.length;
-    const queueCount = ws.roomState?.queueCount ?? 0;
-
-    return (
-      <div className="battle-page">
-        {renderHeader()}
-        {renderLabBanner()}
-        {renderReconnectBanner()}
-        <div className="battle-content">
-          <div className="waiting-screen">
-            {/* 아이콘 */}
-            <div
-              className={`waiting-icon${isCountingDown ? ' stopped' : ''}`}
-              aria-hidden="true"
-            >
-              🟦
-            </div>
-
-            {/* 타이틀 */}
-            {isCountingDown ? (
-              <p className="waiting-title-countdown">{countdown}초 후 게임이 시작됩니다!</p>
-            ) : (
-              <>
-                <p
-                  className="waiting-title"
-                  role="status"
-                  aria-live="polite"
-                  aria-atomic="true"
-                >
-                  플레이어 대기 중
-                </p>
-                <div className="waiting-dots-row" aria-hidden="true">
-                  <span className="waiting-dot" />
-                  <span className="waiting-dot" />
-                  <span className="waiting-dot" />
-                </div>
-              </>
-            )}
-
-            {/* 카운트다운 숫자 */}
-            {isCountingDown && (
-              <div
-                className="waiting-countdown-number"
-                key={countdown}
-                role="timer"
-                aria-live="assertive"
-                aria-label={`게임 시작까지 ${countdown}초`}
-              >
-                {countdown}
-              </div>
-            )}
-
-            {/* 서브 텍스트 */}
-            {!isCountingDown && (
-              <p className="waiting-sub">
-                다른 플레이어가 입장하면 자동으로 게임이 시작됩니다
-              </p>
-            )}
-
-            {/* 참가자 목록 */}
-            <ul className="waiting-player-list" role="list">
-              {players.map(p => (
-                <li key={p.id} className="waiting-player-item" role="listitem">
-                  <span className="waiting-player-dot" aria-hidden="true" />
-                  <span className="waiting-player-name">{p.nickname}</span>
-                  {p.id === joinInfo?.playerId && (
-                    <span className="waiting-player-me">(나)</span>
-                  )}
-                  {p.isGuest && (
-                    <span className="waiting-player-guest">(게스트)</span>
-                  )}
-                  <span className="waiting-player-status">대기중</span>
-                </li>
-              ))}
-            </ul>
-
-            {/* 인원 표시 */}
-            <p
-              className="waiting-player-count"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              현재 인원: <strong>{playerCount}</strong> / 4
-              {queueCount > 0 && (
-                <span className="waiting-queue-count">(대기열에 {queueCount}명 대기 중)</span>
-              )}
-            </p>
-
-            <button className="waiting-leave-btn" onClick={handleLeave} type="button">
-              나가기
-            </button>
-          </div>
-        </div>
-        {renderPlayerLeftToast()}
-      </div>
-    );
-  }
-
-  // 게임 중
-  if (phase === 'playing') {
-    return (
-      <div className="battle-page">
-        {renderHeader()}
-        {renderLabBanner()}
-        {renderReconnectBanner()}
-        <div className="battle-content">
-          <BlockfallBattleBoard
-            players={players}
-            myPlayerId={joinInfo?.playerId ?? ''}
-            opponents={opponents}
-            eliminatedPlayers={eliminatedPlayers}
-            garbagePending={garbagePending}
-            onGameOver={handleGameOver}
-            onBlockOut={handleBlockOut}
-            onBoardChange={handleBoardChange}
-            onComboAttack={handleComboAttack}
-            onGarbageConsumed={handleGarbageConsumed}
-            isPlaying={true}
-          />
         </div>
         {renderPlayerLeftToast()}
       </div>
@@ -759,17 +586,47 @@ export default function BlockfallBattlePage() {
     );
   }
 
-  // fallback
+  // ── 통일된 게임 레이아웃 (loading/waiting/countdown/queued/playing) ──
+  const isPractice = phase !== 'playing';
+
   return (
     <div className="battle-page">
       {renderHeader()}
       {renderLabBanner()}
-      <div className="battle-content">
-        <div className="battle-loading">
-          <div className="battle-spinner" />
-          <p>준비 중...</p>
-        </div>
+      {renderReconnectBanner()}
+      {renderStatusBar()}
+      <div className="battle-content" style={{ position: 'relative' }}>
+        {/* 카운트다운 오버레이 */}
+        {phase === 'countdown' && countdown > 0 && (
+          <div className="battle-countdown-overlay">
+            <div className="battle-countdown-big" key={countdown}>{countdown}</div>
+            <div className="battle-countdown-label">초 후 게임 시작!</div>
+          </div>
+        )}
+        {/* 로딩 오버레이 (매칭 중 표시, 게임도 동시에 실행) */}
+        {phase === 'loading' && (
+          <div className="battle-loading-overlay">
+            <div className="battle-spinner" />
+            <p className="battle-loading-text">매칭 중...</p>
+          </div>
+        )}
+        <BlockfallBattleBoard
+          key={phase === 'playing' ? 'real' : 'practice'}
+          isPractice={isPractice}
+          isPlaying={phase === 'playing'}
+          players={players}
+          myPlayerId={joinInfo?.playerId ?? 'practice'}
+          opponents={phase === 'playing' ? opponents : new Map()}
+          eliminatedPlayers={phase === 'playing' ? eliminatedPlayers : new Map()}
+          garbagePending={phase === 'playing' ? garbagePending : 0}
+          onGameOver={handleGameOver}
+          onBlockOut={handleBlockOut}
+          onBoardChange={handleBoardChange}
+          onComboAttack={handleComboAttack}
+          onGarbageConsumed={handleGarbageConsumed}
+        />
       </div>
+      {renderPlayerLeftToast()}
     </div>
   );
 }

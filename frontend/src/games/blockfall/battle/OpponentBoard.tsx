@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import '../../../styles/blockfall-battle.css';
+import './blockfall-battle.css';
 
 // 싱글 게임과 동일한 상수
 const BOARD_W = 11;
@@ -30,6 +30,8 @@ interface OpponentBoardProps {
   isMine?: boolean;
   /** 셀 픽셀 크기 — 보드 크기를 외부에서 제어 */
   cellSize?: number;
+  /** 연습 모드일 때 "대기 중" 보드 표시 */
+  isWaiting?: boolean;
 }
 
 export default function OpponentBoard({
@@ -41,6 +43,7 @@ export default function OpponentBoard({
   rank,
   isMine = false,
   cellSize = 18,
+  isWaiting = false,
 }: OpponentBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // canvas는 전체 BOARD_H를 그리되, wrapper div로 BUFFER_H만큼 잘라낸다
@@ -146,6 +149,11 @@ export default function OpponentBoard({
             {rank !== undefined && (
               <span className="eliminated-rank">{rank}위</span>
             )}
+          </div>
+        )}
+        {isWaiting && !isEliminated && (
+          <div className="eliminated-overlay">
+            <span className="eliminated-text" style={{ fontSize: 13, color: '#8b949e' }}>대기 중</span>
           </div>
         )}
       </div>

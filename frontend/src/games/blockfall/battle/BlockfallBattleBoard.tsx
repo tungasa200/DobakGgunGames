@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import '../../../styles/blockfall-battle.css';
+import './blockfall-battle.css';
 import OpponentBoard from './OpponentBoard';
 
 // ── 상수 ──────────────────────────────────────────────────
@@ -13,7 +13,7 @@ const CELL_OPP = 14;    // 상대 보드 셀
 const NEXT_QUEUE_SIZE = 5;
 const NEXT_DISPLAY_LEFT = 1;   // 좌측 패널에 보여줄 NEXT 개수
 const NEXT_DISPLAY_RIGHT = 3;  // 우측 패널에 보여줄 NEXT 개수
-const MAX_OPP_SLOTS = 3;
+const MAX_OPP_SLOTS = 4; // 5인 최대 — 나를 제외한 상대 슬롯 수
 
 const COLORS_NORMAL: (string | null)[] = [
   null,

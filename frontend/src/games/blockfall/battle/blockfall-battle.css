@@ -1184,7 +1184,8 @@ button:hover .test-lab-badge {
 .battle-layout {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: stretch;
+  justify-content: center;
   gap: 16px;
   width: 100%;
 }
@@ -1192,14 +1193,18 @@ button:hover .test-lab-badge {
 /* 좌측: 내 보드 섹션 */
 .battle-my-section {
   flex-shrink: 0;
-}
-
-/* 우측: 상대 슬롯 3개 세로 배치 */
-.battle-opponents-section {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+}
+
+/* 우측: 상대 슬롯 2×2 그리드 배치 (최대 4명) */
+.battle-opponents-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   flex-shrink: 0;
+  align-content: start;
 }
 
 /* 대기 중 슬롯 바디 */
@@ -1208,7 +1213,7 @@ button:hover .test-lab-badge {
   align-items: center;
   justify-content: center;
   background: #0d1117;
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .battle-opp-waiting-icon {
@@ -1253,9 +1258,7 @@ button:hover .test-lab-badge {
   }
 
   .battle-opponents-section {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
+    grid-template-columns: 1fr 1fr;
   }
 }
 

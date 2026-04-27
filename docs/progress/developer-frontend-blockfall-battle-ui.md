@@ -1,7 +1,7 @@
 # developer-frontend — blockfall-battle UI 개편 진행 로그
 
-- 마지막 업데이트: 2026-04-27
-- 현재 상태: Phase 2 구현 완료 + BUG-UI-01 수정 완료 — tsc/eslint PASS, 세션 종료
+- 마지막 업데이트: 2026-04-27 (보드 컴포넌트 개편)
+- 현재 상태: Phase 3 (게임 보드 대규모 개편) 구현 완료 — tsc/eslint PASS
 - 담당 피처: 블록폴 배틀 UI 다크 테마 개편 (Phase 2 + BUG-UI-01 수정)
 - 참조 명세: docs/design/blockfall-battle-components.md §UI 개편 델타 — v2
 
@@ -85,6 +85,51 @@
 
 ---
 
+### Phase 3 — 보드 컴포넌트 전면 개편 (2026-04-27)
+
+**`frontend/src/games/blockfall/battle/BlockfallBattleBoard.tsx`** (전체 재작성)
+- `CELL` 24 → 30 (일반 BlockfallBoard와 동일)
+- `CELL_MINI` 22 → 16 (NEXT 미리보기 셀)
+- `CELL_OPP = 14` 상수 추가 (상대 보드 셀)
+- `NEXT_QUEUE_SIZE = 5`, `MAX_OPP_SLOTS = 3` 상수 추가
+- `nextPiece` 단일 ref → `nextQueue: useRef<Matrix[]>([])` (5개 큐)
+- `nextCanvasRef` 단일 → `nextCanvasRefs: useRef<(HTMLCanvasElement | null)[]>` (5개 배열)
+- `draw()` 안에서 `nextCanvasRefs.current.forEach(...)` 로 5개 미니 캔버스 일괄 갱신
+- `holdCanvasRef` 완전 제거
+- `playerReset`: `nextQueue.current.shift()` 로 피스 꺼내고 `push(drawFromBag())` 보충
+- 초기화 시: `for (let i = 0; i < NEXT_QUEUE_SIZE; i++) nextQueue.current.push(drawFromBag())`
+- `isPractice?: boolean` prop 추가 (default false)
+- 게임 루프 시작 조건: `isPlaying || isPractice`
+- 키보드 핸들러: `if (!isPlaying && !isPractice) return`
+- 보드 전송 useEffect: `if (!isPlaying || isPractice) return`
+- `lockPiece`: `onBoardChange` 호출에 `if (!isPracticeRef.current)` 조건 추가
+- `arenaSweep`: `onComboAttack` 호출에 `&& !isPracticeRef.current` 조건 추가
+- `doGameOver`: isPractice 시 1.5초 후 자동 재시작 (arena 초기화, 큐 재채우기, 루프 재시작)
+- `applyGarbage`: `if (isPracticeRef.current || lines <= 0) return` 조건 추가
+- 레이아웃: `players-N` CSS grid 방식 → `battle-layout` 2컬럼 고정 방식으로 교체
+  - 좌측 `battle-my-section`: 내 보드 (NEXT 5개 큐 사이드패널 포함)
+  - 우측 `battle-opponents-section`: 상대 슬롯 `MAX_OPP_SLOTS(3)` 개, 빈 슬롯은 대기 UI
+- 내 닉네임: `isPractice && players.length === 0` 이면 '연습 중' 표시
+- `isPracticeRef` 패턴으로 클로저 내 최신값 참조
+
+**`frontend/src/games/blockfall/battle/OpponentBoard.tsx`**
+- `isWaiting?: boolean` prop 추가
+- `isWaiting && !isEliminated` 시 "대기 중" 오버레이 렌더링
+
+**`frontend/src/styles/blockfall-battle.css`**
+- `.battle-layout`, `.battle-my-section`, `.battle-opponents-section` 레이아웃 클래스 추가
+- `.battle-opp-waiting-body`, `.battle-opp-waiting-icon` 슬롯 대기 UI 클래스 추가
+- `.battle-next-queue`, `.battle-next-mini-canvas` NEXT 큐 5개 세로 배치 클래스 추가
+- `.battle-garbage-badge` 가비지 뱃지 클래스 추가
+- 모바일(max-width: 600px) 반응형: 세로 스택 + 상대 슬롯 가로 wrap
+
+### 빌드 결과 (Phase 3)
+
+- `tsc -b` PASS (0 errors)
+- `eslint` PASS (0 errors, 0 warnings)
+
+---
+
 ## 진행 중인 것
 
 없음.
@@ -99,5 +144,6 @@
 
 ## 다음 세션에서 할 것
 
-1. HOLD 키 기능 구현 (KeyC / Shift) — 별도 스프린트로 분리됨
-2. 모바일 반응형 실기기 확인
+1. qa-tester 검증 요청 (Phase 3 변경사항)
+2. HOLD 키 기능 구현 (KeyC / Shift) — 별도 스프린트로 분리됨
+3. 모바일 반응형 실기기 확인
