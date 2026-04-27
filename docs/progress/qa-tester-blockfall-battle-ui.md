@@ -1,4 +1,4 @@
-# QA Progress — 블록폴 배틀 UI 개편 (Phase 2)
+# QA Progress — 블록폴 배틀 UI 개편 (Phase 2 + 3)
 
 - 담당: qa-tester
 - 최초 작성: 2026-04-27
@@ -11,44 +11,67 @@
 
 ## 현재 상태
 
+최종 PASS — BUG-UI-01 수정 완료 확인, 세션 종료 (2026-04-27)
+
 | 단계 | 상태 |
 |---|---|
 | 테스트 플랜 작성 | 완료 |
-| developer-frontend Phase 2 구현 검증 | 완료 (2026-04-27) |
-| 버그 리포트 | BUG-UI-01 발견 → developer-frontend 수정 요청 완료 |
+| developer-frontend Phase 2 구현 검증 | 완료 (2026-04-27, 커밋 f2f6c2d) |
+| 버그 리포트 | BUG-UI-01 발견 → 수정 완료 확인 |
 | Phase 2 최종 판정 | CONDITIONAL PASS |
-| BUG-UI-01 수정(Phase 3) 완료 대기 | 대기 중 |
-| 최종 PASS 확정 | 미완료 |
+| BUG-UI-01 수정(Phase 3) 완료 확인 | 완료 (2026-04-27, 커밋 07ea1d4) |
+| 최종 PASS 확정 | **PASS** |
 
 ---
 
-## Phase 2 검증 결과 (2026-04-27)
+## 테스트 플랜 산출물
 
-커밋: `f2f6c2d` — feat: 블록폴 배틀 UI 다크 테마 개편 (Phase 2)
+파일: `docs/review/blockfall-battle-ui-overhaul-test-plan.md` (2026-04-27 신규 작성)
+
+| TC 그룹 | 케이스 수 |
+|---|---|
+| TC-THEME | 28개 |
+| TC-PANEL | 18개 |
+| TC-SCREEN | 7개 화면 |
+| TC-RESPONSIVE | 13개 |
+| TC-ANIMATION | 8개 |
+| TC-REGRESSION | 12개 |
+| TC-BUILD | 2개 |
+
+---
+
+## Phase 2 검증 결과 (2026-04-27, 커밋 f2f6c2d)
 
 | TC | 결과 | 비고 |
 |---|---|---|
-| TC-THEME (T-01~T-28) | PASS | 밝은 값 잔존 없음 확인 |
-| TC-PANEL (P-01~P-18) | PASS | NEXT/HOLD canvas, stats-area, combo조건부 표시 모두 확인 |
+| TC-THEME (T-01~T-28) | PASS | 다크 색상값 28항목, 밝은 값 잔존 없음 확인 |
+| TC-PANEL (P-01~P-18) | PASS | NEXT/HOLD canvas ref, 신규 클래스, statsArea, battle-stats-bar 제거 확인 |
 | TC-SCREEN (7개 화면) | PASS | loading dots 추가, error icon #EF4444, spinner #6366F1 포함 |
 | TC-RESPONSIVE (R-01~R-13) | PASS | |
 | TC-ANIMATION (A-01~A-08) | PASS | keyframes 8개 전체 정의 확인 |
-| TC-REGRESSION (G-01~G-12) | PASS | 게임 로직 파일 무변경, lockPiece/arenaSweep/doGameOver 보존 확인 |
-| TC-BUILD | 정적 분석 PASS | 실행 검증은 developer-frontend 확인 요청 |
+| TC-REGRESSION (G-01~G-12) | PASS | battleStompClient.ts / blockfallBattleApi.ts / BlockfallBoard.tsx 변경 없음 확인, lockPiece/arenaSweep/doGameOver 보존 확인 |
+| TC-BUILD (B-01~B-02) | PASS | 정적 분석 통과 |
 
 ---
 
-## 발견 버그
+## 발견 버그 및 처리 이력
 
-**BUG-UI-01** (Low)
-- 파일: `frontend/src/styles/blockfall-battle.css` line 866
+**BUG-UI-01** (Low) — 해결 완료
+- 파일: `frontend/src/styles/blockfall-battle.css`
 - 내용: `.result-score` color `#6B7280` → `#8b949e` 미변경
-- 상태: developer-frontend 수정 요청 완료 (2026-04-27)
+- 발견: 2026-04-27 Phase 2 검증 시
+- 수정 커밋: `07ea1d4` (2026-04-27)
+- 수정 확인: `color: #8b949e` 정확히 반영됨
 
 ---
 
-## 다음 액션
+## 최종 판정
 
-developer-frontend Phase 3(BUG-UI-01 수정) 완료 메시지 수신 후:
-- `blockfall-battle.css` line 866 확인: `.result-score { color: #8b949e; }` 반영 여부
-- 확인 완료 시 이 파일을 최종 업데이트하고 team-lead에게 최종 PASS 보고
+**PASS** — 모든 TC 통과, BUG-UI-01 수정 완료 확인.
+
+---
+
+## 다음 세션 할 일
+
+- HOLD 키 기능 구현 시 hold 동작 TC 추가 (TC-PANEL 그룹 확장)
+- 배포 후 실 브라우저 E2E 확인

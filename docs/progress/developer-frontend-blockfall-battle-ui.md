@@ -1,6 +1,7 @@
 # developer-frontend — blockfall-battle UI 개편 진행 로그
 
 - 마지막 업데이트: 2026-04-27
+- 현재 상태: Phase 2 구현 완료 + BUG-UI-01 수정 완료 — tsc/eslint PASS, 세션 종료
 - 담당 피처: 블록폴 배틀 UI 다크 테마 개편 (Phase 2 + BUG-UI-01 수정)
 - 참조 명세: docs/design/blockfall-battle-components.md §UI 개편 델타 — v2
 
@@ -8,7 +9,7 @@
 
 ## 완료된 작업
 
-### Phase 2 구현 (커밋: f2f6c2d)
+### Phase 2 구현 (커밋: f2f6c2d) — 2026-04-27
 
 **`frontend/src/styles/blockfall-battle.css`**
 - `--color-text-primary` fallback `#111827` → `#f0f6fc`
@@ -42,7 +43,7 @@
 - `nextCanvasRef`, `holdCanvasRef` ref 추가
 - `draw()` 안에서 NEXT/HOLD 미니 캔버스 갱신 (게임 루프와 동기)
 - JSX 구조: `battle-my-play-area` > `battle-my-side-panel` + `battle-board-canvas-wrap`
-- 사이드패널: NEXT canvas 88×88, HOLD canvas 88×88 (빈 캔버스), statsArea
+- 사이드패널: NEXT canvas 88×88, HOLD canvas 88×88 (빈 캔버스 — 키 입력 로직은 다음 스프린트)
 - statsArea: SCORE/LINES/LEVEL 항목, combo >= 2 시 COMBO 항목 추가 표시
 - 기존 `battle-stats-bar` div 제거
 
@@ -54,10 +55,17 @@
 - loading 화면: `waiting-dots-row` 애니메이션 dots 추가
 - error 아이콘 color는 CSS `.battle-error-icon`에서 처리 (인라인 제거)
 
-### BUG-UI-01 수정 (커밋: 07ea1d4)
+### BUG-UI-01 수정 (커밋: 07ea1d4) — 2026-04-27
 
 **`frontend/src/styles/blockfall-battle.css`**
 - `.result-score` color `#6B7280` → `#8b949e` (다크 테마 일관성 수정)
+
+### 게임 로직 보존 확인
+
+아래 파일은 이번 세션에서 수정하지 않음 — 동작 그대로 보존:
+- `lockPiece`, `arenaSweep`, `doGameOver` 관련 로직
+- `battleStompClient.ts`
+- `blockfallBattleApi.ts`
 
 ### qa-tester 검증 결과 (2026-04-27)
 
@@ -69,6 +77,11 @@
 - TC-REGRESSION PASS
 - TC-BUILD PASS
 - BUG-UI-01 수정 완료 → 재검증 불필요 (Low 수준)
+
+### 빌드 결과
+
+- `tsc -b --noEmit` PASS
+- `eslint .` PASS
 
 ---
 
@@ -86,4 +99,5 @@
 
 ## 다음 세션에서 할 것
 
-- HOLD 기능 키 입력 (KeyC/Shift) 구현 — 별도 스프린트로 분리됨
+1. HOLD 키 기능 구현 (KeyC / Shift) — 별도 스프린트로 분리됨
+2. 모바일 반응형 실기기 확인
