@@ -1371,3 +1371,308 @@ developer-frontend 구현 참고용.
 
 > 본 명세는 `docs/progress/designer-blockfall-battle.md`와 함께 관리됨. 스펙 변경은 planner 경유 필수.
 > Excel 모드 명세는 PRD §3에 따라 N/A (일반 모드 전용).
+
+---
+
+## UI 개편 델타 — v2
+
+- 작성자: designer
+- 작성일: 2026-04-27
+- 범위: 순수 시각/레이아웃 개편. 게임 로직(WebSocket, 매칭) 변경 없음.
+- 참고 파일:
+  - 일반모드 기준: `BlockfallBoard.module.css`, `BlockfallBoard.tsx`
+  - 개편 대상: `blockfall-battle.css`, `BlockfallBattlePage.tsx`, `BlockfallBattleBoard.tsx`
+
+---
+
+### 1. 배경/테마 방향 확정
+
+**결정: 배틀 전용 세련된 다크 유지 + 구조적 개선**
+
+**근거:**
+- 현재 배틀 CSS의 다크 기조(`#0d1117` 페이지 배경, `#161b22` 헤더)는 배틀 게임의 긴장감과 잘 어울리며 일반모드 밝은 테마와 의도적으로 구별된다.
+- 일반모드(`BlockfallBoard.module.css`)는 흰 배경 + `#8e44ad` 포인트로 캐주얼한 분위기이며, 배틀모드에 그대로 적용하면 차별성이 사라진다.
+- 문제는 테마 방향이 아니라 **내 게임판 사이드패널 부재**와 **상대 보드 카드의 시각 정보 빈약**이다.
+
+**채택 색상값:**
+
+| 역할 | 색상값 | 비고 |
+|---|---|---|
+| 페이지 배경 | `#0d1117` | 현재 유지 |
+| 헤더/패널 배경 | `#161b22` | 현재 유지 |
+| 보드 카드 배경 | `#1c2128` | 현재 `#FFFFFF` → 다크 카드로 변경 |
+| 보드 카드 테두리 | `#30363d` | 현재 `#E5E7EB` → 다크 테두리로 변경 |
+| 본인 보드 강조 테두리 | `--battle-accent` (#6366F1) | 현재 유지 |
+| 닉네임/텍스트 | `#e6edf3` | 현재 dark 기조에 맞게 이미 존재하나 카드 내부에 미적용 |
+| 서브 텍스트 | `#8b949e` | 현재 유지 |
+| 스탯 바 배경 | `#161b22` | 현재 유지 |
+
+---
+
+### 2. 포인트 컬러 결정
+
+**결정: `--battle-accent: #6366F1` (현재 배틀 값) 유지**
+
+**근거:**
+- 일반모드의 `#8e44ad`(보라)는 브랜드 컬러로 일반모드 전체에 사용 중(버튼, 랭킹 헤더, 테두리 등). 배틀모드에 동일 값을 쓰면 두 모드의 시각적 구분이 약해진다.
+- `#6366F1`(인디고)은 이미 배틀 CSS 변수로 선언되어 있고, 배틀의 전략적·경쟁적 분위기에 부합한다.
+- 혼용 방지: 배틀 전용 `--battle-accent: #6366F1` 고정, 일반모드 `#8e44ad`는 배틀 파일에서 사용 금지.
+
+**최종 포인트 컬러:**
+- 주 강조: `--battle-accent: #6366F1`
+- 호버/다크: `--battle-accent-dark: #4F46E5`
+- 서브틀 배경: `--battle-accent-subtle: rgba(99,102,241,0.12)`
+
+---
+
+### 3. 내 게임판 사이드패널 구조 명세
+
+**현재 문제:** `BlockfallBattleBoard.tsx`의 내 게임판에는 NEXT 피스 Canvas가 없고, 하단 `battle-stats-bar`에 점수/레벨/줄만 텍스트로 표시된다. 일반모드 사이드패널(NEXT/HOLD + statsArea)과 비교해 정보가 빈약하다.
+
+**개편 방향:** 내 게임판 좌측에 일반모드 수준의 사이드패널을 추가한다.
+
+#### 3.1 NEXT 피스 Canvas 위치와 크기
+
+```
+사이드패널 위치: 내 게임판 보드 캔버스 좌측 (내 board-item 내부)
+너비           : 90px (일반모드 120px보다 작게 — 배틀 전체 레이아웃 공간 고려)
+NEXT canvas:
+  width        : 90px   (CELL=24, 4셀 → 96px이지만 여백 포함 90px 컨테이너)
+  height       : 90px
+  배경         : #0d1117 (보드와 동일한 다크)
+  테두리       : 1px solid #30363d
+  border-radius: 4px
+  레이블       : "NEXT" — font-size 0.65em, color #8b949e, text-transform uppercase,
+                 margin-bottom 4px
+
+HOLD canvas:
+  동일 크기 (90×90px)
+  레이블       : "HOLD"
+  홀드 사용 후 : globalAlpha 0.4 (일반모드와 동일 처리)
+```
+
+#### 3.2 점수/레벨/줄 패널 배치 방식
+
+일반모드의 `statsArea` 방식(사이드패널 하단 margin-top: auto)을 채택한다. `battle-stats-bar`(현재 보드 하단 가로 바)는 제거하고 사이드패널 statsArea로 통합한다.
+
+```
+statsArea:
+  margin-top   : auto     (HOLD 아래, 사이드패널 하단으로 밀려남)
+  display      : flex
+  flex-direction: column
+  gap          : 8px
+  align-items  : flex-end
+  text-align   : right
+  padding      : 8px 4px 4px
+  border-bottom: 1px solid #30363d
+
+statRow (각 항목):
+  display      : flex
+  flex-direction: column
+  align-items  : flex-end
+
+statLabel:
+  font-size    : 0.60rem
+  color        : #8b949e
+  letter-spacing: 0.10em
+  font-weight  : 700
+  text-transform: uppercase
+  margin-bottom: 2px
+
+statValue:
+  font-size    : 1.3rem
+  color        : #e6edf3
+  font-weight  : 800
+  font-variant-numeric: tabular-nums
+
+콤보 강조 (combo >= 2):
+  color        : #EF4444
+
+표시 항목     : SCORE / LINES / LEVEL / (COMBO — 2 이상일 때만)
+```
+
+#### 3.3 JSX 구조 스케치
+
+```
+<div class="battle-board-item mine">
+  <div class="battle-board-item-header">
+    닉네임, 배지, 점수
+  </div>
+
+  <div class="battle-my-play-area">          ← 신규 flex row 래퍼
+    <div class="battle-my-side-panel">       ← 신규 (일반모드 sidePanel 대응)
+      <div class="battle-side-box">          ← NEXT
+        <div class="battle-side-title">NEXT</div>
+        <canvas ref={nextRef} />
+      </div>
+      <div class="battle-side-box">          ← HOLD
+        <div class="battle-side-title">HOLD</div>
+        <canvas ref={holdRef} />
+      </div>
+      <div class="battle-stats-area">        ← 점수/레벨/줄 (하단 push)
+        <div class="battle-stat-row">SCORE …</div>
+        <div class="battle-stat-row">LINES …</div>
+        <div class="battle-stat-row">LEVEL …</div>
+        {combo >= 2 && <div class="battle-stat-row combo">COMBO …</div>}
+      </div>
+    </div>
+
+    <div class="battle-board-canvas-wrap">   ← 기존 보드 캔버스 래퍼
+      <canvas ref={boardRef} />
+      {garbagePending > 0 && <div class="garbage-badge">-{garbagePending}</div>}
+    </div>
+  </div>
+
+  ← battle-stats-bar 제거
+</div>
+```
+
+**구현 주의:** NEXT/HOLD canvas용 ref(`nextRef`, `holdRef`)와 draw 로직은 `BlockfallBattleBoard.tsx`에 추가 필요. developer-frontend 담당.
+
+---
+
+### 4. 상대 보드 카드 스타일 명세
+
+**현재 문제:** `battle-board-item` 카드의 배경이 `#FFFFFF`, 테두리가 `#E5E7EB`로 밝은 테마이나 페이지 배경은 다크(`#0d1117`)다. 혼용으로 시각적 불일치가 발생한다.
+
+#### 4.1 카드 크기 비율
+
+```
+2인 게임:
+  상대 보드 cellSize: 현재 16px → 16px 유지 (공간 충분)
+
+3인/4인 게임:
+  상대 보드 cellSize: 현재 12px → 12px 유지
+  (OpponentBoard에 이미 playerCount 조건 구현됨)
+```
+
+#### 4.2 테두리 및 배경 스타일
+
+```
+.battle-board-item (상대 보드):
+  background         : #1c2128     (현재 #FFFFFF → 다크 카드)
+  border             : 1.5px solid #30363d  (현재 #E5E7EB)
+  border-radius      : 8px         (유지)
+
+.battle-board-item.mine:
+  border-color       : #6366F1     (--battle-accent, 유지)
+  box-shadow         : 0 0 0 2px rgba(99,102,241,0.12)  (유지)
+
+.battle-board-item-header:
+  background         : #21262d     (현재 #F9FAFB → 다크 헤더)
+  border-bottom-color: #30363d     (현재 #E5E7EB)
+  color              : #e6edf3     (현재 #374151)
+
+.battle-board-canvas-wrap:
+  background         : #0d1117     (유지 — 이미 다크)
+```
+
+#### 4.3 닉네임 표시 위치
+
+```
+위치: 카드 상단 헤더(battle-board-item-header) 내 좌측 — 현재 구조 유지
+폰트: font-size 13px, font-weight 600, color #e6edf3
+본인: color #6366F1 (--battle-accent, 유지)
+최대 너비: 8em, overflow ellipsis (유지)
+
+점수 표시 (헤더 우측):
+  color              : #8b949e     (현재 #6B7280 → 다크 기조에 맞게)
+  font-size          : 12px        (유지)
+```
+
+---
+
+### 5. 화면별 시각 개선 포인트
+
+#### loading (매칭 중)
+
+**현재 문제:** 다크 배경에 스피너(`border-top-color: #58a6ff`) + "매칭 중..." 텍스트만 있다. 배틀 게임 진입 기대감을 높이는 시각 요소가 없다.
+
+**개선 방향:** 스피너 색상을 `--battle-accent`(#6366F1)로 통일한다. "매칭 중..." 텍스트 아래 로딩 점 3개 애니메이션(`bb-dot-blink`)을 추가한다.
+
+#### waiting (플레이어 대기)
+
+**현재 문제:** `waiting-player-list` 항목의 배경이 `#F9FAFB`, 테두리가 `#E5E7EB`로 밝아 다크 페이지와 이질감이 크다. 전체 대기화면이 흰 박스처럼 떠 보인다.
+
+**개선 방향:** 대기자 목록 항목 배경을 `#1c2128`, 테두리를 `#30363d`로 변경한다. `waiting-queue-info` 배경도 `#1c2128`으로 통일한다.
+
+#### countdown (카운트다운)
+
+**현재 문제:** 카운트다운 숫자(64px)가 다크 배경에서 충분히 크고 명확하다. 현재 구현이 양호하다.
+
+**개선 방향:** 숫자 색상을 `--battle-accent`(#6366F1)로 확인/유지. "N초 후 게임이 시작됩니다!" 타이틀 색상을 `#f0f6fc`로 밝혀 가독성을 높인다.
+
+#### queued (큐 대기)
+
+**현재 문제:** `waiting-queue-info`가 `#F3F4F6` 배경으로 다크 페이지에서 밝게 튄다.
+
+**개선 방향:** `#1c2128` 배경, `#30363d` 테두리, 텍스트 `#e6edf3`으로 다크 테마 통일.
+
+#### playing (게임 중)
+
+**현재 문제:** 내 보드에 NEXT/HOLD 패널이 없어 일반모드 대비 정보 밀도가 낮다. 보드 카드 배경이 밝아(`#FFFFFF`) 페이지와 불일치한다.
+
+**개선 방향:** §3의 사이드패널 추가 + §4의 카드 다크 처리.
+
+#### finished (결과 화면)
+
+**현재 문제:** `result-panel`, `ranking-panel`의 배경이 `#FFFFFF`, 테두리 `#E5E7EB`로 다크 페이지 위에서 밝은 카드로 강하게 튄다.
+
+**개선 방향:** `background: #1c2128`, `border-color: #30363d`, 텍스트 `#e6edf3`으로 다크 처리. 본인 행 강조는 `--battle-result-my-row-bg`(`#EEF2FF`) → `rgba(99,102,241,0.15)`로 다크 기조에 맞게 조정.
+
+#### error (에러 화면)
+
+**현재 문제:** 에러 아이콘이 텍스트 "⚠"로 작고 눈에 잘 안 띈다.
+
+**개선 방향:** `font-size: 3em` 유지하되 `color: #EF4444`를 명시해 강조한다. "연결 오류" 제목 색상을 `#f0f6fc`로 밝힌다.
+
+---
+
+### 6. CSS 변경 요약 테이블
+
+| 대상 클래스/변수 | 현재 값 | 변경 값 | 비고 |
+|---|---|---|---|
+| `.battle-board-item` background | `#FFFFFF` | `#1c2128` | 카드 다크화 |
+| `.battle-board-item` border-color | `#E5E7EB` | `#30363d` | 카드 다크화 |
+| `.battle-board-item-header` background | `#F9FAFB` | `#21262d` | 헤더 다크화 |
+| `.battle-board-item-header` border-bottom-color | `#E5E7EB` | `#30363d` | 헤더 다크화 |
+| `.battle-board-item-header` color | `#374151` | `#e6edf3` | 텍스트 다크화 |
+| `.battle-board-nickname` color | `#374151` | `#e6edf3` | 닉네임 다크화 |
+| `.battle-board-score` color | `#6B7280` | `#8b949e` | 점수 다크화 |
+| `.waiting-player-item` background | `#F9FAFB` | `#1c2128` | 대기자 목록 다크화 |
+| `.waiting-player-item` border-color | `#E5E7EB` | `#30363d` | 대기자 목록 다크화 |
+| `.waiting-player-name` color | `#374151` | `#e6edf3` | 텍스트 다크화 |
+| `.waiting-queue-info` background | `#F3F4F6` | `#1c2128` | 큐 대기 다크화 |
+| `.waiting-queue-info` border-color | `#E5E7EB` | `#30363d` | 큐 대기 다크화 |
+| `.waiting-queue-info` color | `#374151` | `#e6edf3` | 큐 대기 다크화 |
+| `.waiting-title` color | `var(--color-text-primary)` | `#f0f6fc` | 가독성 향상 |
+| `.waiting-title-countdown` color | `var(--color-text-primary)` | `#f0f6fc` | 가독성 향상 |
+| `.waiting-sub` color | `var(--color-text-muted)` | `#8b949e` | 다크 기조 통일 |
+| `.battle-spinner` border-top-color | `#58a6ff` | `#6366F1` | 포인트 컬러 통일 |
+| `.result-panel` background | `#FFFFFF` | `#1c2128` | 결과 패널 다크화 |
+| `.result-panel` border-color | `#E5E7EB` | `#30363d` | 결과 패널 다크화 |
+| `.result-panel-title` color | `var(--color-text-primary)` | `#f0f6fc` | 결과 패널 다크화 |
+| `.result-title` color | `var(--color-text-primary)` | `#f0f6fc` | 결과 제목 다크화 |
+| `.result-nickname` color | `#374151` | `#e6edf3` | 결과 닉네임 다크화 |
+| `.result-item` border-bottom-color | `#F5F5F5` | `#30363d` | 결과 구분선 다크화 |
+| `.result-item.result-item-mine` background | `#EEF2FF` | `rgba(99,102,241,0.15)` | 본인 행 다크 강조 |
+| `.result-item.result-item-mine` border-color | `#C7D2FE` | `rgba(99,102,241,0.4)` | 본인 행 다크 강조 |
+| `.ranking-panel` background | `#FFFFFF` | `#1c2128` | TOP 10 패널 다크화 |
+| `.ranking-panel` border-color | `#E5E7EB` | `#30363d` | TOP 10 패널 다크화 |
+| `.ranking-panel-title` color | `var(--color-text-primary)` | `#f0f6fc` | TOP 10 제목 다크화 |
+| `.ranking-panel-nickname` color | `#374151` | `#e6edf3` | TOP 10 닉네임 다크화 |
+| `.ranking-panel-item` border-bottom-color | `#F5F5F5` | `#30363d` | TOP 10 구분선 다크화 |
+| `.battle-stats-bar` | (현재 유지) | **제거** | 사이드패널 statsArea로 통합 |
+| `.battle-my-side-panel` | (없음) | 신규 추가 | width: 90px, 사이드패널 |
+| `.battle-my-play-area` | (없음) | 신규 추가 | display: flex, flex-direction: row |
+| `.battle-side-box` | (없음) | 신규 추가 | NEXT/HOLD 박스 |
+| `.battle-side-title` | (없음) | 신규 추가 | 사이드 레이블 |
+| `.battle-stats-area` | (없음) | 신규 추가 | margin-top: auto |
+| `.battle-stat-row` | (없음) | 신규 추가 | 각 스탯 항목 |
+| `--color-text-primary` (battle 내) | `#111827` | `#f0f6fc` | 다크 모드 기준값 |
+
+**신규 클래스 추가 위치:** `blockfall-battle.css` 하단 `/* ── 내 게임판 사이드패널 (v2) ── */` 섹션 신설. 기존 클래스 변경은 해당 셀렉터 직접 수정.
+
+---
+
+> Phase 2 (실제 CSS/TSX 수정)는 team-lead 승인 후 developer-frontend가 진행한다.
