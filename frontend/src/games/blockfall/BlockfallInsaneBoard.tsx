@@ -88,13 +88,13 @@ const SHATTER_MIN_SPEED  = 0.03;  // (0.04→0.03)
 // 인세인 모드 색상
 const COLORS: (string | null)[] = [
   null,
-  '#ff9f0a', // 1: T
-  '#ff6b9d', // 2: O
-  '#30d158', // 3: L
-  '#0a84ff', // 4: J
-  '#ff375f', // 5: I
-  '#ffd60a', // 6: S
-  '#bf5af2', // 7: Z
+  '#ffaa0d', // 1: T
+  '#f4b0c6', // 2: O
+  '#ABEE62', // 3: L
+  '#0DC2FF', // 4: J
+  '#46e37b', // 5: I
+  '#FFE138', // 6: S
+  '#CA41D9', // 7: Z
   '#67e8f9', // 8: WIDE-I
   '#ff6b35', // 9: DOT
   '#4ecdc4', // 10: DOMINO
@@ -116,7 +116,7 @@ const COLORS_PRE_EVENT: (string | null)[] = [
   '#f4b0c6', // 2: O
   '#ABEE62', // 3: L
   '#0DC2FF', // 4: J
-  '#F7597C', // 5: I
+  '#46e37b', // 5: I
   '#FFE138', // 6: S
   '#CA41D9', // 7: Z
   '#67e8f9', // 8: WIDE-I

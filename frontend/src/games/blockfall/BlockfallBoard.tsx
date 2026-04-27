@@ -52,7 +52,7 @@ const COLORS_NORMAL = [
   '#f4b0c6', // 2: O
   '#ABEE62', // 3: L
   '#0DC2FF', // 4: J
-  '#F7597C', // 5: I
+  '#46e37b', // 5: I
   '#FFE138', // 6: S
   '#CA41D9', // 7: Z
 ];
@@ -63,7 +63,7 @@ const COLORS_EXCEL = [
   '#E8C4CE', // O
   '#C5E89A', // L
   '#7DD3E8', // J
-  '#7B9ED9', // I
+  '#acf0c3', // I
   '#F0DB70', // S
   '#D98FE0', // Z
 ];
