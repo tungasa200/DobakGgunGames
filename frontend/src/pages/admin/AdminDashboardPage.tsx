@@ -11,10 +11,11 @@ const GAME_LABELS: Record<string, string> = {
   apple: '사과게임',
   baseball: '숫자야구',
   blockfall: '블록폴',
+  'blockfall-insane': '블록폴: 인세인',
   sudoku: '스도쿠',
 };
 
-const GAME_ORDER = ['minesweeper', 'solitaire', 'apple', 'baseball', 'blockfall', 'sudoku'];
+const GAME_ORDER = ['minesweeper', 'solitaire', 'apple', 'baseball', 'blockfall', 'blockfall-insane', 'sudoku'];
 
 export default function AdminDashboardPage() {
   const { accessToken } = useAuth();
