@@ -265,8 +265,15 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
     dispatch({ type: 'START_WITH_DECK', drawMode, deck });
   }, []);
 
+  // ── 자동완성 중단 ─────────────────────────────────────────────
+  const cancelAutoComplete = useCallback(() => {
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    if (state.autoCompleting) dispatch({ type: 'AUTO_COMPLETING', value: false });
+  }, [state.autoCompleting]);
+
   // ── 스톡 드로우 ────────────────────────────────────────────────
   const drawStock = useCallback(() => {
+    cancelAutoComplete();
     const g = state.game;
     if (g.selected) {
       dispatch({ type: 'SET_GAME', game: { ...g, selected: null } });
@@ -287,10 +294,11 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
     }
     dispatch({ type: 'SET_GAME', game: next, saveHistory: true });
     dispatch({ type: 'INC_MOVES' });
-  }, [state.game, state.drawMode, ensureTimer]);
+  }, [state.game, state.drawMode, ensureTimer, cancelAutoComplete]);
 
   // ── 카드 선택 / 이동 ───────────────────────────────────────────
   const selectOrMove = useCallback((zone: Selection['zone'], col: number, index: number) => {
+    cancelAutoComplete();
     const g = state.game;
     const stack = getStack(g, zone, col);
     const card = stack[index];
@@ -323,10 +331,11 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
       return;
     }
     selectOrMove('waste', 0, g.waste.length - 1);
-  }, [state.game, selectOrMove]);
+  }, [state.game, selectOrMove, cancelAutoComplete]);
 
   // ── Foundation 클릭 ────────────────────────────────────────────
   const clickFoundation = useCallback((fi: number) => {
+    cancelAutoComplete();
     const g = state.game;
     if (g.selected) {
       if (g.selected.zone === 'foundation' && g.selected.col === fi) {
@@ -343,6 +352,7 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
 
   // ── Tableau 클릭 ───────────────────────────────────────────────
   const clickTableau = useCallback((col: number) => {
+    cancelAutoComplete();
     const g = state.game;
     if (!g.selected) return;
     if (g.selected.zone === 'tableau' && g.selected.col === col) {
@@ -428,7 +438,11 @@ export function useSolitaireGame(initialDrawMode: DrawMode = 'draw1') {
     if (!allFaceUp) return false;
     // draw1: 스톡이 남아있어도 모든 카드가 결국 waste를 거쳐 노출되므로 허용
     if (state.drawMode === 'draw1') return true;
-    return g.stock.length === 0;
+    // draw3: 스톡과 웨이스트 모두 비어야 자동완성 허용
+    // 웨이스트에 카드가 남아있으면 드로우3은 리사이클 없이 탑 카드만 접근 가능하므로,
+    // 자동완성이 태블로의 중간 경유 카드를 파운데이션으로 먼저 보내버려
+    // 웨이스트 카드가 내려갈 자리를 없애는 문제가 발생함
+    return g.stock.length === 0 && g.waste.length === 0;
   }
 
   function maybeAutoComplete(g: GameState) {
