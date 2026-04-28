@@ -68,7 +68,10 @@ const GAMES: GameConfig[] = [
     key: 'apple',
     name: '사과게임',
     icon: '🍎',
-    levels: [{ value: 'normal', label: '랭킹' }],
+    levels: [
+      { value: 'normal', label: '기본' },
+      { value: 'large',  label: '큰 판' },
+    ],
     defaultLevel: 'normal',
     fmt: (r) => `${(r.score ?? 0).toLocaleString()}점`,
   },

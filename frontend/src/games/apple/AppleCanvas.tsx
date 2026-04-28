@@ -134,6 +134,17 @@ export default function AppleCanvas({ excel = false }: Props) {
   const sessionIdRef = useRef<string>('');
   const [sessionFailed, setSessionFailed] = useState(false);
 
+  // 보드 크기 모드 — 일반 모드 전용
+  const boardSizeModeRef = useRef<'normal' | 'large'>('normal');
+  const [boardSizeMode, setBoardSizeMode] = useState<'normal' | 'large'>('normal');
+  const handleBoardSizeChange = (mode: 'normal' | 'large') => {
+    if (state.status === 'playing') return;
+    boardSizeModeRef.current = mode;
+    setBoardSizeMode(mode);
+  };
+  // 현재 진행 중인(또는 방금 끝낸) 게임 레벨 — 랭킹 제출 시 사용
+  const currentLevelRef = useRef<'normal' | 'large'>('normal');
+
   // 세로 모드로 보드를 전치했는지 여부 (순위 등록 시 좌표 역전치에 사용)
   const boardTransposedRef = useRef(false);
 
@@ -161,7 +172,7 @@ export default function AppleCanvas({ excel = false }: Props) {
   // 일반 모드 랭킹
   const [rankings, setRankings] = useState<{ weekly: unknown[]; alltime: unknown | null }>({ weekly: [], alltime: null });
   const [rankLoading, setRankLoading] = useState(false);
-  const [showRules, setShowRules] = useState(false);
+  const [rankTab, setRankTab] = useState<'normal' | 'large' | 'rules'>('normal');
   const [displayCount, setDisplayCount] = useState(10);
 
   // 엑셀 모드 랭킹
@@ -181,15 +192,15 @@ export default function AppleCanvas({ excel = false }: Props) {
     const wrap = wrapRef.current;
     if (!wrap) return;
     const isPortrait = window.innerHeight > window.innerWidth;
-    const cols = isPortrait ? 10 : 17;
-    const rows = isPortrait ? 17 : 10;
+    const isLarge = boardSizeModeRef.current === 'large';
+    const cols = isPortrait ? (isLarge ? 15 : 10) : (isLarge ? 20 : 17);
+    const rows = isPortrait ? (isLarge ? 20 : 17) : (isLarge ? 15 : 10);
     const pad  = 8;
-    // 원본: maxW = Math.min(window.innerWidth - 16, 560)
-    const maxW = Math.min(wrap.clientWidth - 16, 560);
-    const size = Math.max(24, Math.min(30, Math.floor((maxW - pad * 2) / cols)));
-    // 원본: canvas-wrap에 max-width 동적 설정
+    // 큰 판은 셀 크기 30 고정 (기본 모드와 동일), 일반 모드만 560px 제한
+    const size = isLarge ? 30 : Math.max(24, Math.min(30, Math.floor((Math.min(wrap.clientWidth - 16, 560) - pad * 2) / cols)));
+    // 원본: canvas-wrap에 max-width 동적 설정 (큰 판은 제한 없음)
     if (canvasWrapRef.current) {
-      canvasWrapRef.current.style.maxWidth = `${pad * 2 + cols * size}px`;
+      canvasWrapRef.current.style.maxWidth = isLarge ? 'none' : `${pad * 2 + cols * size}px`;
     }
     const l = { rows, cols, size, pad };
     setLayout(l);
@@ -205,19 +216,21 @@ export default function AppleCanvas({ excel = false }: Props) {
       window.removeEventListener('resize', handler);
       window.removeEventListener('orientationchange', handler);
     };
-  }, [calcLayout]);
+  // boardSizeMode 변경 시 레이아웃 재계산 (boardSizeModeRef를 통해 최신값 읽음)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calcLayout, boardSizeMode]);
 
-  // 엑셀 모드: 마운트 시 사과 초기 배치 (원본 initGame())
+  // 마운트 및 보드 크기 모드 변경 시 사과 초기 배치
   useEffect(() => {
+    if (state.status === 'playing') return; // 게임 중에는 재배치 금지
     if (excel) {
       init(EXCEL_ROWS, EXCEL_COLS);
     } else {
-      // 일반 모드: 레이아웃 계산 후 초기 사과 배치 (원본 initGame())
       const l = calcLayout();
       if (l) init(l.rows, l.cols);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [excel]);
+  }, [excel, boardSizeMode]);
 
   // timeLeft === 0 → end
   useEffect(() => {
@@ -259,6 +272,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     if (state.status === 'ended') {
       setMsg('GAME OVER');
       draw();
+      setRankTab(currentLevelRef.current as 'normal' | 'large');
       if (!sessionFailed) setTimeout(() => setModalOpen(true), 300);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -502,11 +516,15 @@ export default function AppleCanvas({ excel = false }: Props) {
     setPlayerName('');
     setSubmitState('idle');
     setDragSum(null);
+    // 현재 선택된 크기 모드 확정
+    const level = boardSizeMode;
+    currentLevelRef.current = level;
+
     // 세션 생성 최대 3회 재시도
     let res = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        res = await startAppleSession();
+        res = await startAppleSession(level);
         break;
       } catch {
         if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
@@ -532,7 +550,7 @@ export default function AppleCanvas({ excel = false }: Props) {
       const syncedLayout = { rows: board.length, cols: board[0]?.length ?? base.cols, size: base.size, pad: base.pad };
       setLayout(syncedLayout);
       if (canvasWrapRef.current) {
-        canvasWrapRef.current.style.maxWidth = `${syncedLayout.pad * 2 + syncedLayout.cols * syncedLayout.size}px`;
+        canvasWrapRef.current.style.maxWidth = level === 'large' ? 'none' : `${syncedLayout.pad * 2 + syncedLayout.cols * syncedLayout.size}px`;
       }
       startWithBoard(board);
     } else {
@@ -589,7 +607,7 @@ export default function AppleCanvas({ excel = false }: Props) {
         ? eventsRef.current.map(e => ({ ...e, cells: e.cells.map(([r, c]) => [c, r]) }))
         : eventsRef.current;
       await rankingsApi.submit('apple', {
-        level: 'normal',
+        level: currentLevelRef.current,
         name,
         score: state.score,
         sessionId: sessionIdRef.current,
@@ -608,13 +626,14 @@ export default function AppleCanvas({ excel = false }: Props) {
     }
   }
 
-  async function loadRanking() {
+  async function loadRanking(level?: 'normal' | 'large') {
     setRankLoading(true);
     setDisplayCount(10);
+    const lv = level ?? 'normal';
     try {
       const [weekly, alltime] = await Promise.all([
-        rankingsApi.getWeekly('apple', 'normal'),
-        rankingsApi.getAlltimeBest('apple', 'normal'),
+        rankingsApi.getWeekly('apple', lv),
+        rankingsApi.getAlltimeBest('apple', lv),
       ]);
       const safeAlltime = (alltime && typeof alltime === 'object' && 'id' in (alltime as object)) ? alltime : null;
       setRankings({ weekly: weekly as unknown[], alltime: safeAlltime });
@@ -689,6 +708,22 @@ export default function AppleCanvas({ excel = false }: Props) {
       {/* 상태 메시지 — 일반 모드 */}
       {!excel && <div className={styles.statusMsg}>{msg}</div>}
 
+      {/* 보드 크기 선택 — 일반 모드 */}
+      {!excel && (
+        <div className={styles.sizePicker}>
+          <button
+            className={`${styles.sizeBtn} ${boardSizeMode === 'normal' ? styles.sizeBtnActive : ''}`}
+            onClick={() => handleBoardSizeChange('normal')}
+            disabled={state.status === 'playing'}
+          >기본</button>
+          <button
+            className={`${styles.sizeBtn} ${boardSizeMode === 'large' ? styles.sizeBtnActive : ''}`}
+            onClick={() => handleBoardSizeChange('large')}
+            disabled={state.status === 'playing'}
+          >큰 판</button>
+        </div>
+      )}
+
       {/* 세션 생성 실패 경고 배너 */}
       {!excel && sessionFailed && state.status === 'playing' && (
         <div className={styles.sessionFailBanner}>
@@ -698,10 +733,10 @@ export default function AppleCanvas({ excel = false }: Props) {
 
       {/* 캔버스 — 게임 시트 */}
       {showGameArea && (
-        <div className={styles.canvasWrap} ref={canvasWrapRef}>
+        <div className={`${styles.canvasWrap} ${!excel && boardSizeMode === 'large' ? styles.canvasWrapLarge : ''}`} ref={canvasWrapRef}>
           <canvas
             ref={canvasRef}
-            className={`${styles.canvas} ${excel ? styles.canvasExcel : ''}`}
+            className={`${styles.canvas} ${excel ? styles.canvasExcel : ''} ${!excel && boardSizeMode === 'large' ? styles.canvasLarge : ''}`}
             onMouseDown={handlePointerDown}
           />
         </div>
@@ -720,7 +755,7 @@ export default function AppleCanvas({ excel = false }: Props) {
       {!excel && showRankingArea && (
         <div className={styles.rankSection}>
           <h3 className={styles.rankTitle}>주간 RANK</h3>
-          {!!rankings.alltime && (
+          {rankTab !== 'rules' && !!rankings.alltime && (
             <div className={styles.alltimeBanner}>
               <span className={styles.atLabel}>👑 역대 1위</span>
               <span className={styles.atContent}>
@@ -734,15 +769,19 @@ export default function AppleCanvas({ excel = false }: Props) {
           )}
           <div className={styles.rankTabs}>
             <button
-              className={`${styles.rankTab} ${!showRules ? styles.rankTabActive : ''}`}
-              onClick={() => { setShowRules(false); loadRanking(); }}
-            >랭킹</button>
+              className={`${styles.rankTab} ${rankTab === 'normal' ? styles.rankTabActive : ''}`}
+              onClick={() => { setRankTab('normal'); loadRanking('normal'); }}
+            >기본</button>
             <button
-              className={`${styles.rankTab} ${showRules ? styles.rankTabActive : ''}`}
-              onClick={() => setShowRules(true)}
+              className={`${styles.rankTab} ${rankTab === 'large' ? styles.rankTabActive : ''}`}
+              onClick={() => { setRankTab('large'); loadRanking('large'); }}
+            >큰 판</button>
+            <button
+              className={`${styles.rankTab} ${rankTab === 'rules' ? styles.rankTabActive : ''}`}
+              onClick={() => setRankTab('rules')}
             >룰</button>
           </div>
-          {showRules ? (
+          {rankTab === 'rules' ? (
             <div className={styles.rulesPanel}>
               <h4>게임 방법</h4>
               <ul>
@@ -792,8 +831,8 @@ export default function AppleCanvas({ excel = false }: Props) {
                         onClick={() => setDisplayCount(c => c + 10)}
                         style={{
                           padding: '6px 24px', cursor: 'pointer',
-                          background: '#fff', border: '1px solid #1b5e20',
-                          borderRadius: '4px', color: '#1b5e20',
+                          background: '#fff', border: '1px solid #f18064',
+                          borderRadius: '4px', color: '#f18064',
                           fontSize: '13px', fontWeight: 600,
                         }}
                       >

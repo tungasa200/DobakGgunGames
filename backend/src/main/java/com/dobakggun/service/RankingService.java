@@ -209,7 +209,7 @@ public class RankingService {
             case "blockfall"        -> Set.of("easy", "normal", "hard");
             case "blockfall-insane" -> Set.of("hard");
             case "solitaire"        -> Set.of("draw1", "draw3");
-            case "apple"            -> Set.of("normal");
+            case "apple"            -> Set.of("normal", "large");
             case "sudoku"           -> Set.of("easy", "normal", "hard");
             default -> Set.of();
         };

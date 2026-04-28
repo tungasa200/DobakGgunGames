@@ -43,6 +43,7 @@ export const GAME_DIFFICULTY_MAP: Record<string, { label: string; difficulties: 
     label: '사과게임',
     difficulties: [
       { key: 'normal', label: '기본' },
+      { key: 'large',  label: '큰 판' },
     ],
   },
   sudoku: {
