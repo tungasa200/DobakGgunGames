@@ -28,10 +28,12 @@ import java.util.*;
 public class AppleSessionService {
 
     private static final long  EXPIRE_SECONDS = 7200L;
-    private static final int   ROWS           = 10;
-    private static final int   COLS           = 17;
-    private static final int   LARGE_ROWS     = 15;
-    private static final int   LARGE_COLS     = 20;
+    private static final int   ROWS                = 10;
+    private static final int   COLS                = 17;
+    private static final int   LARGE_ROWS          = 15;  // landscape
+    private static final int   LARGE_COLS          = 20;
+    private static final int   LARGE_PORTRAIT_ROWS = 25;  // portrait (12×25=300)
+    private static final int   LARGE_PORTRAIT_COLS = 12;
     /** 1~9 각 숫자의 가중치 (프론트엔드 APPLE_WEIGHTS 와 동일) */
     private static final int[] WEIGHTS        = {5, 5, 4, 4, 3, 3, 2, 2, 1};
     private static final int   WEIGHT_TOTAL;
@@ -51,8 +53,11 @@ public class AppleSessionService {
             SessionStartRequest req,
             HttpServletRequest httpReq) {
 
-        boolean isLarge = "large".equals(req.getLevel());
-        int[][] board = generateBoard(isLarge ? LARGE_ROWS : ROWS, isLarge ? LARGE_COLS : COLS);
+        boolean isLarge    = "large".equals(req.getLevel());
+        boolean isPortrait = isLarge && Boolean.TRUE.equals(req.getPortrait());
+        int boardRows = isLarge ? (isPortrait ? LARGE_PORTRAIT_ROWS : LARGE_ROWS) : ROWS;
+        int boardCols = isLarge ? (isPortrait ? LARGE_PORTRAIT_COLS : LARGE_COLS) : COLS;
+        int[][] board = generateBoard(boardRows, boardCols);
 
         Instant now      = Instant.now();
         String sessionId = UUID.randomUUID().toString();

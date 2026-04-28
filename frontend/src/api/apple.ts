@@ -24,9 +24,12 @@ export interface AppleSessionResponse {
  * Phase 3 — 서버가 생성한 보드로 사과게임 세션 발급.
  * 클라이언트는 반환된 board 를 사용하고 randomApple() 생성 로직을 제거.
  */
-export async function startAppleSession(level: 'normal' | 'large' = 'normal'): Promise<AppleSessionResponse> {
+export async function startAppleSession(
+  level: 'normal' | 'large' = 'normal',
+  portrait = false,
+): Promise<AppleSessionResponse> {
   return request<AppleSessionResponse>('/api/apple/session/start', {
     method: 'POST',
-    body: JSON.stringify({ level }),
+    body: JSON.stringify(level === 'large' ? { level, portrait } : { level }),
   });
 }

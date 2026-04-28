@@ -193,11 +193,24 @@ export default function AppleCanvas({ excel = false }: Props) {
     if (!wrap) return;
     const isPortrait = window.innerHeight > window.innerWidth;
     const isLarge = boardSizeModeRef.current === 'large';
-    const cols = isPortrait ? (isLarge ? 15 : 10) : (isLarge ? 20 : 17);
-    const rows = isPortrait ? (isLarge ? 20 : 17) : (isLarge ? 15 : 10);
-    const pad  = 8;
-    // 큰 판은 셀 크기 30 고정 (기본 모드와 동일), 일반 모드만 560px 제한
-    const size = isLarge ? 30 : Math.max(24, Math.min(30, Math.floor((Math.min(wrap.clientWidth - 16, 560) - pad * 2) / cols)));
+    const pad = 8;
+    let cols: number, rows: number, size: number;
+    if (isLarge) {
+      if (isPortrait) {
+        // 모바일 세로: 12×25 = 300칸
+        // 가용 폭 = clientWidth - wrap padding(40) - canvas pad(16) - canvas border(4)
+        cols = 12; rows = 25;
+        size = Math.max(24, Math.min(30, Math.floor((wrap.clientWidth - 60) / cols)));
+      } else {
+        // 데스크탑 가로: 20×15 = 300칸, 30px 고정
+        cols = 20; rows = 15;
+        size = 30;
+      }
+    } else {
+      cols = isPortrait ? 10 : 17;
+      rows = isPortrait ? 17 : 10;
+      size = Math.max(24, Math.min(30, Math.floor((Math.min(wrap.clientWidth - 16, 560) - pad * 2) / cols)));
+    }
     // 원본: canvas-wrap에 max-width 동적 설정 (큰 판은 제한 없음)
     if (canvasWrapRef.current) {
       canvasWrapRef.current.style.maxWidth = isLarge ? 'none' : `${pad * 2 + cols * size}px`;
@@ -524,7 +537,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     let res = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        res = await startAppleSession(level);
+        res = await startAppleSession(level, !excel && window.innerHeight > window.innerWidth);
         break;
       } catch {
         if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
