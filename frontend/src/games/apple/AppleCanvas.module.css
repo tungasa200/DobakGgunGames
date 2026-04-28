@@ -164,7 +164,7 @@
 
 /* 랭킹 테이블 — 원본: #ranking-table */
 .rankTable { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-.rankTable th { background: #f18064; color: white; padding: 7px 10px; }
+.rankTable th { background: #f18064; color: white; padding: 7px 10px; white-space: nowrap; }
 .rankTable td { padding: 6px 10px; border-bottom: 1px solid #eee; text-align: center; white-space: nowrap; }
 .rankTable tr:nth-child(even) td { background: #f9f9f9; }
 .rankTable tr:first-child td { color: #f18064; font-weight: bold; }
