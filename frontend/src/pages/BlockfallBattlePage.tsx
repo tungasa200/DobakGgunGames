@@ -226,9 +226,10 @@ export default function BlockfallBattlePage() {
     if (ws.countdown > 0) {
       setCountdown(ws.countdown);
       setPhase(prev => (prev === 'playing' ? 'playing' : 'countdown'));
-    } else if (ws.countdown === 0 && phase === 'countdown') {
+    } else if (ws.countdown === 0) {
       // 카운트다운 취소 → 대기로 복귀
-      setPhase('waiting');
+      // functional updater 사용: GAME_STARTED effect와 배칭 시 'playing'으로 전환된 경우 무시
+      setPhase(prev => prev === 'countdown' ? 'waiting' : prev);
       setCountdown(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
