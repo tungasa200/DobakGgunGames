@@ -475,3 +475,74 @@
 .sizeBtn:hover:not(:disabled) { background: #f18064; color: white; }
 .sizeBtnActive { background: #f18064; color: white; }
 .sizeBtn:disabled { opacity: 0.45; cursor: default; }
+
+/* 감자 테마 토글 버튼 */
+.themeBtn {
+  padding: 6px 12px;
+  font-size: 0.85em;
+  cursor: pointer;
+  border: 2px solid #C4A35A;
+  border-radius: 5px;
+  background: white;
+  color: #8B6914;
+  font-weight: bold;
+  touch-action: manipulation;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.themeBtn:hover { background: #f5e6c8; }
+.themeBtnActive { background: #C4A35A; color: white; border-color: #8B6914; }
+.themeBtnActive:hover { background: #b08a3e; }
+
+/* ===== 감자 테마 전체 화면 오버라이드 ===== */
+.potatoTheme {
+  background: #FDF3E3;
+}
+.potatoTheme .infoItem {
+  background: #FDF0DC;
+  border-color: #D4A85A;
+}
+.potatoTheme .infoLabel { color: #A07830; }
+.potatoTheme .infoValue { color: #5C3D0B; }
+.potatoTheme .timeWarning { color: #A07830; }
+.potatoTheme .statusMsg { color: #5C3D0B; }
+
+/* 캔버스 테두리 */
+.potatoTheme .canvas { border-color: #C4A35A; background: #FDF8F0; }
+
+/* 시작 버튼 */
+.potatoTheme .startBtn { background: #C4A35A; }
+.potatoTheme .startBtn:hover { background: #8B6914; }
+
+/* 보드 크기 버튼 */
+.potatoTheme .sizeBtn { border-color: #C4A35A; color: #8B6914; }
+.potatoTheme .sizeBtn:hover:not(:disabled) { background: #C4A35A; color: white; }
+.potatoTheme .sizeBtnActive { background: #C4A35A; color: white; }
+
+/* 역대 1위 배너 */
+.potatoTheme .alltimeBanner {
+  background: linear-gradient(135deg, #FDF3E3, #F5E0B5);
+  border-color: #C4A35A;
+}
+
+/* 랭킹 탭 */
+.potatoTheme .rankTab { border-color: #C4A35A; color: #C4A35A; }
+.potatoTheme .rankTab:hover { background: #C4A35A; color: white; }
+.potatoTheme .rankTabActive { background: #C4A35A; color: white; }
+
+/* 랭킹 테이블 */
+.potatoTheme .rankTable th { background: #C4A35A; }
+.potatoTheme .rankTable tr:first-child td { color: #8B6914; }
+
+/* 랭킹 섹션 제목 */
+.potatoTheme .rankTitle { color: #5C3D0B; }
+
+/* 룰 패널 */
+.potatoTheme .rulesPanel { background: #FDF8F0; border-color: #D4A85A; }
+.potatoTheme .rulesPanel h4 { color: #5C3D0B; border-color: #D4A85A; }
+
+/* 모달 */
+.potatoTheme .modal h2 { color: #C4A35A; }
+.potatoTheme .nameInput:focus { border-color: #C4A35A; }
+.potatoTheme .submitBtn { background: #C4A35A; }
+.potatoTheme .submitBtn:hover { background: #8B6914; }

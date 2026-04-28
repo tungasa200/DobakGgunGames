@@ -87,6 +87,56 @@ function drawAppleShape(
   ctx.restore();
 }
 
+function drawPotatoShape(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  fillColor: string, strokeColor: string | null
+) {
+  // SVG viewBox 0 0 200 200, 몸통 범위 x:40~180 y:30~180
+  // 시각적 중심 ≈ (110, 108)
+  const scale = 0.18;
+  ctx.save();
+  ctx.translate(cx - 110 * scale, cy - 108 * scale);
+  ctx.scale(scale, scale);
+
+  // 몸통 경로 — SVG path 그대로
+  ctx.beginPath();
+  ctx.moveTo(60, 60);
+  ctx.bezierCurveTo(40, 80, 40, 120, 70, 150);
+  ctx.bezierCurveTo(100, 180, 150, 170, 165, 130);
+  ctx.bezierCurveTo(180, 90, 160, 50, 120, 40);
+  ctx.bezierCurveTo(90, 30, 70, 45, 60, 60);
+  ctx.closePath();
+
+  // 기본 상태: 방사형 그라디언트, 선택 상태: solid
+  if (fillColor === '#C4A35A') {
+    const grad = ctx.createRadialGradient(95, 88, 8, 110, 108, 82);
+    grad.addColorStop(0, '#E8C9A3');
+    grad.addColorStop(1, '#C09668');
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = fillColor;
+  }
+  ctx.fill();
+
+  // 테두리 — 선택 시 강조색, 기본 시 SVG 원본색
+  ctx.strokeStyle = strokeColor ?? '#966F47';
+  ctx.lineWidth = strokeColor ? 9 : 5;
+  ctx.setLineDash([]);
+  ctx.stroke();
+
+  // 눈 (SVG circle 위치 그대로)
+  ctx.fillStyle = 'rgba(111,78,55,0.7)';
+  ([ [85,75,2.5], [130,80,3], [110,115,2], [150,105,2.5], [95,140,3], [135,145,2] ] as [number,number,number][])
+    .forEach(([ex, ey, er]) => {
+      ctx.beginPath();
+      ctx.arc(ex, ey, er, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+  ctx.restore();
+}
+
 function calcSelection(
   sx: number, sy: number, ex: number, ey: number,
   rows: number, cols: number, apples: (number | null)[][],
@@ -147,6 +197,16 @@ export default function AppleCanvas({ excel = false }: Props) {
 
   // 세로 모드로 보드를 전치했는지 여부 (순위 등록 시 좌표 역전치에 사용)
   const boardTransposedRef = useRef(false);
+
+  // 감자 테마
+  const [potatoTheme, setPotatoTheme] = useState(() =>
+    localStorage.getItem('dobakggun-apple-theme') === 'potato'
+  );
+  const togglePotatoTheme = () => setPotatoTheme(prev => {
+    const next = !prev;
+    localStorage.setItem('dobakggun-apple-theme', next ? 'potato' : 'apple');
+    return next;
+  });
 
   // 드래그 상태
   const dragRef = useRef({ active: false, sx: 0, sy: 0, cx: 0, cy: 0 });
@@ -379,14 +439,18 @@ export default function AppleCanvas({ excel = false }: Props) {
           ctx.fillText(String(apples[r][c]), x + size / 2, y + size / 2);
         } else {
           if (!apples[r] || apples[r][c] === null) continue;
-          let bodyColor = '#e03a27';
+          let bodyColor = potatoTheme ? '#C4A35A' : '#e03a27';
           let borderColor: string | null = null;
           if (isSelected) {
             if (selSum === 10)     { bodyColor = '#27ae60'; borderColor = '#1a8a4a'; }
             else if (selSum > 10) { bodyColor = '#e67e22'; borderColor = '#b05a00'; }
             else                  { bodyColor = '#3498db'; borderColor = '#1a6aa0'; }
           }
-          drawAppleShape(ctx, cx, cy, bodyColor, borderColor);
+          if (potatoTheme) {
+            drawPotatoShape(ctx, cx, cy, bodyColor, borderColor);
+          } else {
+            drawAppleShape(ctx, cx, cy, bodyColor, borderColor);
+          }
           ctx.fillStyle = 'white';
           ctx.font = 'bold 12px Arial';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -422,7 +486,7 @@ export default function AppleCanvas({ excel = false }: Props) {
       ctx.fillStyle = `rgba(${rgb},0.07)`;
       ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
     }
-  }, [state, layout, excel]);
+  }, [state, layout, excel, potatoTheme]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -696,7 +760,7 @@ export default function AppleCanvas({ excel = false }: Props) {
   const RULES_CELL_W = EXCEL_SIZE; // 배경 격자(30px)와 일치
 
   return (
-    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`} ref={wrapRef}>
+    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && potatoTheme ? styles.potatoTheme : ''}`} ref={wrapRef}>
 
       {/* 정보 바 — 일반 모드 */}
       {!excel && (
@@ -721,7 +785,7 @@ export default function AppleCanvas({ excel = false }: Props) {
       {/* 상태 메시지 — 일반 모드 */}
       {!excel && <div className={styles.statusMsg}>{msg}</div>}
 
-      {/* 보드 크기 선택 — 일반 모드 */}
+      {/* 보드 크기 선택 + 테마 토글 — 일반 모드 */}
       {!excel && (
         <div className={styles.sizePicker}>
           <button
@@ -734,6 +798,12 @@ export default function AppleCanvas({ excel = false }: Props) {
             onClick={() => handleBoardSizeChange('large')}
             disabled={state.status === 'playing'}
           >큰 판</button>
+          <button
+            className={`${styles.themeBtn} ${potatoTheme ? styles.themeBtnActive : ''}`}
+            onClick={togglePotatoTheme}
+          >
+            {potatoTheme ? '🍎 사과' : '🥔 감자'}
+          </button>
         </div>
       )}
 
