@@ -85,7 +85,7 @@ class YachtControllerSecurityTest {
                         .roomId("yacht1234")
                         .status("WAITING")
                         .playerCount(1)
-                        .maxPlayers(4)
+                        .maxPlayers(6)
                         .created(true)
                         .build());
 

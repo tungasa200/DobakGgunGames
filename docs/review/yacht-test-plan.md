@@ -50,11 +50,11 @@
 
 | TC-ID | 테스트 항목 | 전제조건 | 입력/동작 | 기대 결과 | 우선순위 |
 |---|---|---|---|---|---|
-| TC-MATCH-01 | 활성 WAITING 방 없을 때 → 신규 방 생성 | 활성 WAITING 방 없음, 인증 유저 | `POST /api/yacht/match` 호출 | HTTP 201, `{ roomId, status: "WAITING", playerCount: 1, maxPlayers: 4, created: true }` | High |
+| TC-MATCH-01 | 활성 WAITING 방 없을 때 → 신규 방 생성 | 활성 WAITING 방 없음, 인증 유저 | `POST /api/yacht/match` 호출 | HTTP 201, `{ roomId, status: "WAITING", playerCount: 1, maxPlayers: 6, created: true }` | High |
 | TC-MATCH-02 | WAITING 방 있을 때 → 기존 방 합류 | WAITING 방 1개 존재(인원 미달) | 다른 인증 유저가 `POST /api/yacht/match` 호출 | HTTP 200, `{ roomId: <기존 roomId>, status: "WAITING", playerCount: 2, created: false }` | High |
 | TC-MATCH-03 | ALREADY_IN_ROOM — WAITING 방 참가 중 재매칭 | 유저가 WAITING 방 참가 중 | `POST /api/yacht/match` 재호출 | HTTP 409, `{ "error": "ALREADY_IN_ROOM", "roomId": "<기존 roomId>" }` | High |
 | TC-MATCH-04 | ALREADY_IN_ROOM — PLAYING 방 참가 중 재매칭 | 유저가 PLAYING 방 참가 중 | `POST /api/yacht/match` 호출 | HTTP 409, `{ "error": "ALREADY_IN_ROOM", "roomId": "<기존 roomId>" }` | High |
-| TC-MATCH-05 | 5인 동시 매칭 → 4인 방 + 1인 새 방 분리 | 빈 상태에서 5명 동시 요청 | 매칭 API 5인 동시 호출 | 4명이 같은 roomId 배정, 1명이 별도 새 roomId 배정. 정원 4 초과 없음. 분산락 동작 확인. | Medium |
+| TC-MATCH-05 | 7인 동시 매칭 → 6인 방 + 1인 새 방 분리 | 빈 상태에서 7명 동시 요청 | 매칭 API 7인 동시 호출 | 6명이 같은 roomId 배정, 1명이 별도 새 roomId 배정. 정원 6 초과 없음. 분산락 동작 확인. | Medium |
 | TC-MATCH-06 | MATCH_RATE_LIMIT — 짧은 시간 내 반복 요청 | 인증 유저 | 10초 내 임계치 초과 횟수로 `POST /api/yacht/match` 연속 호출 | HTTP 429, `{ "error": "MATCH_RATE_LIMIT" }` (임계치 OQ-4 확정 후 구체화) | Medium |
 
 ---
@@ -201,7 +201,7 @@
 | TC-ID | 테스트 항목 | 전제조건 | 입력/동작 | 기대 결과 | 우선순위 |
 |---|---|---|---|---|---|
 | TC-PERF-01 | `POST /api/yacht/match` 응답 시간 | DB/Redis 정상 상태 | 순차 10회 매칭 요청 | p95 응답 시간 500ms 이내 | Medium |
-| TC-PERF-02 | ROLL_RESULT 브로드캐스트 지연 | 4인 방 게임 중 | /roll 발행 후 ROLL_RESULT 수신까지 | 4인 기준 브로드캐스트 지연 200ms 이내 | Medium |
+| TC-PERF-02 | ROLL_RESULT 브로드캐스트 지연 | 6인 방 게임 중 | /roll 발행 후 ROLL_RESULT 수신까지 | 6인 기준 브로드캐스트 지연 200ms 이내 | Medium |
 | TC-PERF-03 | 분산락 타임아웃 시 503 반환 | Redis 락 응답 지연 시뮬레이션 | 매칭 요청 중 Redis 일시 불가 상태 유도 | HTTP 503, `{ "error": "MATCH_UNAVAILABLE" }` — 서버 크래시 없음 | Medium |
 | TC-PERF-04 | 4인 × 12라운드 (48턴) 전체 게임 완주 | 4인 게임 정상 진행 | 48턴 전체 진행 후 GAME_OVER 수신 | GAME_OVER 정상 도달. DB 192개 score row (4×12×12... — 정확히 4명×12=48 score row). 서버 메모리 누수 없음. | Medium |
 

@@ -32,7 +32,7 @@
   "roomId": "yachtab12",
   "status": "WAITING",
   "playerCount": 2,
-  "maxPlayers": 4,
+  "maxPlayers": 6,
   "created": false
 }
 ```
@@ -43,7 +43,7 @@
   "roomId": "yachtnew1",
   "status": "WAITING",
   "playerCount": 1,
-  "maxPlayers": 4,
+  "maxPlayers": 6,
   "created": true
 }
 ```
@@ -68,7 +68,7 @@
   "roomId": "yachtab12",
   "status": "PLAYING",
   "hostUserId": 101,
-  "maxPlayers": 4,
+  "maxPlayers": 6,
   "currentTurnUserId": 101,
   "turnOrder": [101, 202, 303],
   "roundIndex": 2,
@@ -144,7 +144,7 @@
     "roomId": "yachtab12",
     "status": "WAITING",
     "hostUserId": 101,
-    "maxPlayers": 4,
+    "maxPlayers": 6,
     "participants": [
       { "userId": 101, "nickname": "유저A", "ready": true, "isHost": true },
       { "userId": 202, "nickname": "유저B", "ready": false, "isHost": false }

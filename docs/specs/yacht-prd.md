@@ -27,7 +27,7 @@
 - 야추는 5개 주사위를 굴려 12개 족보를 채우는 턴제 게임으로, RPS와 달리 (1) 턴 기반 진행, (2) 점수판 누적 관리, (3) 3D 주사위 시각화, (4) 게임당 N×12 라운드 등 새로운 요구사항을 가진다.
 
 ### 목표
-- 로그인 유저 2~4명이 실시간 자동 매칭으로 야추 한 판을 처음부터 끝까지 플레이.
+- 로그인 유저 2~6명이 실시간 자동 매칭으로 야추 한 판을 처음부터 끝까지 플레이.
 - 주사위 5개를 3D로 렌더링(three.js + gsap)하고, 굴림 결과는 **서버가 생성**하여 모든 참가자에게 동일한 결과를 브로드캐스트.
 - **턴 기반** 플레이 — 한 시점에 한 명만 굴리고 점수를 기록하며, 모든 참가자에게 점수판이 실시간 동기화.
 - 기존 채팅(`/topic/room/**`, `/app/chat/**`) 및 RPS(`/topic/rps/**`, `/app/rps/**`) 경로와 완전히 분리된 `/topic/yacht/**`, `/app/yacht/**` 네임스페이스 사용.
@@ -81,7 +81,7 @@
         ↓ 서버 처리:
         ①  WAITING 상태 & 정원 미달 방 검색
         ②  발견 시 → 자리 예약 + roomId 반환
-        ③  미발견 시 → 새 방 자동 생성(maxPlayers=4, status=WAITING) + 첫 참가자 등록 + roomId 반환
+        ③  미발견 시 → 새 방 자동 생성(maxPlayers=6, status=WAITING) + 첫 참가자 등록 + roomId 반환
         ↓ 클라이언트 수신: { roomId, status, playerCount, maxPlayers, created }
         ↓
 [WebSocket 연결 + 구독]
@@ -90,11 +90,11 @@
 [/join 자동 발행] /app/yacht/room/{roomId}/join
         ↓
 [대기 화면]
-  - "플레이어 대기 중…" + 인원 / 최대 인원 표시 (예: 2/4)
+  - "플레이어 대기 중…" + 인원 / 최대 인원 표시 (예: 2/6)
   - 참가자 닉네임 리스트
   - '나가기' 버튼만 노출
   - 2인 이상 모이면 서버가 5초 카운트다운 브로드캐스트 (MATCH_COUNTDOWN, online-rps와 동일 패턴)
-        ↓ 카운트다운 만료 (또는 4인 즉시 시작)
+        ↓ 카운트다운 만료 (또는 6인 즉시 시작)
 [GAME_STARTED 브로드캐스트]
   - 턴 순서 결정 (랜덤 셔플) + 첫 turn 부여
   - TURN_STATE 브로드캐스트 (currentTurnUserId, rollsLeft=3)
@@ -136,10 +136,10 @@
 2. Redis 분산락 "yacht:match:global" 또는 DB 행 락 획득
 3. 매칭 대상 탐색:
    - status=WAITING
-   - currentPlayers < maxPlayers (4)
+   - currentPlayers < maxPlayers (6)
    - created_at 최신순 1건
 4. 대상 있음 → 자리 예약 (currentPlayers++) → roomId 반환 (created=false)
-5. 대상 없음 → 새 yacht_room INSERT (maxPlayers=4, status=WAITING, name 자동) + 첫 참가자 등록 → roomId 반환 (created=true)
+5. 대상 없음 → 새 yacht_room INSERT (maxPlayers=6, status=WAITING, name 자동) + 첫 참가자 등록 → roomId 반환 (created=true)
 6. 락 해제
 ```
 
@@ -150,6 +150,8 @@
   - 2인: 24턴
   - 3인: 36턴
   - 4인: 48턴
+  - 5인: 60턴
+  - 6인: 72턴
 - 한 턴은 (최대 3회 굴림 + 1회 점수 기록)으로 구성.
 
 ### 4.5 턴 순서 결정
@@ -171,7 +173,7 @@
 > 출처: `docs/야추 룰.agent.md`. 사용자 확정 사양.
 
 ### 5.1 기본 규칙
-- 플레이어: **최소 2인, 최대 4인**.
+- 플레이어: **최소 2인, 최대 6인**.
 - 주사위: **5개**. 1~6 균등 분포.
 - 한 턴에 **최대 3번 굴림**. 1번째는 5개 모두 굴림. 2/3번째는 keep하지 않은 주사위만 다시 굴림.
 - 굴림 도중 keep할 주사위 인덱스를 자유롭게 선택/해제 가능 (단, **굴리는 시점에만 keep 적용**).
@@ -297,7 +299,7 @@ fun calculateScore(scoreKey: String, dice: Int[5]): Int {
   "payload": {
     "roomId": "yacht1ab",
     "status": "WAITING",
-    "maxPlayers": 4,
+    "maxPlayers": 6,
     "participants": [
       { "userId": 101, "nickname": "유저A" },
       { "userId": 202, "nickname": "유저B" }
@@ -569,7 +571,7 @@ Body: `{}`
   "roomId": "yacht1ab",
   "status": "WAITING",
   "playerCount": 2,
-  "maxPlayers": 4,
+  "maxPlayers": 6,
   "created": false
 }
 ```
@@ -580,7 +582,7 @@ Body: `{}`
   "roomId": "yachtnew",
   "status": "WAITING",
   "playerCount": 1,
-  "maxPlayers": 4,
+  "maxPlayers": 6,
   "created": true
 }
 ```
@@ -602,7 +604,7 @@ Body: `{}`
 {
   "roomId": "yacht1ab",
   "status": "PLAYING",
-  "maxPlayers": 4,
+  "maxPlayers": 6,
   "participants": [
     { "userId": 101, "nickname": "유저A" },
     { "userId": 202, "nickname": "유저B" }
@@ -755,14 +757,14 @@ Body: `{}`
 | 게임 시작 카운트다운 | **5초** (CP1-3 추천) | online-rps와 일관성 |
 | 턴 타임아웃 | **30초** (CP1-1 추천) | OQ — 사용자 결정 |
 | 턴 타임아웃 시 처리 | **최저점 항목 자동 0점 기록** (CP1-1 추천) | OQ — 사용자 결정 |
-| 정원 | 2~4명 | 사용자 확정 |
+| 정원 | 2~6명 | 사용자 확정 |
 
 ---
 
 ## 13. 성공 지표
 
 ### MVP 완료 기준
-- [ ] 로그인 유저 2~4명이 동시에 한 게임 끝까지 완주 가능 (`GAME_OVER` 정상 도달)
+- [ ] 로그인 유저 2~6명이 동시에 한 게임 끝까지 완주 가능 (`GAME_OVER` 정상 도달)
 - [ ] 12개 족보 점수 계산이 §5.6 의사 코드와 100% 일치 (특히 Full House에서 Yacht 불인정, Four of a Kind에서 Yacht 인정)
 - [ ] 3D 주사위가 모든 참가자에게 동일한 결과로 표시
 - [ ] 비로그인 유저가 `/yacht`, `/api/yacht/**`, `/topic/yacht/**` 모두 접근 차단

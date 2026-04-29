@@ -46,7 +46,7 @@ public class YachtRoom {
 
     @Column(name = "max_players", nullable = false)
     @Builder.Default
-    private int maxPlayers = 4;
+    private int maxPlayers = 6;
 
     /** 현재 참가자 수 (매칭 시 증가, 퇴장 시 감소) */
     @Column(name = "current_players", nullable = false)

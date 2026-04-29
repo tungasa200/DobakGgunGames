@@ -128,7 +128,7 @@ public class YachtMatchService {
                 .roomId(newRoomId)
                 .status(YachtRoomStatus.WAITING)
                 .hostUserId(userId)
-                .maxPlayers(4)
+                .maxPlayers(6)
                 .currentPlayers(1)
                 .build();
         yachtRoomRepository.save(newRoom);
@@ -147,7 +147,7 @@ public class YachtMatchService {
                 .roomId(newRoomId)
                 .status(YachtRoomStatus.WAITING.name())
                 .playerCount(1)
-                .maxPlayers(4)
+                .maxPlayers(6)
                 .created(true)
                 .build();
     }

@@ -131,7 +131,7 @@ export default function YachtPage() {
         </header>
         <YachtWaitingRoom
           participants={participants}
-          maxPlayers={4}
+          maxPlayers={6}
           myUserId={myUserId}
           hostUserId={hostUserId}
           onReady={readyToggle}
