@@ -76,6 +76,10 @@ export function useYachtGame(): UseYachtGameReturn {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 게임 시작 시 한 번 무작위 표시용 (이후 턴부터는 직전 결과 유지)
+  const makeRandomDice = (): number[] =>
+    Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
+
   const myUserId = user?.id ?? null;
 
   const isMyTurn = currentTurnUserId !== null && myUserId !== null && currentTurnUserId === myUserId;
@@ -114,7 +118,8 @@ export function useYachtGame(): UseYachtGameReturn {
       onGameStarted: (payload: GameStartedPayload) => {
         setCurrentTurnUserId(payload.currentTurnUserId);
         setRollsLeft(payload.rollsLeft);
-        setDice([0, 0, 0, 0, 0]);
+        // 최초 1회: 무작위 눈금으로 표시 (실제 굴림은 ROLL_RESULT가 덮어씀)
+        setDice(makeRandomDice());
         setKeptIndices([]);
         setRoundNum(1);
         // turnOrder 기준으로 플레이어 점수 초기화
@@ -136,7 +141,12 @@ export function useYachtGame(): UseYachtGameReturn {
       onTurnState: (payload: TurnStatePayload) => {
         setCurrentTurnUserId(payload.currentTurnUserId);
         setRollsLeft(payload.rollsLeft);
-        setDice(payload.dice ?? [0, 0, 0, 0, 0]);
+        // 서버가 [0,0,0,0,0]을 보내는 턴 시작 직후엔 직전 dice를 유지한다.
+        // 진짜 dice 값(1~6)이 하나라도 들어오면 그때만 덮어쓴다.
+        const incoming = payload.dice;
+        if (incoming && incoming.some((d) => d > 0)) {
+          setDice(incoming);
+        }
         setKeptIndices(payload.keptIndices ?? []);
       },
       onRollResult: (payload: RollResultPayload) => {
@@ -172,7 +182,7 @@ export function useYachtGame(): UseYachtGameReturn {
       onTurnChanged: (payload: TurnChangedPayload) => {
         setCurrentTurnUserId(payload.currentTurnUserId);
         setRollsLeft(payload.rollsLeft);
-        setDice([0, 0, 0, 0, 0]);
+        // 직전 굴림 결과를 그대로 유지 (사용자 요청). dice 초기화 안 함.
         setKeptIndices([]);
         setRoundNum(payload.roundNum);
       },
