@@ -37,17 +37,17 @@ export function calcScore(key: ScoreKey, dice: number[]): number {
       return 0;
     }
     case 'littleStraight': {
-      const unique = new Set(dice);
-      if (unique.size === 5 && unique.has(1) && unique.has(2) && unique.has(3) && unique.has(4) && unique.has(5)) {
-        return 30;
-      }
+      // 로컬 룰: 어느 4개 연속이든 15점
+      const set = new Set(dice);
+      const has = (...ns: number[]) => ns.every((n) => set.has(n));
+      if (has(1, 2, 3, 4) || has(2, 3, 4, 5) || has(3, 4, 5, 6)) return 15;
       return 0;
     }
     case 'bigStraight': {
-      const unique = new Set(dice);
-      if (unique.size === 5 && unique.has(2) && unique.has(3) && unique.has(4) && unique.has(5) && unique.has(6)) {
-        return 30;
-      }
+      // 로컬 룰: 어느 5개 연속이든 30점
+      const set = new Set(dice);
+      const has = (...ns: number[]) => ns.every((n) => set.has(n));
+      if (has(1, 2, 3, 4, 5) || has(2, 3, 4, 5, 6)) return 30;
       return 0;
     }
     case 'yacht': {

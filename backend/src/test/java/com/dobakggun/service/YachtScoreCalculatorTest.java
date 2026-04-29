@@ -82,20 +82,29 @@ class YachtScoreCalculatorTest {
     }
 
     @Test
-    @DisplayName("LITTLE_STRAIGHT: [1,2,3,4,5] → 30")
+    @DisplayName("LITTLE_STRAIGHT: 어느 4개 연속이든 → 15점 (로컬 룰)")
     void littleStraight() {
-        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{1, 2, 3, 4, 5})).isEqualTo(30);
-        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{5, 4, 3, 2, 1})).isEqualTo(30); // 순서 무관
-        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{2, 3, 4, 5, 6})).isEqualTo(0);
-        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{1, 2, 3, 4, 4})).isEqualTo(0); // 중복
+        // 4개 연속만 있으면 인정 (1-2-3-4 / 2-3-4-5 / 3-4-5-6)
+        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{1, 2, 3, 4, 1})).isEqualTo(15);
+        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{2, 3, 4, 5, 5})).isEqualTo(15);
+        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{3, 4, 5, 6, 6})).isEqualTo(15);
+        // 5개 연속은 4개 연속 부분집합도 포함 → 인정 (Big Straight와 동시 만족 가능, 기록은 유저 선택)
+        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{1, 2, 3, 4, 5})).isEqualTo(15);
+        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{2, 3, 4, 5, 6})).isEqualTo(15);
+        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{6, 5, 4, 3, 1})).isEqualTo(15); // 순서 무관 (3-4-5-6 포함)
+        // 4개 연속 미달
+        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{1, 2, 3, 5, 6})).isEqualTo(0); // 끊김
+        assertThat(YachtGameService.calculateScore("LITTLE_STRAIGHT", new int[]{1, 1, 2, 2, 3})).isEqualTo(0); // 중복으로 4연속 미달
     }
 
     @Test
-    @DisplayName("BIG_STRAIGHT: [2,3,4,5,6] → 30")
+    @DisplayName("BIG_STRAIGHT: 어느 5개 연속이든 → 30점 (로컬 룰)")
     void bigStraight() {
+        assertThat(YachtGameService.calculateScore("BIG_STRAIGHT", new int[]{1, 2, 3, 4, 5})).isEqualTo(30);
         assertThat(YachtGameService.calculateScore("BIG_STRAIGHT", new int[]{2, 3, 4, 5, 6})).isEqualTo(30);
         assertThat(YachtGameService.calculateScore("BIG_STRAIGHT", new int[]{6, 5, 4, 3, 2})).isEqualTo(30); // 순서 무관
-        assertThat(YachtGameService.calculateScore("BIG_STRAIGHT", new int[]{1, 2, 3, 4, 5})).isEqualTo(0);
+        assertThat(YachtGameService.calculateScore("BIG_STRAIGHT", new int[]{1, 2, 3, 4, 6})).isEqualTo(0); // 끊김
+        assertThat(YachtGameService.calculateScore("BIG_STRAIGHT", new int[]{1, 2, 3, 4, 4})).isEqualTo(0); // 중복
     }
 
     @Test

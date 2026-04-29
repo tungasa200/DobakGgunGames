@@ -109,9 +109,9 @@
 | TC-SCORE-06 | FULL_HOUSE — [3,3,3,5,5] → 19점 | 현재 dice=[3,3,3,5,5] | `/score { "scoreKey": "FULL_HOUSE" }` | `SCORE_RECORDED.score = 19` (3+3+3+5+5) | Critical |
 | TC-SCORE-07 | FULL_HOUSE — [6,6,6,6,6] (Yacht) → 0점 | 현재 dice=[6,6,6,6,6] | `/score { "scoreKey": "FULL_HOUSE" }` | `SCORE_RECORDED.score = 0` (Yacht는 Full House 불인정 — counts=[5], listOf(2,3) 아님) | Critical |
 | TC-SCORE-08 | FOUR_OF_A_KIND — [5,5,5,5,5] (Yacht) → 20점 인정 | 현재 dice=[5,5,5,5,5] | `/score { "scoreKey": "FOUR_OF_A_KIND" }` | `SCORE_RECORDED.score = 20` (5×4=20, Yacht도 4개 합산 인정) | Critical |
-| TC-SCORE-09 | LITTLE_STRAIGHT — [1,2,3,4,5] → 30점 | 현재 dice=[1,2,3,4,5] | `/score { "scoreKey": "LITTLE_STRAIGHT" }` | `SCORE_RECORDED.score = 30` | Critical |
-| TC-SCORE-10 | LITTLE_STRAIGHT — [2,3,4,5,6] → 0점 | 현재 dice=[2,3,4,5,6] | `/score { "scoreKey": "LITTLE_STRAIGHT" }` | `SCORE_RECORDED.score = 0` (1-2-3-4-5가 아님) | Critical |
-| TC-SCORE-11 | BIG_STRAIGHT — [2,3,4,5,6] → 30점 | 현재 dice=[2,3,4,5,6] | `/score { "scoreKey": "BIG_STRAIGHT" }` | `SCORE_RECORDED.score = 30` | Critical |
+| TC-SCORE-09 | LITTLE_STRAIGHT — [3,4,5,6,X] (4개 연속 포함) → 15점 | 현재 dice=[3,4,5,6,1] | `/score { "scoreKey": "LITTLE_STRAIGHT" }` | `SCORE_RECORDED.score = 15` (로컬 룰: 어느 4연속이든 15) | Critical |
+| TC-SCORE-10 | LITTLE_STRAIGHT — 4연속 미달 → 0점 | 현재 dice=[1,2,3,5,6] | `/score { "scoreKey": "LITTLE_STRAIGHT" }` | `SCORE_RECORDED.score = 0` (4연속 없음) | Critical |
+| TC-SCORE-11 | BIG_STRAIGHT — [1,2,3,4,5] / [2,3,4,5,6] → 30점 | 현재 dice=[1,2,3,4,5] | `/score { "scoreKey": "BIG_STRAIGHT" }` | `SCORE_RECORDED.score = 30` (로컬 룰: 두 5연속 모두 인정) | Critical |
 | TC-SCORE-12 | YACHT — [4,4,4,4,4] → 50점 | 현재 dice=[4,4,4,4,4] | `/score { "scoreKey": "YACHT" }` | `SCORE_RECORDED.score = 50` | Critical |
 | TC-SCORE-13 | 0점 기록 가능 (조건 미충족 족보 선택) | 현재 dice=[1,2,3,4,5], SIXES 미기록 | `/score { "scoreKey": "SIXES" }` | `SCORE_RECORDED.score = 0` (조건 미달) + SCORE_RECORDED 정상 브로드캐스트 | High |
 | TC-SCORE-14 | 상단 합계 63점 이상 → 보너스 35점 자동 부여 | 상단 5개 기록, 현재 dice=[6,6,6,6,6], SIXES 미기록, 상단 합계가 SIXES 기록 시 63 이상 | `/score { "scoreKey": "SIXES" }` | `SCORE_RECORDED.bonusEarned = true`, `grandTotal`에 35점 반영. | Critical |

@@ -783,15 +783,22 @@ public class YachtGameService {
     }
 
     private static int calcLittleStraight(int[] dice) {
+        // 로컬 룰: 어느 4개 연속이라도 포함하면 15점 (1-2-3-4 / 2-3-4-5 / 3-4-5-6)
         Set<Integer> set = new HashSet<>();
         for (int d : dice) set.add(d);
-        return set.equals(Set.of(1, 2, 3, 4, 5)) ? 30 : 0;
+        if (set.containsAll(Set.of(1, 2, 3, 4))) return 15;
+        if (set.containsAll(Set.of(2, 3, 4, 5))) return 15;
+        if (set.containsAll(Set.of(3, 4, 5, 6))) return 15;
+        return 0;
     }
 
     private static int calcBigStraight(int[] dice) {
+        // 로컬 룰: 어느 5개 연속이라도 포함하면 30점 (1-2-3-4-5 / 2-3-4-5-6)
         Set<Integer> set = new HashSet<>();
         for (int d : dice) set.add(d);
-        return set.equals(Set.of(2, 3, 4, 5, 6)) ? 30 : 0;
+        if (set.containsAll(Set.of(1, 2, 3, 4, 5))) return 30;
+        if (set.containsAll(Set.of(2, 3, 4, 5, 6))) return 30;
+        return 0;
     }
 
     private static int calcYacht(int[] dice) {

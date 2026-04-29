@@ -196,8 +196,8 @@
 | `CHOICE` | Choice | 무조건 | 5개 총합 | 30 |
 | `FOUR_OF_A_KIND` | Four of a Kind | 같은 눈 4개 이상 | 같은 눈 4개의 합 | 24 |
 | `FULL_HOUSE` | Full House | 3개+2개 조합 | 5개 총합 | 28 |
-| `LITTLE_STRAIGHT` | Little Straight | 1-2-3-4-5 | 30 (고정) | 30 |
-| `BIG_STRAIGHT` | Big Straight | 2-3-4-5-6 | 30 (고정) | 30 |
+| `LITTLE_STRAIGHT` | Little Straight | 어느 4개 연속 (1-2-3-4 / 2-3-4-5 / 3-4-5-6) | 15 (고정) | 15 |
+| `BIG_STRAIGHT` | Big Straight | 어느 5개 연속 (1-2-3-4-5 / 2-3-4-5-6) | 30 (고정) | 30 |
 | `YACHT` | Yacht | 5개 동일 | 50 (고정) | 50 |
 
 - **Yacht 처리 (Full House / Four of a Kind와 충돌 방지)**:
@@ -238,10 +238,17 @@ fun calculateScore(scoreKey: String, dice: Int[5]): Int {
       if (counts == listOf(2,3)) dice.sum() else 0
     }
     "LITTLE_STRAIGHT" -> {
-      if (dice.toSortedSet() == sortedSetOf(1,2,3,4,5)) 30 else 0
+      // 로컬 룰: 어느 4개 연속이든 15점
+      val s = dice.toSet()
+      if (s.containsAll(setOf(1,2,3,4)) ||
+          s.containsAll(setOf(2,3,4,5)) ||
+          s.containsAll(setOf(3,4,5,6))) 15 else 0
     }
     "BIG_STRAIGHT" -> {
-      if (dice.toSortedSet() == sortedSetOf(2,3,4,5,6)) 30 else 0
+      // 로컬 룰: 어느 5개 연속이든 30점
+      val s = dice.toSet()
+      if (s.containsAll(setOf(1,2,3,4,5)) ||
+          s.containsAll(setOf(2,3,4,5,6))) 30 else 0
     }
     "YACHT" -> if (dice.toSet().size == 1) 50 else 0
     else -> throw INVALID_SCORE_KEY
@@ -741,7 +748,8 @@ Body: `{}`
 | 상단 보너스 임계 | 63점 | 야추 표준 룰 |
 | 상단 보너스 점수 | +35 | 야추 표준 룰 |
 | Yacht 점수 | 50 (고정) | 야추 표준 룰 |
-| Little/Big Straight 점수 | 30 (고정) | 야추 표준 룰 |
+| Little Straight 점수 | 15 (고정) | 로컬 룰 — 어느 4개 연속이든 인정 |
+| Big Straight 점수 | 30 (고정) | 로컬 룰 — 어느 5개 연속이든 인정 (1-2-3-4-5 / 2-3-4-5-6) |
 | Full House 점수 | 5개 총합 (Yacht 불인정) | 야추 표준 룰 |
 | Four of a Kind 점수 | 같은 눈 4개 합 (Yacht 인정 — 4개 분량) | 야추 표준 룰 |
 | 게임 시작 카운트다운 | **5초** (CP1-3 추천) | online-rps와 일관성 |
