@@ -15,6 +15,9 @@ const EXCEL_SIZE = 30;
 const EXCEL_PAD  = 30;
 const EXCEL_ROWS = 10;
 const EXCEL_COLS = 17;
+// 엑셀 모드 큰 판 (데스크탑 일반 모드와 동일: 20×15 = 300칸)
+const EXCEL_ROWS_LARGE = 15;
+const EXCEL_COLS_LARGE = 20;
 
 // 엑셀 모드 색상 팔레트 — 원본 XL_CLR
 const XL_CLR = {
@@ -192,6 +195,14 @@ export default function AppleCanvas({ excel = false }: Props) {
     boardSizeModeRef.current = mode;
     setBoardSizeMode(mode);
   };
+  // 보드 크기 모드 — 엑셀 모드 전용
+  const excelBoardSizeModeRef = useRef<'normal' | 'large'>('normal');
+  const [excelBoardSizeMode, setExcelBoardSizeMode] = useState<'normal' | 'large'>('normal');
+  const handleExcelBoardSizeChange = (mode: 'normal' | 'large') => {
+    if (state.status === 'playing') return;
+    excelBoardSizeModeRef.current = mode;
+    setExcelBoardSizeMode(mode);
+  };
   // 현재 진행 중인(또는 방금 끝낸) 게임 레벨 — 랭킹 제출 시 사용
   const currentLevelRef = useRef<'normal' | 'large'>('normal');
 
@@ -240,12 +251,19 @@ export default function AppleCanvas({ excel = false }: Props) {
   const [excelAlltime, setExcelAlltime] = useState<unknown | null>(null);
   const [excelRankLoading, setExcelRankLoading] = useState(false);
   const [excelDisplayCount, setExcelDisplayCount] = useState(10);
+  const [excelRankLevel, setExcelRankLevel] = useState<'normal' | 'large'>('normal');
 
   // 레이아웃 계산 — 원본 setupLayout() 에 대응
   const calcLayout = useCallback(() => {
     if (excel) {
       // 엑셀 모드: 고정 SIZE — 원본: PAD = SIZE
-      const l = { rows: EXCEL_ROWS, cols: EXCEL_COLS, size: EXCEL_SIZE, pad: EXCEL_PAD };
+      const isLarge = excelBoardSizeModeRef.current === 'large';
+      const l = {
+        rows: isLarge ? EXCEL_ROWS_LARGE : EXCEL_ROWS,
+        cols: isLarge ? EXCEL_COLS_LARGE : EXCEL_COLS,
+        size: EXCEL_SIZE,
+        pad: EXCEL_PAD,
+      };
       setLayout(l);
       return l;
     }
@@ -289,21 +307,22 @@ export default function AppleCanvas({ excel = false }: Props) {
       window.removeEventListener('resize', handler);
       window.removeEventListener('orientationchange', handler);
     };
-  // boardSizeMode 변경 시 레이아웃 재계산 (boardSizeModeRef를 통해 최신값 읽음)
+  // boardSizeMode / excelBoardSizeMode 변경 시 레이아웃 재계산 (ref를 통해 최신값 읽음)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calcLayout, boardSizeMode]);
+  }, [calcLayout, boardSizeMode, excelBoardSizeMode]);
 
   // 마운트 및 보드 크기 모드 변경 시 사과 초기 배치
   useEffect(() => {
     if (state.status === 'playing') return; // 게임 중에는 재배치 금지
     if (excel) {
-      init(EXCEL_ROWS, EXCEL_COLS);
+      const isLarge = excelBoardSizeModeRef.current === 'large';
+      init(isLarge ? EXCEL_ROWS_LARGE : EXCEL_ROWS, isLarge ? EXCEL_COLS_LARGE : EXCEL_COLS);
     } else {
       const l = calcLayout();
       if (l) init(l.rows, l.cols);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [excel, boardSizeMode]);
+  }, [excel, boardSizeMode, excelBoardSizeMode]);
 
   // timeLeft === 0 → end
   useEffect(() => {
@@ -322,12 +341,12 @@ export default function AppleCanvas({ excel = false }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 엑셀 모드: 랭킹 시트 전환 시 자동 로드
+  // 엑셀 모드: 랭킹 시트 전환 또는 랭킹 레벨 변경 시 자동 로드
   useEffect(() => {
     if (!excel || activeSheet !== 'ranking') return;
-    loadExcelRanking();
+    loadExcelRanking(excelRankLevel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [excel, activeSheet]);
+  }, [excel, activeSheet, excelRankLevel]);
 
   // 수식바 / 상태바 — 원본: xl-score, xl-time, xl-sum
   useEffect(() => {
@@ -593,8 +612,8 @@ export default function AppleCanvas({ excel = false }: Props) {
     setPlayerName('');
     setSubmitState('idle');
     setDragSum(null);
-    // 현재 선택된 크기 모드 확정
-    const level = boardSizeMode;
+    // 현재 선택된 크기 모드 확정 (엑셀 모드는 별도 ref 사용)
+    const level = excel ? excelBoardSizeModeRef.current : boardSizeMode;
     currentLevelRef.current = level;
 
     // 세션 생성 최대 3회 재시도
@@ -665,12 +684,28 @@ export default function AppleCanvas({ excel = false }: Props) {
             <span className={styles.xrbIcon}>↺</span>
             <span>다시하기</span>
           </div>
+          <div
+            className={`${styles.xrb} ${excelBoardSizeMode === 'normal' ? styles.xrbActive : ''}`}
+            onClick={() => handleExcelBoardSizeChange('normal')}
+            title="기본 판 (10×17)"
+          >
+            <span className={styles.xrbIcon}>▦</span>
+            <span>기본</span>
+          </div>
+          <div
+            className={`${styles.xrb} ${excelBoardSizeMode === 'large' ? styles.xrbActive : ''}`}
+            onClick={() => handleExcelBoardSizeChange('large')}
+            title="큰 판 (15×20 = 300칸)"
+          >
+            <span className={styles.xrbIcon}>⊞</span>
+            <span>큰 판</span>
+          </div>
         </div>
         <div className={styles.xrgLabel}>사과게임</div>
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [excel, state.status, setRibbonGameGroup]);
+  }, [excel, state.status, excelBoardSizeMode, setRibbonGameGroup]);
 
   async function handleSubmitRanking() {
     const name = playerName.trim();
@@ -694,7 +729,8 @@ export default function AppleCanvas({ excel = false }: Props) {
       setPlayerName('');
       setSubmitState('idle');
       if (excel) {
-        loadExcelRanking();
+        setExcelRankLevel(currentLevelRef.current);
+        loadExcelRanking(currentLevelRef.current);
       } else {
         loadRanking();
       }
@@ -721,13 +757,13 @@ export default function AppleCanvas({ excel = false }: Props) {
     }
   }
 
-  async function loadExcelRanking() {
+  async function loadExcelRanking(level: 'normal' | 'large' = 'normal') {
     setExcelRankLoading(true);
     setExcelDisplayCount(10);
     try {
       const [weekly, alltime] = await Promise.all([
-        rankingsApi.getWeekly('apple', 'normal'),
-        rankingsApi.getAlltimeBest('apple', 'normal'),
+        rankingsApi.getWeekly('apple', level),
+        rankingsApi.getAlltimeBest('apple', level),
       ]);
       setExcelRankings(weekly as unknown[]);
       setExcelAlltime((alltime && typeof alltime === 'object' && 'id' in (alltime as object)) ? alltime : null);
@@ -938,7 +974,7 @@ export default function AppleCanvas({ excel = false }: Props) {
         const visibleRankCount = Math.min(excelLen, excelDisplayCount);
         const hasMore = excelLen > excelDisplayCount;
         const dataRowCount = (excelLen > 0 ? visibleRankCount : 1) + (hasMore ? 1 : 0);
-        const contentRows = 3 + dataRowCount + 1; // title + header + data + alltime
+        const contentRows = 1 + 3 + dataRowCount + 1; // tab + title + header + data + alltime
         const extraRows = Math.max(20, Math.ceil(sheetSize.height / RANK_ROW_H));
         const totalRows = contentRows + extraRows;
 
@@ -982,6 +1018,24 @@ export default function AppleCanvas({ excel = false }: Props) {
                 className={styles.xRankGrid}
                 style={{ gridTemplateColumns: `repeat(${RANK_TOTAL}, ${RANK_CELL_W}px)`, gridAutoRows: `${RANK_ROW_H}px` }}
               >
+                {/* 0행: 기본 판 / 큰 판 탭 */}
+                <div
+                  key="tab-normal"
+                  className={[styles.xrankCell, excelRankLevel === 'normal' ? styles.xrcHeader : ''].filter(Boolean).join(' ')}
+                  style={{ gridColumn: `1 / span 6`, cursor: 'pointer', justifyContent: 'center' }}
+                  onClick={() => setExcelRankLevel('normal')}
+                >
+                  기본 판
+                </div>
+                <div
+                  key="tab-large"
+                  className={[styles.xrankCell, excelRankLevel === 'large' ? styles.xrcHeader : ''].filter(Boolean).join(' ')}
+                  style={{ gridColumn: `7 / span 7`, cursor: 'pointer', justifyContent: 'center' }}
+                  onClick={() => setExcelRankLevel('large')}
+                >
+                  큰 판
+                </div>
+
                 {/* 1행: 주간 랭킹 타이틀 — 원본: background:#e8f5e9; color:#1b5e20 */}
                 {RankCell(weekRange(), 1, RANK_TOTAL, ['xrcWeekTitle'], { fontWeight: 'bold' }, 'title')}
 

@@ -448,6 +448,8 @@
   font-family: 'Calibri', 'Segoe UI', sans-serif;
 }
 .xrb:hover { background: #e8f4fd; border-color: #c8dff5; }
+.xrbActive { background: #cce8ff; border-color: #99ceff; }
+.xrbActive:hover { background: #b3d9ff; border-color: #80b8ff; }
 .xrbIcon { font-size: 18px; line-height: 1.2; }
 
 .sessionFailBanner { width: 100%; padding: 8px 12px; margin-bottom: 8px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 6px; color: #f1948a; font-size: 0.85em; text-align: center; }
