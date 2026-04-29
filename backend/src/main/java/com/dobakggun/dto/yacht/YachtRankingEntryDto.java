@@ -10,6 +10,6 @@ public class YachtRankingEntryDto {
     private int rank;
     private Long userId;
     private String nickname;
-    private int totalScore;
+    private int grandTotal;
     private boolean isWinner;
 }

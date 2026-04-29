@@ -287,6 +287,7 @@ public class YachtGameService {
                 .roomId(roomId)
                 .turnOrder(state.turnOrder)
                 .currentTurnUserId(firstTurnUserId)
+                .rollsLeft(3)
                 .totalRounds(totalRounds)
                 .build());
 
@@ -462,7 +463,8 @@ public class YachtGameService {
             broadcast(roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
                     .previousTurnUserId(previousTurnUserId)
                     .currentTurnUserId(nextTurnUserId)
-                    .roundIndex(newRoundIndex)
+                    .rollsLeft(3)
+                    .roundNum(newRoundIndex + 1)
                     .build());
 
             broadcastTurnState(state);
@@ -598,7 +600,8 @@ public class YachtGameService {
                 broadcast(state.roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
                         .previousTurnUserId(prevTurn)
                         .currentTurnUserId(nextTurn)
-                        .roundIndex(state.roundIndex)
+                        .rollsLeft(3)
+                        .roundNum(state.roundIndex + 1)
                         .build());
 
                 broadcastTurnState(state);
@@ -718,7 +721,7 @@ public class YachtGameService {
                     .rank(rank)
                     .userId(entry.getKey())
                     .nickname(nicknames.getOrDefault(entry.getKey(), "Unknown"))
-                    .totalScore(score)
+                    .grandTotal(score)
                     .isWinner(rank == 1)
                     .build());
 
