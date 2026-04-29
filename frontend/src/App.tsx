@@ -93,10 +93,10 @@ export default function App() {
         <Route path="/board/:id/edit" element={<FriendRoute><BoardEditPage /></FriendRoute>} />
         <Route path="/board/:id" element={<FriendRoute><BoardDetailPage /></FriendRoute>} />
 
-        {/* Online RPS — 로그인 유저 전용, /:game 보다 위에 선언 */}
+        {/* Online RPS — 로그인/게스트 모두 허용 */}
         <Route
           path="/online-rps"
-          element={<AuthRoute><OnlineRpsPage /></AuthRoute>}
+          element={<OnlineRpsPage />}
         />
 
         {/* Test Lab — 블록폴 배틀 (로그인/게스트 모두 허용, /:game 보다 위에 선언) */}

@@ -91,6 +91,7 @@ public class SecurityConfig {
                 // WebSocket 엔드포인트 — 실제 인증은 JwtHandshakeInterceptor / BlockfallBattleHandshakeInterceptor에서 처리
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/ws-battle/**").permitAll()
+                .requestMatchers("/ws-rps/**").permitAll()
                 // Blockfall Battle REST API — join은 게스트 허용, rankings는 공개
                 .requestMatchers("/api/blockfall-battle/join").permitAll()
                 .requestMatchers("/api/blockfall-battle/rankings").permitAll()
@@ -99,8 +100,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,   "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.GET,    "/api/chat/rooms/*/history").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/chat/rooms/**").hasAnyRole("FRIEND", "ADMIN")
-                // Online RPS — 로그인 유저 전체 허용 (ADMIN/USER/FRIEND)
-                .requestMatchers("/api/rps/**").authenticated()
+                // Online RPS — 비로그인 포함 전체 허용 (게스트 지원)
+                .requestMatchers("/api/rps/**").permitAll()
                 // 나머지 허용
                 .anyRequest().permitAll()
             )
@@ -139,6 +140,7 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/api/**", config);
         source.registerCorsConfiguration("/ws/**", config);
         source.registerCorsConfiguration("/ws-battle/**", config);
+        source.registerCorsConfiguration("/ws-rps/**", config);
         return source;
     }
 }

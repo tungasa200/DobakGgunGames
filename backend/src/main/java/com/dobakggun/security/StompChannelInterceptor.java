@@ -31,6 +31,10 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     private static final Pattern BATTLE_TOPIC_PATTERN = Pattern.compile("^/topic/blockfall-battle/.*$");
     private static final Pattern BATTLE_APP_PATTERN = Pattern.compile("^/app/blockfall-battle/.*$");
 
+    // Online RPS 경로 — 로그인/게스트 모두 허용 (role 체크 없음)
+    private static final Pattern RPS_TOPIC_PATTERN = Pattern.compile("^/topic/rps/.*$");
+    private static final Pattern RPS_APP_PATTERN = Pattern.compile("^/app/rps/.*$");
+
     private final JwtUtil jwtUtil;
     private final ChatRedisService chatRedisService;
 
@@ -108,6 +112,32 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             return true;
         }
 
+        // /ws-rps 연결: isRpsGuest 속성이 있으면 ChatPrincipal 설정 후 허용
+        Object isRpsGuestAttr = sessionAttributes.get("isRpsGuest");
+        if (isRpsGuestAttr != null) {
+            boolean isRpsGuest = Boolean.TRUE.equals(isRpsGuestAttr);
+            if (isRpsGuest) {
+                Long guestId = (Long) sessionAttributes.get("guestId");
+                String nickname = (String) sessionAttributes.getOrDefault("nickname", "손님");
+                if (guestId == null) {
+                    log.warn("StompChannelInterceptor: RPS CONNECT - guestId null, 연결 차단");
+                    return false;
+                }
+                accessor.setUser(new ChatPrincipal(guestId, nickname, "USER"));
+            } else {
+                Long uid = (Long) sessionAttributes.get("userId");
+                String nickname = (String) sessionAttributes.getOrDefault("nickname", "");
+                String role = (String) sessionAttributes.getOrDefault("role", "USER");
+                if (uid == null) {
+                    log.warn("StompChannelInterceptor: RPS CONNECT - userId null, 연결 차단");
+                    return false;
+                }
+                accessor.setUser(new ChatPrincipal(uid, nickname, role));
+            }
+            log.debug("StompChannelInterceptor: RPS CONNECT OK isGuest={}", isRpsGuest);
+            return true;
+        }
+
         Long userId = (Long) sessionAttributes.get("userId");
         String nickname = (String) sessionAttributes.get("nickname");
         String role = (String) sessionAttributes.get("role");
@@ -149,6 +179,9 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         // Battle 경로는 BattlePrincipal 기반으로 별도 처리 — 여기서는 통과
         if (BATTLE_TOPIC_PATTERN.matcher(destination).matches()) return true;
 
+        // RPS 경로 — 로그인/게스트 모두 허용, role 체크 없음
+        if (RPS_TOPIC_PATTERN.matcher(destination).matches()) return true;
+
         var topicMatcher = ROOM_TOPIC_PATTERN.matcher(destination);
         if (!topicMatcher.matches()) return true;
 
@@ -177,6 +210,9 @@ public class StompChannelInterceptor implements ChannelInterceptor {
 
         // Battle 경로는 별도 처리 — 여기서는 통과
         if (BATTLE_APP_PATTERN.matcher(destination).matches()) return true;
+
+        // RPS 경로 — 로그인/게스트 모두 허용, role 체크 없음
+        if (RPS_APP_PATTERN.matcher(destination).matches()) return true;
 
         var appMatcher = ROOM_APP_PATTERN.matcher(destination);
         if (!appMatcher.matches()) return true;

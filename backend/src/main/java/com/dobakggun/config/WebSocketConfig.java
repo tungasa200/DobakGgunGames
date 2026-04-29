@@ -2,6 +2,7 @@ package com.dobakggun.config;
 
 import com.dobakggun.security.BlockfallBattleHandshakeInterceptor;
 import com.dobakggun.security.JwtHandshakeInterceptor;
+import com.dobakggun.security.RpsHandshakeInterceptor;
 import com.dobakggun.security.StompChannelInterceptor;
 import com.dobakggun.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws-battle")
                 .setAllowedOriginPatterns(allowedOrigins.split(","))
                 .addInterceptors(new BlockfallBattleHandshakeInterceptor(jwtUtil))
+                .withSockJS();
+
+        // /ws-rps 엔드포인트 — JWT(로그인) 또는 guestToken(비로그인) 허용
+        registry.addEndpoint("/ws-rps")
+                .setAllowedOriginPatterns(allowedOrigins.split(","))
+                .addInterceptors(new RpsHandshakeInterceptor(jwtUtil))
                 .withSockJS();
     }
 

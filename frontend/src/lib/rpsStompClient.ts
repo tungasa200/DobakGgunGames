@@ -43,7 +43,7 @@ const MAX_RETRY = 3;
 const RETRY_DELAYS = [2000, 4000, 8000];
 
 export function connectRps(
-  token: string,
+  token: string | null,
   roomId: string,
   handlers: RpsEventHandlers,
 ): RpsStompClientHandle {
@@ -63,14 +63,15 @@ export function connectRps(
   let retryCount = 0;
   let disconnectRequested = false;
 
-  const baseUrl = WS_URL ?? (import.meta.env.DEV ? 'http://localhost:8080/ws' : '');
-  const wsUrl = `${baseUrl}?token=${encodeURIComponent(token)}`;
+  // /ws-rps 엔드포인트 사용 (/ws → /ws-rps 치환, 없으면 기본값)
+  const wsBase = (WS_URL ?? (import.meta.env.DEV ? 'http://localhost:8080/ws' : ''))
+    .replace(/\/ws$/, '');
+  const wsRpsBase = `${wsBase}/ws-rps`;
+  const wsUrl = token ? `${wsRpsBase}?token=${encodeURIComponent(token)}` : wsRpsBase;
 
   const client = new Client({
     webSocketFactory: () => new SockJS(wsUrl) as unknown as WebSocket,
-    connectHeaders: {
-      Authorization: `Bearer ${token}`,
-    },
+    connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
     reconnectDelay: 0,
     onConnect: () => {
       retryCount = 0;

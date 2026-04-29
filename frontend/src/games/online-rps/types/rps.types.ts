@@ -110,6 +110,7 @@ export interface MatchResponse {
   playerCount: number;
   maxPlayers: number;
   created: boolean;
+  guestToken?: string; // 비로그인 사용자에게만 반환
 }
 
 export interface AlreadyInRoomError {

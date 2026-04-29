@@ -22,14 +22,18 @@ export interface MatchError {
 
 export type MatchOutcome = MatchResult | MatchAlreadyInRoom | MatchError;
 
-export async function postMatch(token: string): Promise<MatchOutcome> {
+export async function postMatch(token?: string | null, guestToken?: string | null): Promise<MatchOutcome> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_ORIGIN}/api/rps/match`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({}),
+    headers,
+    body: JSON.stringify(guestToken ? { guestToken } : {}),
   });
 
   if (res.ok) {

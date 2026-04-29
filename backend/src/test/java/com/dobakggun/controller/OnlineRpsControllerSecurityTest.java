@@ -6,19 +6,18 @@ import com.dobakggun.handler.OAuth2SuccessHandler;
 import com.dobakggun.service.IpBanService;
 import com.dobakggun.service.RpsMatchService;
 import com.dobakggun.util.JwtUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.not;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * OnlineRpsController 시큐리티 슬라이스 테스트.
- * /api/rps/match 가 authenticated() 로 보호되는지 검증.
+ * /api/rps/match 는 비로그인 포함 전체 허용 (게스트 지원).
  */
 @WebMvcTest(OnlineRpsController.class)
 @Import(SecurityConfig.class)
@@ -49,50 +48,83 @@ class OnlineRpsControllerSecurityTest {
     @MockBean(name = "oAuth2SuccessHandler")
     private OAuth2SuccessHandler oAuth2SuccessHandler;
 
-    // ─── 미인증 차단 ──────────────────────────────────────────────────────────
+    private MatchResponseDto stubResponse(boolean created, String guestToken) {
+        return MatchResponseDto.builder()
+                .roomId("test1234")
+                .status("WAITING")
+                .playerCount(1)
+                .maxPlayers(4)
+                .created(created)
+                .guestToken(guestToken)
+                .build();
+    }
+
+    // ─── 미인증(게스트) 허용 ─────────────────────────────────────────────────
 
     @Test
     @WithAnonymousUser
-    @DisplayName("미인증 사용자가 POST /api/rps/match 요청하면 2xx 이외 반환")
-    void anonymous_isUnauthorized() throws Exception {
-        mockMvc.perform(post("/api/rps/match").with(csrf()))
-                .andExpect(status().is(not(200)));
+    @DisplayName("미인증 사용자(게스트)도 POST /api/rps/match 접근 가능 — 201 반환")
+    void anonymous_canAccessAsGuest() throws Exception {
+        when(rpsMatchService.match(any(), any()))
+                .thenReturn(stubResponse(true, "guest_aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"));
+
+        mockMvc.perform(post("/api/rps/match")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roomId").value("test1234"))
+                .andExpect(jsonPath("$.guestToken").exists());
     }
 
     // ─── USER role 접근 허용 ─────────────────────────────────────────────────
 
     @Test
     @WithMockUser(roles = "USER")
-    @DisplayName("USER role 은 POST /api/rps/match 접근 가능 (authenticated 조건 충족)")
+    @DisplayName("USER role 은 POST /api/rps/match 접근 가능 — 200 반환")
     void userRole_canAccessMatch() throws Exception {
-        // @AuthenticationPrincipal Long userId — @WithMockUser 에서는 null로 주입됨
-        // Controller 에서 userId==null 이면 401 반환하므로 401 검증
-        mockMvc.perform(post("/api/rps/match").with(csrf()))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+        when(rpsMatchService.match(any(), any()))
+                .thenReturn(stubResponse(false, null));
+
+        mockMvc.perform(post("/api/rps/match")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roomId").value("test1234"));
     }
 
     // ─── ADMIN role 접근 허용 ────────────────────────────────────────────────
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    @DisplayName("ADMIN role 은 POST /api/rps/match 접근 가능")
+    @DisplayName("ADMIN role 은 POST /api/rps/match 접근 가능 — 200 반환")
     void adminRole_canAccessMatch() throws Exception {
-        mockMvc.perform(post("/api/rps/match").with(csrf()))
-                .andExpect(status().isUnauthorized()); // userId null → 401
+        when(rpsMatchService.match(any(), any()))
+                .thenReturn(stubResponse(false, null));
+
+        mockMvc.perform(post("/api/rps/match")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
     }
 
     // ─── ALREADY_IN_ROOM 409 ─────────────────────────────────────────────────
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithAnonymousUser
     @DisplayName("AlreadyInRoomException 발생 시 409 ALREADY_IN_ROOM 반환")
     void alreadyInRoom_returns409() throws Exception {
-        // 이 테스트는 @AuthenticationPrincipal Long 이 실제로 주입되어야 동작하므로
-        // userId == null 분기 먼저 통과 못함 → 실제 서비스 호출 안 됨.
-        // 통합 수준 동작 확인은 별도 통합 테스트로 처리.
-        // 여기서는 컨트롤러 레이어 구조 확인만.
-        mockMvc.perform(post("/api/rps/match").with(csrf()))
-                .andExpect(status().isUnauthorized());
+        when(rpsMatchService.match(any(), any()))
+                .thenThrow(new RpsMatchService.AlreadyInRoomException("abcd1234"));
+
+        mockMvc.perform(post("/api/rps/match")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("ALREADY_IN_ROOM"))
+                .andExpect(jsonPath("$.roomId").value("abcd1234"));
     }
 }

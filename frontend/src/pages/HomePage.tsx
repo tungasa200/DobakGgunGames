@@ -277,6 +277,14 @@ export default function HomePage() {
               >
                 <span>🪜</span><span style={{ fontWeight: 'bold' }}>사다리 타기</span>
               </Link>
+              <hr className={styles.labDivider} />
+              <Link
+                to="/online-rps"
+                className={`${styles.btn} ${styles.btnNormal}`}
+                style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
+              >
+                <span>✌️</span><span style={{ fontWeight: 'bold' }}>가위바위보</span>
+              </Link>
             </div>
           </div>
 
@@ -297,14 +305,6 @@ export default function HomePage() {
                     style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     💬 실시간 채팅 랩
-                  </Link>
-                  <hr className={styles.labDivider} />
-                  <Link
-                    to="/online-rps"
-                    className={`${styles.btn} ${styles.btnNormal}`}
-                    style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    Online RPS
                   </Link>
                   <hr className={styles.labDivider} />
                 </>

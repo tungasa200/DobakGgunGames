@@ -16,16 +16,19 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 /**
  * POST /api/rps/match 처리 서비스.
  *
  * - Redis 분산락으로 동시성 제어.
  * - Rate limit: 10초 내 5회 초과 시 429.
- * - ALREADY_IN_ROOM: 인메모리 + DB 두 레이어에서 확인.
+ * - ALREADY_IN_ROOM: 인메모리 + DB 두 레이어에서 확인 (게스트는 인메모리만).
+ * - 비로그인 게스트: guestToken(guest_{UUID}) 기반 식별, 음수 Long ID 파생.
  */
 @Slf4j
 @Service
@@ -41,6 +44,11 @@ public class RpsMatchService {
     private static final long RATE_WINDOW_SECONDS = 10;
     private static final long RATE_LIMIT = 5;
 
+    private static final String GUEST_PREFIX = "guest_";
+    private static final Pattern GUEST_TOKEN_PATTERN = Pattern.compile(
+        "^guest_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    );
+
     private final RpsRoomRepository rpsRoomRepository;
     private final UserRepository userRepository;
     private final RpsRoomService rpsRoomService;
@@ -49,28 +57,53 @@ public class RpsMatchService {
     /**
      * 자동 매칭 요청 처리.
      *
-     * @param userId 인증된 유저 ID
+     * @param userId     인증된 유저 ID. 비로그인 시 null.
+     * @param guestToken 클라이언트가 보관 중인 guestToken. 없으면 null.
      * @return 201(신규 생성) or 200(기존 입장) 응답 DTO
      */
     @Transactional
-    public MatchResponseDto match(Long userId) {
-        // 1. Rate limit 확인
-        checkRateLimit(userId);
+    public MatchResponseDto match(Long userId, String guestToken) {
+        boolean isGuest = (userId == null);
+        String resolvedGuestToken = null;
+        Long effectiveUserId;
+        String nickname;
+        User user = null;
 
-        // 2. 이미 활성 방에 있는지 확인 (인메모리 우선)
-        Optional<String> existingRoomId = rpsRoomService.findActiveRoomId(userId);
+        if (isGuest) {
+            resolvedGuestToken = resolveGuestToken(guestToken);
+            effectiveUserId = guestTokenToLong(resolvedGuestToken);
+            nickname = buildGuestNickname(resolvedGuestToken);
+            log.debug("match: 게스트 effectiveUserId={} guestToken={}", effectiveUserId, resolvedGuestToken);
+        } else {
+            effectiveUserId = userId;
+            user = userRepository.findById(Objects.requireNonNull(userId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED"));
+            nickname = user.getNickname();
+            log.debug("match: 로그인 userId={} nickname={}", userId, nickname);
+        }
+
+        // 1. Rate limit 확인
+        String rateKey = isGuest
+                ? RATE_KEY_PREFIX + "g" + effectiveUserId
+                : RATE_KEY_PREFIX + effectiveUserId;
+        checkRateLimit(rateKey);
+
+        // 2. ALREADY_IN_ROOM — 인메모리
+        Optional<String> existingRoomId = rpsRoomService.findActiveRoomId(effectiveUserId);
         if (existingRoomId.isPresent()) {
             throw new AlreadyInRoomException(existingRoomId.get());
         }
 
-        // DB에서도 확인 (서버 재시작 후 등 인메모리 누락 케이스)
-        List<RoomStatus> activeStatuses = List.of(RoomStatus.WAITING, RoomStatus.PLAYING);
-        List<RpsRoom> activeRooms = rpsRoomRepository.findActiveRoomsByCreatedBy(userId, activeStatuses);
-        if (!activeRooms.isEmpty()) {
-            throw new AlreadyInRoomException(activeRooms.get(0).getRoomId());
+        // 3. ALREADY_IN_ROOM — DB (로그인 사용자만, 게스트는 DB createdBy 없음)
+        if (!isGuest) {
+            List<RoomStatus> activeStatuses = List.of(RoomStatus.WAITING, RoomStatus.PLAYING);
+            List<RpsRoom> activeRooms = rpsRoomRepository.findActiveRoomsByCreatedBy(userId, activeStatuses);
+            if (!activeRooms.isEmpty()) {
+                throw new AlreadyInRoomException(activeRooms.get(0).getRoomId());
+            }
         }
 
-        // 3. Redis 분산락 획득
+        // 4. Redis 분산락 획득
         String lockValue = UUID.randomUUID().toString();
         boolean locked = acquireLock(lockValue);
         if (!locked) {
@@ -78,16 +111,13 @@ public class RpsMatchService {
         }
 
         try {
-            return doMatch(userId);
+            return doMatch(effectiveUserId, nickname, user, resolvedGuestToken);
         } finally {
             releaseLock(lockValue);
         }
     }
 
-    private MatchResponseDto doMatch(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED"));
-
+    private MatchResponseDto doMatch(Long effectiveUserId, String nickname, User user, String guestToken) {
         // WAITING + 정원 미달 방 탐색 (FIFO)
         List<RpsRoom> available = rpsRoomRepository.findAvailableRooms(RoomStatus.WAITING);
 
@@ -97,7 +127,7 @@ public class RpsMatchService {
             room.setCurrentPlayers(newCount);
             rpsRoomRepository.save(room);
 
-            log.info("doMatch: userId={} 기존 방 {} 입장 ({}명)", userId, room.getRoomId(), newCount);
+            log.info("doMatch: effectiveUserId={} 기존 방 {} 입장 ({}명)", effectiveUserId, room.getRoomId(), newCount);
 
             return MatchResponseDto.builder()
                     .roomId(room.getRoomId())
@@ -105,6 +135,7 @@ public class RpsMatchService {
                     .playerCount(newCount)
                     .maxPlayers(room.getMaxPlayers())
                     .created(false)
+                    .guestToken(guestToken) // 로그인 사용자이면 null → JSON 미포함
                     .build();
         }
 
@@ -117,11 +148,11 @@ public class RpsMatchService {
                 .status(RoomStatus.WAITING)
                 .maxPlayers(4)
                 .currentPlayers(1)
-                .createdBy(user)
+                .createdBy(user) // 게스트이면 null
                 .build();
         rpsRoomRepository.save(newRoom);
 
-        log.info("doMatch: userId={} 신규 방 {} 생성", userId, newRoomId);
+        log.info("doMatch: effectiveUserId={} 신규 방 {} 생성 (guest={})", effectiveUserId, newRoomId, guestToken != null);
 
         return MatchResponseDto.builder()
                 .roomId(newRoomId)
@@ -129,17 +160,47 @@ public class RpsMatchService {
                 .playerCount(1)
                 .maxPlayers(4)
                 .created(true)
+                .guestToken(guestToken) // 로그인 사용자이면 null → JSON 미포함
                 .build();
+    }
+
+    // ─── 게스트 토큰 유틸 ────────────────────────────────────────────────────
+
+    /**
+     * 제공된 guestToken이 유효하면 그대로 사용, 아니면 신규 발급.
+     */
+    private String resolveGuestToken(String provided) {
+        if (provided != null && GUEST_TOKEN_PATTERN.matcher(provided).matches()) {
+            return provided;
+        }
+        return GUEST_PREFIX + UUID.randomUUID();
+    }
+
+    /**
+     * guestToken에서 Long ID 파생. MSBits | Long.MIN_VALUE → 항상 음수 (로그인 ID와 충돌 없음).
+     */
+    private Long guestTokenToLong(String guestToken) {
+        String uuidStr = guestToken.substring(GUEST_PREFIX.length());
+        UUID uuid = UUID.fromString(uuidStr);
+        return uuid.getMostSignificantBits() | Long.MIN_VALUE;
+    }
+
+    /**
+     * guestToken에서 닉네임 생성. 예: guest_b3f1... → 손님-B3F1
+     */
+    private String buildGuestNickname(String guestToken) {
+        String uuid = guestToken.substring(GUEST_PREFIX.length()).replace("-", "");
+        return "손님-" + uuid.substring(0, 4).toUpperCase();
     }
 
     // ─── Rate Limit ───────────────────────────────────────────────────────────
 
-    private void checkRateLimit(Long userId) {
-        String key = RATE_KEY_PREFIX + userId;
+    private void checkRateLimit(String key) {
         try {
-            Long count = redisTemplate.opsForValue().increment(key);
+            String safeKey = Objects.requireNonNull(key);
+            Long count = redisTemplate.opsForValue().increment(safeKey);
             if (count != null && count == 1) {
-                redisTemplate.expire(key, RATE_WINDOW_SECONDS, TimeUnit.SECONDS);
+                redisTemplate.expire(safeKey, RATE_WINDOW_SECONDS, TimeUnit.SECONDS);
             }
             if (count != null && count > RATE_LIMIT) {
                 throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "MATCH_RATE_LIMIT");
@@ -148,7 +209,7 @@ public class RpsMatchService {
             throw e;
         } catch (Exception e) {
             // Redis 오류 시 Rate limit 건너뜀 (서비스 가용성 우선)
-            log.warn("checkRateLimit: Redis 오류 userId={}", userId, e);
+            log.warn("checkRateLimit: Redis 오류 key={}", key, e);
         }
     }
 

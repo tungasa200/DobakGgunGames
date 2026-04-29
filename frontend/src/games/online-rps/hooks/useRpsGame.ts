@@ -87,7 +87,7 @@ export function useRpsGame(): UseRpsGameReturn {
   }, [clearGameTimer, navigate]);
 
   // WebSocket 연결
-  const connectWs = useCallback((id: string, token: string) => {
+  const connectWs = useCallback((id: string, token: string | null) => {
     if (clientRef.current) {
       clientRef.current.disconnect();
       clientRef.current = null;
@@ -171,36 +171,41 @@ export function useRpsGame(): UseRpsGameReturn {
     clientRef.current = handle;
   }, [clearGameTimer, goHome, showToast]);
 
+  const GUEST_TOKEN_KEY = 'rps-guest-token';
+
   // 매칭 시작
   const startMatch = useCallback(async () => {
-    if (!accessToken) {
-      navigate('/login');
-      return;
-    }
-
     setPhase('matching');
     setErrorMessage(null);
 
-    const outcome = await postMatch(accessToken);
+    // 기존 guestToken 조회 (비로그인 재방문 시)
+    const storedGuestToken = sessionStorage.getItem(GUEST_TOKEN_KEY);
+    const outcome = await postMatch(accessToken, storedGuestToken);
 
     if (outcome.ok) {
       const id = outcome.data.roomId;
+      // guestToken이 응답에 포함된 경우 저장
+      if (outcome.data.guestToken) {
+        sessionStorage.setItem(GUEST_TOKEN_KEY, outcome.data.guestToken);
+      }
+      const wsToken = accessToken ?? outcome.data.guestToken ?? storedGuestToken ?? null;
       setRoomId(id);
       roomIdRef.current = id;
       setPhase('connecting');
-      connectWs(id, accessToken);
+      connectWs(id, wsToken);
     } else if (!outcome.ok && outcome.alreadyInRoom) {
       const id = outcome.roomId;
+      const wsToken = accessToken ?? storedGuestToken ?? null;
       setRoomId(id);
       roomIdRef.current = id;
       showToast('이미 진행 중인 방이 있습니다. 재진입합니다.');
       setPhase('connecting');
-      connectWs(id, accessToken);
+      connectWs(id, wsToken);
     } else {
       setErrorMessage(`매칭 실패: ${outcome.error}`);
       setPhase('error');
     }
-  }, [accessToken, connectWs, navigate, showToast]);
+  }, [accessToken, connectWs, showToast]);
 
   // 카드 선택
   const choose = useCallback((choice: RpsChoice) => {

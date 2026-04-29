@@ -1,11 +1,8 @@
 package com.dobakggun.service;
 
 import com.dobakggun.dto.rps.*;
-import com.dobakggun.entity.User;
 import com.dobakggun.entity.rps.*;
 import com.dobakggun.repository.RpsRoomRepository;
-import com.dobakggun.repository.RpsRoundResultRepository;
-import com.dobakggun.repository.UserRepository;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import lombok.extern.slf4j.Slf4j;
@@ -90,8 +87,6 @@ public class RpsRoomService {
     // ─── 의존성 ───────────────────────────────────────────────────────────────
 
     private final RpsRoomRepository rpsRoomRepository;
-    private final RpsRoundResultRepository rpsRoundResultRepository;
-    private final UserRepository userRepository;
     private final ThreadPoolTaskScheduler taskScheduler;
     private final RpsGameService rpsGameService;
 
@@ -101,13 +96,9 @@ public class RpsRoomService {
 
     public RpsRoomService(
             RpsRoomRepository rpsRoomRepository,
-            RpsRoundResultRepository rpsRoundResultRepository,
-            UserRepository userRepository,
             @Qualifier("rpsTaskScheduler") ThreadPoolTaskScheduler taskScheduler,
             RpsGameService rpsGameService) {
         this.rpsRoomRepository = rpsRoomRepository;
-        this.rpsRoundResultRepository = rpsRoundResultRepository;
-        this.userRepository = userRepository;
         this.taskScheduler = taskScheduler;
         this.rpsGameService = rpsGameService;
     }
@@ -462,7 +453,6 @@ public class RpsRoomService {
 
     // ─── 라운드 결과 처리 ─────────────────────────────────────────────────────
 
-    @Transactional
     public void processRoundResult(String roomId) {
         RpsRoomState state = rooms.get(roomId);
         if (state == null) return;
@@ -507,10 +497,6 @@ public class RpsRoomService {
                 .results(resultList)
                 .build());
 
-        // DB 저장
-        saveRoundResultsToDb(roomId, roundNum, choicesSnapshot, judgedResults,
-                participantsSnapshot, voluntarySnapshot);
-
         // 방 WAITING 리셋
         synchronized (state) {
             state.status = RoomStatus.WAITING;
@@ -524,38 +510,6 @@ public class RpsRoomService {
         // 잔존 인원 >= 2이면 자동 카운트다운 재시작
         checkAndStartCountdown(state);
         log.info("processRoundResult: roomId={} round={} complete", roomId, roundNum);
-    }
-
-    private void saveRoundResultsToDb(String roomId, int roundNum,
-                                       Map<Long, RpsChoice> choices,
-                                       Map<Long, RpsResult> results,
-                                       List<RpsParticipant> participants,
-                                       Set<Long> voluntaryChoosers) {
-        RpsRoom room = rpsRoomRepository.findByRoomId(roomId).orElse(null);
-        if (room == null) {
-            log.warn("saveRoundResultsToDb: rps_room 없음 roomId={}", roomId);
-            return;
-        }
-
-        List<RpsRoundResult> rows = new ArrayList<>();
-        for (RpsParticipant p : participants) {
-            RpsChoice choice = choices.get(p.userId);
-            RpsResult result = results.getOrDefault(p.userId, RpsResult.DRAW);
-            if (choice == null) continue;
-
-            User player = userRepository.findById(p.userId).orElse(null);
-            if (player == null) continue;
-
-            rows.add(RpsRoundResult.builder()
-                    .room(room)
-                    .roundNum(roundNum)
-                    .player(player)
-                    .choice(choice)
-                    .autoPicked(!voluntaryChoosers.contains(p.userId))
-                    .result(result)
-                    .build());
-        }
-        rpsRoundResultRepository.saveAll(rows);
     }
 
     // ─── 방 닫기 ──────────────────────────────────────────────────────────────
