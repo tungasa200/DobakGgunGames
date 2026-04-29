@@ -90,8 +90,18 @@ public class YachtMatchService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED"));
 
-        // WAITING + 정원 미달 방 FIFO 탐색
+        // 1순위: WAITING + 정원 미달 방 FIFO
         List<YachtRoom> available = yachtRoomRepository.findAvailableRooms(YachtRoomStatus.WAITING);
+        boolean asSpectator = false;
+
+        // 2순위: WAITING이 없으면 PLAYING + 정원 미달 방 (관전자로 입장)
+        if (available.isEmpty()) {
+            List<YachtRoom> playing = yachtRoomRepository.findAvailableRooms(YachtRoomStatus.PLAYING);
+            if (!playing.isEmpty()) {
+                available = playing;
+                asSpectator = true;
+            }
+        }
 
         if (!available.isEmpty()) {
             YachtRoom room = available.get(0);
@@ -111,14 +121,16 @@ public class YachtMatchService {
             room.setCurrentPlayers(room.getCurrentPlayers() + 1);
             yachtRoomRepository.save(room);
 
-            log.info("doMatch: userId={} 기존 방 {} 입장 ({}명)", userId, room.getRoomId(), room.getCurrentPlayers());
+            log.info("doMatch: userId={} 기존 방 {} 입장 ({}명, status={}, spectator={})",
+                    userId, room.getRoomId(), room.getCurrentPlayers(), room.getStatus(), asSpectator);
 
             return YachtMatchResponse.builder()
                     .roomId(room.getRoomId())
-                    .status(YachtRoomStatus.WAITING.name())
+                    .status(room.getStatus().name())
                     .playerCount(room.getCurrentPlayers())
                     .maxPlayers(room.getMaxPlayers())
                     .created(false)
+                    .joinedAsSpectator(asSpectator)
                     .build();
         }
 

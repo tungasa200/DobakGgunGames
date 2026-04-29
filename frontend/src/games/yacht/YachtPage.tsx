@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useYachtGame } from './hooks/useYachtGame';
 import YachtWaitingRoom from './components/YachtWaitingRoom';
 import YachtGameScreen from './components/YachtGameScreen';
+import YachtGameOverModal from './components/YachtGameOverModal';
 import YachtResultScreen from './components/YachtResultScreen';
 import styles from './components/yacht.module.css';
 
@@ -18,8 +19,10 @@ export default function YachtPage() {
     rollsLeft,
     playerScores,
     rankings,
+    gameOverData,
     myUserId,
     isMyTurn,
+    isSpectator,
     isRolling,
     errorMessage,
     wsStatus,
@@ -170,6 +173,7 @@ export default function YachtPage() {
           keptIndices={keptIndices}
           rollsLeft={rollsLeft}
           isMyTurn={isMyTurn}
+          isSpectator={isSpectator}
           isRolling={isRolling}
           roundNum={roundNum}
           onToggleKeep={toggleKeep}
@@ -177,6 +181,18 @@ export default function YachtPage() {
           onSelectScore={recordScore}
           onLeave={leave}
         />
+        {gameOverData && (
+          <YachtGameOverModal
+            rankings={rankings}
+            participants={participants}
+            myUserId={myUserId}
+            hostUserId={hostUserId}
+            isSpectator={isSpectator}
+            onReady={readyToggle}
+            onRestart={startGame}
+            onLeave={leave}
+          />
+        )}
         {toastMessage && (
           <div
             className={`${styles.toast} ${styles.toastWarn}`}
@@ -202,6 +218,7 @@ export default function YachtPage() {
         <YachtResultScreen
           rankings={rankings}
           myUserId={myUserId}
+          isSpectator={isSpectator}
           onLeave={leave}
         />
         {toastMessage && (

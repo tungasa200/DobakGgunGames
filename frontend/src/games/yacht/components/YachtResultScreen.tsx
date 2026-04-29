@@ -4,14 +4,16 @@ import type { RankEntry } from '../types/yacht.types';
 interface YachtResultScreenProps {
   rankings: RankEntry[];
   myUserId: number | null;
+  isSpectator?: boolean;
   onLeave: () => void;
 }
 
-const RANK_ICONS = ['1st', '2nd', '3rd', '4th'];
+const RANK_ICONS = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
 
 export default function YachtResultScreen({
   rankings,
   myUserId,
+  isSpectator = false,
   onLeave,
 }: YachtResultScreenProps) {
   const myResult = rankings.find((r) => r.userId === myUserId);
@@ -20,8 +22,14 @@ export default function YachtResultScreen({
   return (
     <div className={styles.resultScreen}>
       <h2 className={styles.resultTitle}>
-        {isWinner ? 'Victory!' : 'Game Over'}
+        {isSpectator ? 'Game Over' : isWinner ? 'Victory!' : 'Game Over'}
       </h2>
+
+      {isSpectator && (
+        <p style={{ color: 'var(--yacht-text-sub)', fontSize: '0.95rem', margin: 0 }}>
+          관전 종료 — 게임이 끝났습니다
+        </p>
+      )}
 
       {myResult && (
         <p style={{ color: 'var(--yacht-text-sub)', fontSize: '0.95rem', margin: 0 }}>

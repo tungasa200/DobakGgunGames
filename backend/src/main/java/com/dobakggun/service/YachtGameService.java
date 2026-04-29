@@ -160,21 +160,32 @@ public class YachtGameService {
         YachtRoomState state = getOrCreateState(roomId);
         if (state == null) return "ROOM_NOT_FOUND";
 
+        boolean asSpectator;
         synchronized (state) {
-            if (state.status != YachtRoomStatus.WAITING) {
-                log.warn("joinRoom: roomId={} WAITING 아님 ({})", roomId, state.status);
+            if (state.status == YachtRoomStatus.FINISHED) {
+                log.warn("joinRoom: roomId={} FINISHED 상태 진입 거부", roomId);
                 return "ROOM_NOT_AVAILABLE";
             }
+
+            asSpectator = (state.status == YachtRoomStatus.PLAYING);
 
             boolean alreadyIn = state.participants.stream().anyMatch(p -> p.userId.equals(userId));
             if (!alreadyIn) {
                 state.participants.add(new YachtPlayer(userId, nickname));
-                state.scoreMap.put(userId, new ConcurrentHashMap<>());
-                log.info("joinRoom: userId={} 방 {} 입장 (현재 {}명)", userId, roomId, state.participants.size());
+                // 관전자도 scoreMap entry는 빈 상태로 둠 (점수 없음 — turnOrder에 없으므로 채워질 일 없음)
+                state.scoreMap.putIfAbsent(userId, new ConcurrentHashMap<>());
+                log.info("joinRoom: userId={} 방 {} 입장 (현재 {}명, spectator={})",
+                        userId, roomId, state.participants.size(), asSpectator);
             }
         }
 
         broadcastRoomState(state);
+
+        // 관전자에게 현재 게임 상태 캐치업 — TURN_STATE를 다시 브로드캐스트
+        // (모두에게 가지만 기존 플레이어는 같은 값을 다시 받을 뿐 무해)
+        if (asSpectator) {
+            broadcastTurnState(state);
+        }
         return null;
     }
 
@@ -488,6 +499,7 @@ public class YachtGameService {
         boolean wasHost;
         boolean wasCurrentTurn = false;
         boolean isPlaying;
+        boolean wasSpectator;
         int remaining;
 
         synchronized (state) {
@@ -500,22 +512,34 @@ public class YachtGameService {
             nickname = leaving.nickname;
             wasHost = userId.equals(state.hostUserId);
             isPlaying = (state.status == YachtRoomStatus.PLAYING);
+            wasSpectator = isSpectator(state, userId);
 
             if (isPlaying) {
                 wasCurrentTurn = userId.equals(currentTurnUserId(state));
             }
 
-            // 대기방이면 목록에서 제거, 게임 중이면 disconnectedPlayers에 기록
-            if (!isPlaying) {
+            // 관전자: 게임 로직에 영향 없이 목록에서만 제거
+            // 대기방: 목록에서 제거 + readySet 정리
+            // 게임 중 플레이어: disconnectedPlayers 기록 (autoFill 대상)
+            if (wasSpectator) {
+                state.participants.remove(leaving);
+                state.scoreMap.remove(userId);
+            } else if (!isPlaying) {
                 state.participants.remove(leaving);
                 state.readySet.remove(userId);
             } else {
                 state.disconnectedPlayers.add(userId);
             }
 
-            remaining = isPlaying
-                    ? (int) state.participants.stream().filter(p -> !state.disconnectedPlayers.contains(p.userId)).count()
-                    : state.participants.size();
+            // remaining: turnOrder 기준 활성 플레이어 수 (관전자 제외)
+            // 대기방: 전체 참가자 수
+            if (isPlaying) {
+                remaining = (int) state.turnOrder.stream()
+                        .filter(uid -> !state.disconnectedPlayers.contains(uid))
+                        .count();
+            } else {
+                remaining = state.participants.size();
+            }
         }
 
         // PLAYER_LEFT 브로드캐스트
@@ -528,6 +552,13 @@ public class YachtGameService {
 
         // DB participant 퇴장 기록
         markParticipantLeft(roomId, userId);
+
+        if (wasSpectator) {
+            // 관전자 퇴장: 단순히 ROOM_STATE 재방송. 게임 진행에 영향 없음.
+            broadcastRoomState(state);
+            log.info("leaveRoom: 관전자 userId={} 방 {} 퇴장", userId, roomId);
+            return;
+        }
 
         if (!isPlaying) {
             // 대기방 처리
@@ -649,12 +680,13 @@ public class YachtGameService {
 
     /**
      * 게임 종료 처리: 최종 점수 계산 → GAME_OVER → DB 업데이트 → yacht_win upsert.
+     * 활성 참가자가 2명 이상이면 같은 방에서 재시작할 수 있도록 WAITING으로 리셋,
+     * 미만이면 기존대로 방을 닫는다.
      */
     @Transactional
     void finishGame(String roomId, YachtRoomState state, List<YachtPlayer> participants) {
         synchronized (state) {
-            if (state.status == YachtRoomStatus.FINISHED) return;
-            state.status = YachtRoomStatus.FINISHED;
+            if (state.status != YachtRoomStatus.PLAYING) return;
         }
 
         // 최종 점수 계산
@@ -670,22 +702,91 @@ public class YachtGameService {
                 .winnerUserIds(winnerIds)
                 .build());
 
-        // DB 업데이트
-        updateDbFinished(roomId, winnerIds);
-
-        // yacht_win upsert
+        // yacht_win upsert (재시작 여부와 관계없이 승자 카운트는 누적)
         for (Long winnerId : winnerIds) {
             upsertWin(winnerId);
         }
 
-        rooms.remove(roomId);
-        log.info("finishGame: roomId={} GAME_OVER winners={}", roomId, winnerIds);
+        // 재시작 가능 여부: 끊기지 않은 in-memory 참가자가 2명 이상
+        int activeParticipants;
+        synchronized (state) {
+            activeParticipants = (int) state.participants.stream()
+                    .filter(p -> !state.disconnectedPlayers.contains(p.userId))
+                    .count();
+        }
+
+        if (activeParticipants >= 2) {
+            resetForRestart(roomId, state);
+            log.info("finishGame: roomId={} GAME_OVER winners={} → 재게임 대기 (WAITING)", roomId, winnerIds);
+        } else {
+            // DB도 FINISHED 처리 + 인메모리에서 제거
+            updateDbFinished(roomId, winnerIds);
+            rooms.remove(roomId);
+            synchronized (state) {
+                state.status = YachtRoomStatus.FINISHED;
+            }
+            log.info("finishGame: roomId={} GAME_OVER winners={} 종료 (활성 {}명 — 재시작 불가)",
+                    roomId, winnerIds, activeParticipants);
+        }
+    }
+
+    /**
+     * 재게임을 위한 인메모리/DB 상태 리셋. 끊긴 유저는 참가자 목록에서 제거.
+     * yacht_score 레코드는 새 게임 기록을 위해 일괄 삭제.
+     */
+    @Transactional
+    void resetForRestart(String roomId, YachtRoomState state) {
+        synchronized (state) {
+            // 끊긴 유저 제거
+            state.participants.removeIf(p -> state.disconnectedPlayers.contains(p.userId));
+            state.disconnectedPlayers.clear();
+
+            // 게임 상태 초기화
+            state.status = YachtRoomStatus.WAITING;
+            state.scoreMap.clear();
+            state.turnOrder = new ArrayList<>();
+            state.turnOrderIndex = 0;
+            state.roundIndex = 0;
+            state.dice = new int[]{0, 0, 0, 0, 0};
+            state.keptIndices = new ArrayList<>();
+            state.rollsLeft = 3;
+            state.hasRolled = false;
+            state.readySet.clear();
+
+            // 방장이 끊겨 사라졌다면 새 방장 위임 (남은 첫 참가자)
+            if (!state.participants.isEmpty()) {
+                boolean hostStillIn = state.participants.stream()
+                        .anyMatch(p -> p.userId.equals(state.hostUserId));
+                if (!hostStillIn) {
+                    state.hostUserId = state.participants.get(0).userId;
+                }
+            }
+        }
+
+        // DB 갱신: 방 WAITING 복귀, 승자/시작 시각 초기화
+        yachtRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+            room.setStatus(YachtRoomStatus.WAITING);
+            room.setStartedAt(null);
+            room.setWinnerUserIds(null);
+            room.setHostUserId(state.hostUserId);
+            room.setCurrentPlayers(state.participants.size());
+            yachtRoomRepository.save(room);
+            // 이전 게임의 yacht_score 일괄 삭제 (UNIQUE 제약 회피)
+            yachtScoreRepository.deleteByRoom(room);
+        });
+
+        // 갱신된 참가자/상태를 클라이언트에 통지 (관전자였던 사람도 isSpectator=false로 바뀜)
+        broadcastRoomState(state);
     }
 
     private List<YachtRankingEntryDto> computeRankings(YachtRoomState state, List<YachtPlayer> participants) {
+        // 관전자(turnOrder에 없는 사람)는 랭킹에서 제외
+        Set<Long> ranked = new HashSet<>(state.turnOrder);
+
         // userId → 최종 점수 계산
         Map<Long, Integer> totals = new LinkedHashMap<>();
         for (YachtPlayer p : participants) {
+            if (!ranked.contains(p.userId)) continue;
             Map<String, Integer> scores = state.scoreMap.getOrDefault(p.userId, new ConcurrentHashMap<>());
             int upper = computeUpperTotal(scores);
             int grand = computeGrandTotal(scores, upper, isBonusEarned(scores));
@@ -852,18 +953,28 @@ public class YachtGameService {
     }
 
     /**
-     * 모든 참가자가 12개 족보를 채웠는지 확인.
-     * disconnected 플레이어도 포함 (autoFill로 채워짐).
+     * 턴 순서에 들어있는 모든 플레이어가 12개 족보를 채웠는지 확인.
+     * disconnected 플레이어도 turnOrder에 있으면 포함 (autoFill로 채워짐).
+     * 게임 중 합류한 관전자(turnOrder에 없음)는 제외.
      */
     private boolean isGameOver(YachtRoomState state) {
-        for (YachtPlayer p : state.participants) {
-            Map<String, Integer> scores = state.scoreMap.getOrDefault(p.userId, new ConcurrentHashMap<>());
+        for (Long playerId : state.turnOrder) {
+            Map<String, Integer> scores = state.scoreMap.getOrDefault(playerId, new ConcurrentHashMap<>());
             if (scores.size() < TOTAL_SCORE_KEYS) return false;
         }
-        return true;
+        return !state.turnOrder.isEmpty();
     }
 
     // ─── ROOM_STATE / TURN_STATE 브로드캐스트 ────────────────────────────────
+
+    /**
+     * 관전자 판정: 게임 진행 중인 방에서 turnOrder에 없는 참가자.
+     * WAITING/FINISHED 또는 turnOrder에 포함된 사용자는 false.
+     */
+    private boolean isSpectator(YachtRoomState state, Long userId) {
+        if (state.status != YachtRoomStatus.PLAYING) return false;
+        return !state.turnOrder.contains(userId);
+    }
 
     private void broadcastRoomState(YachtRoomState state) {
         List<YachtParticipantDto> participants;
@@ -879,6 +990,7 @@ public class YachtGameService {
                             .nickname(p.nickname)
                             .ready(state.readySet.contains(p.userId) || p.userId.equals(state.hostUserId))
                             .isHost(p.userId.equals(state.hostUserId))
+                            .isSpectator(isSpectator(state, p.userId))
                             .build())
                     .collect(Collectors.toList());
         }
@@ -1074,11 +1186,13 @@ public class YachtGameService {
                             .nickname(p.nickname)
                             .ready(state.readySet.contains(p.userId) || p.userId.equals(state.hostUserId))
                             .isHost(p.userId.equals(state.hostUserId))
+                            .isSpectator(isSpectator(state, p.userId))
                             .build())
                     .collect(Collectors.toList());
 
-            // 점수판
+            // 점수판 — 관전자 제외
             List<YachtScoreboardDto> scoreboard = state.participants.stream()
+                    .filter(p -> !isSpectator(state, p.userId))
                     .map(p -> {
                         Map<String, Integer> scores = state.scoreMap.getOrDefault(p.userId, new ConcurrentHashMap<>());
                         // null 포함 전체 12개 맵 생성

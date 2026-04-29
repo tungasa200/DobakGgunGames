@@ -12,6 +12,7 @@ interface YachtGameScreenProps {
   keptIndices: number[];
   rollsLeft: number;
   isMyTurn: boolean;
+  isSpectator: boolean;
   isRolling: boolean;
   roundNum: number;
   onToggleKeep: (index: number) => void;
@@ -29,6 +30,7 @@ export default function YachtGameScreen({
   keptIndices,
   rollsLeft,
   isMyTurn,
+  isSpectator,
   isRolling,
   roundNum,
   onToggleKeep,
@@ -59,6 +61,25 @@ export default function YachtGameScreen({
       <div className={styles.gameBody}>
         {/* 좌측: 주사위 + 조작 */}
         <div className={styles.gameLeft}>
+          {/* 관전 안내 배너 */}
+          {isSpectator && (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                background: 'var(--yacht-bg-soft, #fff7e6)',
+                color: 'var(--yacht-warn, #b35900)',
+                border: '1px solid var(--yacht-warn, #ffb84d)',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                fontSize: '0.85rem',
+                textAlign: 'center',
+              }}
+            >
+              관전 중 — 진행 중인 게임에 합류했습니다. 게임 종료까지 시청만 가능합니다.
+            </div>
+          )}
+
           {/* 턴 인디케이터 */}
           <div
             className={[
@@ -100,7 +121,7 @@ export default function YachtGameScreen({
                   <YachtDice3D
                     value={val}
                     isKept={keptIndices.includes(i)}
-                    isMyTurn={isMyTurn}
+                    isMyTurn={isMyTurn && !isSpectator}
                     isRolling={isRolling}
                     onToggleKeep={() => onToggleKeep(i)}
                   />
@@ -108,8 +129,8 @@ export default function YachtGameScreen({
               ))}
             </div>
 
-            {/* 굴리기 버튼 */}
-            {isMyTurn && (
+            {/* 굴리기 버튼 — 관전자에게는 숨김 */}
+            {isMyTurn && !isSpectator && (
               <button
                 type="button"
                 className={styles.rollBtn}
@@ -132,14 +153,14 @@ export default function YachtGameScreen({
             )}
           </div>
 
-          {/* 안내 메시지 */}
-          {isMyTurn && hasDice && rollsLeft < 3 && (
+          {/* 안내 메시지 — 관전자에게는 비표시 */}
+          {!isSpectator && isMyTurn && hasDice && rollsLeft < 3 && (
             <p style={{ fontSize: '0.83rem', color: 'var(--yacht-text-sub)', textAlign: 'center', margin: 0 }}>
               고정할 주사위를 클릭하고 다시 굴리거나, 오른쪽 점수판에서 족보를 선택하세요
             </p>
           )}
 
-          {isMyTurn && rollsLeft === 0 && (
+          {!isSpectator && isMyTurn && rollsLeft === 0 && (
             <p style={{ fontSize: '0.9rem', color: 'var(--yacht-warn)', textAlign: 'center', margin: 0 }}>
               굴림 횟수를 모두 사용했습니다. 족보를 선택해 주세요.
             </p>
@@ -154,7 +175,7 @@ export default function YachtGameScreen({
             currentTurnUserId={currentTurnUserId ?? 0}
             myUserId={myUserId}
             currentDice={hasDice ? dice : null}
-            isMyTurn={isMyTurn}
+            isMyTurn={isMyTurn && !isSpectator}
             rollsUsed={rollsUsed}
             onSelectScore={onSelectScore}
           />

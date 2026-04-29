@@ -52,8 +52,11 @@ export default function YachtScoreBoard({
   rollsUsed,
   onSelectScore,
 }: YachtScoreBoardProps) {
+  // 관전자(isSpectator=true)는 점수판 컬럼에서 제외
+  const scoringPlayers = players.filter((p) => !p.isSpectator);
+
   // players 순서 유지, playerScores에 없으면 빈 점수로
-  const orderedScores: PlayerScore[] = players.map((p) => {
+  const orderedScores: PlayerScore[] = scoringPlayers.map((p) => {
     const found = playerScores.find((ps) => ps.userId === p.userId);
     return found ?? {
       userId: p.userId,
@@ -169,7 +172,7 @@ export default function YachtScoreBoard({
           <thead>
             <tr>
               <th style={{ width: '110px', textAlign: 'left', paddingLeft: '8px' }}>족보</th>
-              {players.map((p) => (
+              {scoringPlayers.map((p) => (
                 <th
                   key={p.userId}
                   className={[

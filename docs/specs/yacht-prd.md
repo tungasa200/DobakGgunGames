@@ -33,6 +33,7 @@
 - 기존 채팅(`/topic/room/**`, `/app/chat/**`) 및 RPS(`/topic/rps/**`, `/app/rps/**`) 경로와 완전히 분리된 `/topic/yacht/**`, `/app/yacht/**` 네임스페이스 사용.
 - 12개 족보 × N명 라운드를 모두 채우면 총합 최고점자가 승리, 결과를 DB에 저장.
 - 비로그인 유저는 진입/플레이 모두 차단(SecurityConfig + 프론트 라우트 가드).
+- 대기방이 없을 때 진행 중(PLAYING)인 정원 미달 방이 있으면 **관전자**로 입장하여 게임 종료까지 시청 (조작 불가, 점수판 미참여).
 
 ### 비목표 (Out of Scope)
 - **Excel 모드 (해당 없음)** — 사용자 지시: 일반 모드만 지원.
@@ -112,12 +113,14 @@
 [GAME_OVER 브로드캐스트]
   - 최종 점수 / 보너스 / 총합
   - 승자(들) — 동점 시 공동 1위
-  - 결과 DB 저장 (yacht_room.status=FINISHED + yacht_score 영구화)
+  - yacht_win 승수 카운트 누적 (활성자 2명 미만이면 yacht_room.status=FINISHED, 그 외엔 WAITING으로 리셋)
         ↓
-[결과 화면]
-  - 순위표 (총합 내림차순)
-  - 본인 강조
-  - '나가기' 버튼 (홈 이동) — 재도전 버튼은 MVP 비목표
+[게임 종료 모달] — phase는 'playing' 유지, 모달 오버레이
+  - 순위표 (총합 내림차순) + 본인 강조
+  - 비방장(플레이어+관전자): '준비'/'준비 취소' 토글 — /ready
+  - 방장: '재시작' 버튼 — 전원 준비 시 활성화, /start 발행
+  - '나가기' 버튼 (홈 이동)
+        ↓ 재시작 시 turnOrder 새로 셔플 + 점수판 초기화 + 이전 게임 yacht_score 삭제 → GAME_STARTED → 모달 닫힘
 ```
 
 ### 4.2 방 상태 (`yacht_room.status`)
@@ -134,11 +137,11 @@
 1. 동일 유저의 활성 방 중복 참여 방지 확인
    - 이미 WAITING/PLAYING 방 참가 중이면 409 ALREADY_IN_ROOM (응답에 기존 roomId 포함)
 2. Redis 분산락 "yacht:match:global" 또는 DB 행 락 획득
-3. 매칭 대상 탐색:
-   - status=WAITING
-   - currentPlayers < maxPlayers (6)
-   - created_at 최신순 1건
-4. 대상 있음 → 자리 예약 (currentPlayers++) → roomId 반환 (created=false)
+3. 매칭 대상 탐색 (우선순위):
+   3a. status=WAITING + currentPlayers < maxPlayers (6) — 일반 플레이어로 합류
+   3b. 3a 결과 없으면 status=PLAYING + currentPlayers < maxPlayers — **관전자**로 합류
+       (turnOrder에 추가되지 않음, 점수판 컬럼/랭킹 제외, 조작 불가, 게임 종료 시까지 시청)
+4. 대상 있음 → 자리 예약 (currentPlayers++) → roomId 반환 (created=false, joinedAsSpectator=3b 케이스에서 true)
 5. 대상 없음 → 새 yacht_room INSERT (maxPlayers=6, status=WAITING, name 자동) + 첫 참가자 등록 → roomId 반환 (created=true)
 6. 락 해제
 ```

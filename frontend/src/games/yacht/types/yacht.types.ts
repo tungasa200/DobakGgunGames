@@ -67,6 +67,8 @@ export interface Participant {
   nickname: string;
   ready: boolean;
   isHost: boolean;
+  /** 게임 중 합류한 관전자. WAITING/FINISHED에서는 false. */
+  isSpectator?: boolean;
 }
 
 export interface PlayerScore {
@@ -192,13 +194,27 @@ export interface YachtMatchResponse {
   playerCount: number;
   maxPlayers: number;
   created: boolean;
+  /** 진행 중인 방에 관전자로 입장한 경우 true */
+  joinedAsSpectator?: boolean;
+}
+
+/** 서버 스냅샷의 점수판 항목 — 키는 서버 enum(UPPER_CASE), 미기록은 null */
+export interface YachtScoreboardSnapshot {
+  userId: number;
+  scores: Record<string, number | null>;
+  upperTotal: number;
+  bonusEarned: boolean;
+  grandTotal: number;
 }
 
 export interface YachtRoomResponse {
   roomId: string;
   status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  hostUserId: number;
   maxPlayers: number;
+  currentTurnUserId?: number | null;
+  turnOrder?: number[] | null;
+  roundIndex?: number;
   participants: Participant[];
-  currentTurnUserId?: number;
-  scoreboard?: PlayerScore[];
+  scoreboard?: YachtScoreboardSnapshot[];
 }

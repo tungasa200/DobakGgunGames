@@ -19,4 +19,7 @@ public interface YachtScoreRepository extends JpaRepository<YachtScore, Long> {
 
     @Query("SELECT COUNT(s) FROM YachtScore s WHERE s.room = :room AND s.userId = :userId")
     int countByRoomAndUserId(@Param("room") YachtRoom room, @Param("userId") Long userId);
+
+    /** 재게임 시 방의 점수 레코드 일괄 삭제 (UNIQUE(room, userId, scoreKey) 회피용). */
+    void deleteByRoom(YachtRoom room);
 }

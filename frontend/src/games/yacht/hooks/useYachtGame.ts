@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { postYachtMatch } from '../../../api/yacht';
+import { postYachtMatch, getYachtRoom } from '../../../api/yacht';
 import { connectYacht } from '../../../lib/yachtStompClient';
 import type { YachtStompClientHandle } from '../../../lib/yachtStompClient';
 import type {
@@ -33,8 +33,10 @@ export interface UseYachtGameReturn {
   rollsLeft: number;
   playerScores: PlayerScore[];
   rankings: RankEntry[];
+  gameOverData: GameOverPayload | null;
   myUserId: number | null;
   isMyTurn: boolean;
+  isSpectator: boolean;
   isRolling: boolean;
   errorMessage: string | null;
   wsStatus: ConnectionStatus;
@@ -65,6 +67,7 @@ export function useYachtGame(): UseYachtGameReturn {
   const [rollsLeft, setRollsLeft] = useState<number>(3);
   const [playerScores, setPlayerScores] = useState<PlayerScore[]>([]);
   const [rankings, setRankings] = useState<RankEntry[]>([]);
+  const [gameOverData, setGameOverData] = useState<GameOverPayload | null>(null);
   const [isRolling, setIsRolling] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('connecting');
@@ -75,6 +78,7 @@ export function useYachtGame(): UseYachtGameReturn {
   const roomIdRef = useRef<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedRef = useRef<boolean>(false);
 
   // 게임 시작 시 한 번 무작위 표시용 (이후 턴부터는 직전 결과 유지)
   const makeRandomDice = (): number[] =>
@@ -83,6 +87,12 @@ export function useYachtGame(): UseYachtGameReturn {
   const myUserId = user?.id ?? null;
 
   const isMyTurn = currentTurnUserId !== null && myUserId !== null && currentTurnUserId === myUserId;
+
+  const isSpectator = useMemo(() => {
+    if (myUserId === null) return false;
+    const me = participants.find((p) => p.userId === myUserId);
+    return !!me?.isSpectator;
+  }, [participants, myUserId]);
 
   // 토스트 표시
   const showToast = useCallback((msg: string, durationMs = 4000) => {
@@ -99,6 +109,41 @@ export function useYachtGame(): UseYachtGameReturn {
     navigate('/');
   }, [navigate]);
 
+  // 진행 중인 방(PLAYING) 합류 시 스냅샷에서 점수판/턴 정보 복원
+  const hydrateFromSnapshot = useCallback(async (id: string, token: string | null) => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    const snap = await getYachtRoom(id, token);
+    if (!snap) return;
+
+    setHostUserId(snap.hostUserId);
+    if (snap.currentTurnUserId !== null && snap.currentTurnUserId !== undefined) {
+      setCurrentTurnUserId(snap.currentTurnUserId);
+    }
+    if (typeof snap.roundIndex === 'number') {
+      setRoundNum(snap.roundIndex + 1);
+    }
+
+    if (snap.scoreboard) {
+      const hydrated: PlayerScore[] = snap.scoreboard.map((sb) => {
+        const localScores: Partial<Record<ScoreKey, number>> = {};
+        for (const [serverKey, value] of Object.entries(sb.scores)) {
+          if (value === null || value === undefined) continue;
+          const localKey = SERVER_KEY_MAP[serverKey];
+          if (localKey) localScores[localKey] = value;
+        }
+        return {
+          userId: sb.userId,
+          scores: localScores,
+          upperTotal: sb.upperTotal,
+          bonusEarned: sb.bonusEarned,
+          grandTotal: sb.grandTotal,
+        };
+      });
+      setPlayerScores(hydrated);
+    }
+  }, []);
+
   // WebSocket 연결
   const connectWs = useCallback((id: string, token: string | null) => {
     if (clientRef.current) {
@@ -110,10 +155,18 @@ export function useYachtGame(): UseYachtGameReturn {
       onRoomState: (payload: RoomStatePayload) => {
         setParticipants(payload.participants);
         setHostUserId(payload.hostUserId);
-        setPhase((prev) => {
-          if (prev === 'connecting' || prev === 'waiting') return 'waiting';
-          return prev;
-        });
+        if (payload.status === 'PLAYING') {
+          // 게임 진행 중인 방 — 관전자 합류 또는 진행 중 재진입
+          setPhase((prev) => (prev === 'playing' ? prev : 'playing'));
+          void hydrateFromSnapshot(payload.roomId, token);
+        } else {
+          // WAITING/FINISHED — 게임 종료 모달 표시 중이면 phase 'playing' 유지
+          setPhase((prev) => {
+            if (prev === 'playing') return prev;
+            if (prev === 'connecting' || prev === 'waiting') return 'waiting';
+            return prev;
+          });
+        }
       },
       onGameStarted: (payload: GameStartedPayload) => {
         setCurrentTurnUserId(payload.currentTurnUserId);
@@ -122,20 +175,17 @@ export function useYachtGame(): UseYachtGameReturn {
         setDice(makeRandomDice());
         setKeptIndices([]);
         setRoundNum(1);
-        // turnOrder 기준으로 플레이어 점수 초기화
-        setPlayerScores((prev) => {
-          const existing = new Map(prev.map((ps) => [ps.userId, ps]));
-          return payload.turnOrder.map((uid) => {
-            const ex = existing.get(uid);
-            return ex ?? {
-              userId: uid,
-              scores: {},
-              upperTotal: 0,
-              bonusEarned: false,
-              grandTotal: 0,
-            };
-          });
-        });
+        // 재시작 케이스 포함 — turnOrder 기준 새 게임 점수판 초기화
+        setPlayerScores(payload.turnOrder.map((uid) => ({
+          userId: uid,
+          scores: {},
+          upperTotal: 0,
+          bonusEarned: false,
+          grandTotal: 0,
+        })));
+        // 게임 종료 모달 닫기 (재시작 케이스)
+        setGameOverData(null);
+        setRankings([]);
         setPhase('playing');
       },
       onTurnState: (payload: TurnStatePayload) => {
@@ -187,8 +237,10 @@ export function useYachtGame(): UseYachtGameReturn {
         setRoundNum(payload.roundNum);
       },
       onGameOver: (payload: GameOverPayload) => {
+        // 페이지 전환 대신 모달 오버레이로 순위/재시작/준비 UI 노출
         setRankings(payload.rankings);
-        setPhase('result');
+        setGameOverData(payload);
+        // phase는 'playing' 유지 — 모달이 GameScreen 위에 떠 있음
       },
       onPlayerLeft: (payload: PlayerLeftPayload) => {
         const reason = payload.reason === 'DISCONNECT' ? '연결이 끊겼습니다' : '나갔습니다';
@@ -217,12 +269,13 @@ export function useYachtGame(): UseYachtGameReturn {
     });
 
     clientRef.current = handle;
-  }, [goHome, showToast]);
+  }, [goHome, showToast, hydrateFromSnapshot]);
 
   // 매칭 시작
   const startMatch = useCallback(async () => {
     setPhase('matching');
     setErrorMessage(null);
+    hydratedRef.current = false;
 
     const outcome = await postYachtMatch(accessToken);
 
@@ -230,6 +283,9 @@ export function useYachtGame(): UseYachtGameReturn {
       const id = outcome.data.roomId;
       setRoomId(id);
       roomIdRef.current = id;
+      if (outcome.data.joinedAsSpectator) {
+        showToast('진행 중인 게임에 관전자로 입장했습니다');
+      }
       setPhase('connecting');
       connectWs(id, accessToken);
     } else if (!outcome.ok && outcome.alreadyInRoom) {
@@ -330,8 +386,10 @@ export function useYachtGame(): UseYachtGameReturn {
     rollsLeft,
     playerScores,
     rankings,
+    gameOverData,
     myUserId,
     isMyTurn,
+    isSpectator,
     isRolling,
     errorMessage,
     wsStatus,

@@ -33,9 +33,23 @@
   "status": "WAITING",
   "playerCount": 2,
   "maxPlayers": 6,
-  "created": false
+  "created": false,
+  "joinedAsSpectator": false
 }
 ```
+
+**응답 200** — 진행 중인 방에 관전자로 합류:
+```json
+{
+  "roomId": "yachtab12",
+  "status": "PLAYING",
+  "playerCount": 6,
+  "maxPlayers": 6,
+  "created": false,
+  "joinedAsSpectator": true
+}
+```
+- `joinedAsSpectator=true`: 게임이 이미 시작되어 turnOrder에 포함되지 못함. 점수판/랭킹 미참여, 조작 불가, 종료 시까지 시청만 가능.
 
 **응답 201** — 신규 방 생성:
 ```json
@@ -44,7 +58,8 @@
   "status": "WAITING",
   "playerCount": 1,
   "maxPlayers": 6,
-  "created": true
+  "created": true,
+  "joinedAsSpectator": false
 }
 ```
 
@@ -146,12 +161,14 @@
     "hostUserId": 101,
     "maxPlayers": 6,
     "participants": [
-      { "userId": 101, "nickname": "유저A", "ready": true, "isHost": true },
-      { "userId": 202, "nickname": "유저B", "ready": false, "isHost": false }
+      { "userId": 101, "nickname": "유저A", "ready": true, "isHost": true, "isSpectator": false },
+      { "userId": 202, "nickname": "유저B", "ready": false, "isHost": false, "isSpectator": false },
+      { "userId": 303, "nickname": "유저C", "ready": false, "isHost": false, "isSpectator": true }
     ]
   }
 }
 ```
+- `isSpectator=true`: 게임 진행 중 합류한 관전자 (turnOrder에 없음). WAITING/FINISHED 상태에서는 항상 false.
 
 #### GAME_STARTED — 방장 `/start` 성공 시
 
@@ -255,6 +272,7 @@
 }
 ```
 - 동점 시 같은 `rank`와 `isWinner=true` 공유
+- GAME_OVER 직후, 활성 참가자가 2명 이상이면 서버는 방을 WAITING 상태로 리셋하고 `ROOM_STATE`(status="WAITING", 모든 참가자 isSpectator=false, ready=false)를 브로드캐스트한다. 클라이언트는 게임 종료 모달을 노출해 비방장은 `/ready`, 방장은 `/start`로 다음 게임을 시작할 수 있다. 활성 참가자 1명 이하면 기존대로 방을 FINISHED 처리한다.
 
 #### PLAYER_LEFT — 참가자 나감/끊김
 
