@@ -74,8 +74,8 @@
 }
 
 .countBtn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 2px solid #ccc;
   background: white;
@@ -132,7 +132,7 @@
 /* 이름 버튼 */
 .topRow {
   position: relative;
-  height: 40px;
+  height: 52px;
 }
 
 .topBtn {
@@ -145,7 +145,10 @@
   background: white;
   border: 2px solid currentColor;
   border-radius: 6px;
-  padding: 3px 10px;
+  padding: 0 10px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   cursor: pointer;
   transition: opacity 0.2s, background 0.15s;
 }
@@ -277,4 +280,23 @@
 .summaryResult {
   font-weight: 600;
   color: #333;
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 16px 12px 40px;
+  }
+  .cols {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .col {
+    max-width: 100%;
+  }
+  .summary {
+    padding: 12px 16px;
+    min-width: unset;
+    width: 100%;
+    box-sizing: border-box;
+  }
 }

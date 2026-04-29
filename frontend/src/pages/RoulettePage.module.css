@@ -134,7 +134,12 @@
 }
 
 .delBtn {
-  padding: 2px 6px;
+  padding: 0;
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   color: #bbb;
@@ -201,4 +206,23 @@
 @keyframes popIn {
   from { transform: scale(0.7); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 100%;
+    min-width: unset;
+  }
+  .itemList {
+    max-height: 200px;
+  }
+  .addInput {
+    padding: 10px 9px;
+  }
+  .addBtn {
+    padding: 10px 14px;
+  }
+  .editToggle {
+    padding: 6px 10px;
+  }
 }

@@ -223,6 +223,11 @@
   .f3 { transform: rotateY( 90deg) translateZ(33px); }
   .f4 { transform: rotateY(-90deg) translateZ(33px); }
 
+  .diceGrid {
+    gap: 16px;
+    padding: 20px 16px;
+  }
+
   .rollBtn {
     padding: 12px 40px;
     font-size: 16px;
