@@ -245,6 +245,41 @@ export default function HomePage() {
               />
             );
           })}
+          {/* 미니게임 도구 카드 */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={styles.icon}>🎮</span>
+              <div className={styles.title}>
+                <div className={styles.nameKo}>미니게임</div>
+              </div>
+            </div>
+            <div className={styles.cardRanking}>
+              <Link
+                to="/roulette"
+                className={`${styles.btn} ${styles.btnNormal}`}
+                style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
+              >
+                <span>🎡</span><span style={{ fontWeight: 'bold' }}>룰렛</span>
+              </Link>
+              <hr className={styles.labDivider} />
+              <Link
+                to="/dice"
+                className={`${styles.btn} ${styles.btnNormal}`}
+                style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
+              >
+                <span>🎲</span><span style={{ fontWeight: 'bold' }}>주사위</span>
+              </Link>
+              <hr className={styles.labDivider} />
+              <Link
+                to="/ladder"
+                className={`${styles.btn} ${styles.btnNormal}`}
+                style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
+              >
+                <span>🪜</span><span style={{ fontWeight: 'bold' }}>사다리 타기</span>
+              </Link>
+            </div>
+          </div>
+
           {/* Test Lab 카드 — 전체 방문자(게스트 포함) 노출 */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>

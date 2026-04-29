@@ -1,0 +1,280 @@
+.page {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background: #f5f5f5;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 48px;
+}
+
+/* ── Edit phase ─────────────────────────────── */
+.editBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.cols {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  max-width: 200px;
+}
+
+.colHead {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.inp {
+  padding: 8px 10px;
+  border: 1.5px solid #ddd;
+  border-left-width: 4px;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.inp:focus {
+  border-top-color: #bbb;
+  border-right-color: #bbb;
+  border-bottom-color: #bbb;
+}
+
+.countRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.countBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  background: white;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.countBtn:hover:not(:disabled) { background: #f0f0f0; }
+.countBtn:disabled { opacity: 0.3; cursor: default; }
+
+.countNum {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  min-width: 36px;
+  text-align: center;
+}
+
+.startBtn {
+  padding: 13px 40px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+.startBtn:hover { background: #2563eb; }
+.startBtn:active { transform: scale(0.97); }
+
+/* ── Run phase ──────────────────────────────── */
+.runBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+.hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #888;
+}
+
+.ladderScroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* 이름 버튼 */
+.topRow {
+  position: relative;
+  height: 40px;
+}
+
+.topBtn {
+  position: absolute;
+  transform: translateX(-50%);
+  top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: white;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: opacity 0.2s, background 0.15s;
+}
+.topBtn:hover:not(:disabled) {
+  background: #f8f8f8;
+}
+.topBtnDone {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* 결과 라벨 */
+.botRow {
+  position: relative;
+  height: 56px;
+  margin-top: 4px;
+}
+
+.botLabel {
+  position: absolute;
+  transform: translateX(-50%);
+  top: 8px;
+  padding: 4px 10px;
+  border: 2px solid;
+  border-radius: 6px;
+  background: white;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* 경로 애니메이션 */
+@keyframes drawPath {
+  to { stroke-dashoffset: 0; }
+}
+
+.path {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: drawPath 1.6s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+/* 액션 버튼 */
+.btnRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.revealAllBtn {
+  padding: 10px 22px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.revealAllBtn:hover:not(:disabled) { background: #2563eb; }
+.revealAllBtn:disabled { opacity: 0.4; cursor: default; }
+
+.rerollBtn {
+  padding: 10px 18px;
+  background: white;
+  color: #555;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.rerollBtn:hover { background: #f0f0f0; }
+
+.resetBtn {
+  padding: 10px 18px;
+  background: white;
+  color: #999;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.resetBtn:hover { background: #f0f0f0; }
+
+/* 결과 요약 */
+.summary {
+  margin-top: 24px;
+  background: white;
+  border-radius: 12px;
+  padding: 14px 28px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  min-width: 200px;
+  opacity: 0;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 15px;
+  opacity: 0;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.summaryName {
+  font-weight: 700;
+  min-width: 80px;
+}
+
+.summaryArrow {
+  color: #bbb;
+}
+
+.summaryResult {
+  font-weight: 600;
+  color: #333;
+}

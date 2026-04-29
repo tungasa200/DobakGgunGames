@@ -39,6 +39,9 @@ import OnlineRpsPage from './pages/OnlineRpsPage';
 import BlockfallBattlePage from './pages/BlockfallBattlePage';
 import BattleUITestPage from './pages/BattleUITestPage';
 import MafiaDevPage from './pages/MafiaDevPage';
+import RoulettePage from './pages/RoulettePage';
+import LadderPage from './pages/LadderPage';
+import DicePage from './pages/DicePage';
 
 export default function App() {
   useEffect(() => {
@@ -131,6 +134,11 @@ export default function App() {
         />
         {/* 인세인 엑셀 모드 없음 — 접근 시 인세인 일반 모드로 리다이렉트 */}
         <Route path="/blockfall-insane/excel" element={<Navigate to="/blockfall-insane" replace />} />
+
+        {/* 미니게임 도구 — /:game 보다 먼저 선언 */}
+        <Route path="/roulette" element={<RoulettePage />} />
+        <Route path="/dice" element={<DicePage />} />
+        <Route path="/ladder" element={<LadderPage />} />
 
         {/* 게임 라우트 (가장 마지막 — 다른 경로와 충돌 방지) */}
         <Route path="/:game" element={<GamePage excel={false} />} />
