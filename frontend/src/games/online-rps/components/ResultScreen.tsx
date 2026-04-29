@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import NormalHeader from '../../../components/normal/NormalHeader';
 import styles from './RpsScreens.module.css';
 import RpsCard from './RpsCard';
 import type { RpsResult, RoundResultPayload } from '../types/rps.types';
@@ -90,14 +91,7 @@ export default function ResultScreen({
 
   return (
     <div className={styles.page}>
-      {/* 헤더 */}
-      <header className={styles.header}>
-        <button className={styles.headerBack} onClick={onLeave} type="button">
-          ← 나가기
-        </button>
-        <span className={styles.headerTitle}>Online RPS</span>
-        <span />
-      </header>
+      <NormalHeader currentGame="online-rps" gameName="가위바위보" accentColor="#3b82f6" />
 
       <div className={styles.content}>
         {/* 본인 결과 배너 */}

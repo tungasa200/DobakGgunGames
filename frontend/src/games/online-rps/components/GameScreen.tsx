@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import NormalHeader from '../../../components/normal/NormalHeader';
 import styles from './RpsScreens.module.css';
 import RpsCard from './RpsCard';
 import type { RpsCardState } from './RpsCard';
@@ -89,33 +90,29 @@ export default function GameScreen({
 
   return (
     <div className={styles.page}>
-      {/* 헤더 */}
-      <header className={styles.header}>
-        <button className={styles.headerBack} onClick={onLeave} type="button">
-          ← 나가기
-        </button>
-        <span className={styles.headerTitle}>Online RPS</span>
+      <NormalHeader currentGame="online-rps" gameName="가위바위보" accentColor="#3b82f6" />
+
+      {/* 타이머 바 + 남은 시간 */}
+      <div className={styles.timerSection}>
+        <div
+          className={styles.timerBar}
+          role="progressbar"
+          aria-valuenow={timeLeft}
+          aria-valuemin={0}
+          aria-valuemax={timeoutSeconds}
+          aria-label="선택 제한 시간"
+        >
+          <div
+            className={`${styles.timerBarFill} ${isWarn ? styles.timerBarFillWarn : ''}`}
+            style={{ width: `${fillPct}%` }}
+          />
+        </div>
         <span
-          className={`${styles.headerTimer} ${isWarn ? styles.headerTimerWarn : ''}`}
+          className={`${styles.timerCount} ${isWarn ? styles.timerCountWarn : ''}`}
           aria-live="polite"
         >
-          {isWarn ? `🔴 ${timeLeft}s` : `${timeLeft}s`}
+          {timeLeft}s
         </span>
-      </header>
-
-      {/* 타이머 바 */}
-      <div
-        className={styles.timerBar}
-        role="progressbar"
-        aria-valuenow={timeLeft}
-        aria-valuemin={0}
-        aria-valuemax={timeoutSeconds}
-        aria-label="선택 제한 시간"
-      >
-        <div
-          className={`${styles.timerBarFill} ${isWarn ? styles.timerBarFillWarn : ''}`}
-          style={{ width: `${fillPct}%` }}
-        />
       </div>
 
       <div className={styles.content}>
@@ -167,6 +164,15 @@ export default function GameScreen({
             );
           })}
         </div>
+
+        {/* 나가기 */}
+        <button
+          className={styles.leaveBtn}
+          onClick={onLeave}
+          type="button"
+        >
+          나가기
+        </button>
       </div>
     </div>
   );

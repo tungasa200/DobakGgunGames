@@ -1,3 +1,4 @@
+import NormalHeader from '../../../components/normal/NormalHeader';
 import styles from './RpsScreens.module.css';
 import type { RpsParticipant } from '../types/rps.types';
 
@@ -20,13 +21,7 @@ export default function WaitingScreen({
 
   return (
     <>
-      <header className={styles.header}>
-        <button className={styles.headerBack} onClick={onLeave} type="button">
-          ← 홈으로
-        </button>
-        <span className={styles.headerTitle}>Online RPS</span>
-        <span />
-      </header>
+      <NormalHeader currentGame="online-rps" gameName="가위바위보" accentColor="#3b82f6" />
 
       <div className={styles.content}>
         {/* 아이콘 */}

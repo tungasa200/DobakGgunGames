@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import NormalHeader from '../components/normal/NormalHeader';
 import { useRpsGame } from '../games/online-rps/hooks/useRpsGame';
 import WaitingScreen from '../games/online-rps/components/WaitingScreen';
 import GameScreen from '../games/online-rps/components/GameScreen';
@@ -48,17 +49,7 @@ export default function OnlineRpsPage() {
   if (phase === 'error') {
     return (
       <div className={styles.page}>
-        <header className={styles.header}>
-          <button
-            className={styles.headerBack}
-            onClick={() => navigate('/')}
-            type="button"
-          >
-            ← 홈으로
-          </button>
-          <span className={styles.headerTitle}>Online RPS</span>
-          <span />
-        </header>
+        <NormalHeader currentGame="online-rps" gameName="가위바위보" accentColor="#3b82f6" />
         <div className={styles.errorScreen}>
           <span className={styles.errorIcon}>⚠</span>
           <p className={styles.errorTitle}>연결 오류가 발생했습니다</p>
