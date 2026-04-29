@@ -7,6 +7,8 @@ import com.dobakggun.service.IpBanService;
 import com.dobakggun.service.RedisTokenService;
 import com.dobakggun.service.RpsMatchService;
 import com.dobakggun.service.RpsRoomService;
+import com.dobakggun.service.YachtMatchService;
+import com.dobakggun.service.YachtGameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -56,6 +58,14 @@ class DobakGgunGamesApplicationTests {
 	/** Battle 랭킹 서비스 */
 	@MockBean
 	private BattleRankingService battleRankingService;
+
+	/** Yacht 매칭 서비스 — Redis 의존성 mock */
+	@MockBean
+	private YachtMatchService yachtMatchService;
+
+	/** Yacht 게임 서비스 — @EventListener ApplicationReadyEvent + @Scheduled mock */
+	@MockBean
+	private YachtGameService yachtGameService;
 
 	@Test
 	void contextLoads() {

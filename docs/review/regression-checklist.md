@@ -168,6 +168,25 @@
 | `GET /api/blockfall-battle/rankings` 정상 응답 | High |
 | 홈화면에 배틀 랭킹 요소 미노출 | Critical |
 
+### 2-11. Yacht (신규 — 2026-04-29 추가)
+
+| 확인 항목 | 우선순위 |
+|---|---|
+| `/yacht` 페이지 정상 로드 | Critical |
+| 비로그인 접근 시 로그인 리다이렉트 | Critical |
+| `POST /api/yacht/match` 정상 응답 (200/201) | Critical |
+| WebSocket 연결 + ROOM_STATE 수신 | Critical |
+| 비방장 ready:true 발행 → ROOM_STATE 반영 | Critical |
+| 방장 /start 후 GAME_STARTED 브로드캐스트 | Critical |
+| /roll 발행 → ROLL_RESULT 수신 (5개 dice, rollsLeft 감소) | Critical |
+| kept 주사위 값 유지 재굴림 정상 동작 | Critical |
+| /score 발행 → SCORE_RECORDED 수신 (점수 서버 재계산) | Critical |
+| GAME_OVER 브로드캐스트 (12개 족보 완료 시) | Critical |
+| yacht_win win_count 증가 확인 (읽기 전용 DB 조회) | High |
+| `/topic/yacht/**` ↔ `/topic/rps/**` 크로스 수신 없음 | Critical |
+| yachtSubscribedRoomIds 세션 키 분리 (기존 chat/rps 세션 키 간섭 없음) | Critical |
+| 기존 admin-rsp 라우트/API 영향 없음 확인 | High |
+
 ### 2-10. 채팅 (chat-testroom)
 
 | 확인 항목 | 우선순위 |
@@ -192,6 +211,7 @@
 | Solitaire | `frontend/src/games/solitaire/CardBoard.tsx` | — | |
 | Online RPS | `frontend/src/games/` (예정) | 2026-04-24 (배포 예정) | 멀티플레이, Excel 없음 |
 | Blockfall Battle | `frontend/src/games/blockfall/` (예정) | 2026-04-27 (구현 예정) | Test Lab 전용, 멀티플레이, Excel 없음, 게스트 허용 |
+| Yacht | `frontend/src/games/yacht/` (예정) | 2026-04-29 (구현 예정) | 멀티플레이, Excel 없음, 로그인 필수, three.js 3D 주사위 |
 | ~~어드민 솔로 RSP~~ | ~~`frontend/src/games/rsp/RspBoard.tsx`~~ | — | **Online RPS로 대체 — 제거 예정** |
 
 ---
@@ -202,3 +222,4 @@
 |---|---|---|
 | 2026-04-24 | 최초 작성. Online RPS 추가 및 어드민 솔로 RSP 제거 맥락에서 신규 생성. §1~3 전체 초안 작성. | qa-tester |
 | 2026-04-27 | Blockfall Battle 추가. §1-1에 `/ws-battle` 격리 항목 추가. §1-3에 배틀 끊김 처리 항목 추가. §1-4에 battle_record 분리 항목 추가. §2-9 배틀 smoke test 항목 신규 추가. §3 게임 목록에 배틀 행 추가. | qa-tester |
+| 2026-04-29 | Yacht 추가. §2-11 Yacht smoke test 항목 신규 추가 (14개). §3 게임 목록에 Yacht 행 추가. | qa-tester |

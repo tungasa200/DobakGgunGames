@@ -1,0 +1,204 @@
+export type ScoreKey =
+  | 'ones' | 'twos' | 'threes' | 'fours' | 'fives' | 'sixes'
+  | 'choice' | 'fourOfAKind' | 'fullHouse' | 'littleStraight' | 'bigStraight' | 'yacht';
+
+export const SCORE_KEYS: ScoreKey[] = [
+  'ones', 'twos', 'threes', 'fours', 'fives', 'sixes',
+  'choice', 'fourOfAKind', 'fullHouse', 'littleStraight', 'bigStraight', 'yacht',
+];
+
+export const UPPER_SCORE_KEYS: ScoreKey[] = [
+  'ones', 'twos', 'threes', 'fours', 'fives', 'sixes',
+];
+
+export const LOWER_SCORE_KEYS: ScoreKey[] = [
+  'choice', 'fourOfAKind', 'fullHouse', 'littleStraight', 'bigStraight', 'yacht',
+];
+
+export const SCORE_LABELS: Record<ScoreKey, string> = {
+  ones: 'Ones',
+  twos: 'Twos',
+  threes: 'Threes',
+  fours: 'Fours',
+  fives: 'Fives',
+  sixes: 'Sixes',
+  choice: 'Choice',
+  fourOfAKind: 'Four of a Kind',
+  fullHouse: 'Full House',
+  littleStraight: 'Little Straight',
+  bigStraight: 'Big Straight',
+  yacht: 'Yacht',
+};
+
+// 서버 scoreKey enum 값 → 내부 ScoreKey 매핑
+export const SERVER_KEY_MAP: Record<string, ScoreKey> = {
+  ONES: 'ones',
+  TWOS: 'twos',
+  THREES: 'threes',
+  FOURS: 'fours',
+  FIVES: 'fives',
+  SIXES: 'sixes',
+  CHOICE: 'choice',
+  FOUR_OF_A_KIND: 'fourOfAKind',
+  FULL_HOUSE: 'fullHouse',
+  LITTLE_STRAIGHT: 'littleStraight',
+  BIG_STRAIGHT: 'bigStraight',
+  YACHT: 'yacht',
+};
+
+// 내부 ScoreKey → 서버 enum 값
+export const CLIENT_KEY_MAP: Record<ScoreKey, string> = {
+  ones: 'ONES',
+  twos: 'TWOS',
+  threes: 'THREES',
+  fours: 'FOURS',
+  fives: 'FIVES',
+  sixes: 'SIXES',
+  choice: 'CHOICE',
+  fourOfAKind: 'FOUR_OF_A_KIND',
+  fullHouse: 'FULL_HOUSE',
+  littleStraight: 'LITTLE_STRAIGHT',
+  bigStraight: 'BIG_STRAIGHT',
+  yacht: 'YACHT',
+};
+
+export interface Participant {
+  userId: number;
+  nickname: string;
+  ready: boolean;
+  isHost: boolean;
+}
+
+export interface PlayerScore {
+  userId: number;
+  scores: Partial<Record<ScoreKey, number>>;
+  upperTotal: number;
+  bonusEarned: boolean;
+  grandTotal: number;
+}
+
+export type YachtPhase =
+  | 'idle'
+  | 'matching'
+  | 'connecting'
+  | 'waiting'
+  | 'playing'
+  | 'result'
+  | 'error';
+
+export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'error';
+
+export type WsEventType =
+  | 'ROOM_STATE'
+  | 'GAME_STARTED'
+  | 'TURN_STATE'
+  | 'ROLL_RESULT'
+  | 'SCORE_RECORDED'
+  | 'TURN_CHANGED'
+  | 'GAME_OVER'
+  | 'PLAYER_LEFT'
+  | 'ROOM_CLOSED'
+  | 'MATCH_COUNTDOWN'
+  | 'MATCH_COUNTDOWN_CANCELLED';
+
+export interface WsMessage<T = unknown> {
+  type: WsEventType;
+  timestamp: string;
+  payload: T;
+}
+
+export interface RoomStatePayload {
+  roomId: string;
+  status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  hostUserId: number;
+  maxPlayers: number;
+  participants: Participant[];
+}
+
+export interface GameStartedPayload {
+  roomId: string;
+  turnOrder: number[];
+  currentTurnUserId: number;
+  rollsLeft: number;
+  totalRounds: number;
+}
+
+export interface TurnStatePayload {
+  roomId: string;
+  currentTurnUserId: number;
+  rollsLeft: number;
+  dice: number[] | null;
+  keptIndices: number[];
+  turnDeadlineAt?: string;
+}
+
+export interface RollResultPayload {
+  currentTurnUserId: number;
+  dice: number[];
+  keptIndices: number[];
+  rollsLeft: number;
+}
+
+export interface ScoreRecordedPayload {
+  userId: number;
+  scoreKey: string; // 서버에서 UPPER_CASE로 옴
+  score: number;
+  upperTotal: number;
+  bonusEarned: boolean;
+  grandTotal: number;
+}
+
+export interface TurnChangedPayload {
+  previousTurnUserId: number;
+  currentTurnUserId: number;
+  rollsLeft: number;
+  roundNum: number;
+}
+
+export interface RankEntry {
+  rank: number;
+  userId: number;
+  nickname: string;
+  grandTotal: number;
+  isWinner: boolean;
+}
+
+export interface GameOverPayload {
+  roomId: string;
+  rankings: RankEntry[];
+}
+
+export interface PlayerLeftPayload {
+  roomId: string;
+  userId: number;
+  nickname: string;
+  reason: 'LEAVE' | 'DISCONNECT';
+}
+
+export interface RoomClosedPayload {
+  roomId: string;
+  reason: 'EMPTY' | 'INSUFFICIENT_PLAYERS';
+}
+
+export interface WsErrorPayload {
+  code: string;
+  message?: string;
+}
+
+// REST API 응답 타입
+export interface YachtMatchResponse {
+  roomId: string;
+  status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  playerCount: number;
+  maxPlayers: number;
+  created: boolean;
+}
+
+export interface YachtRoomResponse {
+  roomId: string;
+  status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  maxPlayers: number;
+  participants: Participant[];
+  currentTurnUserId?: number;
+  scoreboard?: PlayerScore[];
+}

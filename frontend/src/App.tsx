@@ -37,6 +37,7 @@ import AuthRoute from './components/AuthRoute';
 import { AdminTestProvider } from './context/AdminTestContext';
 import OnlineRpsPage from './pages/OnlineRpsPage';
 import BlockfallBattlePage from './pages/BlockfallBattlePage';
+import YachtPage from './games/yacht/YachtPage';
 import BattleUITestPage from './pages/BattleUITestPage';
 import MafiaDevPage from './pages/MafiaDevPage';
 import RoulettePage from './pages/RoulettePage';
@@ -97,6 +98,12 @@ export default function App() {
         <Route
           path="/online-rps"
           element={<OnlineRpsPage />}
+        />
+
+        {/* Yacht — 로그인 필수 */}
+        <Route
+          path="/yacht"
+          element={<AuthRoute><YachtPage /></AuthRoute>}
         />
 
         {/* Test Lab — 블록폴 배틀 (로그인/게스트 모두 허용, /:game 보다 위에 선언) */}

@@ -1,0 +1,1107 @@
+package com.dobakggun.service;
+
+import com.dobakggun.dto.yacht.*;
+import com.dobakggun.entity.yacht.*;
+import com.dobakggun.repository.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
+
+/**
+ * Yacht 게임 인메모리 상태 관리 및 핵심 게임 로직.
+ *
+ * CP1 확정 사항:
+ *  - CP1-1: 턴 타임아웃 없음
+ *  - CP1-2: yacht_win 테이블 upsert (GAME_OVER 시 1위 win_count++)
+ *  - CP1-3: /ready (준비 토글) + /start (방장 전용 시작)
+ */
+@Slf4j
+@Service
+public class YachtGameService {
+
+    // ─── 상수 ────────────────────────────────────────────────────────────────
+
+    private static final String TOPIC_PREFIX = "/topic/yacht/room/";
+    private static final int    ROOM_TTL_MINUTES = 10;
+    private static final int    TOTAL_SCORE_KEYS = 12;
+    private static final Set<String> VALID_SCORE_KEYS = Set.of(
+            "ONES","TWOS","THREES","FOURS","FIVES","SIXES",
+            "CHOICE","FOUR_OF_A_KIND","FULL_HOUSE",
+            "LITTLE_STRAIGHT","BIG_STRAIGHT","YACHT"
+    );
+    private static final Set<String> UPPER_KEYS = Set.of(
+            "ONES","TWOS","THREES","FOURS","FIVES","SIXES"
+    );
+    private static final int UPPER_BONUS_THRESHOLD = 63;
+    private static final int UPPER_BONUS_VALUE     = 35;
+
+    // ─── 인메모리 상태 ────────────────────────────────────────────────────────
+
+    /**
+     * 방 인메모리 상태 (게임 진행 중 실시간 정보).
+     */
+    public static class YachtRoomState {
+        public final String roomId;
+        public volatile Long hostUserId;
+        public volatile int maxPlayers;
+        public volatile YachtRoomStatus status = YachtRoomStatus.WAITING;
+
+        /** 입장 순서대로 유지 */
+        public final List<YachtPlayer> participants = new CopyOnWriteArrayList<>();
+        /** 준비 완료 userId set */
+        public final Set<Long> readySet = ConcurrentHashMap.newKeySet();
+
+        // --- PLAYING 상태 전용 필드 ---
+        /** 랜덤 셔플된 턴 순서 (고정) */
+        public volatile List<Long> turnOrder = new ArrayList<>();
+        /** turnOrder 내 현재 인덱스 */
+        public volatile int turnOrderIndex = 0;
+        /** 0-based 라운드 인덱스 (0~11) */
+        public volatile int roundIndex = 0;
+
+        /** 현재 주사위 상태 (0=미굴림) */
+        public volatile int[] dice = new int[]{0, 0, 0, 0, 0};
+        public volatile List<Integer> keptIndices = new ArrayList<>();
+        public volatile int rollsLeft = 3;
+        /** 이번 턴에 최소 1회 굴렸는지 */
+        public volatile boolean hasRolled = false;
+
+        /** 인게임 점수 Map: userId → (scoreKey → score). thread-safe. */
+        public final Map<Long, Map<String, Integer>> scoreMap = new ConcurrentHashMap<>();
+
+        /** 끊긴 유저 set (게임 중 자동 0점 기록 후 남겨둠) */
+        public final Set<Long> disconnectedPlayers = ConcurrentHashMap.newKeySet();
+
+        public YachtRoomState(String roomId, Long hostUserId, int maxPlayers) {
+            this.roomId    = roomId;
+            this.hostUserId = hostUserId;
+            this.maxPlayers = maxPlayers;
+        }
+    }
+
+    public static class YachtPlayer {
+        public final Long   userId;
+        public final String nickname;
+
+        public YachtPlayer(Long userId, String nickname) {
+            this.userId   = userId;
+            this.nickname = nickname;
+        }
+    }
+
+    private final ConcurrentHashMap<String, YachtRoomState> rooms = new ConcurrentHashMap<>();
+
+    // ─── 의존성 ───────────────────────────────────────────────────────────────
+
+    private final YachtRoomRepository        yachtRoomRepository;
+    private final YachtParticipantRepository yachtParticipantRepository;
+    private final YachtScoreRepository       yachtScoreRepository;
+    private final YachtWinRepository         yachtWinRepository;
+    private final UserRepository             userRepository;
+    private final SecureRandom               rng = new SecureRandom();
+
+    @Lazy
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
+    public YachtGameService(
+            YachtRoomRepository yachtRoomRepository,
+            YachtParticipantRepository yachtParticipantRepository,
+            YachtScoreRepository yachtScoreRepository,
+            YachtWinRepository yachtWinRepository,
+            UserRepository userRepository) {
+        this.yachtRoomRepository        = yachtRoomRepository;
+        this.yachtParticipantRepository = yachtParticipantRepository;
+        this.yachtScoreRepository       = yachtScoreRepository;
+        this.yachtWinRepository         = yachtWinRepository;
+        this.userRepository             = userRepository;
+    }
+
+    // ─── 서버 재시작 처리 ─────────────────────────────────────────────────────
+
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void closeStaleRoomsOnStartup() {
+        List<YachtRoomStatus> active = List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING);
+        int closed = yachtRoomRepository.closeAllActiveRooms(
+                YachtRoomStatus.FINISHED,
+                LocalDateTime.now(ZoneOffset.UTC),
+                active);
+        if (closed > 0) {
+            log.info("YachtGameService: 서버 재시작 — 좀비 방 {}개 FINISHED 처리", closed);
+        }
+    }
+
+    // ─── JOIN ────────────────────────────────────────────────────────────────
+
+    /**
+     * /join 처리: WS 세션-방 바인딩 + ROOM_STATE 브로드캐스트.
+     * DB participant는 YachtMatchService에서 이미 생성.
+     *
+     * @return null=성공, otherwise=에러코드
+     */
+    public String joinRoom(String roomId, Long userId, String nickname) {
+        YachtRoomState state = getOrCreateState(roomId);
+        if (state == null) return "ROOM_NOT_FOUND";
+
+        synchronized (state) {
+            if (state.status != YachtRoomStatus.WAITING) {
+                log.warn("joinRoom: roomId={} WAITING 아님 ({})", roomId, state.status);
+                return "ROOM_NOT_AVAILABLE";
+            }
+
+            boolean alreadyIn = state.participants.stream().anyMatch(p -> p.userId.equals(userId));
+            if (!alreadyIn) {
+                state.participants.add(new YachtPlayer(userId, nickname));
+                state.scoreMap.put(userId, new ConcurrentHashMap<>());
+                log.info("joinRoom: userId={} 방 {} 입장 (현재 {}명)", userId, roomId, state.participants.size());
+            }
+        }
+
+        broadcastRoomState(state);
+        return null;
+    }
+
+    /**
+     * 인메모리 상태 초기화 (없으면 DB에서 방 정보 조회).
+     */
+    private YachtRoomState getOrCreateState(String roomId) {
+        YachtRoomState existing = rooms.get(roomId);
+        if (existing != null) return existing;
+
+        YachtRoom dbRoom = yachtRoomRepository.findByRoomId(roomId).orElse(null);
+        if (dbRoom == null) return null;
+        if (dbRoom.getStatus() == YachtRoomStatus.FINISHED) return null;
+
+        YachtRoomState newState = new YachtRoomState(roomId, dbRoom.getHostUserId(), dbRoom.getMaxPlayers());
+        newState.status = dbRoom.getStatus();
+
+        // DB에서 기존 참가자 복원 (재시작 대응)
+        List<YachtParticipant> dbParticipants = yachtParticipantRepository
+                .findActiveParticipants(dbRoom);
+        for (YachtParticipant p : dbParticipants) {
+            String nick = userRepository.findById(p.getUserId())
+                    .map(u -> u.getNickname()).orElse("Unknown");
+            newState.participants.add(new YachtPlayer(p.getUserId(), nick));
+            newState.scoreMap.put(p.getUserId(), new ConcurrentHashMap<>());
+            if (p.isReady()) newState.readySet.add(p.getUserId());
+        }
+
+        return rooms.computeIfAbsent(roomId, id -> newState);
+    }
+
+    // ─── READY ────────────────────────────────────────────────────────────────
+
+    /**
+     * /ready 처리: 준비/준비취소 토글 (비방장).
+     */
+    public String setReady(String roomId, Long userId, boolean ready) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return "ROOM_NOT_FOUND";
+
+        synchronized (state) {
+            if (state.status != YachtRoomStatus.WAITING) return "GAME_NOT_ACTIVE";
+
+            boolean isParticipant = state.participants.stream().anyMatch(p -> p.userId.equals(userId));
+            if (!isParticipant) return "NOT_IN_ROOM";
+
+            if (userId.equals(state.hostUserId)) return "NOT_HOST"; // 방장은 /ready 불필요
+        }
+
+        if (ready) {
+            state.readySet.add(userId);
+        } else {
+            state.readySet.remove(userId);
+        }
+
+        broadcastRoomState(state);
+        log.info("setReady: roomId={} userId={} ready={}", roomId, userId, ready);
+        return null;
+    }
+
+    // ─── START ────────────────────────────────────────────────────────────────
+
+    /**
+     * /start 처리: 방장이 게임 시작 (전원 준비 완료 필요).
+     */
+    public String startGame(String roomId, Long userId) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return "ROOM_NOT_FOUND";
+
+        List<YachtPlayer> snapshot;
+        synchronized (state) {
+            if (!userId.equals(state.hostUserId)) return "NOT_HOST";
+            if (state.status != YachtRoomStatus.WAITING) return "GAME_NOT_ACTIVE";
+
+            int count = state.participants.size();
+            if (count < 2) return "NOT_ENOUGH_PLAYERS";
+
+            // 비방장 전원 준비 확인
+            boolean allReady = state.participants.stream()
+                    .filter(p -> !p.userId.equals(state.hostUserId))
+                    .allMatch(p -> state.readySet.contains(p.userId));
+            if (!allReady) return "NOT_ALL_READY";
+
+            // 게임 시작
+            state.status = YachtRoomStatus.PLAYING;
+
+            // 턴 순서 랜덤 셔플
+            List<Long> userIds = state.participants.stream()
+                    .map(p -> p.userId)
+                    .collect(Collectors.toCollection(ArrayList::new));
+            Collections.shuffle(userIds, rng);
+            state.turnOrder = userIds;
+            state.turnOrderIndex = 0;
+            state.roundIndex = 0;
+            state.dice = new int[]{0, 0, 0, 0, 0};
+            state.keptIndices = new ArrayList<>();
+            state.rollsLeft = 3;
+            state.hasRolled = false;
+
+            snapshot = new ArrayList<>(state.participants);
+        }
+
+        // DB 업데이트
+        updateDbStatusPlaying(roomId);
+
+        int totalRounds = snapshot.size() * TOTAL_SCORE_KEYS;
+        Long firstTurnUserId = state.turnOrder.get(0);
+
+        broadcast(roomId, "GAME_STARTED", YachtGameStartedPayload.builder()
+                .roomId(roomId)
+                .turnOrder(state.turnOrder)
+                .currentTurnUserId(firstTurnUserId)
+                .totalRounds(totalRounds)
+                .build());
+
+        broadcastTurnState(state);
+
+        log.info("startGame: roomId={} 게임 시작. turnOrder={}", roomId, state.turnOrder);
+        return null;
+    }
+
+    // ─── ROLL ────────────────────────────────────────────────────────────────
+
+    /**
+     * /roll 처리: 서버 SecureRandom으로 주사위 생성.
+     * 클라이언트 dice 필드는 무시, keptIndices만 신뢰.
+     */
+    public String rollDice(String roomId, Long userId, List<Integer> keptIndices) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return "ROOM_NOT_FOUND";
+
+        int[] newDice;
+        List<Integer> validKept;
+        int rollsLeft;
+
+        synchronized (state) {
+            if (state.status != YachtRoomStatus.PLAYING) return "GAME_NOT_ACTIVE";
+
+            Long currentUserId = currentTurnUserId(state);
+            if (!userId.equals(currentUserId)) return "NOT_YOUR_TURN";
+
+            if (state.rollsLeft <= 0) return "ALREADY_ROLLED_MAX";
+
+            // keptIndices 유효성 검증
+            if (keptIndices == null) keptIndices = new ArrayList<>();
+            validKept = validateKeptIndices(keptIndices, state.rollsLeft == 3);
+            if (validKept == null) return "INVALID_KEPT_INDICES";
+
+            // 첫 굴림이면 keptIndices 무시 (전부 새로 굴림)
+            if (state.rollsLeft == 3) {
+                validKept = new ArrayList<>();
+            }
+
+            // 서버 주사위 생성 (keep 안 된 인덱스만 새로 굴림)
+            newDice = Arrays.copyOf(state.dice, 5);
+            for (int i = 0; i < 5; i++) {
+                if (!validKept.contains(i)) {
+                    newDice[i] = rng.nextInt(6) + 1; // 1~6
+                }
+            }
+
+            state.dice = newDice;
+            state.keptIndices = new ArrayList<>(validKept);
+            state.rollsLeft--;
+            state.hasRolled = true;
+            rollsLeft = state.rollsLeft;
+        }
+
+        broadcast(roomId, "ROLL_RESULT", YachtRollResultPayload.builder()
+                .currentTurnUserId(userId)
+                .dice(newDice)
+                .keptIndices(new ArrayList<>(validKept))
+                .rollsLeft(rollsLeft)
+                .build());
+
+        log.info("rollDice: roomId={} userId={} dice={} rollsLeft={}", roomId, userId, Arrays.toString(newDice), rollsLeft);
+        return null;
+    }
+
+    /**
+     * keptIndices 유효성 검증.
+     * - 0~4 범위
+     * - 중복 없음
+     * - 첫 굴림(isFirst=true)이면 빈 배열만 허용
+     * @return 유효하면 정제된 list, 무효이면 null
+     */
+    private List<Integer> validateKeptIndices(List<Integer> indices, boolean isFirst) {
+        if (isFirst) {
+            // 첫 굴림에서 keptIndices가 있으면 무시(빈 배열로 처리)
+            return new ArrayList<>();
+        }
+        Set<Integer> seen = new HashSet<>();
+        for (Integer idx : indices) {
+            if (idx == null || idx < 0 || idx > 4) return null;
+            if (!seen.add(idx)) return null; // 중복
+        }
+        return new ArrayList<>(indices);
+    }
+
+    // ─── SCORE ────────────────────────────────────────────────────────────────
+
+    /**
+     * /score 처리: 족보 선택 + 점수 계산 + SCORE_RECORDED + TURN_CHANGED or GAME_OVER.
+     */
+    @Transactional
+    public String recordScore(String roomId, Long userId, String scoreKey) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return "ROOM_NOT_FOUND";
+
+        int[] diceSnapshot;
+        int scoreValue;
+        Long previousTurnUserId;
+        Long nextTurnUserId;
+        int newRoundIndex;
+        boolean gameOver;
+        List<YachtPlayer> participantsSnapshot;
+
+        synchronized (state) {
+            if (state.status != YachtRoomStatus.PLAYING) return "GAME_NOT_ACTIVE";
+
+            Long currentUserId = currentTurnUserId(state);
+            if (!userId.equals(currentUserId)) return "NOT_YOUR_TURN";
+
+            if (!state.hasRolled) return "MUST_ROLL_FIRST";
+
+            if (!VALID_SCORE_KEYS.contains(scoreKey)) return "INVALID_SCORE_KEY";
+
+            Map<String, Integer> userScores = state.scoreMap.get(userId);
+            if (userScores == null) {
+                userScores = new ConcurrentHashMap<>();
+                state.scoreMap.put(userId, userScores);
+            }
+            if (userScores.containsKey(scoreKey)) return "ALREADY_SCORED";
+
+            diceSnapshot = Arrays.copyOf(state.dice, 5);
+            scoreValue = calculateScore(scoreKey, diceSnapshot);
+            userScores.put(scoreKey, scoreValue);
+
+            previousTurnUserId = userId;
+
+            // 다음 턴 계산
+            state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
+            if (state.turnOrderIndex == 0) {
+                state.roundIndex++; // 새 라운드
+            }
+
+            newRoundIndex = state.roundIndex;
+
+            // 턴 상태 리셋
+            state.dice = new int[]{0, 0, 0, 0, 0};
+            state.keptIndices = new ArrayList<>();
+            state.rollsLeft = 3;
+            state.hasRolled = false;
+
+            nextTurnUserId = currentTurnUserId(state);
+            participantsSnapshot = new ArrayList<>(state.participants);
+
+            // 게임 종료 여부: 모든 유저가 12개 채웠는지
+            gameOver = isGameOver(state);
+        }
+
+        // 점수 계산 (상단 보너스 포함)
+        Map<String, Integer> userScores = state.scoreMap.get(userId);
+        int upperTotal = computeUpperTotal(userScores);
+        boolean bonusEarned = isBonusJustEarned(userScores, scoreKey);
+        int grandTotal = computeGrandTotal(userScores, upperTotal, isBonusEarned(userScores));
+
+        // DB 저장
+        saveScoreToDB(roomId, userId, scoreKey, scoreValue);
+
+        // SCORE_RECORDED 브로드캐스트
+        broadcast(roomId, "SCORE_RECORDED", YachtScoreRecordedPayload.builder()
+                .userId(userId)
+                .scoreKey(scoreKey)
+                .score(scoreValue)
+                .upperTotal(upperTotal)
+                .bonusEarned(bonusEarned)
+                .grandTotal(grandTotal)
+                .build());
+
+        if (gameOver) {
+            finishGame(roomId, state, participantsSnapshot);
+        } else {
+            // TURN_CHANGED
+            broadcast(roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
+                    .previousTurnUserId(previousTurnUserId)
+                    .currentTurnUserId(nextTurnUserId)
+                    .roundIndex(newRoundIndex)
+                    .build());
+
+            broadcastTurnState(state);
+        }
+
+        log.info("recordScore: roomId={} userId={} scoreKey={} score={}", roomId, userId, scoreKey, scoreValue);
+        return null;
+    }
+
+    // ─── LEAVE ────────────────────────────────────────────────────────────────
+
+    /**
+     * /leave 또는 SessionDisconnectEvent 처리.
+     */
+    @Transactional
+    public void leaveRoom(String roomId, Long userId, String reason) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return;
+
+        String nickname;
+        boolean wasHost;
+        boolean wasCurrentTurn = false;
+        boolean isPlaying;
+        int remaining;
+
+        synchronized (state) {
+            YachtPlayer leaving = state.participants.stream()
+                    .filter(p -> p.userId.equals(userId))
+                    .findFirst()
+                    .orElse(null);
+            if (leaving == null) return;
+
+            nickname = leaving.nickname;
+            wasHost = userId.equals(state.hostUserId);
+            isPlaying = (state.status == YachtRoomStatus.PLAYING);
+
+            if (isPlaying) {
+                wasCurrentTurn = userId.equals(currentTurnUserId(state));
+            }
+
+            // 대기방이면 목록에서 제거, 게임 중이면 disconnectedPlayers에 기록
+            if (!isPlaying) {
+                state.participants.remove(leaving);
+                state.readySet.remove(userId);
+            } else {
+                state.disconnectedPlayers.add(userId);
+            }
+
+            remaining = isPlaying
+                    ? (int) state.participants.stream().filter(p -> !state.disconnectedPlayers.contains(p.userId)).count()
+                    : state.participants.size();
+        }
+
+        // PLAYER_LEFT 브로드캐스트
+        broadcast(roomId, "PLAYER_LEFT", YachtPlayerLeftPayload.builder()
+                .roomId(roomId)
+                .userId(userId)
+                .nickname(nickname)
+                .reason(reason)
+                .build());
+
+        // DB participant 퇴장 기록
+        markParticipantLeft(roomId, userId);
+
+        if (!isPlaying) {
+            // 대기방 처리
+            handleWaitingLeave(state, wasHost, remaining, userId, nickname);
+        } else {
+            // 게임 중 처리
+            handlePlayingLeave(state, userId, wasCurrentTurn, remaining);
+        }
+    }
+
+    private void handleWaitingLeave(YachtRoomState state, boolean wasHost, int remaining,
+                                     Long userId, String nickname) {
+        if (remaining == 0) {
+            closeRoom(state, "EMPTY");
+            return;
+        }
+
+        synchronized (state) {
+            if (wasHost && !state.participants.isEmpty()) {
+                YachtPlayer newHost = state.participants.get(0);
+                state.hostUserId = newHost.userId;
+                // 방 DB 업데이트
+                updateDbHost(state.roomId, newHost.userId);
+                log.info("handleWaitingLeave: 방장 이전 roomId={} newHost={}", state.roomId, newHost.userId);
+            }
+        }
+
+        broadcastRoomState(state);
+    }
+
+    /**
+     * 게임 중 퇴장/끊김 처리.
+     * 끊긴 유저의 미기록 족보 전체 0점 자동 기록.
+     */
+    @Transactional
+    void handlePlayingLeave(YachtRoomState state, Long userId, boolean wasCurrentTurn, int remaining) {
+        // 잔존 1명(활성) → ROOM_CLOSED
+        if (remaining <= 1) {
+            // 남은 1명의 미기록 족보도 0점 처리 후 GAME_OVER 처리는 생략 (PRD §7.3)
+            autoFillScores(state, userId);
+            closeRoom(state, "INSUFFICIENT_PLAYERS");
+            return;
+        }
+
+        // 미기록 족보 전체 0점 자동 기록
+        autoFillScores(state, userId);
+
+        broadcastRoomState(state);
+
+        // 현재 턴이었다면 다음 턴으로
+        if (wasCurrentTurn) {
+            synchronized (state) {
+                Long prevTurn = userId;
+                state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
+                if (state.turnOrderIndex == 0) state.roundIndex++;
+
+                state.dice = new int[]{0, 0, 0, 0, 0};
+                state.keptIndices = new ArrayList<>();
+                state.rollsLeft = 3;
+                state.hasRolled = false;
+
+                Long nextTurn = currentTurnUserId(state);
+
+                // 게임 종료 여부 확인
+                if (isGameOver(state)) {
+                    finishGame(state.roomId, state, new ArrayList<>(state.participants));
+                    return;
+                }
+
+                broadcast(state.roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
+                        .previousTurnUserId(prevTurn)
+                        .currentTurnUserId(nextTurn)
+                        .roundIndex(state.roundIndex)
+                        .build());
+
+                broadcastTurnState(state);
+            }
+        } else {
+            // 비활성 플레이어 끊김 — 게임 종료 여부만 확인
+            synchronized (state) {
+                if (isGameOver(state)) {
+                    finishGame(state.roomId, state, new ArrayList<>(state.participants));
+                }
+            }
+        }
+    }
+
+    /**
+     * 끊긴 유저의 미기록 족보를 전부 0점으로 자동 기록.
+     */
+    @Transactional
+    void autoFillScores(YachtRoomState state, Long userId) {
+        Map<String, Integer> userScores = state.scoreMap.computeIfAbsent(userId, k -> new ConcurrentHashMap<>());
+
+        for (String key : VALID_SCORE_KEYS) {
+            if (!userScores.containsKey(key)) {
+                userScores.put(key, 0);
+                saveScoreToDB(state.roomId, userId, key, 0);
+
+                int upperTotal = computeUpperTotal(userScores);
+                boolean bonusEarned = isBonusEarned(userScores);
+                int grandTotal = computeGrandTotal(userScores, upperTotal, bonusEarned);
+
+                broadcast(state.roomId, "SCORE_RECORDED", YachtScoreRecordedPayload.builder()
+                        .userId(userId)
+                        .scoreKey(key)
+                        .score(0)
+                        .upperTotal(upperTotal)
+                        .bonusEarned(bonusEarned)
+                        .grandTotal(grandTotal)
+                        .build());
+            }
+        }
+        log.info("autoFillScores: roomId={} userId={} 미기록 족보 0점 자동 기록", state.roomId, userId);
+    }
+
+    // ─── GAME OVER ────────────────────────────────────────────────────────────
+
+    /**
+     * 게임 종료 처리: 최종 점수 계산 → GAME_OVER → DB 업데이트 → yacht_win upsert.
+     */
+    @Transactional
+    void finishGame(String roomId, YachtRoomState state, List<YachtPlayer> participants) {
+        synchronized (state) {
+            if (state.status == YachtRoomStatus.FINISHED) return;
+            state.status = YachtRoomStatus.FINISHED;
+        }
+
+        // 최종 점수 계산
+        List<YachtRankingEntryDto> rankings = computeRankings(state, participants);
+        List<Long> winnerIds = rankings.stream()
+                .filter(YachtRankingEntryDto::isWinner)
+                .map(YachtRankingEntryDto::getUserId)
+                .collect(Collectors.toList());
+
+        broadcast(roomId, "GAME_OVER", YachtGameOverPayload.builder()
+                .roomId(roomId)
+                .rankings(rankings)
+                .winnerUserIds(winnerIds)
+                .build());
+
+        // DB 업데이트
+        updateDbFinished(roomId, winnerIds);
+
+        // yacht_win upsert
+        for (Long winnerId : winnerIds) {
+            upsertWin(winnerId);
+        }
+
+        rooms.remove(roomId);
+        log.info("finishGame: roomId={} GAME_OVER winners={}", roomId, winnerIds);
+    }
+
+    private List<YachtRankingEntryDto> computeRankings(YachtRoomState state, List<YachtPlayer> participants) {
+        // userId → 최종 점수 계산
+        Map<Long, Integer> totals = new LinkedHashMap<>();
+        for (YachtPlayer p : participants) {
+            Map<String, Integer> scores = state.scoreMap.getOrDefault(p.userId, new ConcurrentHashMap<>());
+            int upper = computeUpperTotal(scores);
+            int grand = computeGrandTotal(scores, upper, isBonusEarned(scores));
+            totals.put(p.userId, grand);
+        }
+
+        // 내림차순 정렬
+        List<Map.Entry<Long, Integer>> sorted = totals.entrySet().stream()
+                .sorted(Map.Entry.<Long, Integer>comparingByValue().reversed())
+                .collect(Collectors.toList());
+
+        // 닉네임 맵
+        Map<Long, String> nicknames = participants.stream()
+                .collect(Collectors.toMap(p -> p.userId, p -> p.nickname));
+
+        List<YachtRankingEntryDto> result = new ArrayList<>();
+        int rank = 1;
+        int prev = -1;
+        int sameRankCount = 0;
+
+        for (int i = 0; i < sorted.size(); i++) {
+            Map.Entry<Long, Integer> entry = sorted.get(i);
+            int score = entry.getValue();
+
+            if (score == prev) {
+                sameRankCount++;
+            } else {
+                rank = i + 1;
+                sameRankCount = 0;
+            }
+
+            result.add(YachtRankingEntryDto.builder()
+                    .rank(rank)
+                    .userId(entry.getKey())
+                    .nickname(nicknames.getOrDefault(entry.getKey(), "Unknown"))
+                    .totalScore(score)
+                    .isWinner(rank == 1)
+                    .build());
+
+            prev = score;
+        }
+
+        return result;
+    }
+
+    // ─── 점수 계산 (서버 전담) ────────────────────────────────────────────────
+
+    /**
+     * 족보별 점수 계산.
+     * 클라이언트 전송값 무시, 서버 dice 기반으로만 계산.
+     */
+    public static int calculateScore(String scoreKey, int[] dice) {
+        return switch (scoreKey) {
+            case "ONES"           -> sumOf(dice, 1);
+            case "TWOS"           -> sumOf(dice, 2);
+            case "THREES"         -> sumOf(dice, 3);
+            case "FOURS"          -> sumOf(dice, 4);
+            case "FIVES"          -> sumOf(dice, 5);
+            case "SIXES"          -> sumOf(dice, 6);
+            case "CHOICE"         -> Arrays.stream(dice).sum();
+            case "FOUR_OF_A_KIND" -> calcFourOfAKind(dice);
+            case "FULL_HOUSE"     -> calcFullHouse(dice);
+            case "LITTLE_STRAIGHT"-> calcLittleStraight(dice);
+            case "BIG_STRAIGHT"   -> calcBigStraight(dice);
+            case "YACHT"          -> calcYacht(dice);
+            default -> throw new IllegalArgumentException("Invalid scoreKey: " + scoreKey);
+        };
+    }
+
+    private static int sumOf(int[] dice, int face) {
+        int sum = 0;
+        for (int d : dice) if (d == face) sum += d;
+        return sum;
+    }
+
+    private static int calcFourOfAKind(int[] dice) {
+        Map<Integer, Integer> counts = new HashMap<>();
+        for (int d : dice) counts.merge(d, 1, Integer::sum);
+        for (Map.Entry<Integer, Integer> e : counts.entrySet()) {
+            if (e.getValue() >= 4) return e.getKey() * 4;
+        }
+        return 0;
+    }
+
+    private static int calcFullHouse(int[] dice) {
+        Map<Integer, Integer> counts = new HashMap<>();
+        for (int d : dice) counts.merge(d, 1, Integer::sum);
+        List<Integer> vals = new ArrayList<>(counts.values());
+        Collections.sort(vals);
+        // 정확히 [2,3]인 경우만 (5개 동일=[5]은 0)
+        if (vals.equals(List.of(2, 3))) {
+            return Arrays.stream(dice).sum();
+        }
+        return 0;
+    }
+
+    private static int calcLittleStraight(int[] dice) {
+        Set<Integer> set = new HashSet<>();
+        for (int d : dice) set.add(d);
+        return set.equals(Set.of(1, 2, 3, 4, 5)) ? 30 : 0;
+    }
+
+    private static int calcBigStraight(int[] dice) {
+        Set<Integer> set = new HashSet<>();
+        for (int d : dice) set.add(d);
+        return set.equals(Set.of(2, 3, 4, 5, 6)) ? 30 : 0;
+    }
+
+    private static int calcYacht(int[] dice) {
+        Set<Integer> set = new HashSet<>();
+        for (int d : dice) set.add(d);
+        return set.size() == 1 ? 50 : 0;
+    }
+
+    // ─── 상단 보너스 계산 ─────────────────────────────────────────────────────
+
+    private int computeUpperTotal(Map<String, Integer> scores) {
+        int sum = 0;
+        for (String key : UPPER_KEYS) {
+            sum += scores.getOrDefault(key, 0);
+        }
+        return sum;
+    }
+
+    /**
+     * 상단 6개 모두 기록되었고 합계 >= 63 이면 보너스 획득.
+     */
+    private boolean isBonusEarned(Map<String, Integer> scores) {
+        boolean allUpperFilled = UPPER_KEYS.stream().allMatch(scores::containsKey);
+        if (!allUpperFilled) return false;
+        return computeUpperTotal(scores) >= UPPER_BONUS_THRESHOLD;
+    }
+
+    /**
+     * 이번 족보 선택이 보너스를 막 획득하게 만들었는지 확인.
+     */
+    private boolean isBonusJustEarned(Map<String, Integer> scores, String justRecordedKey) {
+        if (!UPPER_KEYS.contains(justRecordedKey)) return false;
+        return isBonusEarned(scores);
+    }
+
+    private int computeGrandTotal(Map<String, Integer> scores, int upperTotal, boolean bonusEarned) {
+        int lowerTotal = 0;
+        for (Map.Entry<String, Integer> e : scores.entrySet()) {
+            if (!UPPER_KEYS.contains(e.getKey())) {
+                lowerTotal += e.getValue();
+            }
+        }
+        return upperTotal + (bonusEarned ? UPPER_BONUS_VALUE : 0) + lowerTotal;
+    }
+
+    // ─── 게임 상태 헬퍼 ──────────────────────────────────────────────────────
+
+    private Long currentTurnUserId(YachtRoomState state) {
+        if (state.turnOrder.isEmpty()) return null;
+        return state.turnOrder.get(state.turnOrderIndex % state.turnOrder.size());
+    }
+
+    /**
+     * 모든 참가자가 12개 족보를 채웠는지 확인.
+     * disconnected 플레이어도 포함 (autoFill로 채워짐).
+     */
+    private boolean isGameOver(YachtRoomState state) {
+        for (YachtPlayer p : state.participants) {
+            Map<String, Integer> scores = state.scoreMap.getOrDefault(p.userId, new ConcurrentHashMap<>());
+            if (scores.size() < TOTAL_SCORE_KEYS) return false;
+        }
+        return true;
+    }
+
+    // ─── ROOM_STATE / TURN_STATE 브로드캐스트 ────────────────────────────────
+
+    private void broadcastRoomState(YachtRoomState state) {
+        List<YachtParticipantDto> participants;
+        Long hostUserId;
+        YachtRoomStatus status;
+
+        synchronized (state) {
+            hostUserId = state.hostUserId;
+            status     = state.status;
+            participants = state.participants.stream()
+                    .map(p -> YachtParticipantDto.builder()
+                            .userId(p.userId)
+                            .nickname(p.nickname)
+                            .ready(state.readySet.contains(p.userId) || p.userId.equals(state.hostUserId))
+                            .isHost(p.userId.equals(state.hostUserId))
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        broadcast(state.roomId, "ROOM_STATE", YachtRoomStatePayload.builder()
+                .roomId(state.roomId)
+                .status(status.name())
+                .hostUserId(hostUserId)
+                .maxPlayers(state.maxPlayers)
+                .participants(participants)
+                .build());
+    }
+
+    private void broadcastTurnState(YachtRoomState state) {
+        Long currentTurn;
+        int rollsLeft;
+        int[] dice;
+        List<Integer> keptIndices;
+        int roundIndex;
+
+        synchronized (state) {
+            currentTurn = currentTurnUserId(state);
+            rollsLeft   = state.rollsLeft;
+            dice        = Arrays.copyOf(state.dice, 5);
+            keptIndices = new ArrayList<>(state.keptIndices);
+            roundIndex  = state.roundIndex;
+        }
+
+        broadcast(state.roomId, "TURN_STATE", YachtTurnStatePayload.builder()
+                .currentTurnUserId(currentTurn)
+                .rollsLeft(rollsLeft)
+                .dice(dice)
+                .keptIndices(keptIndices)
+                .roundIndex(roundIndex)
+                .build());
+    }
+
+    // ─── DB 헬퍼 ──────────────────────────────────────────────────────────────
+
+    @Transactional
+    void saveScoreToDB(String roomId, Long userId, String scoreKey, int scoreValue) {
+        yachtRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+            // 이미 존재하면 저장 안 함 (UNIQUE 제약)
+            boolean exists = yachtScoreRepository
+                    .findByRoomAndUserIdAndScoreKey(room, userId, scoreKey)
+                    .isPresent();
+            if (!exists) {
+                YachtScore score = YachtScore.builder()
+                        .room(room)
+                        .userId(userId)
+                        .scoreKey(scoreKey)
+                        .scoreValue(scoreValue)
+                        .build();
+                yachtScoreRepository.save(score);
+            }
+        });
+    }
+
+    @Transactional
+    void updateDbStatusPlaying(String roomId) {
+        yachtRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+            room.setStatus(YachtRoomStatus.PLAYING);
+            room.setStartedAt(LocalDateTime.now(ZoneOffset.UTC));
+            yachtRoomRepository.save(room);
+        });
+    }
+
+    @Transactional
+    void updateDbFinished(String roomId, List<Long> winnerIds) {
+        yachtRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+            room.setStatus(YachtRoomStatus.FINISHED);
+            room.setClosedAt(LocalDateTime.now(ZoneOffset.UTC));
+            room.setWinnerUserIds(winnerIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(",")));
+            yachtRoomRepository.save(room);
+        });
+    }
+
+    @Transactional
+    void updateDbHost(String roomId, Long newHostId) {
+        yachtRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+            room.setHostUserId(newHostId);
+            yachtRoomRepository.save(room);
+        });
+    }
+
+    @Transactional
+    void markParticipantLeft(String roomId, Long userId) {
+        yachtRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+            yachtParticipantRepository.findByRoomAndUserId(room, userId).ifPresent(p -> {
+                p.setLeftAt(LocalDateTime.now(ZoneOffset.UTC));
+                yachtParticipantRepository.save(p);
+            });
+        });
+    }
+
+    @Transactional
+    void upsertWin(Long userId) {
+        YachtWin win = yachtWinRepository.findByUserId(userId)
+                .orElseGet(() -> YachtWin.builder().userId(userId).winCount(0).build());
+        win.setWinCount(win.getWinCount() + 1);
+        yachtWinRepository.save(win);
+        log.info("upsertWin: userId={} winCount={}", userId, win.getWinCount());
+    }
+
+    private void closeRoom(YachtRoomState state, String reason) {
+        synchronized (state) {
+            state.status = YachtRoomStatus.FINISHED;
+        }
+        rooms.remove(state.roomId);
+
+        broadcast(state.roomId, "ROOM_CLOSED", YachtRoomClosedPayload.builder()
+                .roomId(state.roomId)
+                .reason(reason)
+                .build());
+
+        yachtRoomRepository.findByRoomId(state.roomId).ifPresent(room -> {
+            room.setStatus(YachtRoomStatus.FINISHED);
+            room.setClosedAt(LocalDateTime.now(ZoneOffset.UTC));
+            yachtRoomRepository.save(room);
+        });
+
+        log.info("closeRoom: roomId={} reason={}", state.roomId, reason);
+    }
+
+    // ─── TTL 스윕 ─────────────────────────────────────────────────────────────
+
+    @Scheduled(fixedDelay = 60_000)
+    @Transactional
+    public void sweepStaleRooms() {
+        LocalDateTime cutoff = LocalDateTime.now(ZoneOffset.UTC).minusMinutes(ROOM_TTL_MINUTES);
+        List<YachtRoom> stale = yachtRoomRepository.findStaleWaitingRooms(YachtRoomStatus.WAITING, cutoff);
+        for (YachtRoom room : stale) {
+            rooms.remove(room.getRoomId());
+            room.setStatus(YachtRoomStatus.FINISHED);
+            room.setClosedAt(LocalDateTime.now(ZoneOffset.UTC));
+            yachtRoomRepository.save(room);
+            log.info("sweepStaleRooms: roomId={} TTL 만료 FINISHED", room.getRoomId());
+        }
+    }
+
+    // ─── 브로드캐스트 헬퍼 ───────────────────────────────────────────────────
+
+    private void broadcast(String roomId, String type, Object payload) {
+        YachtEnvelopeDto envelope = YachtEnvelopeDto.builder()
+                .type(type)
+                .timestamp(formatNow())
+                .payload(payload)
+                .build();
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + roomId, envelope);
+    }
+
+    private String formatNow() {
+        return Instant.now().atZone(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+    }
+
+    // ─── 상태 조회 (컨트롤러용) ──────────────────────────────────────────────
+
+    public YachtRoomState getState(String roomId) {
+        return rooms.get(roomId);
+    }
+
+    public Optional<String> findActiveRoomId(Long userId) {
+        return rooms.values().stream()
+                .filter(s -> s.participants.stream().anyMatch(p -> p.userId.equals(userId)))
+                .map(s -> s.roomId)
+                .findFirst();
+    }
+
+    public boolean isParticipant(String roomId, Long userId) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return false;
+        return state.participants.stream().anyMatch(p -> p.userId.equals(userId));
+    }
+
+    /**
+     * GET /api/yacht/room/{roomId} 응답용 스냅샷 생성.
+     */
+    public Map<String, Object> buildRoomSnapshot(String roomId, Long requesterId) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return null;
+
+        synchronized (state) {
+            if (!state.participants.stream().anyMatch(p -> p.userId.equals(requesterId))) {
+                return null; // NOT_IN_ROOM
+            }
+
+            List<YachtParticipantDto> participants = state.participants.stream()
+                    .map(p -> YachtParticipantDto.builder()
+                            .userId(p.userId)
+                            .nickname(p.nickname)
+                            .ready(state.readySet.contains(p.userId) || p.userId.equals(state.hostUserId))
+                            .isHost(p.userId.equals(state.hostUserId))
+                            .build())
+                    .collect(Collectors.toList());
+
+            // 점수판
+            List<YachtScoreboardDto> scoreboard = state.participants.stream()
+                    .map(p -> {
+                        Map<String, Integer> scores = state.scoreMap.getOrDefault(p.userId, new ConcurrentHashMap<>());
+                        // null 포함 전체 12개 맵 생성
+                        Map<String, Integer> fullScores = new LinkedHashMap<>();
+                        for (String key : VALID_SCORE_KEYS) {
+                            fullScores.put(key, scores.getOrDefault(key, null));
+                        }
+                        int upper = computeUpperTotal(scores);
+                        boolean bonus = isBonusEarned(scores);
+                        int grand = computeGrandTotal(scores, upper, bonus);
+                        return YachtScoreboardDto.builder()
+                                .userId(p.userId)
+                                .scores(fullScores)
+                                .upperTotal(upper)
+                                .bonusEarned(bonus)
+                                .grandTotal(grand)
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+
+            Long currentTurn = state.status == YachtRoomStatus.PLAYING ? currentTurnUserId(state) : null;
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("roomId", state.roomId);
+            result.put("status", state.status.name());
+            result.put("hostUserId", state.hostUserId);
+            result.put("maxPlayers", state.maxPlayers);
+            result.put("currentTurnUserId", currentTurn);
+            result.put("turnOrder", state.status == YachtRoomStatus.PLAYING ? state.turnOrder : null);
+            result.put("roundIndex", state.roundIndex);
+            result.put("participants", participants);
+            result.put("scoreboard", scoreboard);
+            return result;
+        }
+    }
+}
