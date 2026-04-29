@@ -58,12 +58,14 @@ export default function YachtDice3D({
   const lastValRef = useRef(safeVal);
 
   useEffect(() => {
-    if (lastValRef.current === safeVal) return;
+    const sameValue = lastValRef.current === safeVal;
+    // 굴림 신호도 없고 값도 그대로면 회전하지 않음
+    if (sameValue && !isRolling) return;
     lastValRef.current = safeVal;
     if (isKept) return; // 고정된 주사위는 회전하지 않음
 
     const face = FACE_ROT[safeVal];
-    // 굴림 중이면 여러 바퀴, 그 외(예: 마운트 직후 동기화)는 한 바퀴만
+    // 굴림 중이면 여러 바퀴, 그 외(마운트 직후 동기화)는 한 바퀴만
     const extraX = isRolling ? (3 + Math.floor(Math.random() * 3)) * 360 : 360;
     const extraY = isRolling ? (3 + Math.floor(Math.random() * 3)) * 360 : 360;
     setRot((prev) => ({
