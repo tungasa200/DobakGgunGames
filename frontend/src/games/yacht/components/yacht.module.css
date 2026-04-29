@@ -5,19 +5,19 @@
    공통 변수
    ============================================================ */
 .page {
-  --yacht-bg: #1a1f2e;
-  --yacht-surface: #252c3f;
-  --yacht-surface2: #2e374f;
-  --yacht-accent: #6c8ef0;
-  --yacht-accent2: #4ade80;
-  --yacht-text: #e2e8f0;
-  --yacht-text-sub: #94a3b8;
-  --yacht-border: #3a4560;
-  --yacht-danger: #f87171;
-  --yacht-warn: #fbbf24;
-  --yacht-my-turn: #22d3ee;
-  --yacht-kept: #facc15;
-  --yacht-preview: #86efac;
+  --yacht-bg: #f8fafc;
+  --yacht-surface: #ffffff;
+  --yacht-surface2: #f1f5f9;
+  --yacht-accent: #4f6cd8;
+  --yacht-accent2: #16a34a;
+  --yacht-text: #1e293b;
+  --yacht-text-sub: #64748b;
+  --yacht-border: #cbd5e1;
+  --yacht-danger: #dc2626;
+  --yacht-warn: #d97706;
+  --yacht-my-turn: #0891b2;
+  --yacht-kept: #ca8a04;
+  --yacht-preview: #16a34a;
 
   min-height: 100dvh;
   background: var(--yacht-bg);
@@ -42,7 +42,7 @@
 .spinner {
   width: 48px;
   height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.15);
+  border: 4px solid rgba(15, 23, 42, 0.1);
   border-top-color: var(--yacht-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -99,8 +99,9 @@
 }
 
 .reconnectBanner {
-  background: #78350f;
-  color: #fef3c7;
+  background: #fef3c7;
+  color: #78350f;
+  border-bottom: 1px solid #fcd34d;
   text-align: center;
   padding: 6px 16px;
   font-size: 0.8rem;
@@ -124,17 +125,19 @@
   max-width: calc(100vw - 48px);
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.18);
 }
 
 .toastInfo {
-  background: #1e40af;
-  color: #eff6ff;
+  background: #dbeafe;
+  color: #1e3a8a;
+  border: 1px solid #93c5fd;
 }
 
 .toastWarn {
-  background: #78350f;
-  color: #fef3c7;
+  background: #fef3c7;
+  color: #78350f;
+  border: 1px solid #fcd34d;
 }
 
 /* ============================================================
@@ -174,7 +177,7 @@
 }
 
 .btnSecondary:hover:not(:disabled) {
-  background: #3a4560;
+  background: #e2e8f0;
 }
 
 .btnSecondary:disabled {
@@ -195,7 +198,7 @@
 }
 
 .btnDanger:hover {
-  background: rgba(248, 113, 113, 0.1);
+  background: rgba(220, 38, 38, 0.08);
 }
 
 /* ============================================================
@@ -209,6 +212,7 @@
   background: var(--yacht-surface);
   border-bottom: 1px solid var(--yacht-border);
   flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .headerTitle {
@@ -287,12 +291,12 @@
 
 .badgeHost {
   background: var(--yacht-warn);
-  color: #1a1a1a;
+  color: #fff;
 }
 
 .badgeReady {
   background: var(--yacht-accent2);
-  color: #1a1a1a;
+  color: #fff;
 }
 
 .badgeNotReady {
@@ -359,7 +363,7 @@
 
 .turnIndicatorMyTurn {
   border-color: var(--yacht-my-turn);
-  background: rgba(34, 211, 238, 0.07);
+  background: rgba(8, 145, 178, 0.08);
 }
 
 .turnLabel {
@@ -522,7 +526,7 @@
 }
 
 .scoreRowSelectable:hover td {
-  background: rgba(108, 142, 240, 0.15);
+  background: rgba(79, 108, 216, 0.12);
 }
 
 .scoreValueFilled {
@@ -548,17 +552,17 @@
 }
 
 .scoreTotalRow td {
-  background: rgba(108, 142, 240, 0.1);
+  background: rgba(79, 108, 216, 0.08);
   font-weight: 700;
   color: var(--yacht-accent);
 }
 
 .myScoreCol {
-  background: rgba(34, 211, 238, 0.05) !important;
+  background: rgba(8, 145, 178, 0.06) !important;
 }
 
 .activePlayerCol {
-  background: rgba(108, 142, 240, 0.08) !important;
+  background: rgba(79, 108, 216, 0.06) !important;
 }
 
 .bonusProgress {
@@ -601,16 +605,17 @@
   border: 1px solid var(--yacht-border);
   border-radius: 10px;
   padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .rankItemMe {
   border-color: var(--yacht-accent);
-  background: rgba(108, 142, 240, 0.08);
+  background: rgba(79, 108, 216, 0.07);
 }
 
 .rankItemWinner {
   border-color: var(--yacht-warn);
-  background: rgba(251, 191, 36, 0.08);
+  background: rgba(217, 119, 6, 0.08);
 }
 
 .rankNumber {
@@ -643,7 +648,7 @@
   padding: 2px 8px;
   border-radius: 10px;
   background: var(--yacht-warn);
-  color: #1a1a1a;
+  color: #fff;
 }
 
 /* 모바일 반응형 */

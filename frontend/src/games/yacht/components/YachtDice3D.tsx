@@ -59,16 +59,16 @@ function createBlankTexture(): THREE.CanvasTexture {
   canvas.height = 128;
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = '#374151';
+  ctx.fillStyle = '#f1f5f9';
   ctx.beginPath();
   ctx.roundRect(4, 4, 120, 120, 14);
   ctx.fill();
 
-  ctx.strokeStyle = '#4b5563';
+  ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 4;
   ctx.stroke();
 
-  ctx.fillStyle = '#6b7280';
+  ctx.fillStyle = '#94a3b8';
   ctx.font = 'bold 52px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
