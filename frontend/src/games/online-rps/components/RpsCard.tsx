@@ -105,16 +105,13 @@ export default function RpsCard({
         <span className={styles.ownerLabel}>{ownerLabel}</span>
       )}
 
-      {/* 카드 이미지 */}
+      {/* 카드 이미지 (전체 채우기) */}
       <img
         src={CHOICE_IMAGE[choice]}
         alt={CHOICE_ALT[choice]}
         className={styles.image}
         draggable={false}
       />
-
-      {/* 카드 라벨 */}
-      <span className={styles.label}>{CHOICE_LABEL[choice]}</span>
 
       {/* 단축키 힌트 (게임 화면 idle에서만) */}
       {showHint && state === 'idle' && (
