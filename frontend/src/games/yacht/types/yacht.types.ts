@@ -16,18 +16,18 @@ export const LOWER_SCORE_KEYS: ScoreKey[] = [
 ];
 
 export const SCORE_LABELS: Record<ScoreKey, string> = {
-  ones: 'Ones',
-  twos: 'Twos',
-  threes: 'Threes',
-  fours: 'Fours',
-  fives: 'Fives',
-  sixes: 'Sixes',
-  choice: 'Choice',
-  fourOfAKind: 'Four of a Kind',
-  fullHouse: 'Full House',
-  littleStraight: 'Little Straight',
-  bigStraight: 'Big Straight',
-  yacht: 'Yacht',
+  ones: '원',
+  twos: '투',
+  threes: '쓰리',
+  fours: '포',
+  fives: '파이브',
+  sixes: '식스',
+  choice: '초이스',
+  fourOfAKind: '포카인드',
+  fullHouse: '풀하우스',
+  littleStraight: '리틀 스트레이트',
+  bigStraight: '빅 스트레이트',
+  yacht: '야추',
 };
 
 // 서버 scoreKey enum 값 → 내부 ScoreKey 매핑
