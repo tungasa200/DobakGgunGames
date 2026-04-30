@@ -1,6 +1,6 @@
 /* ===== 일반 모드 ===== */
 .wrap {
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 20px 16px;
   font-family: sans-serif;
@@ -86,7 +86,7 @@
 .lose { color: #c0392b; }
 
 /* 게임판 — 원본: #board-wrap { overflow: hidden; max-width: 100%; border: 2px solid #333; } */
-.boardWrapper { position: relative; overflow: hidden; max-width: 100%; border: 2px solid #333; }
+.boardWrapper { position: relative; overflow-x: auto; overflow-y: visible; max-width: 100%; border: 2px solid #333; }
 
 /* 최초 클릭 후 서버 지뢰 배치 대기 중 오버레이 */
 .boardLoadingOverlay {
