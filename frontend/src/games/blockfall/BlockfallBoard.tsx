@@ -46,6 +46,11 @@ function bfColLabel(i: number): string {
 // ===== 상수 =====
 const BOARD_W = 11, VISIBLE_H = 21, BUFFER_H = 2, BOARD_H = VISIBLE_H + BUFFER_H, CELL = 30;
 
+// BAG 패널: 1 NEXT + 4 미래 피스 = 5 슬롯, 슬롯당 3.5 cell — 캔버스 총 17.5 cell
+const BAG_SLOT_COUNT = 5;
+const BAG_SLOT_H = VISIBLE_H / 6;          // 3.5 cell
+const BAG_PANEL_H = BAG_SLOT_COUNT * BAG_SLOT_H; // 17.5 cell
+
 const COLORS_NORMAL = [
   null,
   '#ffaa0d', // 1: T
@@ -488,19 +493,20 @@ export default function BlockfallBoard({ excel = false }: Props) {
       }
     }
 
-    // BAG 패널 캔버스 — 현재 bag에서 남은 피스 목록 (일반 모드 전용)
+    // BAG 패널 캔버스 — 맨 위에 NEXT 피스, 그 아래 현재 bag 남은 피스 (일반 모드 전용)
     const bp = bagPanelRef.current;
     if (bp && !excel) {
       const bctx = bp.getContext('2d');
       if (bctx) {
         bctx.fillStyle = '#111827';
-        bctx.fillRect(0, 0, 4, VISIBLE_H);
-        const remaining = bagRef.current.slice(bagIdxRef.current);
-        const slotH = VISIBLE_H / 5;
-        remaining.forEach((type, i) => {
-          const m = createPiece(type);
+        bctx.fillRect(0, 0, 4, BAG_PANEL_H);
+        const items: Matrix[] = [];
+        if (nextPiece.current) items.push(nextPiece.current);
+        bagRef.current.slice(bagIdxRef.current).forEach(type => items.push(createPiece(type)));
+
+        items.slice(0, BAG_SLOT_COUNT).forEach((m, i) => {
           const ox = Math.floor((4 - m[0].length) / 2);
-          const oy = slotH * i + (slotH - m.length) / 2;
+          const oy = BAG_SLOT_H * i + (BAG_SLOT_H - m.length) / 2;
           m.forEach((row, ry) => {
             row.forEach((val, rx) => {
               if (val !== 0) drawCell(bctx, rx + ox, ry + oy, val);
@@ -1124,10 +1130,13 @@ export default function BlockfallBoard({ excel = false }: Props) {
           <div className={styles.gameArea}>
             {/* 사이드 패널 */}
             <div className={styles.sidePanel}>
-              <div className={styles.sideBox}>
-                <div className={styles.sideTitle}>NEXT</div>
-                <canvas ref={nextRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
-              </div>
+              {/* NEXT 박스 — Excel 모드 전용 (일반 모드는 BAG 패널 최상단으로 통합) */}
+              {excel && (
+                <div className={styles.sideBox}>
+                  <div className={styles.sideTitle}>NEXT</div>
+                  <canvas ref={nextRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
+                </div>
+              )}
               <div className={styles.sideBox}>
                 <div className={styles.sideTitle}>HOLD</div>
                 <canvas ref={holdRef} width={4 * CELL} height={4 * CELL} className={styles.miniCanvas} />
@@ -1202,11 +1211,11 @@ export default function BlockfallBoard({ excel = false }: Props) {
             {!excel && (
               <div className={styles.bagPanel}>
                 <div className={styles.sideBox}>
-                  <div className={styles.sideTitle}>BAG</div>
+                  <div className={styles.sideTitle}>NEXT</div>
                   <canvas
                     ref={bagPanelRef}
                     width={4 * CELL}
-                    height={VISIBLE_H * CELL}
+                    height={BAG_PANEL_H * CELL}
                     className={styles.bagPanelCanvas}
                   />
                 </div>

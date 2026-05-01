@@ -132,6 +132,43 @@
   flex: 1;
 }
 
+/* BGM 컨트롤 — 음소거 토글 + 볼륨 슬라이더 */
+.battle-bgm-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 30px;
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.battle-bgm-mute-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.05rem;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+  color: inherit;
+}
+
+.battle-bgm-slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--battle-accent);
+  cursor: pointer;
+  height: 4px;
+}
+
+@media (max-width: 480px) {
+  .battle-bgm-control { width: 100px; }
+}
+
 /* 테스트 단계 배너 (헤더 인라인용 — 레거시, 신규 .battle-lab-banner 사용 권장) */
 .battle-test-banner {
   background: #3d2b00;

@@ -11,8 +11,9 @@ const CELL = 30;        // 일반 BlockfallBoard.tsx 와 동일
 const CELL_MINI = 16;   // NEXT 미리보기 셀
 const CELL_OPP = 14;    // 상대 보드 셀
 const NEXT_QUEUE_SIZE = 5;
-const NEXT_DISPLAY_LEFT = 1;   // 좌측 패널에 보여줄 NEXT 개수
-const NEXT_DISPLAY_RIGHT = 3;  // 우측 패널에 보여줄 NEXT 개수
+const NEXT_DISPLAY_COUNT = 5;  // NEXT 패널에 보여줄 슬롯 수 (1 next + 4 future)
+const NEXT_SLOT_H_CELLS = 3.5; // 슬롯 높이 (mini-cell 단위) — 일반 모드 BAG_SLOT_H 와 동일 비율
+const NEXT_PANEL_H_PX = NEXT_DISPLAY_COUNT * NEXT_SLOT_H_CELLS * CELL_MINI; // 17.5 * 16 = 280
 const MAX_OPP_SLOTS = 4; // 5인 최대 — 나를 제외한 상대 슬롯 수
 
 const COLORS_NORMAL: (string | null)[] = [
@@ -100,7 +101,8 @@ function rotateMatrix(matrix: Matrix, dir: number) {
 }
 
 // ── 드롭 속도 ──────────────────────────────────────────
-const DROP_SPEEDS = [400, 340, 290, 248, 213, 183, 158, 137, 119, 104, 91];
+// 일반 모드의 normal 과 hard 의 중간(평균) 속도 — 배틀의 가비지 압박 보정
+const DROP_SPEEDS = [290, 245, 208, 177, 151, 129, 111, 95, 82, 71, 62];
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
 const LOCK_DELAY = 500;
@@ -151,6 +153,26 @@ function drawMiniCanvas(
   });
 }
 
+// 5 슬롯을 단일 캔버스에 세로로 쌓아 그림 — 일반 모드 BAG 패널과 동일 컨셉
+function drawNextStack(canvas: HTMLCanvasElement, queue: (Matrix | null)[]) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.fillStyle = '#0d1117';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const gridW = 4;
+  for (let i = 0; i < NEXT_DISPLAY_COUNT; i++) {
+    const matrix = queue[i];
+    if (!matrix) continue;
+    const ox = (gridW - matrix[0].length) / 2;
+    const oy = i * NEXT_SLOT_H_CELLS + (NEXT_SLOT_H_CELLS - matrix.length) / 2;
+    matrix.forEach((row, y) => {
+      row.forEach((val, x) => {
+        if (val !== 0) drawMiniCell(ctx, x + ox, y + oy, val, CELL_MINI);
+      });
+    });
+  }
+}
+
 // ── Props ──────────────────────────────────────────────
 
 export interface PlayerInfo {
@@ -197,12 +219,8 @@ export default function BlockfallBattleBoard({
 }: BlockfallBattleBoardProps) {
   const boardRef = useRef<HTMLCanvasElement>(null);
 
-  // 좌측 NEXT 1개 캔버스
-  const nextLeftCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  // 우측 NEXT 3개 캔버스
-  const nextRightCanvasRefs = useRef<(HTMLCanvasElement | null)[]>(
-    Array.from({ length: NEXT_DISPLAY_RIGHT }, () => null)
-  );
+  // 우측 NEXT 단일 캔버스 — 5 슬롯 세로 스택 (맨 위가 다음 블록, 그 아래가 4개 future)
+  const nextStackCanvasRef = useRef<HTMLCanvasElement | null>(null);
   // HOLD 캔버스
   const holdCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -332,15 +350,10 @@ export default function BlockfallBattleBoard({
     ctx.fillRect(0, 0, BOARD_W * CELL, BUFFER_H * CELL);
     ctx.restore();
 
-    // 좌측 NEXT 1개 (index 0)
-    if (nextLeftCanvasRef.current) {
-      drawMiniCanvas(nextLeftCanvasRef.current, nextQueue.current[0] ?? null);
+    // 우측 NEXT 단일 캔버스 — 5 슬롯 세로 스택 (맨 위가 다음 블록)
+    if (nextStackCanvasRef.current) {
+      drawNextStack(nextStackCanvasRef.current, nextQueue.current);
     }
-
-    // 우측 NEXT 3개 (index 1, 2, 3)
-    nextRightCanvasRefs.current.forEach((c, i) => {
-      if (c) drawMiniCanvas(c, nextQueue.current[i + NEXT_DISPLAY_LEFT] ?? null);
-    });
 
     // HOLD 캔버스 갱신
     if (holdCanvasRef.current) {
@@ -831,7 +844,7 @@ export default function BlockfallBattleBoard({
           {/* 좌측 패널 + 보드 캔버스 + 우측 패널 가로 래퍼 */}
           <div className="battle-my-play-area">
 
-            {/* 좌측 패널: HOLD + NEXT(1) + Stats */}
+            {/* 좌측 패널: HOLD + Stats (NEXT는 우측 패널 최상단으로 통합) */}
             <div className="battle-my-left-panel">
               <div className="battle-side-box">
                 <div className="battle-side-title">HOLD</div>
@@ -840,15 +853,6 @@ export default function BlockfallBattleBoard({
                   width={CELL_MINI * 4}
                   height={CELL_MINI * 4}
                   className={`battle-next-mini-canvas${holdActive ? ' battle-hold-used' : ''}`}
-                />
-              </div>
-              <div className="battle-side-box">
-                <div className="battle-side-title">NEXT</div>
-                <canvas
-                  ref={el => { nextLeftCanvasRef.current = el; }}
-                  width={CELL_MINI * 4}
-                  height={CELL_MINI * 4}
-                  className="battle-next-mini-canvas"
                 />
               </div>
               <div className="battle-stats-area">
@@ -901,18 +905,15 @@ export default function BlockfallBattleBoard({
               )}
             </div>
 
-            {/* 우측 패널: 다음 3개 큐 */}
+            {/* 우측 패널: NEXT 단일 캔버스 (5 슬롯 세로 스택) */}
             <div className="battle-my-right-panel">
               <div className="battle-side-title battle-right-next-title">NEXT</div>
-              {Array.from({ length: NEXT_DISPLAY_RIGHT }, (_, i) => (
-                <canvas
-                  key={i}
-                  ref={el => { nextRightCanvasRefs.current[i] = el; }}
-                  width={CELL_MINI * 4}
-                  height={CELL_MINI * 4}
-                  className="battle-next-mini-canvas"
-                />
-              ))}
+              <canvas
+                ref={el => { nextStackCanvasRef.current = el; }}
+                width={CELL_MINI * 4}
+                height={NEXT_PANEL_H_PX}
+                className="battle-next-mini-canvas"
+              />
             </div>
           </div>
         </div>

@@ -19,7 +19,10 @@ import type {
   BattleResultEntry,
   TopRankingEntry,
 } from '../games/blockfall/types/battle.types';
+import { useBgm } from '../hooks/useBgm';
 import '../games/blockfall/battle/blockfall-battle.css';
+
+const BGM_SRC = '/bgm/blockfall/blockfall_battle.mp3';
 
 // ── 공통 타입 재수출 ──────────────────────────────────────
 export type { PlayerInfo, OpponentBoardData };
@@ -42,10 +45,24 @@ export default function BlockfallBattlePage() {
   const { user, accessToken } = useAuth();
   const navigate = useNavigate();
 
+  // ── BGM ────────────────────────────────────────────────
+  // 일반 모드와 동일한 storageKey 공유 → 음소거/볼륨 설정 동기화
+  const bgm = useBgm(BGM_SRC, { volume: 0.4 });
+
   // ── 상태 ───────────────────────────────────────────────
   const [phase, setPhase] = useState<PagePhase>('loading');
   const [joinInfo, setJoinInfo] = useState<BattleJoinResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // BGM — playing 단계에서만 재생, 그 외 단계 진입/언마운트 시 정지
+  useEffect(() => {
+    if (phase === 'playing') {
+      bgm.play();
+    } else {
+      bgm.stop();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // 게임 중 상태
   const [players, setPlayers] = useState<PlayerInfo[]>([]);
@@ -343,6 +360,25 @@ export default function BlockfallBattlePage() {
         </button>
       )}
       <span className="battle-header-title">블록폴 배틀</span>
+      <div className="battle-bgm-control">
+        <button
+          className="battle-bgm-mute-btn"
+          onClick={bgm.toggleMute}
+          aria-label={bgm.muted ? 'BGM 음소거 해제' : 'BGM 음소거'}
+          type="button"
+        >
+          {bgm.muted ? '🔇' : '🔊'}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={Math.round(bgm.volume * 100)}
+          onChange={e => bgm.setVolume(Number(e.target.value) / 100)}
+          className="battle-bgm-slider"
+          aria-label="BGM 볼륨"
+        />
+      </div>
     </header>
   );
 
