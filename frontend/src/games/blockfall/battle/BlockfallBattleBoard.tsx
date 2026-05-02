@@ -173,6 +173,39 @@ function drawNextStack(canvas: HTMLCanvasElement, queue: (Matrix | null)[]) {
   }
 }
 
+// ── 클라이언트 측 새로고침 복원 (HOLD/bag/nextQueue) ─────
+// 서버는 board/score 만 보관하므로, HOLD 와 7-bag 시퀀스는 sessionStorage 로 보조 복원.
+const CLIENT_STATE_KEY = 'blockfall_battle_clientstate';
+
+interface ClientStateSnapshot {
+  holdPiece: Matrix | null;
+  bag: string[];
+  bagIdx: number;
+  nextQueue: Matrix[];
+}
+
+function saveClientState(snap: ClientStateSnapshot) {
+  try {
+    sessionStorage.setItem(CLIENT_STATE_KEY, JSON.stringify(snap));
+  } catch { /* quota / private mode — 무시 */ }
+}
+
+function loadClientState(): ClientStateSnapshot | null {
+  try {
+    const raw = sessionStorage.getItem(CLIENT_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ClientStateSnapshot;
+    // 최소 형식 검증 — 변조/오래된 데이터 방어
+    if (!Array.isArray(parsed.bag) || !Array.isArray(parsed.nextQueue)) return null;
+    if (typeof parsed.bagIdx !== 'number') return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function clearClientState() {
+  try { sessionStorage.removeItem(CLIENT_STATE_KEY); } catch { /* ignore */ }
+}
+
 // ── Props ──────────────────────────────────────────────
 
 export interface PlayerInfo {
@@ -188,6 +221,19 @@ export interface OpponentBoardData {
   level: number;
 }
 
+/**
+ * 새로고침 복원용 초기 상태.
+ * - board/score/lines/level/combo 는 서버 캐시(MY_GAME_STATE)에서 전달.
+ * - HOLD/bag/nextQueue 는 sessionStorage 에서 자체 복원.
+ */
+export interface BattleInitialState {
+  board: number[][];
+  score: number;
+  lines: number;
+  level: number;
+  combo: number;
+}
+
 interface BlockfallBattleBoardProps {
   players: PlayerInfo[];
   myPlayerId: string;
@@ -201,6 +247,8 @@ interface BlockfallBattleBoardProps {
   onGarbageConsumed: () => void;
   isPlaying: boolean;
   isPractice?: boolean;
+  /** 새로고침/재연결 시 서버에서 받은 본인 보드 스냅샷 — 있으면 fresh init 대신 복원 */
+  initialState?: BattleInitialState | null;
 }
 
 export default function BlockfallBattleBoard({
@@ -216,6 +264,7 @@ export default function BlockfallBattleBoard({
   onGarbageConsumed,
   isPlaying,
   isPractice = false,
+  initialState = null,
 }: BlockfallBattleBoardProps) {
   const boardRef = useRef<HTMLCanvasElement>(null);
 
@@ -461,9 +510,24 @@ export default function BlockfallBattleBoard({
     }
     playerMatrix.current = null;
     draw();
+    // 본인 게임 종료 — 새로고침 복원 캐시 정리
+    clearClientState();
     onBlockOut();
     onGameOver(scoreRef.current);
   }, [draw, drawFromBag, onBlockOut, onGameOver, updateDisplay]);
+
+  // 새로고침 복원용 — HOLD/bag/nextQueue 상태를 sessionStorage 에 저장.
+  // 실제 배틀(연습 X) 중에만 동작.
+  const persistClientState = useCallback(() => {
+    if (isGameOver.current) return;
+    if (isPracticeRef.current) return;
+    saveClientState({
+      holdPiece: holdPiece.current,
+      bag: bagRef.current,
+      bagIdx: bagIdxRef.current,
+      nextQueue: nextQueue.current,
+    });
+  }, []);
 
   const playerReset = useCallback(() => {
     isLanding.current = false;
@@ -477,10 +541,12 @@ export default function BlockfallBattleBoard({
     playerPos.current.y = 0;
     playerPos.current.x = (BOARD_W / 2 | 0) - ((playerMatrix.current[0].length / 2) | 0);
 
+    persistClientState();
+
     if (collideInBuffer(arena.current, playerPos.current, playerMatrix.current)) {
       doGameOver();
     }
-  }, [doGameOver, drawFromBag]);
+  }, [doGameOver, drawFromBag, persistClientState]);
 
   // HOLD 기능
   const playerHold = useCallback(() => {
@@ -512,10 +578,12 @@ export default function BlockfallBattleBoard({
     lockCounter.current = 0;
     lockResets.current = 0;
 
+    persistClientState();
+
     if (collideInBuffer(arena.current, playerPos.current, playerMatrix.current)) {
       doGameOver();
     }
-  }, [doGameOver, drawFromBag]);
+  }, [doGameOver, drawFromBag, persistClientState]);
 
   // Garbage line 적용 (piece lock 시점에 호출)
   const applyGarbage = useCallback((lines: number) => {
@@ -651,28 +719,55 @@ export default function BlockfallBattleBoard({
 
     // 게임 초기화
     isGameOver.current = false;
-    arena.current = createMatrix(BOARD_W, BOARD_H);
-    scoreRef.current = 0;
-    linesRef.current = 0;
-    levelRef.current = 1;
-    comboCount.current = 0;
-    dropCounter.current = 0;
-    dropInterval.current = DROP_SPEEDS[0];
     isLanding.current = false;
     lockCounter.current = 0;
     lockResets.current = 0;
-    garbagePendingRef.current = 0;
-    holdPiece.current = null;
+    dropCounter.current = 0;
     holdUsed.current = false;
     setHoldActive(false);
+    garbagePendingRef.current = 0;
 
-    bagRef.current = shuffleBag();
-    bagIdxRef.current = 0;
-    // 5개 NEXT 큐 초기화
-    nextQueue.current = [];
-    for (let i = 0; i < NEXT_QUEUE_SIZE; i++) {
-      nextQueue.current.push(drawFromBag());
+    const isRestore = !!initialState && isPlaying && !isPractice;
+
+    if (isRestore) {
+      // 새로고침 복원 — 서버 스냅샷 + sessionStorage 클라이언트 상태
+      arena.current = initialState!.board.map(row => [...row]);
+      scoreRef.current = initialState!.score;
+      linesRef.current = initialState!.lines;
+      levelRef.current = Math.max(1, initialState!.level);
+      comboCount.current = initialState!.combo;
+      dropInterval.current = DROP_SPEEDS[Math.min(levelRef.current - 1, DROP_SPEEDS.length - 1)];
+
+      const cs = loadClientState();
+      if (cs) {
+        holdPiece.current = cs.holdPiece;
+        bagRef.current = cs.bag;
+        bagIdxRef.current = cs.bagIdx;
+        nextQueue.current = cs.nextQueue;
+      } else {
+        // 클라이언트 측 데이터가 없는 경우 (다른 디바이스 접속 등) — bag 새로 시작
+        holdPiece.current = null;
+        bagRef.current = shuffleBag();
+        bagIdxRef.current = 0;
+        nextQueue.current = [];
+        for (let i = 0; i < NEXT_QUEUE_SIZE; i++) nextQueue.current.push(drawFromBag());
+      }
+    } else {
+      // 신규 게임 — fresh init + 이전 클라이언트 상태 캐시 정리
+      arena.current = createMatrix(BOARD_W, BOARD_H);
+      scoreRef.current = 0;
+      linesRef.current = 0;
+      levelRef.current = 1;
+      comboCount.current = 0;
+      dropInterval.current = DROP_SPEEDS[0];
+      holdPiece.current = null;
+      bagRef.current = shuffleBag();
+      bagIdxRef.current = 0;
+      nextQueue.current = [];
+      for (let i = 0; i < NEXT_QUEUE_SIZE; i++) nextQueue.current.push(drawFromBag());
+      if (isPlaying && !isPractice) clearClientState();
     }
+
     playerReset();
     updateDisplay();
 

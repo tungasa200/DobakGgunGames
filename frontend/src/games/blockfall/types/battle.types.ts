@@ -27,6 +27,7 @@ export type BattleEventType =
   | 'MATCH_COUNTDOWN'
   | 'MATCH_COUNTDOWN_CANCELLED'
   | 'READY_STATE'
+  | 'MY_GAME_STATE'
   | 'ERROR';
 
 export interface BattleWsMessage<T = unknown> {
@@ -170,6 +171,19 @@ export interface WsErrorPayload {
 export interface ReadyStatePayload {
   readyCount: number;
   totalCount: number;
+}
+
+/**
+ * MY_GAME_STATE — 새로고침/재연결한 본인에게만 도착하는 보드 스냅샷.
+ * 서버가 200ms 주기로 캐싱한 마지막 BOARD_UPDATE 값.
+ */
+export interface MyGameStatePayload {
+  playerId: string;
+  board: number[][];
+  score: number;
+  lines: number;
+  level: number;
+  combo: number;
 }
 
 // ── 클라이언트 측 보드 상태 ───────────────────────────────

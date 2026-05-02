@@ -15,6 +15,7 @@ import type {
   MatchCountdownPayload,
   MatchCountdownCancelledPayload,
   ReadyStatePayload,
+  MyGameStatePayload,
   ConnectionStatus,
 } from '../games/blockfall/types/battle.types';
 
@@ -115,6 +116,7 @@ export interface BattleWebSocketState {
   queuePosition: QueuePositionPayload | null;
   countdown: number;
   readyState: ReadyStatePayload | null;
+  myGameState: MyGameStatePayload | null;
   wsStatus: ConnectionStatus;
 }
 
@@ -142,6 +144,7 @@ export function useBattleWebSocket(
   const [queuePosition, setQueuePosition] = useState<QueuePositionPayload | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [readyState, setReadyState] = useState<ReadyStatePayload | null>(null);
+  const [myGameState, setMyGameState] = useState<MyGameStatePayload | null>(null);
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('connecting');
 
   const clientRef = useRef<BattleStompClientHandle | null>(null);
@@ -156,6 +159,8 @@ export function useBattleWebSocket(
     setPlayerFinished(new Map());
     setGameResult(null);
     setCountdown(0);
+    // 새 라운드 시작 — 이전 라운드의 본인 스냅샷 캐시 제거
+    setMyGameState(null);
   }, []);
 
   const handleBoardUpdate = useCallback((payload: BoardUpdatePayload) => {
@@ -204,6 +209,10 @@ export function useBattleWebSocket(
     setReadyState(payload);
   }, []);
 
+  const handleMyGameState = useCallback((payload: MyGameStatePayload) => {
+    setMyGameState(payload);
+  }, []);
+
   const handleError = useCallback((code: string, message: string) => {
     console.warn(`[BattleWS] Error ${code}: ${message}`);
   }, []);
@@ -227,6 +236,7 @@ export function useBattleWebSocket(
       onMatchCountdown: handleMatchCountdown,
       onMatchCountdownCancelled: handleMatchCountdownCancelled,
       onReadyState: handleReadyState,
+      onMyGameState: handleMyGameState,
       onError: handleError,
       onStatusChange: handleStatusChange,
     });
@@ -277,6 +287,7 @@ export function useBattleWebSocket(
     queuePosition,
     countdown,
     readyState,
+    myGameState,
     wsStatus,
     sendBoardState,
     sendComboAttack,

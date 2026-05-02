@@ -14,6 +14,7 @@ import type {
   MatchCountdownPayload,
   MatchCountdownCancelledPayload,
   ReadyStatePayload,
+  MyGameStatePayload,
   WsErrorPayload,
   ConnectionStatus,
 } from '../games/blockfall/types/battle.types';
@@ -32,6 +33,7 @@ export interface BattleEventHandlers {
   onMatchCountdown: (payload: MatchCountdownPayload) => void;
   onMatchCountdownCancelled: (payload: MatchCountdownCancelledPayload) => void;
   onReadyState: (payload: ReadyStatePayload) => void;
+  onMyGameState: (payload: MyGameStatePayload) => void;
   onError: (code: string, message: string) => void;
   onStatusChange: (status: ConnectionStatus) => void;
 }
@@ -68,6 +70,7 @@ export function connectBattle(
     onMatchCountdown,
     onMatchCountdownCancelled,
     onReadyState,
+    onMyGameState,
     onError,
     onStatusChange,
   } = handlers;
@@ -198,6 +201,9 @@ export function connectBattle(
         break;
       case 'READY_STATE':
         onReadyState(payload as ReadyStatePayload);
+        break;
+      case 'MY_GAME_STATE':
+        onMyGameState(payload as MyGameStatePayload);
         break;
       case 'ERROR': {
         const errPayload = payload as WsErrorPayload;

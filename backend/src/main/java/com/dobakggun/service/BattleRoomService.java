@@ -202,11 +202,17 @@ public class BattleRoomService {
         }
 
         // BUG-COMM-02 수정: PlayerSessionInfo.score 갱신 (handlePlayerFinished 에서 사용)
+        // + 새로고침 복원용 보드 스냅샷 캐시 갱신
         List<BattleRoomManager.PlayerSessionInfo> activePlayers = roomManager.getActivePlayers(roomId);
         activePlayers.stream()
                 .filter(p -> p.getPlayerId().equals(senderPlayerId))
                 .findFirst()
-                .ifPresent(p -> p.setScore(msg.getScore()));
+                .ifPresent(p -> p.updateGameStateCache(
+                        msg.getBoard(),
+                        msg.getScore(),
+                        msg.getLines(),
+                        msg.getLevel(),
+                        msg.getCombo()));
 
         BoardUpdatePayload payload = BoardUpdatePayload.builder()
                 .playerId(senderPlayerId)
@@ -461,6 +467,9 @@ public class BattleRoomService {
         room.setCurrentPlayers(players.size());
         battleRoomRepository.save(room);
 
+        // 새 라운드 시작 — 모든 플레이어의 보드 스냅샷 캐시 초기화
+        players.forEach(BattleRoomManager.PlayerSessionInfo::clearGameStateCache);
+
         String startAt = Instant.now().atZone(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ISO_INSTANT);
 
@@ -673,6 +682,28 @@ public class BattleRoomService {
                 .build();
         messagingTemplate.convertAndSendToUser(
                 playerId, "/queue/blockfall-battle/state", buildEnvelope("ROOM_STATE", roomStatePayload));
+
+        // 새로고침 복원 — PLAYING 상태이고 본인 게임 스냅샷이 캐싱돼 있으면 MY_GAME_STATE 전송
+        if ("PLAYING".equals(status)) {
+            players.stream()
+                    .filter(p -> p.getPlayerId().equals(playerId))
+                    .filter(BattleRoomManager.PlayerSessionInfo::isHasGameStateCache)
+                    .findFirst()
+                    .ifPresent(p -> {
+                        MyGameStatePayload myState = MyGameStatePayload.builder()
+                                .playerId(playerId)
+                                .board(p.getLastBoard())
+                                .score(p.getScore())
+                                .lines(p.getLastLines())
+                                .level(p.getLastLevel())
+                                .combo(p.getLastCombo())
+                                .build();
+                        messagingTemplate.convertAndSendToUser(
+                                playerId, "/queue/blockfall-battle/state",
+                                buildEnvelope("MY_GAME_STATE", myState));
+                        log.debug("handleRequestState: catch-up MY_GAME_STATE roomId={} playerId={}", roomId, playerId);
+                    });
+        }
 
         // 카운트다운 진행 중이면 남은 초 계산 후 개인 전송
         Instant endTime = countdownEndTimes.get(roomId);

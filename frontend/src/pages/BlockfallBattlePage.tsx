@@ -53,6 +53,8 @@ export default function BlockfallBattlePage() {
   const [phase, setPhase] = useState<PagePhase>('loading');
   const [joinInfo, setJoinInfo] = useState<BattleJoinResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // 새로고침/재참가로 인한 ALREADY_IN_ROOM 시 ROOM_STATE 수신까지 연습 화면을 숨김
+  const [recoveringFromRefresh, setRecoveringFromRefresh] = useState(false);
 
   // BGM — playing 단계에서만 재생, 그 외 단계 진입/언마운트 시 정지
   useEffect(() => {
@@ -131,6 +133,8 @@ export default function BlockfallBattlePage() {
         if (stored) {
           setJoinInfo(stored);
           setPhase('waiting'); // ROOM_STATE 수신 시 실제 phase로 보정됨
+          // ROOM_STATE 수신 전까지 연습 화면이 보이지 않도록 복구 플래그 설정
+          setRecoveringFromRefresh(true);
           return;
         }
         setErrorMessage('이미 다른 방에 참가 중입니다. 잠시 후 다시 시도해 주세요.');
@@ -171,7 +175,28 @@ export default function BlockfallBattlePage() {
       if (rs.status === 'FINISHED' && (prev === 'waiting' || prev === 'countdown')) return 'finished';
       return prev;
     });
+
+    // ROOM_STATE 도착 후:
+    // - PLAYING 상태가 아니면 즉시 복구 완료 (MY_GAME_STATE 기대 X)
+    // - PLAYING 이면 MY_GAME_STATE 도착(또는 타임아웃) 까지 복구 대기 유지
+    if (rs.status !== 'PLAYING') {
+      setRecoveringFromRefresh(false);
+    }
   }, [ws.roomState]);
+
+  // MY_GAME_STATE 도착 시 복구 완료
+  useEffect(() => {
+    if (ws.myGameState) {
+      setRecoveringFromRefresh(false);
+    }
+  }, [ws.myGameState]);
+
+  // 복구 타임아웃 — 2.5초 내에 MY_GAME_STATE 가 안 오면 (서버 캐시 없음 등) 그냥 진행
+  useEffect(() => {
+    if (!recoveringFromRefresh) return;
+    const t = setTimeout(() => setRecoveringFromRefresh(false), 2500);
+    return () => clearTimeout(t);
+  }, [recoveringFromRefresh]);
 
   // GAME_STARTED
   useEffect(() => {
@@ -617,6 +642,22 @@ export default function BlockfallBattlePage() {
     );
   }
 
+  // 새로고침 직후 ROOM_STATE 수신 전 — 연습 화면 대신 복구 안내
+  if (recoveringFromRefresh) {
+    return (
+      <div className="battle-page">
+        {renderHeader()}
+        {renderLabBanner()}
+        <div className="battle-content">
+          <div className="battle-loading">
+            <div className="battle-spinner" />
+            <p className="battle-loading-text">방 상태를 복구하는 중...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 혼자 대기 중일 때 연습 게임 표시
   if (phase === 'waiting' && players.length <= 1) {
     return (
@@ -689,6 +730,13 @@ export default function BlockfallBattlePage() {
           onBoardChange={handleBoardChange}
           onComboAttack={handleComboAttack}
           onGarbageConsumed={handleGarbageConsumed}
+          initialState={ws.myGameState && phase === 'playing' ? {
+            board: ws.myGameState.board,
+            score: ws.myGameState.score,
+            lines: ws.myGameState.lines,
+            level: ws.myGameState.level,
+            combo: ws.myGameState.combo,
+          } : null}
         />
       </div>
       {renderPlayerLeftToast()}

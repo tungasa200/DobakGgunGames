@@ -49,6 +49,15 @@ public class BattleRoomManager {
         /** BUG-004 수정: 자발적 이탈 여부. true 면 finishGame 전적 저장 대상 제외. */
         private volatile boolean voluntaryLeft;
 
+        // ─── 새로고침 복원용 보드 스냅샷 캐시 ──────────────────────────────
+        // 클라이언트가 200ms 주기로 송신하는 BOARD_UPDATE 의 마지막 값.
+        // GAME_STARTED 시 clearGameStateCache() 호출로 초기화.
+        private volatile int[][] lastBoard;
+        private volatile int lastLines;
+        private volatile int lastLevel;
+        private volatile int lastCombo;
+        private volatile boolean hasGameStateCache;
+
         public PlayerSessionInfo(String playerId, String nickname, boolean guest,
                                   String sessionId, Long userId) {
             this.playerId = playerId;
@@ -60,6 +69,26 @@ public class BattleRoomManager {
             this.score = 0;
             this.rank = 0;
             this.voluntaryLeft = false;
+            this.hasGameStateCache = false;
+        }
+
+        /** 게임 시작 시 호출 — 이전 라운드 잔여 캐시 제거 */
+        public void clearGameStateCache() {
+            this.lastBoard = null;
+            this.lastLines = 0;
+            this.lastLevel = 1;
+            this.lastCombo = 0;
+            this.hasGameStateCache = false;
+        }
+
+        /** BOARD_UPDATE 수신 시 호출 — 최신 스냅샷 갱신 */
+        public void updateGameStateCache(int[][] board, int score, int lines, int level, int combo) {
+            this.lastBoard = board;
+            this.score = score;
+            this.lastLines = lines;
+            this.lastLevel = level;
+            this.lastCombo = combo;
+            this.hasGameStateCache = true;
         }
     }
 
