@@ -129,7 +129,7 @@ export default function YachtPage() {
             연결이 불안정합니다. 재연결 시도 중...
           </div>
         )}
-        <NormalHeader currentGame="yacht" gameName="야추" accentColor="#4f6cd8" />
+        <NormalHeader currentGame="yacht" gameName="야추" accentColor="#1a5c43" />
         <YachtWaitingRoom
           participants={participants}
           maxPlayers={6}
@@ -209,7 +209,7 @@ export default function YachtPage() {
   if (phase === 'result') {
     return (
       <div className={styles.page}>
-        <NormalHeader currentGame="yacht" gameName="야추" accentColor="#4f6cd8" />
+        <NormalHeader currentGame="yacht" gameName="야추" accentColor="#1a5c43" />
         <YachtResultScreen
           rankings={rankings}
           myUserId={myUserId}
