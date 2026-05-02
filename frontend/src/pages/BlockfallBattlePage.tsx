@@ -380,7 +380,7 @@ export default function BlockfallBattlePage() {
 
   const renderHeader = () => (
     <>
-      <NormalHeader currentGame="blockfall" gameName="블록폴" accentColor="#8e44ad" />
+      <NormalHeader currentGame="blockfall" gameName="블록폴" accentColor="#6366F1" />
       <div className="battle-bgm-control battle-bgm-floating">
         <button
           className="battle-bgm-mute-btn"
