@@ -403,24 +403,6 @@ export default function BlockfallBattlePage() {
     </>
   );
 
-  const renderLabBanner = () => (
-    <div
-      className="battle-lab-banner"
-      role="region"
-      aria-label="테스트 단계 경고"
-    >
-      <div className="battle-lab-banner-icon" aria-hidden="true">!</div>
-      <div className="battle-lab-banner-text">
-        테스트 단계 기능입니다. 운영 게임이 아니므로 기록이 저장되지 않을 수 있습니다.
-        {joinInfo?.isGuest === true && (
-          <span className="battle-lab-banner-guest">
-            게스트 전적은 저장되지 않습니다.
-          </span>
-        )}
-      </div>
-    </div>
-  );
-
   const renderReconnectBanner = () => ws.wsStatus === 'reconnecting' ? (
     <div className="battle-reconnect-banner">
       연결이 불안정합니다. 재연결 시도 중...
@@ -500,7 +482,6 @@ export default function BlockfallBattlePage() {
     return (
       <div className="battle-page">
         {renderHeader()}
-        {renderLabBanner()}
         <div className="battle-content">
           <div className="battle-error-screen">
             <span className="battle-error-icon">⚠</span>
@@ -526,7 +507,6 @@ export default function BlockfallBattlePage() {
     return (
       <div className="battle-page">
         {renderHeader()}
-        {renderLabBanner()}
         <div className="battle-content">
           <div className="result-screen">
             <h2 className="result-title">
@@ -643,7 +623,6 @@ export default function BlockfallBattlePage() {
     return (
       <div className="battle-page">
         {renderHeader()}
-        {renderLabBanner()}
         <div className="battle-content">
           <div className="battle-loading">
             <div className="battle-spinner" />
@@ -659,7 +638,6 @@ export default function BlockfallBattlePage() {
     return (
       <div className="battle-page">
         {renderHeader()}
-        {renderLabBanner()}
         <div className="battle-content" style={{ flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <p style={{ color: '#8b949e', fontSize: 13, margin: 0 }}>
             상대를 기다리는 중 — 연습 게임 중
@@ -694,7 +672,6 @@ export default function BlockfallBattlePage() {
   return (
     <div className="battle-page">
       {renderHeader()}
-      {renderLabBanner()}
       {renderReconnectBanner()}
       {renderStatusBar()}
       <div className="battle-content" style={{ position: 'relative' }}>
