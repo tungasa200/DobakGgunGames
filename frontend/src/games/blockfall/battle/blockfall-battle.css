@@ -165,8 +165,22 @@
   height: 4px;
 }
 
+/* 공용 NormalHeader 사용 시, BGM 컨트롤만 우측 상단에 떠 있도록 배치 */
+.battle-bgm-floating {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  z-index: 480;
+  background: rgba(33, 38, 45, 0.92);
+  backdrop-filter: blur(4px);
+}
+
 @media (max-width: 480px) {
   .battle-bgm-control { width: 100px; }
+  .battle-bgm-floating {
+    top: 52px;
+    right: 8px;
+  }
 }
 
 /* 테스트 단계 배너 (헤더 인라인용 — 레거시, 신규 .battle-lab-banner 사용 권장) */

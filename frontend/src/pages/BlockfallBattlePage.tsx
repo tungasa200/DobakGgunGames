@@ -20,6 +20,7 @@ import type {
   TopRankingEntry,
 } from '../games/blockfall/types/battle.types';
 import { useBgm } from '../hooks/useBgm';
+import NormalHeader from '../components/normal/NormalHeader';
 import '../games/blockfall/battle/blockfall-battle.css';
 
 const BGM_SRC = '/bgm/blockfall/blockfall_battle.mp3';
@@ -377,15 +378,10 @@ export default function BlockfallBattlePage() {
 
   // ── 공통 컴포넌트 ─────────────────────────────────────
 
-  const renderHeader = (showBack = true) => (
-    <header className="battle-header">
-      {showBack && (
-        <button className="battle-header-back" onClick={handleLeave} type="button">
-          ← 홈으로
-        </button>
-      )}
-      <span className="battle-header-title">블록폴 배틀</span>
-      <div className="battle-bgm-control">
+  const renderHeader = () => (
+    <>
+      <NormalHeader currentGame="blockfall" gameName="블록폴" accentColor="#8e44ad" />
+      <div className="battle-bgm-control battle-bgm-floating">
         <button
           className="battle-bgm-mute-btn"
           onClick={bgm.toggleMute}
@@ -404,7 +400,7 @@ export default function BlockfallBattlePage() {
           aria-label="BGM 볼륨"
         />
       </div>
-    </header>
+    </>
   );
 
   const renderLabBanner = () => (
