@@ -1516,3 +1516,191 @@ button:hover .test-lab-badge {
 .battle-hold-used {
   opacity: 0.35;
 }
+
+/* ================================================================
+   네온 테마 오버라이드 — 전체적으로 네온 발광 효과 적용
+   ================================================================ */
+
+/* 네온용 keyframes */
+@keyframes bb-neon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px var(--battle-accent),
+      0 0 14px rgba(99, 102, 241, 0.55),
+      0 0 32px rgba(99, 102, 241, 0.30),
+      inset 0 0 22px rgba(99, 102, 241, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px var(--battle-accent),
+      0 0 22px rgba(99, 102, 241, 0.85),
+      0 0 50px rgba(99, 102, 241, 0.45),
+      inset 0 0 28px rgba(99, 102, 241, 0.14);
+  }
+}
+
+@keyframes bb-neon-garbage-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(248, 81, 73, 0.7), 0 0 16px rgba(248, 81, 73, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(248, 81, 73, 0.95), 0 0 28px rgba(248, 81, 73, 0.65);
+  }
+}
+
+@keyframes bb-neon-countdown-pulse {
+  0%, 100% { text-shadow: 0 0 14px rgba(99, 102, 241, 0.65), 0 0 32px rgba(99, 102, 241, 0.35); }
+  50%      { text-shadow: 0 0 22px rgba(99, 102, 241, 0.95), 0 0 56px rgba(99, 102, 241, 0.55); }
+}
+
+/* 페이지 배경 — 다층 라디얼 그라디언트로 네온 분위기 */
+.battle-page {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99, 102, 241, 0.18), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(236, 72, 153, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 10% 100%, rgba(34, 211, 238, 0.08), transparent 60%),
+    #07080d;
+}
+
+/* 콘텐츠 영역 살짝 비네팅 */
+.battle-content {
+  position: relative;
+}
+
+/* 떠 있는 BGM 컨트롤 — 네온 테두리 */
+.battle-bgm-floating {
+  background: rgba(15, 18, 28, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.55);
+  box-shadow:
+    0 0 12px rgba(99, 102, 241, 0.35),
+    inset 0 0 8px rgba(99, 102, 241, 0.10);
+}
+
+/* 내 보드 — 강한 인디고 글로우 + 펄스 */
+.battle-board-item.mine {
+  background: linear-gradient(180deg, #181d2a 0%, #14182a 100%);
+  border-color: var(--battle-accent);
+  animation: bb-neon-pulse 2.6s ease-in-out infinite;
+}
+
+/* 상대 보드 — 은은한 시안 글로우 */
+.battle-board-item:not(.mine):not(.eliminated):not(.battle-opp-waiting-slot) {
+  border-color: rgba(34, 211, 238, 0.35);
+  box-shadow:
+    0 0 10px rgba(34, 211, 238, 0.20),
+    inset 0 0 14px rgba(34, 211, 238, 0.04);
+}
+
+/* 대기 중 빈 슬롯 — 흐릿한 보라빛 */
+.battle-opp-waiting-slot {
+  border-color: rgba(99, 102, 241, 0.20) !important;
+  box-shadow: inset 0 0 16px rgba(99, 102, 241, 0.05);
+}
+
+/* 탈락 — 붉은 네온 */
+.battle-board-item.eliminated {
+  border-color: rgba(239, 68, 68, 0.55) !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.40), inset 0 0 18px rgba(239, 68, 68, 0.08);
+}
+
+/* 보드 아이템 헤더 — 위쪽 한 줄 네온 라인 */
+.battle-board-item-header {
+  background: linear-gradient(180deg, #1d2231 0%, #161a26 100%);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.35);
+  position: relative;
+}
+
+.battle-board-item.mine .battle-board-item-header {
+  background: linear-gradient(180deg, #1f2542 0%, #181c30 100%);
+  border-bottom-color: rgba(99, 102, 241, 0.65);
+  box-shadow: 0 1px 8px rgba(99, 102, 241, 0.35);
+}
+
+/* 닉네임 글로우 */
+.battle-board-nickname.mine {
+  text-shadow: 0 0 8px rgba(99, 102, 241, 0.75);
+}
+
+/* 점수 — 옅은 네온 */
+.battle-board-score {
+  color: #c5cdf5;
+  text-shadow: 0 0 6px rgba(99, 102, 241, 0.45);
+}
+
+/* 사이드패널(HOLD/NEXT/스탯 컨테이너) — 미세한 그라디언트 + 측면 글로우 라인 */
+.battle-my-left-panel,
+.battle-my-right-panel {
+  background:
+    linear-gradient(180deg, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0.0) 35%),
+    #0f1320;
+  position: relative;
+}
+
+.battle-my-left-panel {
+  border-right: 1px solid rgba(99, 102, 241, 0.30);
+  box-shadow: inset -8px 0 14px -8px rgba(99, 102, 241, 0.30);
+}
+
+.battle-my-right-panel {
+  border-left: 1px solid rgba(99, 102, 241, 0.30);
+  box-shadow: inset 8px 0 14px -8px rgba(99, 102, 241, 0.30);
+}
+
+/* HOLD / NEXT 라벨 — 네온 글자 */
+.battle-side-title,
+.battle-right-next-title {
+  color: var(--battle-accent);
+  text-shadow: 0 0 6px rgba(99, 102, 241, 0.55);
+}
+
+/* 스탯 값 — 네온 글로우 */
+.battle-stat-value {
+  color: #f0f3ff;
+  text-shadow: 0 0 6px rgba(99, 102, 241, 0.40);
+}
+
+.battle-stat-value.combo {
+  color: #FBBF24;
+  text-shadow:
+    0 0 8px rgba(245, 158, 11, 0.85),
+    0 0 18px rgba(239, 68, 68, 0.50);
+}
+
+/* 가비지 뱃지 — 빨간 네온 펄스 */
+.battle-garbage-badge {
+  background: rgba(220, 38, 38, 0.92);
+  border: 1px solid rgba(255, 200, 200, 0.55);
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.85);
+  animation: bb-neon-garbage-pulse 1.4s ease-in-out infinite;
+}
+
+/* 상태 바 — 네온 하단 라인 */
+.battle-status-bar {
+  background: linear-gradient(180deg, #161b27 0%, #11141d 100%);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.45);
+  box-shadow: 0 1px 12px rgba(99, 102, 241, 0.20);
+}
+
+/* 카운트다운 큰 숫자 — 네온 펄스 */
+.battle-countdown-big {
+  color: var(--battle-accent);
+  animation: bb-num-pop 300ms ease-out, bb-neon-countdown-pulse 1.2s ease-in-out infinite;
+}
+
+.battle-countdown-label {
+  text-shadow: 0 0 8px rgba(99, 102, 241, 0.55);
+}
+
+/* 보드 캔버스 래퍼 — 안쪽 미세 비네팅 */
+.battle-board-canvas-wrap {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.06), transparent 70%),
+    #07080d;
+}
+
+/* 가비지 플래시 — 기존 garbage-flash 클래스 강화 */
+.battle-board-item.mine.garbage-flash {
+  animation:
+    bb-border-flash 0.3s ease-in-out 2,
+    bb-neon-pulse 2.6s ease-in-out infinite;
+}
