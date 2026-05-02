@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import NormalHeader from '../../components/normal/NormalHeader';
 import { useYachtGame } from './hooks/useYachtGame';
 import YachtWaitingRoom from './components/YachtWaitingRoom';
 import YachtGameScreen from './components/YachtGameScreen';
@@ -128,10 +129,7 @@ export default function YachtPage() {
             연결이 불안정합니다. 재연결 시도 중...
           </div>
         )}
-        <header className={styles.header}>
-          <h1 className={styles.headerTitle}>Yacht</h1>
-          <span className={styles.headerSub}>야추 멀티플레이</span>
-        </header>
+        <NormalHeader currentGame="yacht" gameName="야추" accentColor="#4f6cd8" />
         <YachtWaitingRoom
           participants={participants}
           maxPlayers={6}
@@ -211,10 +209,7 @@ export default function YachtPage() {
   if (phase === 'result') {
     return (
       <div className={styles.page}>
-        <header className={styles.header}>
-          <h1 className={styles.headerTitle}>Yacht</h1>
-          <span className={styles.headerSub}>게임 종료</span>
-        </header>
+        <NormalHeader currentGame="yacht" gameName="야추" accentColor="#4f6cd8" />
         <YachtResultScreen
           rankings={rankings}
           myUserId={myUserId}
