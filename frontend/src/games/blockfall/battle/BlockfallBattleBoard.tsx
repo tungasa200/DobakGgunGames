@@ -393,11 +393,49 @@ export default function BlockfallBattleBoard({
       });
     }
 
-    // buffer zone 표시
+    // buffer zone 표시 (일반 모드와 동일한 반투명 흰색 오버레이)
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
     ctx.fillRect(0, 0, BOARD_W * CELL, BUFFER_H * CELL);
     ctx.restore();
+
+    // ===== Block Out 위험 셀 X 마크 (일반 모드 BlockfallBoard.tsx 와 동일 로직) =====
+    // 다음 블록(nextQueue[0])의 buffer zone 안 spawn 셀만 X로 표시.
+    // 위험 임계선: 보드 전체 최상단 블록이 buffer + 위 3줄 안(y < 5)에 있을 때만 표시.
+    const DANGER_LIMIT_Y = BUFFER_H + 3;
+    let globalTopY = BOARD_H;
+    findTop: for (let y = 0; y < DANGER_LIMIT_Y && y < BOARD_H; y++) {
+      for (let x = 0; x < BOARD_W; x++) {
+        if (arena.current[y][x] !== 0) { globalTopY = y; break findTop; }
+      }
+    }
+    const next = nextQueue.current[0];
+    if (next && globalTopY < DANGER_LIMIT_Y) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 80, 80, 0.95)';
+      ctx.lineWidth = CELL * 0.13;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([]);
+      const npx = (BOARD_W / 2 | 0) - (next[0].length / 2 | 0);
+      for (let ny = 0; ny < next.length; ny++) {
+        if (ny >= BUFFER_H) break;
+        for (let nx = 0; nx < next[ny].length; nx++) {
+          if (next[ny][nx] === 0) continue;
+          const dx = nx + npx;
+          const dy = ny;
+          if (!arena.current[dy] || arena.current[dy][dx] !== 0) continue;
+          const cx = dx * CELL;
+          const cy = dy * CELL;
+          ctx.beginPath();
+          ctx.moveTo(cx + CELL * 0.25, cy + CELL * 0.25);
+          ctx.lineTo(cx + CELL * 0.75, cy + CELL * 0.75);
+          ctx.moveTo(cx + CELL * 0.75, cy + CELL * 0.25);
+          ctx.lineTo(cx + CELL * 0.25, cy + CELL * 0.75);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
 
     // 우측 NEXT 단일 캔버스 — 5 슬롯 세로 스택 (맨 위가 다음 블록)
     if (nextStackCanvasRef.current) {
@@ -972,13 +1010,12 @@ export default function BlockfallBattleBoard({
               </div>
             </div>
 
-            {/* 보드 캔버스 래퍼 */}
+            {/* 보드 캔버스 래퍼 — 일반 모드와 동일하게 buffer zone 포함한 BOARD_H 전체를 노출 */}
             <div
               className="battle-board-canvas-wrap"
               style={{
                 position: 'relative',
-                overflow: 'hidden',
-                height: VISIBLE_H * CELL,
+                height: BOARD_H * CELL,
                 flexShrink: 0,
               }}
             >
@@ -990,7 +1027,6 @@ export default function BlockfallBattleBoard({
                   display: 'block',
                   width: BOARD_W * CELL,
                   height: BOARD_H * CELL,
-                  marginTop: -(BUFFER_H * CELL),
                 }}
               />
               {garbagePending > 0 && (
@@ -1026,7 +1062,7 @@ export default function BlockfallBattleBoard({
                 </div>
                 <div
                   className="battle-opp-waiting-body"
-                  style={{ width: BOARD_W * CELL_OPP, height: VISIBLE_H * CELL_OPP }}
+                  style={{ width: BOARD_W * CELL_OPP, height: BOARD_H * CELL_OPP }}
                 >
                   <span className="battle-opp-waiting-icon">⏳</span>
                 </div>

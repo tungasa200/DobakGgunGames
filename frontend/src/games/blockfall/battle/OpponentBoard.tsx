@@ -46,10 +46,9 @@ export default function OpponentBoard({
   isWaiting = false,
 }: OpponentBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // canvas는 전체 BOARD_H를 그리되, wrapper div로 BUFFER_H만큼 잘라낸다
+  // 일반 모드와 동일하게 buffer zone 포함 전체 BOARD_H 노출
   const canvasW = BOARD_W * cellSize;
   const canvasTotalH = BOARD_H * cellSize;
-  const visibleH = VISIBLE_H * cellSize;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -65,16 +64,16 @@ export default function OpponentBoard({
     ctx.fillStyle = '#0d1117';
     ctx.fillRect(0, 0, canvasW, canvasTotalH);
 
-    // 그리드 선 (visible 영역만)
+    // 그리드 선 (전체 BOARD_H — buffer zone 포함)
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 0.5;
     for (let x = 1; x < BOARD_W; x++) {
       ctx.beginPath();
-      ctx.moveTo(x * cellSize, BUFFER_H * cellSize);
+      ctx.moveTo(x * cellSize, 0);
       ctx.lineTo(x * cellSize, canvasTotalH);
       ctx.stroke();
     }
-    for (let y = BUFFER_H + 1; y <= BOARD_H; y++) {
+    for (let y = 1; y < BOARD_H; y++) {
       ctx.beginPath();
       ctx.moveTo(0, y * cellSize);
       ctx.lineTo(canvasW, y * cellSize);
@@ -93,6 +92,10 @@ export default function OpponentBoard({
         }
       }
     }
+
+    // buffer zone 표시 (일반 모드와 동일한 반투명 흰색 오버레이)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.fillRect(0, 0, canvasW, BUFFER_H * cellSize);
 
     // 게임오버 반투명 처리
     if (isEliminated) {
@@ -121,13 +124,12 @@ export default function OpponentBoard({
         <span className="battle-board-score">{score.toLocaleString()}</span>
       </div>
 
-      {/* buffer zone 숨김: overflow hidden + 음수 marginTop */}
+      {/* 일반 모드와 동일하게 buffer zone 포함한 BOARD_H 전체를 노출 */}
       <div
         className="battle-board-canvas-wrap"
         style={{
           position: 'relative',
-          overflow: 'hidden',
-          height: visibleH,
+          height: canvasTotalH,
           flexShrink: 0,
         }}
       >
@@ -140,7 +142,6 @@ export default function OpponentBoard({
             display: 'block',
             width: canvasW,
             height: canvasTotalH,
-            marginTop: -(BUFFER_H * cellSize),
           }}
         />
         {isEliminated && (
