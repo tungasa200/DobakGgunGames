@@ -1,46 +1,26 @@
 /* yacht.module.css — 야추 게임 CSS Modules */
 /* 토큰: --yacht-* */
-/* 테마: 보드게임 펠트(녹색) + 파치먼트(크림우드) + 골드 액센트 */
 
 /* ============================================================
    공통 변수
    ============================================================ */
 .page {
-  /* 원시 팔레트 */
-  --yacht-felt:           #1a5c43;
-  --yacht-felt-dark:      #0f3d2e;
-  --yacht-felt-deep:      #08291f;
-  --yacht-parchment:      #f5e6c8;
-  --yacht-parchment-warm: #ecd9b3;
-  --yacht-parchment-shade:#d9c490;
-  --yacht-gold:           #c9a55c;
-  --yacht-gold-bright:    #f4c842;
-  --yacht-gold-deep:      #8b6f3d;
-  --yacht-emerald:        #2d8659;
-  --yacht-wine:           #8b1a1a;
-  --yacht-ink:            #2a1810;
-
-  /* 시맨틱 토큰 (기존 변수 호환) */
-  --yacht-bg:        var(--yacht-felt);
-  --yacht-surface:   var(--yacht-parchment);
-  --yacht-surface2:  var(--yacht-parchment-warm);
-  --yacht-accent:    var(--yacht-gold-deep);
-  --yacht-accent2:   var(--yacht-emerald);
-  --yacht-text:      #3a2a14;
-  --yacht-text-sub:  #6b563a;
-  --yacht-border:    var(--yacht-gold-deep);
-  --yacht-danger:    var(--yacht-wine);
-  --yacht-warn:      #b8860b;
-  --yacht-my-turn:   var(--yacht-gold-bright);
-  --yacht-kept:      var(--yacht-gold-bright);
-  --yacht-preview:   var(--yacht-emerald);
+  --yacht-bg: #f8fafc;
+  --yacht-surface: #ffffff;
+  --yacht-surface2: #f1f5f9;
+  --yacht-accent: #4f6cd8;
+  --yacht-accent2: #16a34a;
+  --yacht-text: #1e293b;
+  --yacht-text-sub: #64748b;
+  --yacht-border: #cbd5e1;
+  --yacht-danger: #dc2626;
+  --yacht-warn: #d97706;
+  --yacht-my-turn: #0891b2;
+  --yacht-kept: #ca8a04;
+  --yacht-preview: #16a34a;
 
   min-height: 100dvh;
-  background:
-    radial-gradient(ellipse 110% 85% at 50% 40%,
-      var(--yacht-felt) 0%,
-      var(--yacht-felt-dark) 60%,
-      var(--yacht-felt-deep) 100%);
+  background: var(--yacht-bg);
   color: var(--yacht-text);
   font-family: 'Segoe UI', system-ui, sans-serif;
   display: flex;
@@ -57,17 +37,13 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background:
-    radial-gradient(ellipse 110% 85% at 50% 40%, #1a5c43 0%, #0f3d2e 60%, #08291f 100%);
-  min-height: 100dvh;
-  color: var(--yacht-parchment, #f5e6c8);
 }
 
 .spinner {
   width: 48px;
   height: 48px;
-  border: 4px solid rgba(245, 230, 200, 0.18);
-  border-top-color: #f4c842;
+  border: 4px solid rgba(15, 23, 42, 0.1);
+  border-top-color: var(--yacht-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -78,14 +54,13 @@
 
 .loadingTitle {
   font-size: 1.1rem;
-  color: #f5e6c8;
+  color: var(--yacht-text);
   margin: 0;
-  letter-spacing: 0.04em;
 }
 
 .loadingSub {
   font-size: 0.85rem;
-  color: #d9c490;
+  color: var(--yacht-text-sub);
   margin: 0;
 }
 
@@ -98,27 +73,16 @@
   gap: 12px;
   padding: 24px;
   text-align: center;
-  color: var(--yacht-text);
-  background: var(--yacht-parchment);
-  border: 2px solid var(--yacht-gold-deep);
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-  margin: 32px auto;
-  max-width: 480px;
-  width: calc(100% - 48px);
 }
 
 .errorIcon {
   font-size: 2.5rem;
-  color: var(--yacht-wine);
 }
 
 .errorTitle {
   font-size: 1.2rem;
-  font-weight: 700;
+  font-weight: 600;
   margin: 0;
-  color: var(--yacht-wine);
-  letter-spacing: 0.02em;
 }
 
 .errorMessage {
@@ -135,13 +99,12 @@
 }
 
 .reconnectBanner {
-  background: linear-gradient(180deg, #fef3c7, #fde68a);
+  background: #fef3c7;
   color: #78350f;
-  border-bottom: 2px solid #d4a017;
+  border-bottom: 1px solid #fcd34d;
   text-align: center;
   padding: 6px 16px;
   font-size: 0.8rem;
-  font-weight: 600;
 }
 
 /* ============================================================
@@ -155,87 +118,66 @@
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   z-index: 9999;
   white-space: nowrap;
   max-width: calc(100vw - 48px);
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  border: 1px solid var(--yacht-gold-deep);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.18);
 }
 
 .toastInfo {
-  background: linear-gradient(180deg, #f5e6c8, #ecd9b3);
-  color: var(--yacht-text);
+  background: #dbeafe;
+  color: #1e3a8a;
+  border: 1px solid #93c5fd;
 }
 
 .toastWarn {
-  background: linear-gradient(180deg, #fef3c7, #fde68a);
+  background: #fef3c7;
   color: #78350f;
-  border-color: #d4a017;
+  border: 1px solid #fcd34d;
 }
 
 /* ============================================================
-   공통 버튼 — 골드 임보싱 / 파치먼트 보조 / 와인 위험
+   공통 버튼
    ============================================================ */
 .btnPrimary {
-  background: linear-gradient(180deg, #f4c842 0%, #d4af37 50%, #a8842c 100%);
-  color: var(--yacht-ink);
-  border: 1px solid var(--yacht-gold-deep);
+  background: var(--yacht-accent);
+  color: #fff;
+  border: none;
   border-radius: 8px;
   padding: 10px 24px;
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.15s, filter 0.15s;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.12),
-    0 2px 6px rgba(0, 0, 0, 0.28);
+  transition: opacity 0.15s;
 }
 
 .btnPrimary:hover:not(:disabled) {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.12),
-    0 4px 12px rgba(0, 0, 0, 0.35);
-}
-
-.btnPrimary:active:not(:disabled) {
-  transform: translateY(0);
-  filter: brightness(0.95);
+  opacity: 0.85;
 }
 
 .btnPrimary:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-  filter: grayscale(0.3);
 }
 
 .btnSecondary {
-  background: linear-gradient(180deg, var(--yacht-parchment), var(--yacht-parchment-warm));
+  background: var(--yacht-surface2);
   color: var(--yacht-text);
-  border: 1px solid var(--yacht-gold-deep);
+  border: 1px solid var(--yacht-border);
   border-radius: 8px;
   padding: 10px 24px;
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  transition: filter 0.15s, transform 0.12s;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s;
 }
 
 .btnSecondary:hover:not(:disabled) {
-  filter: brightness(1.04);
-  transform: translateY(-1px);
+  background: #e2e8f0;
 }
 
 .btnSecondary:disabled {
@@ -245,22 +187,22 @@
 
 .btnDanger {
   background: transparent;
-  color: var(--yacht-wine);
-  border: 1px solid var(--yacht-wine);
+  color: var(--yacht-danger);
+  border: 1px solid var(--yacht-danger);
   border-radius: 8px;
   padding: 8px 20px;
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .btnDanger:hover {
-  background: rgba(139, 26, 26, 0.12);
+  background: rgba(220, 38, 38, 0.08);
 }
 
 /* ============================================================
-   헤더 (레거시 — 현재 NormalHeader 사용 중)
+   헤더
    ============================================================ */
 .header {
   display: flex;
@@ -299,85 +241,68 @@
 }
 
 .waitingTitle {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--yacht-gold-bright);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--yacht-my-turn);
   margin: 0;
-  letter-spacing: 0.04em;
-  text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.35),
-    0 0 18px rgba(244, 200, 66, 0.3);
 }
 
 .waitingCount {
   font-size: 0.9rem;
-  color: var(--yacht-parchment-warm);
+  color: var(--yacht-text-sub);
   margin: 0;
-  letter-spacing: 0.02em;
 }
 
 .participantList {
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .participantItem {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(180deg, var(--yacht-parchment), var(--yacht-parchment-warm));
-  border: 1px solid var(--yacht-gold-deep);
+  background: var(--yacht-surface2);
+  border: 1px solid var(--yacht-border);
   border-radius: 10px;
-  padding: 11px 14px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 2px 6px rgba(0, 0, 0, 0.28);
+  padding: 10px 14px;
 }
 
 .participantItemMe {
-  border-color: var(--yacht-gold-bright);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 0 0 1px var(--yacht-gold-bright),
-    0 4px 12px rgba(244, 200, 66, 0.35);
+  border-color: var(--yacht-accent);
 }
 
 .participantNickname {
   flex: 1;
   font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--yacht-text);
+  font-weight: 500;
 }
 
 .participantBadge {
   font-size: 0.7rem;
   font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 999px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.05em;
 }
 
 .badgeHost {
-  background: linear-gradient(180deg, var(--yacht-gold-bright), var(--yacht-gold-deep));
-  color: var(--yacht-ink);
-  border: 1px solid var(--yacht-gold-deep);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: var(--yacht-warn);
+  color: #fff;
 }
 
 .badgeReady {
-  background: linear-gradient(180deg, #3aa86b, #1f6e44);
+  background: var(--yacht-accent2);
   color: #fff;
-  border: 1px solid #1a5c43;
 }
 
 .badgeNotReady {
-  background: var(--yacht-parchment-warm);
+  background: var(--yacht-surface);
   color: var(--yacht-text-sub);
-  border: 1px solid var(--yacht-gold-deep);
+  border: 1px solid var(--yacht-border);
 }
 
 .waitingBtns {
@@ -385,12 +310,12 @@
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
 }
 
 .waitingInfo {
   font-size: 0.82rem;
-  color: var(--yacht-parchment-warm);
+  color: var(--yacht-text-sub);
   text-align: center;
 }
 
@@ -407,7 +332,7 @@
 .gameBody {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 320px;
   gap: 0;
   overflow: hidden;
 }
@@ -415,16 +340,14 @@
 .gameLeft {
   display: flex;
   flex-direction: column;
-  padding: 18px;
-  gap: 18px;
+  padding: 16px;
+  gap: 16px;
   overflow-y: auto;
 }
 
 .gameRight {
-  border-left: 2px solid var(--yacht-gold-deep);
+  border-left: 1px solid var(--yacht-border);
   overflow-y: auto;
-  background: linear-gradient(180deg, var(--yacht-parchment), var(--yacht-parchment-warm));
-  box-shadow: inset 4px 0 12px rgba(0, 0, 0, 0.18);
 }
 
 /* 턴 인디케이터 */
@@ -432,66 +355,52 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(180deg, var(--yacht-parchment), var(--yacht-parchment-warm));
-  border: 1px solid var(--yacht-gold-deep);
+  background: var(--yacht-surface);
+  border: 1px solid var(--yacht-border);
   border-radius: 10px;
-  padding: 11px 14px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 2px 6px rgba(0, 0, 0, 0.28);
+  padding: 10px 14px;
 }
 
 .turnIndicatorMyTurn {
-  border-color: var(--yacht-gold-bright);
-  background: linear-gradient(180deg, #fff6d6, #f4e3a5);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 0 0 1px var(--yacht-gold-bright),
-    0 4px 14px rgba(244, 200, 66, 0.45);
+  border-color: var(--yacht-my-turn);
+  background: rgba(8, 145, 178, 0.08);
 }
 
 .turnLabel {
   font-size: 0.82rem;
   color: var(--yacht-text-sub);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .turnNickname {
   font-size: 1rem;
   font-weight: 700;
   flex: 1;
-  color: var(--yacht-text);
 }
 
 .turnMyTurnText {
-  color: var(--yacht-wine);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: var(--yacht-my-turn);
 }
 
 .rollsLeftBadge {
   font-size: 0.78rem;
   padding: 3px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-  background: var(--yacht-parchment-shade);
+  border-radius: 10px;
+  font-weight: 600;
+  background: var(--yacht-surface2);
   color: var(--yacht-text-sub);
-  border: 1px solid var(--yacht-gold-deep);
 }
 
 .rollsLeftBadgeActive {
-  background: linear-gradient(180deg, var(--yacht-gold-bright), var(--yacht-gold-deep));
-  color: var(--yacht-ink);
-  border-color: var(--yacht-gold-deep);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: var(--yacht-accent);
+  color: #fff;
 }
 
-/* 주사위 영역 — 펠트 트레이 인셋 */
+/* 주사위 영역 */
 .diceArea {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 .diceRow {
@@ -499,55 +408,34 @@
   gap: 16px;
   flex-wrap: wrap;
   justify-content: center;
-  padding: 26px 22px;
-  background:
-    radial-gradient(ellipse at center, #1f6e44 0%, #0f3d2e 100%);
-  border: 2px solid var(--yacht-gold-deep);
-  border-radius: 16px;
-  box-shadow:
-    inset 0 4px 14px rgba(0, 0, 0, 0.5),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-    0 6px 18px rgba(0, 0, 0, 0.4);
+  padding: 24px 20px;
+  background: var(--yacht-surface2);
+  border: 1px solid var(--yacht-border);
+  border-radius: 14px;
 }
 
 .rollBtn {
-  background: linear-gradient(180deg, #f4c842 0%, #d4af37 50%, #8b6f3d 100%);
-  color: var(--yacht-ink);
-  border: 2px solid #6b5025;
-  border-radius: 999px;
-  padding: 13px 38px;
+  background: linear-gradient(135deg, #6c8ef0, #4ade80);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 32px;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.12s, filter 0.15s, box-shadow 0.15s;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.18),
-    0 6px 14px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.04em;
 }
 
 .rollBtn:hover:not(:disabled) {
-  filter: brightness(1.08);
+  opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.18),
-    0 8px 20px rgba(0, 0, 0, 0.5);
-}
-
-.rollBtn:active:not(:disabled) {
-  transform: translateY(0);
-  filter: brightness(0.95);
 }
 
 .rollBtn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none;
-  filter: grayscale(0.4);
 }
 
 /* ============================================================
@@ -561,10 +449,9 @@
 }
 
 .diceWrapperKept {
-  outline: 3px solid var(--yacht-gold-bright);
-  outline-offset: 3px;
+  outline: 3px solid var(--yacht-kept);
+  outline-offset: 2px;
   border-radius: 14px;
-  filter: drop-shadow(0 0 10px rgba(244, 200, 66, 0.55));
 }
 
 .diceWrapperNotMyTurn {
@@ -589,32 +476,25 @@
   position: absolute;
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #fdf6e3 0%, #ecd9b3 100%);
-  border: 2px solid var(--yacht-gold-deep);
+  background: #f8f9fa;
+  border: 2px solid #d1d5db;
   border-radius: 14px;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.1),
-    inset 0 0 8px rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.08);
   backface-visibility: hidden;
 }
 
 .diceWrapperKept .diceFace {
-  background: linear-gradient(135deg, #fff6d6 0%, #f4c842 100%);
-  border-color: #6b5025;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.12);
+  background: #fef9c3;
+  border-color: #ca8a04;
 }
 
 .dicePip {
   position: absolute;
   width: 14px;
   height: 14px;
-  background: radial-gradient(circle at 35% 30%, #4a3018, #1a1008);
+  background: #1e293b;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
 }
 
 /* 면 배치: cube size 80px, half = 40px */
@@ -631,18 +511,14 @@
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.62rem;
-  font-weight: 800;
-  color: var(--yacht-ink);
-  background: linear-gradient(180deg, var(--yacht-gold-bright), var(--yacht-gold-deep));
-  padding: 2px 7px;
-  border-radius: 999px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--yacht-kept);
+  padding: 1px 6px;
+  border-radius: 6px;
   pointer-events: none;
   white-space: nowrap;
   z-index: 1;
-  border: 1px solid #6b5025;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  letter-spacing: 0.04em;
 }
 
 /* ============================================================
@@ -656,24 +532,22 @@
 }
 
 .scoreBoardContainer {
-  padding: 14px;
+  padding: 12px;
 }
 
 .scoreBoardTitle {
   font-size: 0.85rem;
-  font-weight: 800;
-  color: var(--yacht-gold-deep);
-  margin: 0 0 10px 0;
+  font-weight: 700;
+  color: var(--yacht-text-sub);
+  margin: 0 0 8px 0;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--yacht-gold-deep);
+  letter-spacing: 0.06em;
 }
 
 .scoreBoard th,
 .scoreBoard td {
-  border: 1px solid var(--yacht-gold-deep);
-  padding: 6px 4px;
+  border: 1px solid var(--yacht-border);
+  padding: 5px 4px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -681,11 +555,10 @@
 }
 
 .scoreBoard th {
-  background: linear-gradient(180deg, var(--yacht-parchment-warm), var(--yacht-parchment-shade));
-  font-weight: 700;
-  color: var(--yacht-text);
+  background: var(--yacht-surface2);
+  font-weight: 600;
+  color: var(--yacht-text-sub);
   font-size: 0.75rem;
-  letter-spacing: 0.04em;
 }
 
 .scoreLabelCell {
@@ -693,66 +566,55 @@
   padding-left: 8px !important;
   color: var(--yacht-text);
   font-size: 0.8rem;
-  font-weight: 600;
 }
 
 .scoreRowSelectable {
   cursor: pointer;
-  transition: background 0.15s;
 }
 
 .scoreRowSelectable:hover td {
-  background: rgba(244, 200, 66, 0.28);
+  background: rgba(79, 108, 216, 0.12);
 }
 
 .scoreValueFilled {
   color: var(--yacht-text);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .scoreValuePreview {
-  color: var(--yacht-emerald);
+  color: var(--yacht-preview);
   font-style: italic;
-  font-weight: 600;
   font-size: 0.78rem;
 }
 
 .scoreValueEmpty {
-  color: rgba(107, 86, 58, 0.4);
+  color: var(--yacht-border);
 }
 
 .scoreSeparatorRow td {
-  background: linear-gradient(180deg, var(--yacht-parchment-shade), #c2ad7a);
-  font-weight: 800;
-  color: var(--yacht-gold-deep);
+  background: var(--yacht-surface2);
+  font-weight: 700;
+  color: var(--yacht-accent);
   font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  border-top: 2px solid var(--yacht-gold-deep);
-  border-bottom: 2px solid var(--yacht-gold-deep);
-  text-transform: uppercase;
 }
 
 .scoreTotalRow td {
-  background: linear-gradient(180deg, #fff6d6, #f4c842);
-  font-weight: 800;
-  color: var(--yacht-ink);
-  font-size: 0.86rem;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
-  letter-spacing: 0.04em;
+  background: rgba(79, 108, 216, 0.08);
+  font-weight: 700;
+  color: var(--yacht-accent);
 }
 
 .myScoreCol {
-  background: rgba(45, 134, 89, 0.14) !important;
+  background: rgba(8, 145, 178, 0.06) !important;
 }
 
 .activePlayerCol {
-  background: rgba(244, 200, 66, 0.18) !important;
+  background: rgba(79, 108, 216, 0.06) !important;
 }
 
 .bonusProgress {
   font-size: 0.7rem;
   color: var(--yacht-warn);
-  font-weight: 600;
 }
 
 /* ============================================================
@@ -768,15 +630,10 @@
 }
 
 .resultTitle {
-  font-size: 1.8rem;
-  font-weight: 900;
-  color: var(--yacht-gold-bright);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--yacht-warn);
   margin: 0;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-shadow:
-    0 2px 0 rgba(0, 0, 0, 0.45),
-    0 0 24px rgba(244, 200, 66, 0.5);
 }
 
 .rankingList {
@@ -791,72 +648,54 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(180deg, var(--yacht-parchment), var(--yacht-parchment-warm));
-  border: 1px solid var(--yacht-gold-deep);
+  background: var(--yacht-surface);
+  border: 1px solid var(--yacht-border);
   border-radius: 10px;
   padding: 14px 16px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 4px 10px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .rankItemMe {
-  border-color: var(--yacht-emerald);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 0 0 1px var(--yacht-emerald),
-    0 4px 12px rgba(45, 134, 89, 0.4);
+  border-color: var(--yacht-accent);
+  background: rgba(79, 108, 216, 0.07);
 }
 
 .rankItemWinner {
-  border: 2px solid var(--yacht-gold-bright);
-  background: linear-gradient(180deg, #fff6d6, #f4e3a5);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 0 0 2px var(--yacht-gold-bright),
-    0 6px 18px rgba(244, 200, 66, 0.6);
+  border-color: var(--yacht-warn);
+  background: rgba(217, 119, 6, 0.08);
 }
 
 .rankNumber {
-  font-size: 1.5rem;
-  font-weight: 900;
-  width: 36px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  width: 32px;
   text-align: center;
   color: var(--yacht-text-sub);
-  font-family: 'Georgia', serif;
 }
 
 .rankNumberFirst {
-  color: var(--yacht-gold-deep);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  color: var(--yacht-warn);
 }
 
 .rankNickname {
   flex: 1;
   font-size: 1rem;
-  font-weight: 700;
-  color: var(--yacht-text);
+  font-weight: 600;
 }
 
 .rankScore {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--yacht-gold-deep);
-  font-family: 'Georgia', serif;
-  letter-spacing: 0.02em;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--yacht-accent);
 }
 
 .winnerBadge {
   font-size: 0.7rem;
-  font-weight: 800;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--yacht-gold-bright), var(--yacht-gold-deep));
-  color: var(--yacht-ink);
-  border: 1px solid #6b5025;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--yacht-warn);
+  color: #fff;
 }
 
 /* 모바일 반응형 */
@@ -868,8 +707,7 @@
 
   .gameRight {
     border-left: none;
-    border-top: 2px solid var(--yacht-gold-deep);
-    box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.18);
+    border-top: 1px solid var(--yacht-border);
   }
 
   .diceWrapper {
@@ -911,6 +749,6 @@
 
   .scoreBoard th,
   .scoreBoard td {
-    padding: 4px 2px;
+    padding: 3px 2px;
   }
 }
