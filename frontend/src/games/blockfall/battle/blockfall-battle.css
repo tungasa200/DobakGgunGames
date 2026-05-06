@@ -1247,6 +1247,7 @@ button:hover .test-lab-badge {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
 }
 
 /* 우측: 상대 슬롯 2×2 그리드 배치 (최대 4명) */
@@ -1306,9 +1307,17 @@ button:hover .test-lab-badge {
   .battle-layout {
     flex-direction: column;
     align-items: center;
+    gap: 8px;
+  }
+
+  .battle-my-section {
+    width: 100%;
+    overflow: hidden;
   }
 
   .battle-opponents-section {
+    width: 100%;
+    max-width: 380px;
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -1364,12 +1373,13 @@ button:hover .test-lab-badge {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   padding: 6px 16px;
   background: #1c2128;
   border-bottom: 1px solid #30363d;
   font-size: 13px;
   flex-shrink: 0;
-  gap: 12px;
+  gap: 6px;
 }
 
 .battle-status-text {
@@ -1515,6 +1525,85 @@ button:hover .test-lab-badge {
 /* HOLD 사용 완료 — opacity로 흐리게 표시 */
 .battle-hold-used {
   opacity: 0.35;
+}
+
+/* ── 스케일 래퍼 — JS transform: scale() 시 overflow 차단 ──── */
+.battle-my-scaler {
+  flex-shrink: 0;
+}
+
+/* ── 모바일 컨텐츠 영역 조정 ──────────────────────────────── */
+@media (max-width: 600px) {
+  .battle-content {
+    justify-content: flex-start;
+    padding: 8px;
+  }
+}
+
+/* ── 모바일 터치 컨트롤 ──────────────────────────────────── */
+.battle-touch-controls {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 4px;
+  width: 100%;
+  max-width: 320px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (max-width: 600px) {
+  .battle-touch-controls {
+    display: flex;
+  }
+}
+
+.btc-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.btc-btn {
+  flex: 1;
+  height: 52px;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1.5px solid rgba(99, 102, 241, 0.45);
+  border-radius: 10px;
+  color: #e6edf3;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.06s;
+  min-width: 0;
+}
+
+.btc-btn:active {
+  background: rgba(99, 102, 241, 0.42);
+  transform: scale(0.93);
+}
+
+.btc-rotate-btn {
+  background: rgba(34, 211, 238, 0.14);
+  border-color: rgba(34, 211, 238, 0.42);
+}
+
+.btc-hold-btn {
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+.btc-hard-btn {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.42);
 }
 
 /* ================================================================
