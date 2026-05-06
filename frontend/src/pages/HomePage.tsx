@@ -245,6 +245,22 @@ export default function HomePage() {
               />
             );
           })}
+          {/* 가위바위보 카드 */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={styles.icon}>✌️</span>
+              <div className={styles.title}>
+                <div className={styles.nameKo}>온라인 가위바위보</div>
+              </div>
+              <div className={styles.btns}>
+                <Link className={`${styles.btn} ${styles.btnNormal}`} to="/online-rps">기본</Link>
+              </div>
+            </div>
+            <div className={styles.cardRanking}>
+              <p className={styles.placeholder} style={{ padding: '20px 0' }}>2~4인 실시간 대전</p>
+            </div>
+          </div>
+
           {/* 미니게임 도구 카드 */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>
@@ -254,37 +270,35 @@ export default function HomePage() {
               </div>
             </div>
             <div className={styles.cardRanking}>
-              <Link
-                to="/roulette"
+              <a
+                href="https://mini.dobakggun.kr"
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`${styles.btn} ${styles.btnNormal}`}
                 style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
               >
                 <span>🎡</span><span style={{ fontWeight: 'bold' }}>룰렛</span>
-              </Link>
+              </a>
               <hr className={styles.labDivider} />
-              <Link
-                to="/dice"
+              <a
+                href="https://mini.dobakggun.kr"
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`${styles.btn} ${styles.btnNormal}`}
                 style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
               >
                 <span>🎲</span><span style={{ fontWeight: 'bold' }}>주사위</span>
-              </Link>
+              </a>
               <hr className={styles.labDivider} />
-              <Link
-                to="/ladder"
+              <a
+                href="https://mini.dobakggun.kr"
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`${styles.btn} ${styles.btnNormal}`}
                 style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
               >
                 <span>🪜</span><span style={{ fontWeight: 'bold' }}>사다리 타기</span>
-              </Link>
-              <hr className={styles.labDivider} />
-              <Link
-                to="/online-rps"
-                className={`${styles.btn} ${styles.btnNormal}`}
-                style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
-              >
-                <span>✌️</span><span style={{ fontWeight: 'bold' }}>가위바위보</span>
-              </Link>
+              </a>
             </div>
           </div>
 
