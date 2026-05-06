@@ -43,6 +43,7 @@ import MafiaDevPage from './pages/MafiaDevPage';
 import RoulettePage from './pages/RoulettePage';
 import LadderPage from './pages/LadderPage';
 import DicePage from './pages/DicePage';
+import BrickBreakerPage from './pages/BrickBreakerPage';
 
 export default function App() {
   useEffect(() => {
@@ -110,6 +111,12 @@ export default function App() {
         <Route
           path="/test-lab/blockfall-battle"
           element={<BlockfallBattlePage />}
+        />
+
+        {/* 벽돌깨기 — 로그인/게스트 모두 허용 */}
+        <Route
+          path="/brickbreaker"
+          element={<BrickBreakerPage />}
         />
 
         {/* DEV — 배틀 UI 테스트 (통신 없이 로컬 확인용) */}

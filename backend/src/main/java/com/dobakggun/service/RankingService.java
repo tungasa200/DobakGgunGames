@@ -23,7 +23,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RankingService {
 
-    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "blockfall-insane", "solitaire", "apple", "sudoku");
+    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "blockfall-insane", "solitaire", "apple", "sudoku", "brickbreaker");
     private static final int RATE_LIMIT_PER_MINUTE = 3;
 
     private final MinesweeperRankingRepository minesweeperRepo;
@@ -33,6 +33,7 @@ public class RankingService {
     private final SolitaireRankingRepository solitaireRepo;
     private final AppleRankingRepository appleRepo;
     private final SudokuRankingRepository sudokuRepo;
+    private final BrickBreakerRankingRepository brickBreakerRankingRepository;
     private final SessionService sessionService;
     private final BaseballSessionService baseballSessionService;
     private final SolitaireMoveService solitaireMoveService;
@@ -103,6 +104,7 @@ public class RankingService {
             case "solitaire"        -> solitaireRepo.findWeekly(level, weekStart);
             case "apple"            -> appleRepo.findWeekly(level, weekStart);
             case "sudoku"           -> sudokuRepo.findWeekly(level, weekStart);
+            case "brickbreaker"     -> brickBreakerRankingRepository.findWeeklyRankings(level, weekStart);
             default -> List.of();
         };
     }
@@ -116,6 +118,7 @@ public class RankingService {
             case "solitaire"        -> solitaireRepo.findAlltimeBest(level);
             case "apple"            -> appleRepo.findAlltimeBest(level);
             case "sudoku"           -> sudokuRepo.findAlltimeBest(level);
+            case "brickbreaker"     -> brickBreakerRankingRepository.findAlltimeBest(level);
             default -> null;
         };
     }
@@ -129,6 +132,7 @@ public class RankingService {
             case "solitaire"        -> solitaireRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "apple"            -> appleRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "sudoku"           -> sudokuRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "brickbreaker"     -> brickBreakerRankingRepository.countByIpHashAndCreatedAtAfter(ipHash, after);
             default -> 0L;
         };
     }
@@ -168,6 +172,9 @@ public class RankingService {
                             .clearTime(clearTime)
                             .ipHash(ipHash).userId(userId).build());
                     }
+            case "brickbreaker" -> brickBreakerRankingRepository.save(BrickBreakerRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .score(req.getScore()).gameLevel(req.getGameLevel()).ipHash(ipHash).userId(userId).build());
             default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다.");
         };
     }
@@ -189,6 +196,11 @@ public class RankingService {
             case "blockfall-insane" -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 9_999_999;
             case "solitaire"        -> req.getTime() == null || req.getTime() < 1 || req.getMoves() == null || req.getMoves() < 1;
             case "apple"            -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 1200;
+            case "brickbreaker"     -> {
+                int score = req.getScore() != null ? req.getScore() : -1;
+                int stage = req.getGameLevel() != null ? req.getGameLevel() : -1;
+                yield !(score >= 0 && score <= 99_999_999 && stage >= 1 && stage <= 10);
+            }
             default -> true;
         };
         if (invalid) {
@@ -211,6 +223,7 @@ public class RankingService {
             case "solitaire"        -> Set.of("draw1", "draw3");
             case "apple"            -> Set.of("normal", "large");
             case "sudoku"           -> Set.of("easy", "normal", "hard");
+            case "brickbreaker"     -> Set.of("normal");
             default -> Set.of();
         };
         if (!valid.contains(level)) {
