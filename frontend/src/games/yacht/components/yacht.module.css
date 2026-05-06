@@ -155,8 +155,14 @@
   transition: opacity 0.15s;
 }
 
-.btnPrimary:hover:not(:disabled) {
-  opacity: 0.85;
+@media (hover: hover) {
+  .btnPrimary:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+}
+
+.btnPrimary:active:not(:disabled) {
+  opacity: 0.75;
 }
 
 .btnPrimary:disabled {
@@ -176,7 +182,13 @@
   transition: background 0.15s;
 }
 
-.btnSecondary:hover:not(:disabled) {
+@media (hover: hover) {
+  .btnSecondary:hover:not(:disabled) {
+    background: #e2e8f0;
+  }
+}
+
+.btnSecondary:active:not(:disabled) {
   background: #e2e8f0;
 }
 
@@ -197,7 +209,13 @@
   transition: background 0.15s;
 }
 
-.btnDanger:hover {
+@media (hover: hover) {
+  .btnDanger:hover {
+    background: rgba(220, 38, 38, 0.08);
+  }
+}
+
+.btnDanger:active {
   background: rgba(220, 38, 38, 0.08);
 }
 
@@ -425,11 +443,20 @@
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s;
   letter-spacing: 0.04em;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.rollBtn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .rollBtn:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+}
+
+.rollBtn:active:not(:disabled) {
+  opacity: 0.85;
+  transform: translateY(0);
 }
 
 .rollBtn:disabled {
@@ -446,6 +473,12 @@
   width: 80px;
   height: 80px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.diceWrapper:active {
+  opacity: 0.75;
 }
 
 .diceWrapperKept {
@@ -570,10 +603,18 @@
 
 .scoreRowSelectable {
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.scoreRowSelectable:hover td {
-  background: rgba(79, 108, 216, 0.12);
+@media (hover: hover) {
+  .scoreRowSelectable:hover td {
+    background: rgba(79, 108, 216, 0.12);
+  }
+}
+
+.scoreRowSelectable:active td {
+  background: rgba(79, 108, 216, 0.2);
 }
 
 .scoreValueFilled {
@@ -749,6 +790,6 @@
 
   .scoreBoard th,
   .scoreBoard td {
-    padding: 3px 2px;
+    padding: 6px 2px;
   }
 }
