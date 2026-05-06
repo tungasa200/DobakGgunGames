@@ -3,7 +3,7 @@ import type { Brick, ItemType } from './types';
 // 벽돌 배치 상수
 export const BRICK_WIDTH    = 64;
 export const BRICK_HEIGHT   = 22;
-export const BRICK_PADDING  = 4;
+export const BRICK_PADDING  = 1;
 export const BRICK_OFFSET_LEFT = 30;
 export const BRICK_OFFSET_TOP  = 50;
 
