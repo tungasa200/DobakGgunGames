@@ -1,4 +1,4 @@
-import type { YachtMatchResponse, YachtRoomResponse } from '../games/yacht/types/yacht.types';
+import type { YachtMatchResponse, YachtRankingResponse, YachtRoomResponse } from '../games/yacht/types/yacht.types';
 
 const API_ORIGIN = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '');
 
@@ -74,6 +74,17 @@ export async function postYachtMatch(token: string | null): Promise<YachtMatchOu
     status: res.status,
     error: body.error ?? '매칭 요청에 실패했습니다',
   };
+}
+
+/** GET /api/yacht/rankings — 역대 승수 TOP 10 */
+export async function getYachtRankings(): Promise<YachtRankingResponse | null> {
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/yacht/rankings`);
+    if (!res.ok) return null;
+    return res.json() as Promise<YachtRankingResponse>;
+  } catch {
+    return null;
+  }
 }
 
 /**

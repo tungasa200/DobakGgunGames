@@ -1,8 +1,10 @@
 package com.dobakggun.controller;
 
 import com.dobakggun.dto.yacht.YachtMatchResponse;
+import com.dobakggun.dto.yacht.YachtRankingResponse;
 import com.dobakggun.service.YachtGameService;
 import com.dobakggun.service.YachtMatchService;
+import com.dobakggun.service.YachtRankingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -15,7 +17,8 @@ import java.util.Map;
 /**
  * Yacht REST API 컨트롤러.
  *
- * POST /api/yacht/match  — 자동 매칭
+ * POST /api/yacht/match      — 자동 매칭
+ * GET  /api/yacht/rankings   — 역대 승수 TOP 10
  * GET  /api/yacht/room/{roomId} — 방 스냅샷
  */
 @Slf4j
@@ -24,8 +27,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class YachtController {
 
-    private final YachtMatchService yachtMatchService;
-    private final YachtGameService  yachtGameService;
+    private final YachtMatchService  yachtMatchService;
+    private final YachtGameService   yachtGameService;
+    private final YachtRankingService yachtRankingService;
 
     /**
      * POST /api/yacht/match — 자동 매칭.
@@ -51,6 +55,14 @@ public class YachtController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
         }
+    }
+
+    /** GET /api/yacht/rankings — 역대 승수 TOP 10, 인증 불필요. */
+    @GetMapping("/rankings")
+    public ResponseEntity<YachtRankingResponse> getRankings() {
+        return ResponseEntity.ok(YachtRankingResponse.builder()
+                .topRankings(yachtRankingService.getTopRankings())
+                .build());
     }
 
     /** GET /api/yacht/rooms/status — 공개 엔드포인트, 인증 불필요. */

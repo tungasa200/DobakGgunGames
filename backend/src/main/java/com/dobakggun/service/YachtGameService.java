@@ -131,7 +131,7 @@ public class YachtGameService {
     private final YachtRoomRepository        yachtRoomRepository;
     private final YachtParticipantRepository yachtParticipantRepository;
     private final YachtScoreRepository       yachtScoreRepository;
-    private final YachtWinRepository         yachtWinRepository;
+    private final YachtRankingService        yachtRankingService;
     private final UserRepository             userRepository;
     private final SecureRandom               rng = new SecureRandom();
 
@@ -143,12 +143,12 @@ public class YachtGameService {
             YachtRoomRepository yachtRoomRepository,
             YachtParticipantRepository yachtParticipantRepository,
             YachtScoreRepository yachtScoreRepository,
-            YachtWinRepository yachtWinRepository,
+            YachtRankingService yachtRankingService,
             UserRepository userRepository) {
         this.yachtRoomRepository        = yachtRoomRepository;
         this.yachtParticipantRepository = yachtParticipantRepository;
         this.yachtScoreRepository       = yachtScoreRepository;
-        this.yachtWinRepository         = yachtWinRepository;
+        this.yachtRankingService        = yachtRankingService;
         this.userRepository             = userRepository;
     }
 
@@ -977,9 +977,9 @@ public class YachtGameService {
                 .winnerUserIds(winnerIds)
                 .build());
 
-        // yacht_win upsert (재시작 여부와 관계없이 승자 카운트는 누적)
-        for (Long winnerId : winnerIds) {
-            upsertWin(winnerId);
+        // 랭킹 전적 업데이트 (승자/패자 모두, 재시작 여부와 관계없이 누적)
+        for (YachtRankingEntryDto entry : rankings) {
+            yachtRankingService.updateRecord(entry.getUserId(), entry.isWinner());
         }
 
         // 재시작 가능 여부: 끊기지 않은 in-memory 참가자가 2명 이상
@@ -1369,15 +1369,6 @@ public class YachtGameService {
                 yachtParticipantRepository.save(p);
             });
         });
-    }
-
-    @Transactional
-    void upsertWin(Long userId) {
-        YachtWin win = yachtWinRepository.findByUserId(userId)
-                .orElseGet(() -> YachtWin.builder().userId(userId).winCount(0).build());
-        win.setWinCount(win.getWinCount() + 1);
-        yachtWinRepository.save(win);
-        log.info("upsertWin: userId={} winCount={}", userId, win.getWinCount());
     }
 
     private void closeRoom(YachtRoomState state, String reason) {

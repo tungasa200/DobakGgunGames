@@ -212,6 +212,19 @@ export interface WsErrorPayload {
 }
 
 // REST API 응답 타입
+export interface YachtRankingEntry {
+  rank: number;
+  userId: number;
+  nickname: string;
+  winCount: number;
+  totalGames: number;
+  lastPlayedAt: string;
+}
+
+export interface YachtRankingResponse {
+  topRankings: YachtRankingEntry[];
+}
+
 export interface YachtMatchResponse {
   roomId: string;
   status: 'WAITING' | 'PLAYING' | 'FINISHED';

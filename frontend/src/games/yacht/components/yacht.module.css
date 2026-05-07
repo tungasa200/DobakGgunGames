@@ -773,6 +773,26 @@
 }
 
 /* ============================================================
+   역대 랭킹 섹션 (YachtWaitingRoom)
+   ============================================================ */
+.rankingSection {
+  width: 100%;
+  max-width: 480px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--yacht-border);
+}
+
+.rankingSectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--yacht-text-sub);
+  margin: 0 0 12px 0;
+  text-align: center;
+  letter-spacing: 0.03em;
+}
+
+/* ============================================================
    재접속 유예 + 투표 강퇴 UI
    ============================================================ */
 .reconnectingPanel {

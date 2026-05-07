@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import styles from './yacht.module.css';
-import type { Participant } from '../types/yacht.types';
+import type { Participant, YachtRankingEntry } from '../types/yacht.types';
+import { getYachtRankings } from '../../../api/yacht';
 
 interface YachtWaitingRoomProps {
   participants: Participant[];
@@ -24,10 +26,17 @@ export default function YachtWaitingRoom({
   const isHost = myUserId === hostUserId;
   const isReady = me?.ready ?? false;
 
-  // 방장 외 모든 참가자가 준비 완료 시 시작 버튼 활성화
   const nonHostParticipants = participants.filter((p) => p.userId !== hostUserId);
   const allNonHostReady = nonHostParticipants.length > 0 && nonHostParticipants.every((p) => p.ready);
   const canStart = isHost && allNonHostReady && participants.length >= 2;
+
+  const [rankings, setRankings] = useState<YachtRankingEntry[]>([]);
+
+  useEffect(() => {
+    getYachtRankings().then((res) => {
+      if (res) setRankings(res.topRankings);
+    });
+  }, []);
 
   return (
     <div className={styles.waitingRoom}>
@@ -75,7 +84,6 @@ export default function YachtWaitingRoom({
       </ul>
 
       <div className={styles.waitingBtns}>
-        {/* 비방장: 준비/준비취소 버튼 */}
         {!isHost && (
           <button
             type="button"
@@ -86,7 +94,6 @@ export default function YachtWaitingRoom({
           </button>
         )}
 
-        {/* 방장: 게임 시작 버튼 */}
         {isHost && (
           <button
             type="button"
@@ -121,6 +128,45 @@ export default function YachtWaitingRoom({
           나가기
         </button>
       </div>
+
+      {rankings.length > 0 && (
+        <div className={styles.rankingSection}>
+          <h3 className={styles.rankingSectionTitle}>역대 랭킹</h3>
+          <ol className={styles.rankingList} aria-label="야추 역대 랭킹">
+            {rankings.map((entry) => {
+              const isMe = entry.userId === myUserId;
+              return (
+                <li
+                  key={entry.userId}
+                  className={[styles.rankItem, isMe ? styles.rankItemMe : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <span className={[styles.rankNumber, entry.rank === 1 ? styles.rankNumberFirst : ''].filter(Boolean).join(' ')}>
+                    {entry.rank}
+                  </span>
+                  <span className={styles.rankNickname}>
+                    {entry.nickname}
+                    {isMe && (
+                      <span style={{ color: 'var(--yacht-accent)', marginLeft: '4px', fontSize: '0.8rem' }}>
+                        (나)
+                      </span>
+                    )}
+                  </span>
+                  <span className={styles.rankScore}>
+                    {entry.winCount}승
+                    {entry.totalGames > 0 && (
+                      <span style={{ color: 'var(--yacht-text-sub)', fontSize: '0.8rem', marginLeft: '4px' }}>
+                        / {entry.totalGames}판
+                      </span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
