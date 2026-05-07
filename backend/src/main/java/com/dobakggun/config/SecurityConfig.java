@@ -102,7 +102,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/chat/rooms/**").hasAnyRole("FRIEND", "ADMIN")
                 // Online RPS — 비로그인 포함 전체 허용 (게스트 지원)
                 .requestMatchers("/api/rps/**").permitAll()
-                // Yacht 멀티플레이 — 로그인 유저 전용
+                // Yacht 멀티플레이 — 방 현황은 공개, 나머지는 로그인 필수
+                .requestMatchers(HttpMethod.GET, "/api/yacht/rooms/status").permitAll()
                 .requestMatchers("/api/yacht/**").authenticated()
                 // 나머지 허용
                 .anyRequest().permitAll()
