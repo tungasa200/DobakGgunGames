@@ -117,7 +117,6 @@ interface MultiGameConfig {
   icon: string;
   name: string;
   to: string;
-  description: string;
   statusKey?: 'rps' | 'battle' | 'yacht';
 }
 
@@ -127,27 +126,9 @@ interface RoomStatusData {
 }
 
 const MULTI_GAMES: MultiGameConfig[] = [
-  {
-    icon: '✌️',
-    name: '온라인 가위바위보',
-    to: '/online-rps',
-    description: '2~4인 실시간 대전',
-    statusKey: 'rps',
-  },
-  {
-    icon: '🟦',
-    name: '블록폴 배틀',
-    to: '/blockfall-battle',
-    description: '2인 실시간 블록 배틀',
-    statusKey: 'battle',
-  },
-  {
-    icon: '🎲',
-    name: '야추 (Yacht)',
-    to: '/yacht',
-    description: '실시간 대전 주사위 게임',
-    statusKey: 'yacht',
-  },
+  { icon: '✌️', name: '온라인 가위바위보', to: '/online-rps',      statusKey: 'rps'    },
+  { icon: '🟦', name: '블록폴 배틀',       to: '/blockfall-battle', statusKey: 'battle' },
+  { icon: '🎲', name: '야추 (Yacht)',       to: '/yacht',            statusKey: 'yacht'  },
 ];
 
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
@@ -165,20 +146,16 @@ function MultiGameCard({ game, roomStatus }: { game: MultiGameConfig; roomStatus
         </div>
       </div>
       <div className={styles.cardRanking}>
-        <p className={styles.placeholder} style={{ padding: roomStatus !== undefined ? '12px 0 6px' : '20px 0' }}>
-          {game.description}
-        </p>
-        {roomStatus !== undefined && roomStatus !== null && roomStatus.activeRooms > 0 && (
-          <div className={styles.roomStatus}>
+        {roomStatus !== undefined && roomStatus !== null && roomStatus.activeRooms > 0 ? (
+          <div className={styles.roomStatus} style={{ padding: '20px 0' }}>
             <span className={styles.roomStatusDot} />
             <span className={styles.roomStatusText}>
               {roomStatus.activeRooms}개 방 활성
               {roomStatus.activePlayers !== undefined ? ` · ${roomStatus.activePlayers}명 플레이 중` : ''}
             </span>
           </div>
-        )}
-        {roomStatus !== undefined && (roomStatus === null || roomStatus.activeRooms === 0) && (
-          <p className={styles.placeholder} style={{ padding: '0 0 6px' }}>현재 활성 방 없음</p>
+        ) : (
+          <p className={styles.placeholder} style={{ padding: '20px 0' }}>현재 활성 방 없음</p>
         )}
       </div>
     </div>
