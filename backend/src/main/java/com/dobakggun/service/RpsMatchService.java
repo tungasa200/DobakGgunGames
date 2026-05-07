@@ -248,7 +248,11 @@ public class RpsMatchService {
     public Map<String, Long> getRoomStats() {
         long waiting = rpsRoomRepository.countByStatus(RoomStatus.WAITING);
         long playing  = rpsRoomRepository.countByStatus(RoomStatus.PLAYING);
-        return Map.of("waitingRooms", waiting, "playingRooms", playing, "activeRooms", waiting + playing);
+        long players  = Optional.ofNullable(
+                rpsRoomRepository.sumCurrentPlayersByStatusIn(List.of(RoomStatus.WAITING, RoomStatus.PLAYING))
+        ).orElse(0L);
+        return Map.of("waitingRooms", waiting, "playingRooms", playing,
+                      "activeRooms", waiting + playing, "activePlayers", players);
     }
 
     // ─── roomId 생성 ─────────────────────────────────────────────────────────

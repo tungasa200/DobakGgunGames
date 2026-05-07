@@ -47,4 +47,9 @@ public interface YachtRoomRepository extends JpaRepository<YachtRoom, Long> {
     @Query("SELECT r FROM YachtRoom r WHERE r.status = :status AND r.createdAt < :cutoff")
     List<YachtRoom> findStaleWaitingRooms(@Param("status") YachtRoomStatus status,
                                            @Param("cutoff") LocalDateTime cutoff);
+
+    long countByStatus(YachtRoomStatus status);
+
+    @Query("SELECT COALESCE(SUM(r.currentPlayers), 0) FROM YachtRoom r WHERE r.status IN :statuses")
+    Long sumCurrentPlayersByStatusIn(@Param("statuses") List<YachtRoomStatus> statuses);
 }

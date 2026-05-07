@@ -242,24 +242,30 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    getRpsRoomStatus().then((data) =>
-      setMultiRoomStatuses((prev) => ({
-        ...prev,
-        rps: data ? { activeRooms: data.activeRooms } : null,
-      }))
-    );
-    getBattleRoomStatus().then((data) =>
-      setMultiRoomStatuses((prev) => ({
-        ...prev,
-        battle: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
-      }))
-    );
-    getYachtRoomStatus().then((data) =>
-      setMultiRoomStatuses((prev) => ({
-        ...prev,
-        yacht: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
-      }))
-    );
+    const fetchStatuses = () => {
+      getRpsRoomStatus().then((data) =>
+        setMultiRoomStatuses((prev) => ({
+          ...prev,
+          rps: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
+        }))
+      );
+      getBattleRoomStatus().then((data) =>
+        setMultiRoomStatuses((prev) => ({
+          ...prev,
+          battle: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
+        }))
+      );
+      getYachtRoomStatus().then((data) =>
+        setMultiRoomStatuses((prev) => ({
+          ...prev,
+          yacht: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
+        }))
+      );
+    };
+
+    fetchStatuses();
+    const timer = setInterval(fetchStatuses, 30_000);
+    return () => clearInterval(timer);
   }, []);
 
   const fetchLevel = (game: GameConfig, levelValue: string) => {

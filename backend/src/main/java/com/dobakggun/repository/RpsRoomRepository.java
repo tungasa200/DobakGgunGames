@@ -47,4 +47,7 @@ public interface RpsRoomRepository extends JpaRepository<RpsRoom, Long> {
                                          @Param("cutoff") LocalDateTime cutoff);
 
     long countByStatus(RoomStatus status);
+
+    @Query("SELECT COALESCE(SUM(r.currentPlayers), 0) FROM RpsRoom r WHERE r.status IN :statuses")
+    Long sumCurrentPlayersByStatusIn(@Param("statuses") List<RoomStatus> statuses);
 }

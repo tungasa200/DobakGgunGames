@@ -26,6 +26,7 @@ export interface RpsRoomStatus {
   waitingRooms: number;
   playingRooms: number;
   activeRooms: number;
+  activePlayers: number;
 }
 
 export async function getRpsRoomStatus(): Promise<RpsRoomStatus | null> {

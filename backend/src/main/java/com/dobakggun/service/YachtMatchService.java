@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -162,6 +163,19 @@ public class YachtMatchService {
                 .maxPlayers(6)
                 .created(true)
                 .build();
+    }
+
+    // ─── 방 현황 조회 ──────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getRoomStats() {
+        long waiting = yachtRoomRepository.countByStatus(YachtRoomStatus.WAITING);
+        long playing  = yachtRoomRepository.countByStatus(YachtRoomStatus.PLAYING);
+        long players  = Optional.ofNullable(
+                yachtRoomRepository.sumCurrentPlayersByStatusIn(
+                        List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING))
+        ).orElse(0L);
+        return Map.of("activeRooms", waiting + playing, "activePlayers", players);
     }
 
     // ─── Rate Limit ───────────────────────────────────────────────────────────
