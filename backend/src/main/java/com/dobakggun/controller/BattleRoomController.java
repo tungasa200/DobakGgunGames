@@ -126,4 +126,10 @@ public class BattleRoomController {
                 .topRankings(top)
                 .build());
     }
+
+    /** GET /api/blockfall-battle/rooms/status — 공개 엔드포인트, 인증 불필요. */
+    @GetMapping("/rooms/status")
+    public ResponseEntity<Map<String, Integer>> getRoomsStatus() {
+        return ResponseEntity.ok(battleRoomService.getRoomStats());
+    }
 }

@@ -812,6 +812,13 @@ public class BattleRoomService {
                 .build();
     }
 
+    public Map<String, Integer> getRoomStats() {
+        return Map.of(
+            "activeRooms",   roomManager.getActiveRoomCount(),
+            "activePlayers", roomManager.getActiveTotalPlayerCount()
+        );
+    }
+
     // ─── 예외 ────────────────────────────────────────────────────────────────
 
     public static class AlreadyInRoomException extends RuntimeException {

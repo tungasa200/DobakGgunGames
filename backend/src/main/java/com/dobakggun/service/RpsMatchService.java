@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -241,6 +242,13 @@ public class RpsMatchService {
         } catch (Exception e) {
             log.warn("releaseLock: Redis 오류", e);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getRoomStats() {
+        long waiting = rpsRoomRepository.countByStatus(RoomStatus.WAITING);
+        long playing  = rpsRoomRepository.countByStatus(RoomStatus.PLAYING);
+        return Map.of("waitingRooms", waiting, "playingRooms", playing, "activeRooms", waiting + playing);
     }
 
     // ─── roomId 생성 ─────────────────────────────────────────────────────────

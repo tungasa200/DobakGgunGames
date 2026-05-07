@@ -26,6 +26,21 @@ const JOIN_INFO_KEY = 'battleJoinInfo';
 
 // ── REST API 함수들 ──────────────────────────────────────
 
+export interface BattleRoomStatus {
+  activeRooms: number;
+  activePlayers: number;
+}
+
+export async function getBattleRoomStatus(): Promise<BattleRoomStatus | null> {
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/blockfall-battle/rooms/status`);
+    if (!res.ok) return null;
+    return res.json() as Promise<BattleRoomStatus>;
+  } catch {
+    return null;
+  }
+}
+
 export async function joinBattle(
   accessToken: string | null,
   guestToken?: string | null,

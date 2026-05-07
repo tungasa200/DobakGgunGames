@@ -22,6 +22,22 @@ export interface MatchError {
 
 export type MatchOutcome = MatchResult | MatchAlreadyInRoom | MatchError;
 
+export interface RpsRoomStatus {
+  waitingRooms: number;
+  playingRooms: number;
+  activeRooms: number;
+}
+
+export async function getRpsRoomStatus(): Promise<RpsRoomStatus | null> {
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/rps/rooms/status`);
+    if (!res.ok) return null;
+    return res.json() as Promise<RpsRoomStatus>;
+  } catch {
+    return null;
+  }
+}
+
 export async function postMatch(token?: string | null, guestToken?: string | null): Promise<MatchOutcome> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

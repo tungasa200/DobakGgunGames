@@ -53,4 +53,10 @@ public class OnlineRpsController {
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
         }
     }
+
+    /** GET /api/rps/rooms/status — 공개 엔드포인트, 인증 불필요. */
+    @GetMapping("/rooms/status")
+    public ResponseEntity<Map<String, Long>> getRoomsStatus() {
+        return ResponseEntity.ok(rpsMatchService.getRoomStats());
+    }
 }

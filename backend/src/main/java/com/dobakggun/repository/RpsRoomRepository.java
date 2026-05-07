@@ -45,4 +45,6 @@ public interface RpsRoomRepository extends JpaRepository<RpsRoom, Long> {
     @Query("SELECT r FROM RpsRoom r WHERE r.status = :status AND r.createdAt < :cutoff")
     List<RpsRoom> findStaleWaitingRooms(@Param("status") RoomStatus status,
                                          @Param("cutoff") LocalDateTime cutoff);
+
+    long countByStatus(RoomStatus status);
 }

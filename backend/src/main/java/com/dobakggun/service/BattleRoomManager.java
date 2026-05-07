@@ -344,6 +344,20 @@ public class BattleRoomManager {
         return false;
     }
 
+    /** 플레이어가 있는 방의 수. */
+    public int getActiveRoomCount() {
+        return (int) activePlayers.entrySet().stream()
+                .filter(e -> !e.getValue().isEmpty())
+                .count();
+    }
+
+    /** 모든 방의 전체 플레이어 수. */
+    public int getActiveTotalPlayerCount() {
+        return activePlayers.values().stream()
+                .mapToInt(List::size)
+                .sum();
+    }
+
     /** 플레이어가 속한 활성 roomId 조회 (ALREADY_IN_ROOM 체크용) */
     public Optional<String> findActiveRoomByPlayerId(String playerId) {
         return activePlayers.entrySet().stream()

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getCachedWeekly, type RankingEntry } from '../api/rankings';
 import { fetchGameStatus } from '../api/games';
+import { getRpsRoomStatus } from '../api/rps';
+import { getBattleRoomStatus } from '../api/blockfallBattleApi';
 import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
@@ -115,6 +117,12 @@ interface MultiGameConfig {
   name: string;
   to: string;
   description: string;
+  statusKey?: 'rps' | 'battle';
+}
+
+interface RoomStatusData {
+  activeRooms: number;
+  activePlayers?: number;
 }
 
 const MULTI_GAMES: MultiGameConfig[] = [
@@ -123,12 +131,14 @@ const MULTI_GAMES: MultiGameConfig[] = [
     name: '온라인 가위바위보',
     to: '/online-rps',
     description: '2~4인 실시간 대전',
+    statusKey: 'rps',
   },
   {
     icon: '🟦',
     name: '블록폴 배틀',
     to: '/blockfall-battle',
     description: '2인 실시간 블록 배틀',
+    statusKey: 'battle',
   },
   {
     icon: '🎲',
@@ -140,7 +150,7 @@ const MULTI_GAMES: MultiGameConfig[] = [
 
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
 
-function MultiGameCard({ game }: { game: MultiGameConfig }) {
+function MultiGameCard({ game, roomStatus }: { game: MultiGameConfig; roomStatus?: RoomStatusData | null }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardHeader}>
@@ -153,7 +163,21 @@ function MultiGameCard({ game }: { game: MultiGameConfig }) {
         </div>
       </div>
       <div className={styles.cardRanking}>
-        <p className={styles.placeholder} style={{ padding: '20px 0' }}>{game.description}</p>
+        <p className={styles.placeholder} style={{ padding: roomStatus !== undefined ? '12px 0 6px' : '20px 0' }}>
+          {game.description}
+        </p>
+        {roomStatus !== undefined && roomStatus !== null && roomStatus.activeRooms > 0 && (
+          <div className={styles.roomStatus}>
+            <span className={styles.roomStatusDot} />
+            <span className={styles.roomStatusText}>
+              {roomStatus.activeRooms}개 방 활성
+              {roomStatus.activePlayers !== undefined ? ` · ${roomStatus.activePlayers}명 플레이 중` : ''}
+            </span>
+          </div>
+        )}
+        {roomStatus !== undefined && (roomStatus === null || roomStatus.activeRooms === 0) && (
+          <p className={styles.placeholder} style={{ padding: '0 0 6px' }}>현재 활성 방 없음</p>
+        )}
       </div>
     </div>
   );
@@ -228,6 +252,7 @@ export default function HomePage() {
   );
   const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<'전체' | '솔로' | '멀티' | '기타'>('전체');
+  const [multiRoomStatuses, setMultiRoomStatuses] = useState<Record<string, RoomStatusData | null>>({});
 
   useEffect(() => {
     document.title = '도박꾼게임즈';
@@ -235,6 +260,21 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchGameStatus().then(setGameStatus);
+  }, []);
+
+  useEffect(() => {
+    getRpsRoomStatus().then((data) =>
+      setMultiRoomStatuses((prev) => ({
+        ...prev,
+        rps: data ? { activeRooms: data.activeRooms } : null,
+      }))
+    );
+    getBattleRoomStatus().then((data) =>
+      setMultiRoomStatuses((prev) => ({
+        ...prev,
+        battle: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
+      }))
+    );
   }, []);
 
   const fetchLevel = (game: GameConfig, levelValue: string) => {
@@ -325,7 +365,11 @@ export default function HomePage() {
           </div>
           <div className={styles.grid}>
             {MULTI_GAMES.map((game) => (
-              <MultiGameCard key={game.to} game={game} />
+              <MultiGameCard
+                key={game.to}
+                game={game}
+                roomStatus={game.statusKey ? multiRoomStatuses[game.statusKey] : undefined}
+              />
             ))}
           </div>
         </div>
