@@ -19,6 +19,9 @@ import type {
   PlayerLeftPayload,
   RankEntry,
   ScoreKey,
+  KickVotePayload,
+  PlayerReconnectingPayload,
+  PlayerReturnedPayload,
 } from '../types/yacht.types';
 import { SERVER_KEY_MAP } from '../types/yacht.types';
 
@@ -42,6 +45,8 @@ export interface UseYachtGameReturn {
   wsStatus: ConnectionStatus;
   toastMessage: string | null;
   roundNum: number;
+  reconnectingPlayers: Array<{ userId: number; nickname: string }>;
+  kickVoteState: KickVotePayload | null;
   startMatch: () => Promise<void>;
   toggleKeep: (index: number) => void;
   rollDice: () => void;
@@ -51,6 +56,7 @@ export interface UseYachtGameReturn {
   leave: () => void;
   dismissError: () => void;
   dismissToast: () => void;
+  voteKick: (targetUserId: number) => void;
 }
 
 export function useYachtGame(): UseYachtGameReturn {
@@ -73,6 +79,8 @@ export function useYachtGame(): UseYachtGameReturn {
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('connecting');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [roundNum, setRoundNum] = useState<number>(1);
+  const [reconnectingPlayers, setReconnectingPlayers] = useState<Array<{ userId: number; nickname: string }>>([]);
+  const [kickVoteState, setKickVoteState] = useState<KickVotePayload | null>(null);
 
   const clientRef = useRef<YachtStompClientHandle | null>(null);
   const roomIdRef = useRef<string | null>(null);
@@ -243,13 +251,35 @@ export function useYachtGame(): UseYachtGameReturn {
         // phase는 'playing' 유지 — 모달이 GameScreen 위에 떠 있음
       },
       onPlayerLeft: (payload: PlayerLeftPayload) => {
-        const reason = payload.reason === 'DISCONNECT' ? '연결이 끊겼습니다' : '나갔습니다';
-        showToast(`${payload.nickname}님이 ${reason}`);
+        const reasonMsg = payload.reason === 'KICK' ? '강퇴되었습니다'
+                        : payload.reason === 'DISCONNECT' ? '연결이 끊겼습니다'
+                        : '나갔습니다';
+        showToast(`${payload.nickname}님이 ${reasonMsg}`);
         setParticipants((prev) => prev.filter((p) => p.userId !== payload.userId));
+        setReconnectingPlayers((prev) => prev.filter((p) => p.userId !== payload.userId));
       },
       onRoomClosed: () => {
         setErrorMessage('방이 닫혔습니다. 홈으로 이동합니다.');
         setTimeout(() => goHome(), 3000);
+      },
+      onPlayerReconnecting: (payload: PlayerReconnectingPayload) => {
+        showToast(`${payload.nickname}님이 연결이 끊겼습니다`);
+        setReconnectingPlayers((prev) => [
+          ...prev.filter((p) => p.userId !== payload.userId),
+          { userId: payload.userId, nickname: payload.nickname },
+        ]);
+      },
+      onPlayerReturned: (payload: PlayerReturnedPayload) => {
+        showToast(`${payload.nickname}님이 재접속 했습니다`);
+        setReconnectingPlayers((prev) => prev.filter((p) => p.userId !== payload.userId));
+        setKickVoteState((prev) => (prev?.targetUserId === payload.userId ? null : prev));
+      },
+      onKickVote: (payload: KickVotePayload) => {
+        setKickVoteState(payload.passed === true || payload.passed === false ? null : payload);
+        if (payload.passed === true) {
+          showToast(`${payload.targetNickname}님이 투표로 강퇴되었습니다`);
+          setReconnectingPlayers((prev) => prev.filter((p) => p.userId !== payload.targetUserId));
+        }
       },
       onError: (code: string, message: string) => {
         if (code === 'UNAUTHORIZED' || code === 'ROOM_NOT_FOUND') {
@@ -362,6 +392,11 @@ export function useYachtGame(): UseYachtGameReturn {
     setToastMessage(null);
   }, []);
 
+  const voteKick = useCallback((targetUserId: number) => {
+    if (!clientRef.current) return;
+    clientRef.current.voteKick(targetUserId);
+  }, []);
+
   // 언마운트 시 정리
   useEffect(() => {
     return () => {
@@ -395,6 +430,8 @@ export function useYachtGame(): UseYachtGameReturn {
     wsStatus,
     toastMessage,
     roundNum,
+    reconnectingPlayers,
+    kickVoteState,
     startMatch,
     toggleKeep,
     rollDice,
@@ -404,5 +441,6 @@ export function useYachtGame(): UseYachtGameReturn {
     leave,
     dismissError,
     dismissToast,
+    voteKick,
   };
 }

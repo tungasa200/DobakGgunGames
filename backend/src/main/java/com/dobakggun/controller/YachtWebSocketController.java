@@ -3,6 +3,7 @@ package com.dobakggun.controller;
 import com.dobakggun.dto.yacht.YachtReadyRequest;
 import com.dobakggun.dto.yacht.YachtRollRequest;
 import com.dobakggun.dto.yacht.YachtScoreRequest;
+import com.dobakggun.dto.yacht.YachtVoteKickRequest;
 import com.dobakggun.security.ChatPrincipal;
 import com.dobakggun.service.YachtGameService;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +73,10 @@ public class YachtWebSocketController {
             sendError(cp, error, resolveMessage(error));
             return;
         }
+
+        // 세션 ID 등록 (stale disconnect 방지)
+        String sessionId = accessor.getSessionId();
+        yachtGameService.registerSession(roomId, cp.getUserId(), sessionId);
 
         // 세션 속성에 roomId 기록
         Map<String, Object> attrs = accessor.getSessionAttributes();
@@ -199,6 +204,23 @@ public class YachtWebSocketController {
         log.info("WS YACHT LEAVE roomId={} userId={}", roomId, cp.getUserId());
     }
 
+    // ─── VOTE KICK ───────────────────────────────────────────────────────────
+
+    @MessageMapping("/yacht/room/{roomId}/vote-kick")
+    public void handleVoteKick(@DestinationVariable String roomId,
+                                @Payload YachtVoteKickRequest request,
+                                Principal principal) {
+        ChatPrincipal cp = toChatPrincipal(principal);
+        if (cp == null) return;
+        if (request == null || request.getTargetUserId() == null) return;
+
+        String error = yachtGameService.voteKick(roomId, cp.getUserId(), request.getTargetUserId());
+        if (error != null) {
+            sendError(cp, error, resolveMessage(error));
+        }
+        log.info("WS YACHT VOTE-KICK roomId={} voterId={} targetUserId={}", roomId, cp.getUserId(), request.getTargetUserId());
+    }
+
     // ─── SESSION DISCONNECT ───────────────────────────────────────────────────
 
     @EventListener
@@ -214,7 +236,12 @@ public class YachtWebSocketController {
         Set<String> yachtRooms = (Set<String>) attrs.get(SESSION_KEY);
         if (yachtRooms == null || yachtRooms.isEmpty()) return;
 
+        String disconnectedSessionId = accessor.getSessionId();
         for (String roomId : yachtRooms) {
+            if (!yachtGameService.isActiveSession(roomId, cp.getUserId(), disconnectedSessionId)) {
+                log.info("WS YACHT DISCONNECT (stale) roomId={} userId={}", roomId, cp.getUserId());
+                continue;
+            }
             yachtGameService.leaveRoom(roomId, cp.getUserId(), "DISCONNECT");
             log.info("WS YACHT DISCONNECT roomId={} userId={}", roomId, cp.getUserId());
         }
@@ -258,6 +285,8 @@ public class YachtWebSocketController {
             case "MUST_ROLL_FIRST"     -> "먼저 주사위를 굴려야 합니다.";
             case "INVALID_SCORE_KEY"   -> "유효하지 않은 족보 키입니다.";
             case "ALREADY_SCORED"      -> "이미 기록된 족보입니다.";
+            case "TARGET_NOT_RECONNECTING" -> "해당 플레이어는 재접속 대기 중이 아닙니다.";
+            case "NOT_ACTIVE_PLAYER"       -> "활성 플레이어만 투표할 수 있습니다.";
             default                    -> "처리할 수 없는 요청입니다.";
         };
     }

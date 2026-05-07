@@ -69,6 +69,8 @@ export interface Participant {
   isHost: boolean;
   /** 게임 중 합류한 관전자. WAITING/FINISHED에서는 false. */
   isSpectator?: boolean;
+  /** 재접속 유예 중 (게임 진행 중 연결 끊김) */
+  isReconnecting?: boolean;
 }
 
 export interface PlayerScore {
@@ -101,7 +103,10 @@ export type WsEventType =
   | 'PLAYER_LEFT'
   | 'ROOM_CLOSED'
   | 'MATCH_COUNTDOWN'
-  | 'MATCH_COUNTDOWN_CANCELLED';
+  | 'MATCH_COUNTDOWN_CANCELLED'
+  | 'PLAYER_RECONNECTING'
+  | 'PLAYER_RETURNED'
+  | 'KICK_VOTE';
 
 export interface WsMessage<T = unknown> {
   type: WsEventType;
@@ -174,12 +179,31 @@ export interface PlayerLeftPayload {
   roomId: string;
   userId: number;
   nickname: string;
-  reason: 'LEAVE' | 'DISCONNECT';
+  reason: 'LEAVE' | 'DISCONNECT' | 'KICK';
 }
 
 export interface RoomClosedPayload {
   roomId: string;
   reason: 'EMPTY' | 'INSUFFICIENT_PLAYERS';
+}
+
+export interface PlayerReconnectingPayload {
+  userId: number;
+  nickname: string;
+}
+
+export interface PlayerReturnedPayload {
+  userId: number;
+  nickname: string;
+}
+
+export interface KickVotePayload {
+  targetUserId: number;
+  targetNickname: string;
+  voteCount: number;
+  requiredCount: number;
+  /** null=진행 중, true=통과(퇴출), false=미통과 */
+  passed: boolean | null;
 }
 
 export interface WsErrorPayload {

@@ -29,6 +29,8 @@ export default function YachtPage() {
     wsStatus,
     toastMessage,
     roundNum,
+    reconnectingPlayers,
+    kickVoteState,
     startMatch,
     toggleKeep,
     rollDice,
@@ -38,6 +40,7 @@ export default function YachtPage() {
     leave,
     dismissError,
     dismissToast,
+    voteKick,
   } = useYachtGame();
 
   const startedRef = useRef(false);
@@ -174,10 +177,13 @@ export default function YachtPage() {
           isSpectator={isSpectator}
           isRolling={isRolling}
           roundNum={roundNum}
+          reconnectingPlayers={reconnectingPlayers}
+          kickVoteState={kickVoteState}
           onToggleKeep={toggleKeep}
           onRoll={rollDice}
           onSelectScore={recordScore}
           onLeave={leave}
+          onVoteKick={voteKick}
         />
         {gameOverData && (
           <YachtGameOverModal

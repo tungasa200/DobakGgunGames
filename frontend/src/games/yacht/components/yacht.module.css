@@ -350,7 +350,7 @@
 .gameBody {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 6px 320px;
   gap: 0;
   overflow: hidden;
 }
@@ -363,8 +363,41 @@
   overflow-y: auto;
 }
 
+.resizeDivider {
+  cursor: col-resize;
+  background: var(--yacht-border);
+  position: relative;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.resizeDivider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 28px;
+  background: var(--yacht-text-sub, #888);
+  border-radius: 2px;
+  opacity: 0.35;
+  box-shadow: -3px 0 0 var(--yacht-text-sub, #888), 3px 0 0 var(--yacht-text-sub, #888);
+  transition: opacity 0.15s;
+}
+
+.resizeDivider:hover {
+  background: var(--yacht-accent, #4f6cd8);
+}
+
+.resizeDivider:hover::before {
+  opacity: 0.8;
+  background: #fff;
+  box-shadow: -3px 0 0 #fff, 3px 0 0 #fff;
+}
+
 .gameRight {
-  border-left: 1px solid var(--yacht-border);
+  border-left: none;
   overflow-y: auto;
 }
 
@@ -739,11 +772,81 @@
   color: #fff;
 }
 
+/* ============================================================
+   재접속 유예 + 투표 강퇴 UI
+   ============================================================ */
+.reconnectingPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--yacht-bg-soft, #fff7e6);
+  border: 1px solid #ffb84d;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.reconnectingItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--yacht-warn, #b35900);
+  flex-wrap: wrap;
+}
+
+.reconnectingDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: reconnectPulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes reconnectPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+.reconnectTimer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.btnVoteKick {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  border-radius: 6px;
+  border: 1px solid #dc2626;
+  color: #dc2626;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btnVoteKick:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+.kickVoteStatus {
+  font-size: 0.82rem;
+  color: var(--yacht-text-sub);
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,184,77,0.4);
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
   .gameBody {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     grid-template-rows: auto 1fr;
+  }
+
+  .resizeDivider {
+    display: none;
   }
 
   .gameRight {

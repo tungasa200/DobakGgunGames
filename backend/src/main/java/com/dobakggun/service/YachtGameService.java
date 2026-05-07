@@ -88,6 +88,13 @@ public class YachtGameService {
         /** 끊긴 유저 set (게임 중 자동 0점 기록 후 남겨둠) */
         public final Set<Long> disconnectedPlayers = ConcurrentHashMap.newKeySet();
 
+        /** 재접속 대기 중인 플레이어 (투표 강퇴 전까지 무한 대기) */
+        public final Set<Long> reconnectingPlayers = ConcurrentHashMap.newKeySet();
+        /** 퇴출 투표: targetUserId → Set<voterUserId> */
+        public final Map<Long, Set<Long>> kickVotes = new ConcurrentHashMap<>();
+        /** 현재 활성 WebSocket 세션 ID: userId → sessionId */
+        public final Map<Long, String> activeSessionIds = new ConcurrentHashMap<>();
+
         public YachtRoomState(String roomId, Long hostUserId, int maxPlayers) {
             this.roomId    = roomId;
             this.hostUserId = hostUserId;
@@ -161,13 +168,18 @@ public class YachtGameService {
         if (state == null) return "ROOM_NOT_FOUND";
 
         boolean asSpectator;
+        boolean wasReconnecting;
+        String returnedNickname;
+
         synchronized (state) {
             if (state.status == YachtRoomStatus.FINISHED) {
                 log.warn("joinRoom: roomId={} FINISHED 상태 진입 거부", roomId);
                 return "ROOM_NOT_AVAILABLE";
             }
 
-            asSpectator = (state.status == YachtRoomStatus.PLAYING);
+            asSpectator = (state.status == YachtRoomStatus.PLAYING)
+                    && !state.reconnectingPlayers.contains(userId)
+                    && !state.turnOrder.contains(userId);
 
             boolean alreadyIn = state.participants.stream().anyMatch(p -> p.userId.equals(userId));
             if (!alreadyIn) {
@@ -177,6 +189,23 @@ public class YachtGameService {
                 log.info("joinRoom: userId={} 방 {} 입장 (현재 {}명, spectator={})",
                         userId, roomId, state.participants.size(), asSpectator);
             }
+
+            // 재접속 대기 중인 플레이어가 돌아온 경우
+            wasReconnecting = state.reconnectingPlayers.contains(userId);
+            if (wasReconnecting) {
+                state.reconnectingPlayers.remove(userId);
+                state.kickVotes.remove(userId);
+            }
+            returnedNickname = nickname;
+        }
+
+        // 재접속 복귀 브로드캐스트
+        if (wasReconnecting) {
+            broadcast(roomId, "PLAYER_RETURNED", YachtPlayerReturnedPayload.builder()
+                    .userId(userId)
+                    .nickname(returnedNickname)
+                    .build());
+            log.info("joinRoom: 재접속 복귀 userId={} roomId={}", userId, roomId);
         }
 
         broadcastRoomState(state);
@@ -433,6 +462,9 @@ public class YachtGameService {
                 state.roundIndex++; // 새 라운드
             }
 
+            // 재접속 대기 플레이어 턴 스킵
+            skipReconnectingTurns(state);
+
             newRoundIndex = state.roundIndex;
 
             // 턴 상태 리셋
@@ -520,7 +552,7 @@ public class YachtGameService {
 
             // 관전자: 게임 로직에 영향 없이 목록에서만 제거
             // 대기방: 목록에서 제거 + readySet 정리
-            // 게임 중 플레이어: disconnectedPlayers 기록 (autoFill 대상)
+            // 게임 중 플레이어: DISCONNECT → 유예 기간, LEAVE → 즉시 disconnectedPlayers
             if (wasSpectator) {
                 state.participants.remove(leaving);
                 state.scoreMap.remove(userId);
@@ -528,30 +560,40 @@ public class YachtGameService {
                 state.participants.remove(leaving);
                 state.readySet.remove(userId);
             } else {
-                state.disconnectedPlayers.add(userId);
+                if ("DISCONNECT".equals(reason)) {
+                    // 그레이스 기간: 아직 disconnectedPlayers에 추가하지 않음
+                } else {
+                    state.disconnectedPlayers.add(userId);
+                }
             }
 
-            // remaining: turnOrder 기준 활성 플레이어 수 (관전자 제외)
+            // remaining: turnOrder 기준 활성 플레이어 수 (관전자, 끊긴 플레이어, 재접속 대기 제외)
             // 대기방: 전체 참가자 수
             if (isPlaying) {
                 remaining = (int) state.turnOrder.stream()
                         .filter(uid -> !state.disconnectedPlayers.contains(uid))
+                        .filter(uid -> !state.reconnectingPlayers.contains(uid))
+                        .filter(uid -> !uid.equals(userId)) // 방금 끊긴 플레이어 제외
                         .count();
             } else {
                 remaining = state.participants.size();
             }
         }
 
-        // PLAYER_LEFT 브로드캐스트
-        broadcast(roomId, "PLAYER_LEFT", YachtPlayerLeftPayload.builder()
-                .roomId(roomId)
-                .userId(userId)
-                .nickname(nickname)
-                .reason(reason)
-                .build());
+        // PLAYER_LEFT 브로드캐스트 (DISCONNECT + 게임 중은 유예 기간 시작이므로 아직 PLAYER_LEFT 미발송)
+        if (!("DISCONNECT".equals(reason) && isPlaying && !wasSpectator)) {
+            broadcast(roomId, "PLAYER_LEFT", YachtPlayerLeftPayload.builder()
+                    .roomId(roomId)
+                    .userId(userId)
+                    .nickname(nickname)
+                    .reason(reason)
+                    .build());
+        }
 
-        // DB participant 퇴장 기록
-        markParticipantLeft(roomId, userId);
+        // DB participant 퇴장 기록 (DISCONNECT 유예 중은 아직 기록 안 함)
+        if (!("DISCONNECT".equals(reason) && isPlaying && !wasSpectator)) {
+            markParticipantLeft(roomId, userId);
+        }
 
         if (wasSpectator) {
             // 관전자 퇴장: 단순히 ROOM_STATE 재방송. 게임 진행에 영향 없음.
@@ -561,12 +603,172 @@ public class YachtGameService {
         }
 
         if (!isPlaying) {
-            // 대기방 처리
             handleWaitingLeave(state, wasHost, remaining, userId, nickname);
+        } else if ("DISCONNECT".equals(reason) && remaining >= 1) {
+            startReconnectWait(state, userId, wasCurrentTurn, nickname);
+        } else if ("DISCONNECT".equals(reason) && remaining == 0) {
+            // 혼자 남은 경우: 즉시 처리
+            broadcast(roomId, "PLAYER_LEFT", YachtPlayerLeftPayload.builder()
+                    .roomId(roomId).userId(userId).nickname(nickname).reason(reason).build());
+            markParticipantLeft(roomId, userId);
+            handlePlayingLeave(state, userId, wasCurrentTurn, 0);
         } else {
-            // 게임 중 처리
             handlePlayingLeave(state, userId, wasCurrentTurn, remaining);
         }
+    }
+
+    // ─── 재접속 대기 ──────────────────────────────────────────────────────────
+
+    /**
+     * 연결 끊김 처리: reconnectingPlayers에 등록하고 투표 강퇴 전까지 무한 대기.
+     * 타이머 없음 — 다른 플레이어 과반수 투표로만 강퇴 가능.
+     */
+    private void startReconnectWait(YachtRoomState state, Long userId, boolean wasCurrentTurn, String nickname) {
+        synchronized (state) {
+            state.reconnectingPlayers.add(userId);
+
+            if (wasCurrentTurn) {
+                state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
+                if (state.turnOrderIndex == 0) state.roundIndex++;
+                state.dice = new int[]{0, 0, 0, 0, 0};
+                state.keptIndices = new ArrayList<>();
+                state.rollsLeft = 3;
+                state.hasRolled = false;
+
+                skipReconnectingTurns(state);
+                Long nextTurn = currentTurnUserId(state);
+
+                if (!isGameOver(state) && nextTurn != null) {
+                    broadcast(state.roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
+                            .previousTurnUserId(userId)
+                            .currentTurnUserId(nextTurn)
+                            .rollsLeft(3)
+                            .roundNum(state.roundIndex + 1)
+                            .build());
+                    broadcastTurnState(state);
+                }
+            }
+        }
+
+        broadcastRoomState(state);
+        broadcast(state.roomId, "PLAYER_RECONNECTING", YachtPlayerReconnectingPayload.builder()
+                .userId(userId)
+                .nickname(nickname)
+                .build());
+
+        log.info("startReconnectWait: roomId={} userId={} 재접속 대기 시작 (투표 강퇴 전까지 무한 대기)", state.roomId, userId);
+
+        // 다른 플레이어들이 모두 완료된 경우 즉시 게임 종료
+        synchronized (state) {
+            if (isGameOver(state)) {
+                finishGame(state.roomId, state, new ArrayList<>(state.participants));
+            }
+        }
+    }
+
+    /**
+     * synchronized(state) 블록 내에서 호출.
+     * reconnecting/disconnected 플레이어의 턴을 연속으로 건너뜀.
+     */
+    private void skipReconnectingTurns(YachtRoomState state) {
+        int maxSkips = state.turnOrder.size();
+        int skips = 0;
+        while (skips < maxSkips) {
+            Long next = currentTurnUserId(state);
+            if (next == null) break;
+            if (!state.reconnectingPlayers.contains(next) && !state.disconnectedPlayers.contains(next)) break;
+            state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
+            if (state.turnOrderIndex == 0) state.roundIndex++;
+            skips++;
+        }
+    }
+
+    // ─── 투표 강퇴 ────────────────────────────────────────────────────────────
+
+    public String voteKick(String roomId, Long voterId, Long targetUserId) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return "ROOM_NOT_FOUND";
+
+        boolean kicked;
+        int voteCount;
+        int requiredCount;
+        String targetNickname;
+
+        synchronized (state) {
+            if (state.status != YachtRoomStatus.PLAYING) return "GAME_NOT_ACTIVE";
+            if (!state.reconnectingPlayers.contains(targetUserId)) return "TARGET_NOT_RECONNECTING";
+
+            boolean isActiveVoter = state.turnOrder.contains(voterId)
+                    && !state.reconnectingPlayers.contains(voterId)
+                    && !state.disconnectedPlayers.contains(voterId);
+            if (!isActiveVoter) return "NOT_ACTIVE_PLAYER";
+
+            state.kickVotes.computeIfAbsent(targetUserId, k -> ConcurrentHashMap.newKeySet()).add(voterId);
+
+            long activePlayers = state.turnOrder.stream()
+                    .filter(uid -> !state.reconnectingPlayers.contains(uid))
+                    .filter(uid -> !state.disconnectedPlayers.contains(uid))
+                    .count();
+
+            voteCount = state.kickVotes.get(targetUserId).size();
+            requiredCount = (int) Math.max(1, (activePlayers + 1) / 2);
+
+            targetNickname = state.participants.stream()
+                    .filter(p -> p.userId.equals(targetUserId))
+                    .map(p -> p.nickname)
+                    .findFirst()
+                    .orElse("Unknown");
+
+            kicked = voteCount >= requiredCount;
+            if (kicked) {
+                state.reconnectingPlayers.remove(targetUserId);
+                state.disconnectedPlayers.add(targetUserId);
+                state.kickVotes.remove(targetUserId);
+            }
+        }
+
+        broadcast(roomId, "KICK_VOTE", YachtKickVotePayload.builder()
+                .targetUserId(targetUserId)
+                .targetNickname(targetNickname)
+                .voteCount(voteCount)
+                .requiredCount(requiredCount)
+                .passed(kicked ? Boolean.TRUE : null)
+                .build());
+
+        if (kicked) {
+            broadcast(roomId, "PLAYER_LEFT", YachtPlayerLeftPayload.builder()
+                    .roomId(roomId)
+                    .userId(targetUserId)
+                    .nickname(targetNickname)
+                    .reason("KICK")
+                    .build());
+            markParticipantLeft(roomId, targetUserId);
+            autoFillScores(state, targetUserId);
+            broadcastRoomState(state);
+            synchronized (state) {
+                if (isGameOver(state)) {
+                    finishGame(roomId, state, new ArrayList<>(state.participants));
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // ─── 세션 추적 ────────────────────────────────────────────────────────────
+
+    public void registerSession(String roomId, Long userId, String sessionId) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state != null && sessionId != null) {
+            state.activeSessionIds.put(userId, sessionId);
+        }
+    }
+
+    public boolean isActiveSession(String roomId, Long userId, String sessionId) {
+        YachtRoomState state = rooms.get(roomId);
+        if (state == null) return true;
+        String current = state.activeSessionIds.get(userId);
+        return current == null || current.equals(sessionId);
     }
 
     private void handleWaitingLeave(YachtRoomState state, boolean wasHost, int remaining,
@@ -689,6 +891,14 @@ public class YachtGameService {
             if (state.status != YachtRoomStatus.PLAYING) return;
         }
 
+        // 재접속 대기 중인 플레이어 즉시 0점 처리 (게임 종료)
+        for (Long reconnectingId : new ArrayList<>(state.reconnectingPlayers)) {
+            state.reconnectingPlayers.remove(reconnectingId);
+            state.disconnectedPlayers.add(reconnectingId);
+            state.kickVotes.remove(reconnectingId);
+            autoFillScores(state, reconnectingId);
+        }
+
         // 최종 점수 계산
         List<YachtRankingEntryDto> rankings = computeRankings(state, participants);
         List<Long> winnerIds = rankings.stream()
@@ -712,6 +922,7 @@ public class YachtGameService {
         synchronized (state) {
             activeParticipants = (int) state.participants.stream()
                     .filter(p -> !state.disconnectedPlayers.contains(p.userId))
+                    .filter(p -> !state.reconnectingPlayers.contains(p.userId))
                     .count();
         }
 
@@ -740,6 +951,11 @@ public class YachtGameService {
             // 끊긴 유저 제거
             state.participants.removeIf(p -> state.disconnectedPlayers.contains(p.userId));
             state.disconnectedPlayers.clear();
+
+            // 재접속 대기 상태 정리
+            state.reconnectingPlayers.clear();
+            state.kickVotes.clear();
+            state.activeSessionIds.clear();
 
             // 게임 상태 초기화
             state.status = YachtRoomStatus.WAITING;
@@ -959,6 +1175,7 @@ public class YachtGameService {
      */
     private boolean isGameOver(YachtRoomState state) {
         for (Long playerId : state.turnOrder) {
+            if (state.reconnectingPlayers.contains(playerId)) continue; // 유예 중 = 종료 예정
             Map<String, Integer> scores = state.scoreMap.getOrDefault(playerId, new ConcurrentHashMap<>());
             if (scores.size() < TOTAL_SCORE_KEYS) return false;
         }
@@ -991,6 +1208,7 @@ public class YachtGameService {
                             .ready(state.readySet.contains(p.userId) || p.userId.equals(state.hostUserId))
                             .isHost(p.userId.equals(state.hostUserId))
                             .isSpectator(isSpectator(state, p.userId))
+                            .isReconnecting(state.reconnectingPlayers.contains(p.userId))
                             .build())
                     .collect(Collectors.toList());
         }
@@ -1187,6 +1405,7 @@ public class YachtGameService {
                             .ready(state.readySet.contains(p.userId) || p.userId.equals(state.hostUserId))
                             .isHost(p.userId.equals(state.hostUserId))
                             .isSpectator(isSpectator(state, p.userId))
+                            .isReconnecting(state.reconnectingPlayers.contains(p.userId))
                             .build())
                     .collect(Collectors.toList());
 

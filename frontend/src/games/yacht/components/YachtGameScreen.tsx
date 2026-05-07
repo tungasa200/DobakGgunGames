@@ -1,5 +1,6 @@
+import { useState, useRef, useCallback, useEffect } from 'react';
 import styles from './yacht.module.css';
-import type { Participant, PlayerScore, ScoreKey } from '../types/yacht.types';
+import type { Participant, PlayerScore, ScoreKey, KickVotePayload } from '../types/yacht.types';
 import YachtDice3D from './YachtDice3D';
 import YachtScoreBoard from './YachtScoreBoard';
 
@@ -15,11 +16,19 @@ interface YachtGameScreenProps {
   isSpectator: boolean;
   isRolling: boolean;
   roundNum: number;
+  reconnectingPlayers: Array<{ userId: number; nickname: string }>;
+  kickVoteState: KickVotePayload | null;
   onToggleKeep: (index: number) => void;
   onRoll: () => void;
   onSelectScore: (key: ScoreKey) => void;
   onLeave: () => void;
+  onVoteKick: (targetUserId: number) => void;
 }
+
+const SCORE_MIN = 200;
+const SCORE_MAX = 640;
+const SCORE_DEFAULT = 320;
+
 
 export default function YachtGameScreen({
   participants,
@@ -33,14 +42,49 @@ export default function YachtGameScreen({
   isSpectator,
   isRolling,
   roundNum,
+  reconnectingPlayers,
+  kickVoteState,
   onToggleKeep,
   onRoll,
   onSelectScore,
   onLeave,
+  onVoteKick,
 }: YachtGameScreenProps) {
   const currentPlayer = participants.find((p) => p.userId === currentTurnUserId);
   const rollsUsed = 3 - rollsLeft;
   const hasDice = dice.every((d) => d > 0);
+
+  const [scoreBoardWidth, setScoreBoardWidth] = useState(SCORE_DEFAULT);
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const { startX, startWidth } = dragRef.current;
+      const next = Math.max(SCORE_MIN, Math.min(SCORE_MAX, startWidth + (startX - e.clientX)));
+      setScoreBoardWidth(next);
+    };
+    const onMouseUp = () => {
+      if (dragRef.current) {
+        dragRef.current = null;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, []);
+
+  const onDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startWidth: scoreBoardWidth };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [scoreBoardWidth]);
 
   return (
     <div className={styles.gameScreen}>
@@ -58,9 +102,38 @@ export default function YachtGameScreen({
         </button>
       </header>
 
-      <div className={styles.gameBody}>
+      <div
+        className={styles.gameBody}
+        style={{ gridTemplateColumns: `1fr 6px ${scoreBoardWidth}px` }}
+      >
         {/* 좌측: 주사위 + 조작 */}
         <div className={styles.gameLeft}>
+          {/* 재접속 대기 패널 */}
+          {reconnectingPlayers.length > 0 && (
+            <div className={styles.reconnectingPanel}>
+              {reconnectingPlayers.map((rp) => (
+                <div key={rp.userId} className={styles.reconnectingItem}>
+                  <span className={styles.reconnectingDot} />
+                  <span>{rp.nickname}님 재접속 대기 중</span>
+                  {myUserId !== rp.userId && currentTurnUserId === rp.userId && (
+                    <button
+                      type="button"
+                      className={styles.btnVoteKick}
+                      onClick={() => onVoteKick(rp.userId)}
+                    >
+                      강퇴 투표
+                    </button>
+                  )}
+                </div>
+              ))}
+              {kickVoteState && (
+                <div className={styles.kickVoteStatus}>
+                  {kickVoteState.targetNickname} 강퇴 투표: {kickVoteState.voteCount}/{kickVoteState.requiredCount}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 관전 안내 배너 */}
           {isSpectator && (
             <div
@@ -166,6 +239,14 @@ export default function YachtGameScreen({
             </p>
           )}
         </div>
+
+        {/* 드래그 핸들 */}
+        <div
+          className={styles.resizeDivider}
+          onMouseDown={onDividerMouseDown}
+          role="separator"
+          aria-label="점수판 너비 조절"
+        />
 
         {/* 우측: 점수판 */}
         <div className={styles.gameRight}>

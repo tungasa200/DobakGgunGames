@@ -14,6 +14,9 @@ import type {
   RoomClosedPayload,
   WsErrorPayload,
   ConnectionStatus,
+  PlayerReconnectingPayload,
+  PlayerReturnedPayload,
+  KickVotePayload,
 } from '../games/yacht/types/yacht.types';
 import type { ScoreKey } from '../games/yacht/types/yacht.types';
 import { CLIENT_KEY_MAP } from '../games/yacht/types/yacht.types';
@@ -32,6 +35,9 @@ export interface YachtEventHandlers {
   onRoomClosed: (payload: RoomClosedPayload) => void;
   onError: (code: string, message: string) => void;
   onStatusChange: (status: ConnectionStatus) => void;
+  onPlayerReconnecting: (payload: PlayerReconnectingPayload) => void;
+  onPlayerReturned: (payload: PlayerReturnedPayload) => void;
+  onKickVote: (payload: KickVotePayload) => void;
 }
 
 export interface YachtStompClientHandle {
@@ -42,6 +48,7 @@ export interface YachtStompClientHandle {
   score: (scoreKey: ScoreKey) => void;
   leave: () => void;
   disconnect: () => void;
+  voteKick: (targetUserId: number) => void;
 }
 
 const WS_URL = import.meta.env.VITE_WS_URL as string | undefined;
@@ -65,6 +72,9 @@ export function connectYacht(
     onRoomClosed,
     onError,
     onStatusChange,
+    onPlayerReconnecting,
+    onPlayerReturned,
+    onKickVote,
   } = handlers;
 
   let retryCount = 0;
@@ -151,6 +161,15 @@ export function connectYacht(
       case 'ROOM_CLOSED':
         onRoomClosed(payload as RoomClosedPayload);
         break;
+      case 'PLAYER_RECONNECTING':
+        onPlayerReconnecting(payload as PlayerReconnectingPayload);
+        break;
+      case 'PLAYER_RETURNED':
+        onPlayerReturned(payload as PlayerReturnedPayload);
+        break;
+      case 'KICK_VOTE':
+        onKickVote(payload as KickVotePayload);
+        break;
       // MATCH_COUNTDOWN / MATCH_COUNTDOWN_CANCELLED 는 CP1-3에 따라 미사용
       default:
         break;
@@ -228,6 +247,13 @@ export function connectYacht(
     disconnect: () => {
       disconnectRequested = true;
       client.deactivate().catch(() => {});
+    },
+    voteKick: (targetUserId: number) => {
+      if (!client.connected) return;
+      client.publish({
+        destination: `/app/yacht/room/${roomId}/vote-kick`,
+        body: JSON.stringify({ targetUserId }),
+      });
     },
   };
 }

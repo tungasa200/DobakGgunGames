@@ -181,7 +181,10 @@ export default function YachtScoreBoard({
                   ]
                     .filter(Boolean)
                     .join(' ')}
-                  style={{ maxWidth: '70px' }}
+                  style={{
+                    maxWidth: '70px',
+                    color: p.isReconnecting ? 'var(--yacht-danger)' : undefined,
+                  }}
                 >
                   {p.nickname.length > 6 ? p.nickname.slice(0, 5) + '…' : p.nickname}
                   {p.userId === currentTurnUserId && ' *'}
