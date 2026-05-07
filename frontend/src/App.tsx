@@ -107,7 +107,12 @@ export default function App() {
           element={<AuthRoute><YachtPage /></AuthRoute>}
         />
 
-        {/* Test Lab — 블록폴 배틀 (로그인/게스트 모두 허용, /:game 보다 위에 선언) */}
+        {/* 블록폴 배틀 (정식, 로그인/게스트 모두 허용) */}
+        <Route
+          path="/blockfall-battle"
+          element={<BlockfallBattlePage />}
+        />
+        {/* Test Lab URL 하위 호환 유지 */}
         <Route
           path="/test-lab/blockfall-battle"
           element={<BlockfallBattlePage />}

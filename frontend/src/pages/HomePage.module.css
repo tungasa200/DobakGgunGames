@@ -25,12 +25,64 @@
   display: block;
 }
 
+.filterTabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+  width: 100%;
+  max-width: 920px;
+}
+
+.filterTab {
+  padding: 7px 18px;
+  font-size: 0.83em;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 20px;
+  background: white;
+  color: #888;
+  transition: all 0.12s;
+  font-family: sans-serif;
+}
+
+.filterTab:hover { border-color: #2c3e50; color: #2c3e50; }
+
+.filterTabActive { background: #2c3e50; color: white !important; border-color: #2c3e50; }
+
+.sectionBlock {
+  width: 100%;
+  max-width: 920px;
+  margin-bottom: 30px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sectionTitle {
+  font-size: 0.82em;
+  font-weight: 700;
+  color: #2c3e50;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.sectionLine {
+  flex: 1;
+  height: 1px;
+  background: #dde1e7;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
   width: 100%;
-  max-width: 920px;
 }
 
 .card {

@@ -110,7 +110,54 @@ const GAMES: GameConfig[] = [
   },
 ];
 
+interface MultiGameConfig {
+  icon: string;
+  name: string;
+  to: string;
+  description: string;
+}
+
+const MULTI_GAMES: MultiGameConfig[] = [
+  {
+    icon: '✌️',
+    name: '온라인 가위바위보',
+    to: '/online-rps',
+    description: '2~4인 실시간 대전',
+  },
+  {
+    icon: '🟦',
+    name: '블록폴 배틀',
+    to: '/blockfall-battle',
+    description: '2인 실시간 블록 배틀',
+  },
+  {
+    icon: '🎲',
+    name: '야추 (Yacht)',
+    to: '/yacht',
+    description: '실시간 대전 주사위 게임',
+  },
+];
+
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
+
+function MultiGameCard({ game }: { game: MultiGameConfig }) {
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardHeader}>
+        <span className={styles.icon}>{game.icon}</span>
+        <div className={styles.title}>
+          <div className={styles.nameKo}>{game.name}</div>
+        </div>
+        <div className={styles.btns}>
+          <Link className={`${styles.btn} ${styles.btnNormal}`} to={game.to}>플레이</Link>
+        </div>
+      </div>
+      <div className={styles.cardRanking}>
+        <p className={styles.placeholder} style={{ padding: '20px 0' }}>{game.description}</p>
+      </div>
+    </div>
+  );
+}
 
 function GameCard({ game, rankings, activeLevel, onLevelChange, disabled }: {
   game: GameConfig;
@@ -180,6 +227,7 @@ export default function HomePage() {
     Object.fromEntries(GAMES.map((g) => [g.key, g.defaultLevel]))
   );
   const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<'전체' | '솔로' | '멀티' | '기타'>('전체');
 
   useEffect(() => {
     document.title = '도박꾼게임즈';
@@ -228,139 +276,147 @@ export default function HomePage() {
           <img src="/common/logo.png" alt="" className={styles.headingLogo} />
           DobakGgun
         </h1>
-        <div className={styles.grid}>
-          {GAMES.map((game) => {
-            const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.key] === false;
-            return (
-              <GameCard
-                key={game.key}
-                game={game}
-                rankings={cache[game.key] ?? {}}
-                activeLevel={activeLevels[game.key]}
-                onLevelChange={(lv) => {
-                  setActiveLevels((prev) => ({ ...prev, [game.key]: lv }));
-                  if (!cache[game.key]?.[lv]) fetchLevel(game, lv);
-                }}
-                disabled={isDisabled}
-              />
-            );
-          })}
-          {/* 가위바위보 카드 */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.icon}>✌️</span>
-              <div className={styles.title}>
-                <div className={styles.nameKo}>온라인 가위바위보</div>
-              </div>
-              <div className={styles.btns}>
-                <Link className={`${styles.btn} ${styles.btnNormal}`} to="/online-rps">기본</Link>
-              </div>
-            </div>
-            <div className={styles.cardRanking}>
-              <p className={styles.placeholder} style={{ padding: '20px 0' }}>2~4인 실시간 대전</p>
-            </div>
-          </div>
+        <div className={styles.filterTabs}>
+          {(['전체', '솔로', '멀티', '기타'] as const).map((tab) => (
+            <button
+              key={tab}
+              className={`${styles.filterTab} ${activeTab === tab ? styles.filterTabActive : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-          {/* 미니게임 도구 카드 */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.icon}>🎮</span>
-              <div className={styles.title}>
-                <div className={styles.nameKo}>미니게임</div>
-              </div>
-            </div>
-            <div className={styles.cardRanking}>
-              <a
-                href="https://mini.dobakggun.kr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${styles.btn} ${styles.btnNormal}`}
-                style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
-              >
-                <span>🎡</span><span style={{ fontWeight: 'bold' }}>룰렛</span>
-              </a>
-              <hr className={styles.labDivider} />
-              <a
-                href="https://mini.dobakggun.kr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${styles.btn} ${styles.btnNormal}`}
-                style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
-              >
-                <span>🎲</span><span style={{ fontWeight: 'bold' }}>주사위</span>
-              </a>
-              <hr className={styles.labDivider} />
-              <a
-                href="https://mini.dobakggun.kr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${styles.btn} ${styles.btnNormal}`}
-                style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
-              >
-                <span>🪜</span><span style={{ fontWeight: 'bold' }}>사다리 타기</span>
-              </a>
-            </div>
+        {/* 솔로플레이 섹션 */}
+        {(activeTab === '전체' || activeTab === '솔로') && (
+        <div className={styles.sectionBlock}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionTitle}>솔로플레이</span>
+            <div className={styles.sectionLine} />
           </div>
+          <div className={styles.grid}>
+            {GAMES.map((game) => {
+              const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.key] === false;
+              return (
+                <GameCard
+                  key={game.key}
+                  game={game}
+                  rankings={cache[game.key] ?? {}}
+                  activeLevel={activeLevels[game.key]}
+                  onLevelChange={(lv) => {
+                    setActiveLevels((prev) => ({ ...prev, [game.key]: lv }));
+                    if (!cache[game.key]?.[lv]) fetchLevel(game, lv);
+                  }}
+                  disabled={isDisabled}
+                />
+              );
+            })}
+          </div>
+        </div>
+        )}
 
-          {/* Test Lab 카드 — 전체 방문자(게스트 포함) 노출 */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.icon}>🧪</span>
-              <div className={styles.title}>
-                <div className={styles.nameKo}>Test Lab</div>
+        {/* 멀티플레이 섹션 */}
+        {(activeTab === '전체' || activeTab === '멀티') && (
+        <div className={styles.sectionBlock}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionTitle}>멀티플레이</span>
+            <div className={styles.sectionLine} />
+          </div>
+          <div className={styles.grid}>
+            {MULTI_GAMES.map((game) => (
+              <MultiGameCard key={game.to} game={game} />
+            ))}
+          </div>
+        </div>
+        )}
+
+        {/* 기타 섹션 */}
+        {(activeTab === '전체' || activeTab === '기타') && (
+        <div className={styles.sectionBlock}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionTitle}>기타</span>
+            <div className={styles.sectionLine} />
+          </div>
+          <div className={styles.grid}>
+            {/* 미니게임 도구 카드 */}
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <span className={styles.icon}>🎮</span>
+                <div className={styles.title}>
+                  <div className={styles.nameKo}>미니게임</div>
+                </div>
+              </div>
+              <div className={styles.cardRanking}>
+                <a
+                  href="https://mini.dobakggun.kr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${styles.btn} ${styles.btnNormal}`}
+                  style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
+                >
+                  <span>🎡</span><span style={{ fontWeight: 'bold' }}>룰렛</span>
+                </a>
+                <hr className={styles.labDivider} />
+                <a
+                  href="https://mini.dobakggun.kr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${styles.btn} ${styles.btnNormal}`}
+                  style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
+                >
+                  <span>🎲</span><span style={{ fontWeight: 'bold' }}>주사위</span>
+                </a>
+                <hr className={styles.labDivider} />
+                <a
+                  href="https://mini.dobakggun.kr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${styles.btn} ${styles.btnNormal}`}
+                  style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
+                >
+                  <span>🪜</span><span style={{ fontWeight: 'bold' }}>사다리 타기</span>
+                </a>
               </div>
             </div>
-            <div className={styles.cardRanking}>
-              {user && (
-                <>
-                  <Link
-                    to="/dbgchat"
-                    className={`${styles.btn} ${styles.btnNormal}`}
-                    style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    💬 실시간 채팅 랩
-                  </Link>
-                  <hr className={styles.labDivider} />
-                </>
-              )}
-              <Link
-                to="/test-lab/blockfall-battle"
-                className={`${styles.btn} ${styles.btnNormal}`}
-                style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
-              >
-                <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🟦</span>
-                <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>블록폴 배틀</span>
-                <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                  BETA
-                </span>
-              </Link>
-              <hr className={styles.labDivider} />
-              <Link
-                to="/yacht"
-                className={`${styles.btn} ${styles.btnNormal}`}
-                style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
-              >
-                <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🎲</span>
-                <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>야추 (Yacht)</span>
-                <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                  BETA
-                </span>
-              </Link>
-              <hr className={styles.labDivider} />
-              <Link
-                to="/brickbreaker"
-                className={`${styles.btn} ${styles.btnNormal}`}
-                style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
-              >
-                <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🧱</span>
-                <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>벽돌깨기</span>
-                <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                  BETA
-                </span>
-              </Link>
+
+            {/* Test Lab 카드 */}
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <span className={styles.icon}>🧪</span>
+                <div className={styles.title}>
+                  <div className={styles.nameKo}>Test Lab</div>
+                </div>
+              </div>
+              <div className={styles.cardRanking}>
+                {user && (
+                  <>
+                    <Link
+                      to="/dbgchat"
+                      className={`${styles.btn} ${styles.btnNormal}`}
+                      style={{ width: '100%', textAlign: 'center', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      💬 실시간 채팅 랩
+                    </Link>
+                    <hr className={styles.labDivider} />
+                  </>
+                )}
+                <Link
+                  to="/brickbreaker"
+                  className={`${styles.btn} ${styles.btnNormal}`}
+                  style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
+                >
+                  <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🧱</span>
+                  <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>벽돌깨기</span>
+                  <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
+                    BETA
+                  </span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
+        )}
       </div>
       <Footer />
     </div>
