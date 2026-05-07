@@ -24,6 +24,21 @@ export interface YachtMatchError {
 
 export type YachtMatchOutcome = YachtMatchResult | YachtMatchAlreadyInRoom | YachtMatchError;
 
+export interface YachtRoomStatus {
+  activeRooms: number;
+  activePlayers: number;
+}
+
+export async function getYachtRoomStatus(): Promise<YachtRoomStatus | null> {
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/yacht/rooms/status`);
+    if (!res.ok) return null;
+    return res.json() as Promise<YachtRoomStatus>;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * POST /api/yacht/match — 자동 매칭 진입점
  * JWT 로그인 필수 (비로그인 → 401)

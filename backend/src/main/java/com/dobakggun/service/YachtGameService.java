@@ -1373,6 +1373,18 @@ public class YachtGameService {
         return rooms.get(roomId);
     }
 
+    public int getActiveRoomCount() {
+        return (int) rooms.values().stream()
+                .filter(s -> !s.participants.isEmpty())
+                .count();
+    }
+
+    public int getActiveTotalPlayerCount() {
+        return rooms.values().stream()
+                .mapToInt(s -> s.participants.size())
+                .sum();
+    }
+
     public Optional<String> findActiveRoomId(Long userId) {
         return rooms.values().stream()
                 .filter(s -> s.participants.stream().anyMatch(p -> p.userId.equals(userId)))

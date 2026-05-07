@@ -53,6 +53,15 @@ public class YachtController {
         }
     }
 
+    /** GET /api/yacht/rooms/status — 공개 엔드포인트, 인증 불필요. */
+    @GetMapping("/rooms/status")
+    public ResponseEntity<Map<String, Integer>> getRoomsStatus() {
+        return ResponseEntity.ok(Map.of(
+                "activeRooms",   yachtGameService.getActiveRoomCount(),
+                "activePlayers", yachtGameService.getActiveTotalPlayerCount()
+        ));
+    }
+
     /**
      * GET /api/yacht/room/{roomId} — 방 스냅샷 조회.
      * - 200: 방 상태

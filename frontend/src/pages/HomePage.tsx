@@ -4,6 +4,7 @@ import { getCachedWeekly, type RankingEntry } from '../api/rankings';
 import { fetchGameStatus } from '../api/games';
 import { getRpsRoomStatus } from '../api/rps';
 import { getBattleRoomStatus } from '../api/blockfallBattleApi';
+import { getYachtRoomStatus } from '../api/yacht';
 import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
@@ -117,7 +118,7 @@ interface MultiGameConfig {
   name: string;
   to: string;
   description: string;
-  statusKey?: 'rps' | 'battle';
+  statusKey?: 'rps' | 'battle' | 'yacht';
 }
 
 interface RoomStatusData {
@@ -145,6 +146,7 @@ const MULTI_GAMES: MultiGameConfig[] = [
     name: '야추 (Yacht)',
     to: '/yacht',
     description: '실시간 대전 주사위 게임',
+    statusKey: 'yacht',
   },
 ];
 
@@ -252,7 +254,7 @@ export default function HomePage() {
   );
   const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<'전체' | '솔로' | '멀티' | '기타'>('전체');
-  const [multiRoomStatuses, setMultiRoomStatuses] = useState<Record<string, RoomStatusData | null>>({});
+  const [multiRoomStatuses, setMultiRoomStatuses] = useState<Record<'rps' | 'battle' | 'yacht', RoomStatusData | null>>({ rps: null, battle: null, yacht: null });
 
   useEffect(() => {
     document.title = '도박꾼게임즈';
@@ -273,6 +275,12 @@ export default function HomePage() {
       setMultiRoomStatuses((prev) => ({
         ...prev,
         battle: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
+      }))
+    );
+    getYachtRoomStatus().then((data) =>
+      setMultiRoomStatuses((prev) => ({
+        ...prev,
+        yacht: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
       }))
     );
   }, []);
