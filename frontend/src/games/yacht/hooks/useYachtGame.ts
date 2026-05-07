@@ -150,6 +150,16 @@ export function useYachtGame(): UseYachtGameReturn {
       });
       setPlayerScores(hydrated);
     }
+
+    if (Array.isArray(snap.currentDice) && snap.currentDice.some((d) => d > 0)) {
+      setDice(snap.currentDice);
+    }
+    if (Array.isArray(snap.currentKeptIndices)) {
+      setKeptIndices(snap.currentKeptIndices);
+    }
+    if (typeof snap.currentRollsLeft === 'number') {
+      setRollsLeft(snap.currentRollsLeft);
+    }
   }, []);
 
   // WebSocket 연결

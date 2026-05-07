@@ -13,14 +13,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PreDestroy;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
@@ -50,6 +50,18 @@ public class YachtGameService {
     );
     private static final int UPPER_BONUS_THRESHOLD = 63;
     private static final int UPPER_BONUS_VALUE     = 35;
+
+    /** 새로고침/연결 끊김 시 턴 양도까지의 유예 시간 (초) */
+    private static final int RECONNECT_GRACE_SECONDS = 10;
+
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    /** 유예 기간 중인 턴 양도 예약: "roomId:userId" → Future */
+    private final ConcurrentHashMap<String, ScheduledFuture<?>> pendingTurnAdvances = new ConcurrentHashMap<>();
+
+    @PreDestroy
+    public void shutdownScheduler() {
+        scheduler.shutdown();
+    }
 
     // ─── 인메모리 상태 ────────────────────────────────────────────────────────
 
@@ -201,6 +213,11 @@ public class YachtGameService {
 
         // 재접속 복귀 브로드캐스트
         if (wasReconnecting) {
+            // 유예 기간 타이머 취소 (플레이어가 제 시간에 돌아옴)
+            String advanceKey = roomId + ":" + userId;
+            ScheduledFuture<?> pending = pendingTurnAdvances.remove(advanceKey);
+            if (pending != null) pending.cancel(false);
+
             broadcast(roomId, "PLAYER_RETURNED", YachtPlayerReturnedPayload.builder()
                     .userId(userId)
                     .nickname(returnedNickname)
@@ -210,9 +227,9 @@ public class YachtGameService {
 
         broadcastRoomState(state);
 
-        // 관전자에게 현재 게임 상태 캐치업 — TURN_STATE를 다시 브로드캐스트
+        // 관전자 또는 재접속 플레이어: 현재 게임 상태 캐치업 — TURN_STATE 재방송
         // (모두에게 가지만 기존 플레이어는 같은 값을 다시 받을 뿐 무해)
-        if (asSpectator) {
+        if (asSpectator || wasReconnecting) {
             broadcastTurnState(state);
         }
         return null;
@@ -626,28 +643,7 @@ public class YachtGameService {
     private void startReconnectWait(YachtRoomState state, Long userId, boolean wasCurrentTurn, String nickname) {
         synchronized (state) {
             state.reconnectingPlayers.add(userId);
-
-            if (wasCurrentTurn) {
-                state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
-                if (state.turnOrderIndex == 0) state.roundIndex++;
-                state.dice = new int[]{0, 0, 0, 0, 0};
-                state.keptIndices = new ArrayList<>();
-                state.rollsLeft = 3;
-                state.hasRolled = false;
-
-                skipReconnectingTurns(state);
-                Long nextTurn = currentTurnUserId(state);
-
-                if (!isGameOver(state) && nextTurn != null) {
-                    broadcast(state.roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
-                            .previousTurnUserId(userId)
-                            .currentTurnUserId(nextTurn)
-                            .rollsLeft(3)
-                            .roundNum(state.roundIndex + 1)
-                            .build());
-                    broadcastTurnState(state);
-                }
-            }
+            // 현재 턴이어도 즉시 양도하지 않음 — RECONNECT_GRACE_SECONDS 후 스케줄러에서 처리
         }
 
         broadcastRoomState(state);
@@ -656,7 +652,17 @@ public class YachtGameService {
                 .nickname(nickname)
                 .build());
 
-        log.info("startReconnectWait: roomId={} userId={} 재접속 대기 시작 (투표 강퇴 전까지 무한 대기)", state.roomId, userId);
+        log.info("startReconnectWait: roomId={} userId={} 재접속 대기 시작 ({}초 유예, 투표 강퇴 가능)",
+                state.roomId, userId, RECONNECT_GRACE_SECONDS);
+
+        if (wasCurrentTurn) {
+            String advanceKey = state.roomId + ":" + userId;
+            ScheduledFuture<?> future = scheduler.schedule(() -> {
+                pendingTurnAdvances.remove(advanceKey);
+                advanceTurnForReconnecting(state, userId);
+            }, RECONNECT_GRACE_SECONDS, TimeUnit.SECONDS);
+            pendingTurnAdvances.put(advanceKey, future);
+        }
 
         // 다른 플레이어들이 모두 완료된 경우 즉시 게임 종료
         synchronized (state) {
@@ -664,6 +670,38 @@ public class YachtGameService {
                 finishGame(state.roomId, state, new ArrayList<>(state.participants));
             }
         }
+    }
+
+    /**
+     * 유예 기간 만료 시 또는 강퇴 처리 시 호출 — 끊긴 플레이어의 턴을 다음으로 넘김.
+     */
+    private void advanceTurnForReconnecting(YachtRoomState state, Long userId) {
+        synchronized (state) {
+            if (!state.reconnectingPlayers.contains(userId)) return; // 이미 재접속함
+
+            state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
+            if (state.turnOrderIndex == 0) state.roundIndex++;
+            state.dice = new int[]{0, 0, 0, 0, 0};
+            state.keptIndices = new ArrayList<>();
+            state.rollsLeft = 3;
+            state.hasRolled = false;
+
+            skipReconnectingTurns(state);
+            Long nextTurn = currentTurnUserId(state);
+
+            if (!isGameOver(state) && nextTurn != null) {
+                broadcast(state.roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
+                        .previousTurnUserId(userId)
+                        .currentTurnUserId(nextTurn)
+                        .rollsLeft(3)
+                        .roundNum(state.roundIndex + 1)
+                        .build());
+                broadcastTurnState(state);
+            } else if (isGameOver(state)) {
+                finishGame(state.roomId, state, new ArrayList<>(state.participants));
+            }
+        }
+        log.info("advanceTurnForReconnecting: roomId={} userId={} 유예 만료 → 턴 양도", state.roomId, userId);
     }
 
     /**
@@ -736,6 +774,11 @@ public class YachtGameService {
                 .build());
 
         if (kicked) {
+            // 유예 기간 타이머가 있으면 취소 (advanceTurnForReconnecting 여기서 직접 처리)
+            String advanceKey = roomId + ":" + targetUserId;
+            ScheduledFuture<?> pending = pendingTurnAdvances.remove(advanceKey);
+            if (pending != null) pending.cancel(false);
+
             broadcast(roomId, "PLAYER_LEFT", YachtPlayerLeftPayload.builder()
                     .roomId(roomId)
                     .userId(targetUserId)
@@ -748,6 +791,28 @@ public class YachtGameService {
             synchronized (state) {
                 if (isGameOver(state)) {
                     finishGame(roomId, state, new ArrayList<>(state.participants));
+                    return null;
+                }
+                // 강퇴된 플레이어가 현재 턴이었으면 다음으로 넘김
+                Long current = currentTurnUserId(state);
+                if (current != null && current.equals(targetUserId)) {
+                    state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
+                    if (state.turnOrderIndex == 0) state.roundIndex++;
+                    state.dice = new int[]{0, 0, 0, 0, 0};
+                    state.keptIndices = new ArrayList<>();
+                    state.rollsLeft = 3;
+                    state.hasRolled = false;
+                    skipReconnectingTurns(state);
+                    Long nextTurn = currentTurnUserId(state);
+                    if (nextTurn != null) {
+                        broadcast(roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
+                                .previousTurnUserId(targetUserId)
+                                .currentTurnUserId(nextTurn)
+                                .rollsLeft(3)
+                                .roundNum(state.roundIndex + 1)
+                                .build());
+                        broadcastTurnState(state);
+                    }
                 }
             }
         }
@@ -1456,6 +1521,11 @@ public class YachtGameService {
             result.put("roundIndex", state.roundIndex);
             result.put("participants", participants);
             result.put("scoreboard", scoreboard);
+            if (state.status == YachtRoomStatus.PLAYING) {
+                result.put("currentDice", Arrays.copyOf(state.dice, 5));
+                result.put("currentKeptIndices", new ArrayList<>(state.keptIndices));
+                result.put("currentRollsLeft", state.rollsLeft);
+            }
             return result;
         }
     }

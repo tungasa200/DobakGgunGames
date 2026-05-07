@@ -241,4 +241,7 @@ export interface YachtRoomResponse {
   roundIndex?: number;
   participants: Participant[];
   scoreboard?: YachtScoreboardSnapshot[];
+  currentDice?: number[];
+  currentKeptIndices?: number[];
+  currentRollsLeft?: number;
 }
