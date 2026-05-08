@@ -37,6 +37,10 @@ const BASE_TILT_Z = 0.06;
 const ROLL_DURATION_MS = 800;
 const TWO_PI = Math.PI * 2;
 
+// 회전된 큐브의 화면 bounding box가 셀에 잘리지 않도록 화면상 cube 크기를 줄이는 비율
+// (BASE_TILT 기준 회전된 cube 화면 폭 ≈ 1.45 × SIZE; face별 추가 ±π/2 회전 포함 안전 마진 1.5)
+const FIT_MARGIN = 1.5;
+
 function smoothstep(a: number, b: number, x: number) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -226,6 +230,7 @@ export default function YachtDiceRow3D({
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const meshesRef = useRef<THREE.Mesh[]>([]);
+  const wrappersRef = useRef<THREE.Group[]>([]);
   const matNormalRef = useRef<THREE.MeshPhysicalMaterial | null>(null);
   const matKeptRef = useRef<THREE.MeshPhysicalMaterial | null>(null);
 
@@ -289,21 +294,31 @@ export default function YachtDiceRow3D({
       reflectivity: 0.45,
     });
 
-    const initX = BASE_TILT_X + FACE_ROT[1].x;
-    const initY = BASE_TILT_Y + FACE_ROT[1].y;
+    // base tilt는 wrapper Group에, face/spin 회전은 mesh에 적용
+    // → 항상 "face 정렬 후 base tilt" 합성 순서가 보장됨(어떤 face 값이든 동일한 시각)
+    const initX = FACE_ROT[1].x;
+    const initY = FACE_ROT[1].y;
 
     const meshes: THREE.Mesh[] = [];
+    const wrappers: THREE.Group[] = [];
     for (let i = 0; i < NUM_DICE; i++) {
+      const wrapper = new THREE.Group();
+      wrapper.rotation.set(BASE_TILT_X, BASE_TILT_Y, BASE_TILT_Z);
+      scene.add(wrapper);
+
       const mesh = new THREE.Mesh(geom, matNormal);
-      mesh.rotation.set(initX, initY, BASE_TILT_Z);
-      scene.add(mesh);
+      mesh.rotation.set(initX, initY, 0);
+      wrapper.add(mesh);
+
       meshes.push(mesh);
+      wrappers.push(wrapper);
     }
 
     sceneRef.current = scene;
     cameraRef.current = camera;
     rendererRef.current = renderer;
     meshesRef.current = meshes;
+    wrappersRef.current = wrappers;
     matNormalRef.current = matNormal;
     matKeptRef.current = matKept;
 
@@ -327,7 +342,7 @@ export default function YachtDiceRow3D({
       renderer.setSize(w, h, false);
 
       const diePx = h;
-      const pxPerUnit = diePx / SIZE;
+      const pxPerUnit = diePx / (SIZE * FIT_MARGIN);
 
       const wUnits = w / pxPerUnit;
       const hUnits = h / pxPerUnit;
@@ -345,7 +360,7 @@ export default function YachtDiceRow3D({
       for (let i = 0; i < NUM_DICE; i++) {
         const centerPx = i * (diePx + gapPx) + diePx / 2;
         const xUnit = (centerPx - w / 2) / pxPerUnit;
-        meshes[i].position.set(xUnit, 0, 0);
+        wrappers[i].position.set(xUnit, 0, 0);
       }
 
       renderer.render(scene, camera);
@@ -382,7 +397,10 @@ export default function YachtDiceRow3D({
     return () => {
       cancelAnimationFrame(animationIdRef.current);
       ro.disconnect();
-      meshes.forEach((m) => scene.remove(m));
+      wrappers.forEach((w) => {
+        w.clear();
+        scene.remove(w);
+      });
       geom.dispose();
       matNormal.dispose();
       matKept.dispose();
@@ -410,12 +428,10 @@ export default function YachtDiceRow3D({
         meshes[i].material = targetMat;
       }
 
-      meshes[i].rotation.z = BASE_TILT_Z;
-
       if (shouldAnimate) {
         const face = FACE_ROT[v];
-        const finalX = BASE_TILT_X + face.x;
-        const finalY = BASE_TILT_Y + face.y;
+        const finalX = face.x;
+        const finalY = face.y;
 
         const spinsX = isRolling ? 3 + Math.floor(Math.random() * 3) : 1;
         const spinsY = isRolling ? 3 + Math.floor(Math.random() * 3) : 1;
@@ -437,13 +453,11 @@ export default function YachtDiceRow3D({
       } else if (valueChanged && isKept) {
         // KEPT 상태에서 값이 바뀐 경우(드물지만) 즉시 정렬
         const face = FACE_ROT[v];
-        const finalX = BASE_TILT_X + face.x;
-        const finalY = BASE_TILT_Y + face.y;
-        meshes[i].rotation.x = finalX;
-        meshes[i].rotation.y = finalY;
+        meshes[i].rotation.x = face.x;
+        meshes[i].rotation.y = face.y;
         const s = states[i];
-        s.currentX = finalX;
-        s.currentY = finalY;
+        s.currentX = face.x;
+        s.currentY = face.y;
         s.animating = false;
       }
 
