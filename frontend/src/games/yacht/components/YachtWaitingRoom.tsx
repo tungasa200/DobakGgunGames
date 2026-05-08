@@ -62,7 +62,6 @@ export default function YachtWaitingRoom({
 
       {/* 참여자 섹션 */}
       <div className={styles.waitingSection}>
-        <p className={styles.waitingSectionTitle}>참여자</p>
         <ul className={styles.participantList} role="list">
           {participants.map((p) => {
             const isMe = p.userId === myUserId;
@@ -108,7 +107,6 @@ export default function YachtWaitingRoom({
 
       {/* 게임 준비 / 시작 섹션 */}
       <div className={styles.waitingSection}>
-        <p className={styles.waitingSectionTitle}>게임 준비</p>
         <div className={styles.waitingBtns}>
           {!isHost && (
             <button
@@ -161,7 +159,6 @@ export default function YachtWaitingRoom({
       {/* 역대 랭킹 */}
       {rankings.length > 0 && (
         <div className={styles.waitingSection}>
-          <p className={styles.waitingSectionTitle}>역대 랭킹</p>
           <table className={styles.rankTable} aria-label="야추 역대 랭킹">
             <thead>
               <tr>
