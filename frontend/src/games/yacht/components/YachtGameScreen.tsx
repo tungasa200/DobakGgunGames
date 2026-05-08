@@ -3,6 +3,8 @@ import styles from './yacht.module.css';
 import type { Participant, PlayerScore, ScoreKey, KickVotePayload } from '../types/yacht.types';
 import YachtDice3D from './YachtDice3D';
 import YachtScoreBoard from './YachtScoreBoard';
+import YachtChat from './YachtChat';
+import type { ChatMessage } from '../hooks/useYachtGame';
 
 interface YachtGameScreenProps {
   participants: Participant[];
@@ -23,6 +25,8 @@ interface YachtGameScreenProps {
   onSelectScore: (key: ScoreKey) => void;
   onLeave: () => void;
   onVoteKick: (targetUserId: number) => void;
+  chatMessages: ChatMessage[];
+  onSendChat: (message: string) => void;
 }
 
 const SCORE_MIN = 200;
@@ -49,6 +53,8 @@ export default function YachtGameScreen({
   onSelectScore,
   onLeave,
   onVoteKick,
+  chatMessages,
+  onSendChat,
 }: YachtGameScreenProps) {
   const currentPlayer = participants.find((p) => p.userId === currentTurnUserId);
   const rollsUsed = 3 - rollsLeft;
@@ -238,6 +244,13 @@ export default function YachtGameScreen({
               굴림 횟수를 모두 사용했습니다. 족보를 선택해 주세요.
             </p>
           )}
+
+          {/* 채팅 */}
+          <YachtChat
+            messages={chatMessages}
+            myUserId={myUserId}
+            onSend={onSendChat}
+          />
         </div>
 
         {/* 드래그 핸들 */}

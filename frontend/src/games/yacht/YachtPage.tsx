@@ -41,6 +41,8 @@ export default function YachtPage() {
     dismissError,
     dismissToast,
     voteKick,
+    chatMessages,
+    sendChat,
   } = useYachtGame();
 
   const startedRef = useRef(false);
@@ -141,6 +143,8 @@ export default function YachtPage() {
           onReady={readyToggle}
           onStart={startGame}
           onLeave={leave}
+          chatMessages={chatMessages}
+          onSendChat={sendChat}
         />
         {toastMessage && (
           <div
@@ -184,6 +188,8 @@ export default function YachtPage() {
           onSelectScore={recordScore}
           onLeave={leave}
           onVoteKick={voteKick}
+          chatMessages={chatMessages}
+          onSendChat={sendChat}
         />
         {gameOverData && (
           <YachtGameOverModal

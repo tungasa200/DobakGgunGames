@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import styles from './yacht.module.css';
 import type { Participant, YachtRankingEntry } from '../types/yacht.types';
 import { getYachtRankings } from '../../../api/yacht';
+import YachtChat from './YachtChat';
+import type { ChatMessage } from '../hooks/useYachtGame';
 
 interface YachtWaitingRoomProps {
   participants: Participant[];
@@ -11,6 +13,8 @@ interface YachtWaitingRoomProps {
   onReady: (isReady: boolean) => void;
   onStart: () => void;
   onLeave: () => void;
+  chatMessages: ChatMessage[];
+  onSendChat: (message: string) => void;
 }
 
 export default function YachtWaitingRoom({
@@ -21,6 +25,8 @@ export default function YachtWaitingRoom({
   onReady,
   onStart,
   onLeave,
+  chatMessages,
+  onSendChat,
 }: YachtWaitingRoomProps) {
   const me = participants.find((p) => p.userId === myUserId);
   const isHost = myUserId === hostUserId;
@@ -127,6 +133,14 @@ export default function YachtWaitingRoom({
         >
           나가기
         </button>
+      </div>
+
+      <div style={{ width: '100%', maxWidth: '400px' }}>
+        <YachtChat
+          messages={chatMessages}
+          myUserId={myUserId}
+          onSend={onSendChat}
+        />
       </div>
 
       {rankings.length > 0 && (

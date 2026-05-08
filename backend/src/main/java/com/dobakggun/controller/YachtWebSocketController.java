@@ -1,5 +1,7 @@
 package com.dobakggun.controller;
 
+import com.dobakggun.dto.yacht.YachtChatRequest;
+import com.dobakggun.dto.yacht.YachtChatPayload;
 import com.dobakggun.dto.yacht.YachtReadyRequest;
 import com.dobakggun.dto.yacht.YachtRollRequest;
 import com.dobakggun.dto.yacht.YachtScoreRequest;
@@ -19,6 +21,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.security.Principal;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -31,6 +36,7 @@ import java.util.*;
  *   /app/yacht/room/{roomId}/roll
  *   /app/yacht/room/{roomId}/score
  *   /app/yacht/room/{roomId}/leave
+ *   /app/yacht/room/{roomId}/chat
  *
  * 구독 경로:
  *   /topic/yacht/room/{roomId}
@@ -219,6 +225,39 @@ public class YachtWebSocketController {
             sendError(cp, error, resolveMessage(error));
         }
         log.info("WS YACHT VOTE-KICK roomId={} voterId={} targetUserId={}", roomId, cp.getUserId(), request.getTargetUserId());
+    }
+
+    // ─── CHAT ────────────────────────────────────────────────────────────────
+
+    @MessageMapping("/yacht/room/{roomId}/chat")
+    public void handleChat(@DestinationVariable String roomId,
+                            @Payload YachtChatRequest request,
+                            Principal principal) {
+        ChatPrincipal cp = toChatPrincipal(principal);
+        if (cp == null) return;
+        if (request == null || request.getMessage() == null) return;
+
+        if (!yachtGameService.isParticipant(roomId, cp.getUserId())) return;
+
+        String text = request.getMessage().strip();
+        if (text.isEmpty()) return;
+        if (text.length() > 200) text = text.substring(0, 200);
+
+        messagingTemplate.convertAndSend(
+                "/topic/yacht/room/" + roomId,
+                YachtEnvelopeDto.builder()
+                        .type("CHAT")
+                        .timestamp(Instant.now().atZone(ZoneOffset.UTC)
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")))
+                        .payload(YachtChatPayload.builder()
+                                .userId(cp.getUserId())
+                                .nickname(cp.getNickname())
+                                .message(text)
+                                .build())
+                        .build()
+        );
+
+        log.info("WS YACHT CHAT roomId={} userId={}", roomId, cp.getUserId());
     }
 
     // ─── SESSION DISCONNECT ───────────────────────────────────────────────────

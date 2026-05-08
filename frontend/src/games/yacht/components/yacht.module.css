@@ -858,6 +858,138 @@
   border-top: 1px solid rgba(255,184,77,0.4);
 }
 
+/* ============================================================
+   채팅 패널 (YachtChat)
+   ============================================================ */
+.chatPanel {
+  border: 1px solid var(--yacht-border);
+  border-radius: 10px;
+  background: var(--yacht-surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--yacht-surface2);
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--yacht-text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  width: 100%;
+  text-align: left;
+}
+
+.chatToggleIcon {
+  font-size: 0.65rem;
+  color: var(--yacht-text-sub);
+}
+
+.chatMessages {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chatEmpty {
+  font-size: 0.78rem;
+  color: var(--yacht-text-sub);
+  text-align: center;
+  margin: 12px 0;
+}
+
+.chatMessageItem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 85%;
+  align-self: flex-start;
+}
+
+.chatMine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chatNickname {
+  font-size: 0.68rem;
+  color: var(--yacht-text-sub);
+  font-weight: 600;
+}
+
+.chatText {
+  font-size: 0.82rem;
+  background: var(--yacht-surface2);
+  border-radius: 8px;
+  padding: 5px 9px;
+  word-break: break-all;
+  color: var(--yacht-text);
+  border: 1px solid var(--yacht-border);
+}
+
+.chatMine .chatText {
+  background: var(--yacht-accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.chatInputRow {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--yacht-border);
+}
+
+.chatInput {
+  flex: 1;
+  border: 1px solid var(--yacht-border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 0.82rem;
+  color: var(--yacht-text);
+  background: var(--yacht-surface);
+  outline: none;
+}
+
+.chatInput:focus {
+  border-color: var(--yacht-accent);
+}
+
+.chatSendBtn {
+  background: var(--yacht-accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.chatSendBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .chatSendBtn:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
   .gameBody {

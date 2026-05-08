@@ -17,6 +17,7 @@ import type {
   PlayerReconnectingPayload,
   PlayerReturnedPayload,
   KickVotePayload,
+  ChatPayload,
 } from '../games/yacht/types/yacht.types';
 import type { ScoreKey } from '../games/yacht/types/yacht.types';
 import { CLIENT_KEY_MAP } from '../games/yacht/types/yacht.types';
@@ -38,6 +39,7 @@ export interface YachtEventHandlers {
   onPlayerReconnecting: (payload: PlayerReconnectingPayload) => void;
   onPlayerReturned: (payload: PlayerReturnedPayload) => void;
   onKickVote: (payload: KickVotePayload) => void;
+  onChat: (payload: ChatPayload) => void;
 }
 
 export interface YachtStompClientHandle {
@@ -49,6 +51,7 @@ export interface YachtStompClientHandle {
   leave: () => void;
   disconnect: () => void;
   voteKick: (targetUserId: number) => void;
+  chat: (message: string) => void;
 }
 
 const WS_URL = import.meta.env.VITE_WS_URL as string | undefined;
@@ -75,6 +78,7 @@ export function connectYacht(
     onPlayerReconnecting,
     onPlayerReturned,
     onKickVote,
+    onChat,
   } = handlers;
 
   let retryCount = 0;
@@ -170,6 +174,9 @@ export function connectYacht(
       case 'KICK_VOTE':
         onKickVote(payload as KickVotePayload);
         break;
+      case 'CHAT':
+        onChat(payload as ChatPayload);
+        break;
       // MATCH_COUNTDOWN / MATCH_COUNTDOWN_CANCELLED 는 CP1-3에 따라 미사용
       default:
         break;
@@ -253,6 +260,13 @@ export function connectYacht(
       client.publish({
         destination: `/app/yacht/room/${roomId}/vote-kick`,
         body: JSON.stringify({ targetUserId }),
+      });
+    },
+    chat: (message: string) => {
+      if (!client.connected) return;
+      client.publish({
+        destination: `/app/yacht/room/${roomId}/chat`,
+        body: JSON.stringify({ message }),
       });
     },
   };

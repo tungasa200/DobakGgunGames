@@ -22,8 +22,16 @@ import type {
   KickVotePayload,
   PlayerReconnectingPayload,
   PlayerReturnedPayload,
+  ChatPayload,
 } from '../types/yacht.types';
 import { SERVER_KEY_MAP } from '../types/yacht.types';
+
+export interface ChatMessage {
+  userId: number;
+  nickname: string;
+  message: string;
+  at: string;
+}
 
 export interface UseYachtGameReturn {
   phase: YachtPhase;
@@ -47,6 +55,8 @@ export interface UseYachtGameReturn {
   roundNum: number;
   reconnectingPlayers: Array<{ userId: number; nickname: string }>;
   kickVoteState: KickVotePayload | null;
+  chatMessages: ChatMessage[];
+  sendChat: (message: string) => void;
   startMatch: () => Promise<void>;
   toggleKeep: (index: number) => void;
   rollDice: () => void;
@@ -81,6 +91,7 @@ export function useYachtGame(): UseYachtGameReturn {
   const [roundNum, setRoundNum] = useState<number>(1);
   const [reconnectingPlayers, setReconnectingPlayers] = useState<Array<{ userId: number; nickname: string }>>([]);
   const [kickVoteState, setKickVoteState] = useState<KickVotePayload | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   const clientRef = useRef<YachtStompClientHandle | null>(null);
   const roomIdRef = useRef<string | null>(null);
@@ -291,6 +302,12 @@ export function useYachtGame(): UseYachtGameReturn {
           setReconnectingPlayers((prev) => prev.filter((p) => p.userId !== payload.targetUserId));
         }
       },
+      onChat: (payload: ChatPayload) => {
+        setChatMessages((prev) => [
+          ...prev.slice(-99),
+          { userId: payload.userId, nickname: payload.nickname, message: payload.message, at: new Date().toISOString() },
+        ]);
+      },
       onError: (code: string, message: string) => {
         if (code === 'UNAUTHORIZED' || code === 'ROOM_NOT_FOUND') {
           setErrorMessage(message || '연결 오류가 발생했습니다');
@@ -407,6 +424,13 @@ export function useYachtGame(): UseYachtGameReturn {
     clientRef.current.voteKick(targetUserId);
   }, []);
 
+  const sendChat = useCallback((message: string) => {
+    if (!clientRef.current) return;
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    clientRef.current.chat(trimmed);
+  }, []);
+
   // 언마운트 시 정리
   useEffect(() => {
     return () => {
@@ -442,6 +466,8 @@ export function useYachtGame(): UseYachtGameReturn {
     roundNum,
     reconnectingPlayers,
     kickVoteState,
+    chatMessages,
+    sendChat,
     startMatch,
     toggleKeep,
     rollDice,

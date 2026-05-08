@@ -106,7 +106,8 @@ export type WsEventType =
   | 'MATCH_COUNTDOWN_CANCELLED'
   | 'PLAYER_RECONNECTING'
   | 'PLAYER_RETURNED'
-  | 'KICK_VOTE';
+  | 'KICK_VOTE'
+  | 'CHAT';
 
 export interface WsMessage<T = unknown> {
   type: WsEventType;
@@ -209,6 +210,12 @@ export interface KickVotePayload {
 export interface WsErrorPayload {
   code: string;
   message?: string;
+}
+
+export interface ChatPayload {
+  userId: number;
+  nickname: string;
+  message: string;
 }
 
 // REST API 응답 타입
