@@ -124,7 +124,6 @@ export default function GameScreen({
               choice={choice}
               state={getCardState(choice)}
               onClick={myChoice === null ? () => onChoose(choice) : undefined}
-              showHint={myChoice === null}
               shake={shake && myChoice === null}
             />
           ))}

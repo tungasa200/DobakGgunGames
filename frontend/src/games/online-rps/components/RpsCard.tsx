@@ -16,7 +16,6 @@ interface RpsCardProps {
   ownerLabel?: string;
   autoLabel?: boolean;
   result?: RpsResult;
-  showHint?: boolean;
   shake?: boolean;
   revealDelay?: number;
 }
@@ -27,11 +26,6 @@ const CHOICE_LABEL: Record<RpsChoice, string> = {
   SCISSORS: '가위',
 };
 
-const CHOICE_HINT: Record<RpsChoice, string> = {
-  ROCK: '[R]',
-  PAPER: '[P]',
-  SCISSORS: '[S]',
-};
 
 const CHOICE_IMAGE: Record<RpsChoice, string> = {
   ROCK: '/games/rcp/rock.png',
@@ -52,7 +46,6 @@ export default function RpsCard({
   ownerLabel,
   autoLabel,
   result,
-  showHint = false,
   shake = false,
 }: RpsCardProps) {
   const isClickable = state === 'idle' && onClick;
@@ -113,10 +106,6 @@ export default function RpsCard({
         draggable={false}
       />
 
-      {/* 단축키 힌트 (게임 화면 idle에서만) */}
-      {showHint && state === 'idle' && (
-        <span className={styles.hint}>{CHOICE_HINT[choice]}</span>
-      )}
     </div>
   );
 }
