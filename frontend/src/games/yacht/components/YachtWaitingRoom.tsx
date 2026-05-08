@@ -165,7 +165,6 @@ export default function YachtWaitingRoom({
                 <th>순위</th>
                 <th>닉네임</th>
                 <th>승수</th>
-                <th>판수</th>
               </tr>
             </thead>
             <tbody>
@@ -176,7 +175,6 @@ export default function YachtWaitingRoom({
                     <td>{entry.rank}</td>
                     <td>{entry.nickname}{isMe && ' (나)'}</td>
                     <td>{entry.winCount}승</td>
-                    <td>{entry.totalGames}판</td>
                   </tr>
                 );
               })}
