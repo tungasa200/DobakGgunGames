@@ -11,9 +11,11 @@ interface YachtChatProps {
 const MIN_HEIGHT = 120;
 const MAX_HEIGHT = 480;
 const DEFAULT_HEIGHT = 200;
+const CLOSE_ANIM_MS = 280;
 
 export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps) {
   const [open, setOpen] = useState(true);
+  const [overlayClosing, setOverlayClosing] = useState(false);
   const [draft, setDraft] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatHeight, setChatHeight] = useState(DEFAULT_HEIGHT);
@@ -25,6 +27,7 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
   const heightDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const fabDragRef = useRef<{ startX: number; startY: number; startRight: number; startBottom: number } | null>(null);
   const fabDidDragRef = useRef(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 읽지 않은 메시지 카운트
   useEffect(() => {
@@ -49,11 +52,13 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
     if (open) mobileBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
-  // PC 높이 드래그 이벤트
+  useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
+
+  // PC 높이 드래그 이벤트 (핸들이 하단 — 아래로 드래그 = 높이 증가)
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!heightDragRef.current) return;
-      const delta = heightDragRef.current.startY - e.clientY;
+      const delta = e.clientY - heightDragRef.current.startY;
       setChatHeight(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, heightDragRef.current.startHeight + delta)));
     };
     const onUp = () => {
@@ -137,6 +142,15 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
     if (!fabDidDragRef.current) setOpen((v) => !v);
   }, []);
 
+  // 모바일 오버레이 닫기 (애니메이션 후 언마운트)
+  const closeOverlay = useCallback(() => {
+    setOverlayClosing(true);
+    closeTimerRef.current = setTimeout(() => {
+      setOpen(false);
+      setOverlayClosing(false);
+    }, CLOSE_ANIM_MS);
+  }, []);
+
   const submit = useCallback(() => {
     const text = draft.trim();
     if (!text) return;
@@ -186,14 +200,6 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
     <>
       {/* ── 데스크탑 패널 ── */}
       <div className={styles.chatPanelDesktop}>
-        {open && (
-          <div
-            className={styles.chatHeightHandle}
-            onMouseDown={onHeightHandleDown}
-            role="separator"
-            aria-label="채팅창 높이 조절"
-          />
-        )}
         <button
           type="button"
           className={styles.chatHeader}
@@ -229,6 +235,13 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
               <div ref={desktopBottomRef} />
             </div>
             {inputRow}
+            {/* 높이 조절 핸들 — 패널 하단 */}
+            <div
+              className={styles.chatHeightHandle}
+              onMouseDown={onHeightHandleDown}
+              role="separator"
+              aria-label="채팅창 높이 조절"
+            />
           </>
         )}
       </div>
@@ -252,13 +265,13 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
 
       {/* ── 모바일 채팅 오버레이 ── */}
       {open && (
-        <div className={styles.chatOverlay}>
+        <div className={[styles.chatOverlay, overlayClosing ? styles.chatOverlayClosing : ''].filter(Boolean).join(' ')}>
           <div className={styles.chatOverlayHeader}>
             <span className={styles.chatOverlayTitle}>채팅</span>
             <button
               type="button"
               className={styles.chatOverlayClose}
-              onClick={() => setOpen(false)}
+              onClick={closeOverlay}
               aria-label="채팅 닫기"
             >
               ✕
