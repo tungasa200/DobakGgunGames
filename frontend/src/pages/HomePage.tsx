@@ -117,6 +117,7 @@ interface MultiGameConfig {
   icon: string;
   name: string;
   to: string;
+  gameKey: string;
   statusKey?: 'rps' | 'battle' | 'yacht';
 }
 
@@ -126,16 +127,17 @@ interface RoomStatusData {
 }
 
 const MULTI_GAMES: MultiGameConfig[] = [
-  { icon: '✌️', name: '온라인 가위바위보', to: '/online-rps',      statusKey: 'rps'    },
-  { icon: '🟦', name: '블록폴 배틀',       to: '/blockfall-battle', statusKey: 'battle' },
-  { icon: '🎲', name: '야추 (Yacht)',       to: '/yacht',            statusKey: 'yacht'  },
+  { icon: '✌️', name: '온라인 가위바위보', to: '/online-rps',      gameKey: 'online-rps',     statusKey: 'rps'    },
+  { icon: '🟦', name: '블록폴 배틀',       to: '/blockfall-battle', gameKey: 'blockfall-battle', statusKey: 'battle' },
+  { icon: '🎲', name: '야추 (Yacht)',       to: '/yacht',            gameKey: 'yacht',          statusKey: 'yacht'  },
 ];
 
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
 
-function MultiGameCard({ game, roomStatus }: { game: MultiGameConfig; roomStatus?: RoomStatusData | null }) {
+function MultiGameCard({ game, roomStatus, disabled }: { game: MultiGameConfig; roomStatus?: RoomStatusData | null; disabled?: boolean }) {
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${disabled ? styles.cardDisabled : ''}`}>
+      {disabled && <div className={styles.disabledOverlay}><span>🔧 점검 중</span></div>}
       <div className={styles.cardHeader}>
         <span className={styles.icon}>{game.icon}</span>
         <div className={styles.title}>
@@ -355,13 +357,17 @@ export default function HomePage() {
             <div className={styles.sectionLine} />
           </div>
           <div className={styles.grid}>
-            {MULTI_GAMES.map((game) => (
-              <MultiGameCard
-                key={game.to}
-                game={game}
-                roomStatus={game.statusKey ? multiRoomStatuses[game.statusKey] : undefined}
-              />
-            ))}
+            {MULTI_GAMES.map((game) => {
+              const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.gameKey] === false;
+              return (
+                <MultiGameCard
+                  key={game.to}
+                  game={game}
+                  roomStatus={game.statusKey ? multiRoomStatuses[game.statusKey] : undefined}
+                  disabled={isDisabled}
+                />
+              );
+            })}
           </div>
         </div>
         )}
@@ -436,17 +442,30 @@ export default function HomePage() {
                     <hr className={styles.labDivider} />
                   </>
                 )}
-                <Link
-                  to="/brickbreaker"
-                  className={`${styles.btn} ${styles.btnNormal}`}
-                  style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
-                >
-                  <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🧱</span>
-                  <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>벽돌깨기</span>
-                  <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                    BETA
-                  </span>
-                </Link>
+                {(user?.role === 'ADMIN' || gameStatus['brickbreaker'] !== false) ? (
+                  <Link
+                    to="/brickbreaker"
+                    className={`${styles.btn} ${styles.btnNormal}`}
+                    style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
+                  >
+                    <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🧱</span>
+                    <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>벽돌깨기</span>
+                    <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
+                      BETA
+                    </span>
+                  </Link>
+                ) : (
+                  <div
+                    className={`${styles.btn} ${styles.btnNormal}`}
+                    style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px', opacity: 0.5, cursor: 'default' }}
+                  >
+                    <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🧱</span>
+                    <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>벽돌깨기</span>
+                    <span style={{ display: 'inline-block', background: '#9e9e9e', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
+                      🔧 점검 중
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

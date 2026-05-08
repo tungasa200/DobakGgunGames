@@ -5,12 +5,16 @@ import type { AdminGameStatus } from '../../api/admin';
 import s from './admin.module.css';
 
 const GAME_LABELS: Record<string, { name: string; icon: string }> = {
-  minesweeper: { name: '지뢰찾기', icon: '💣' },
-  baseball:    { name: '숫자야구', icon: '⚾' },
-  blockfall:   { name: '블록폴',   icon: '🟦' },
-  apple:       { name: '사과게임', icon: '🍎' },
-  solitaire:   { name: '솔리테어', icon: '🃏' },
-  sudoku:      { name: '스도쿠',   icon: '🔢' },
+  minesweeper:      { name: '지뢰찾기',        icon: '💣' },
+  baseball:         { name: '숫자야구',         icon: '⚾' },
+  blockfall:        { name: '블록폴',           icon: '🟦' },
+  apple:            { name: '사과게임',         icon: '🍎' },
+  solitaire:        { name: '솔리테어',         icon: '🃏' },
+  sudoku:           { name: '스도쿠',           icon: '🔢' },
+  'online-rps':     { name: '온라인 가위바위보', icon: '✌️' },
+  'blockfall-battle': { name: '블록폴 배틀',    icon: '⚔️' },
+  yacht:            { name: '야추 (Yacht)',      icon: '🎲' },
+  brickbreaker:     { name: '벽돌깨기',         icon: '🧱' },
 };
 
 export default function AdminGamesPage() {
