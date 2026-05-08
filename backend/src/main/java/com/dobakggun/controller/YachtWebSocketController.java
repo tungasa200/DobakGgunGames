@@ -2,6 +2,7 @@ package com.dobakggun.controller;
 
 import com.dobakggun.dto.yacht.YachtChatRequest;
 import com.dobakggun.dto.yacht.YachtChatPayload;
+import com.dobakggun.dto.yacht.YachtEnvelopeDto;
 import com.dobakggun.dto.yacht.YachtReadyRequest;
 import com.dobakggun.dto.yacht.YachtRollRequest;
 import com.dobakggun.dto.yacht.YachtScoreRequest;
