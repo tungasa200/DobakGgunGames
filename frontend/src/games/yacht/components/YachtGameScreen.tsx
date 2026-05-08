@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import styles from './yacht.module.css';
 import type { Participant, PlayerScore, ScoreKey, KickVotePayload } from '../types/yacht.types';
-import YachtDice3D from './YachtDice3D';
+import YachtDiceRow3D from './YachtDiceRow3D';
 import YachtScoreBoard from './YachtScoreBoard';
 import YachtChat from './YachtChat';
 import type { ChatMessage } from '../hooks/useYachtGame';
@@ -194,19 +194,13 @@ export default function YachtGameScreen({
 
           {/* 주사위 영역 */}
           <div className={styles.diceArea}>
-            <div className={styles.diceRow} role="list" aria-label="주사위">
-              {dice.map((val, i) => (
-                <div key={i} role="listitem">
-                  <YachtDice3D
-                    value={val}
-                    isKept={keptIndices.includes(i)}
-                    isMyTurn={isMyTurn && !isSpectator}
-                    isRolling={isRolling}
-                    onToggleKeep={() => onToggleKeep(i)}
-                  />
-                </div>
-              ))}
-            </div>
+            <YachtDiceRow3D
+              dice={dice}
+              keptIndices={keptIndices}
+              isMyTurn={isMyTurn && !isSpectator}
+              isRolling={isRolling}
+              onToggleKeep={onToggleKeep}
+            />
 
             {/* 굴리기 버튼 — 관전자에게는 숨김 */}
             {isMyTurn && !isSpectator && (

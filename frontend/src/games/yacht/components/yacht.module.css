@@ -529,17 +529,6 @@
   gap: 16px;
 }
 
-.diceRow {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: 24px 20px;
-  background: var(--yacht-surface2);
-  border: 1px solid var(--yacht-border);
-  border-radius: 14px;
-}
-
 .rollBtn {
   background: linear-gradient(135deg, #6c8ef0, #4ade80);
   color: #fff;
@@ -573,79 +562,6 @@
   transform: none;
 }
 
-/* ============================================================
-   3D 주사위 (YachtDice3D — CSS 3D 큐브)
-   ============================================================ */
-.diceWrapper {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.diceWrapper:active {
-  opacity: 0.75;
-}
-
-.diceWrapperKept {
-  outline: 3px solid var(--yacht-kept);
-  outline-offset: 2px;
-  border-radius: 14px;
-}
-
-.diceWrapperNotMyTurn {
-  cursor: default;
-}
-
-.diceScene {
-  width: 80px;
-  height: 80px;
-  perspective: 320px;
-}
-
-.diceCube {
-  width: 80px;
-  height: 80px;
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.diceFace {
-  position: absolute;
-  width: 80px;
-  height: 80px;
-  background: #f8f9fa;
-  border: 2px solid #d1d5db;
-  border-radius: 14px;
-  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.08);
-  backface-visibility: hidden;
-}
-
-.diceWrapperKept .diceFace {
-  background: #fef9c3;
-  border-color: #ca8a04;
-}
-
-.dicePip {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  background: #1e293b;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* 면 배치: cube size 80px, half = 40px */
-.diceFace1 { transform: rotateY(  0deg) translateZ(40px); }
-.diceFace6 { transform: rotateY(180deg) translateZ(40px); }
-.diceFace2 { transform: rotateX(-90deg) translateZ(40px); }
-.diceFace5 { transform: rotateX( 90deg) translateZ(40px); }
-.diceFace3 { transform: rotateY( 90deg) translateZ(40px); }
-.diceFace4 { transform: rotateY(-90deg) translateZ(40px); }
-
 .diceKeptLabel {
   position: absolute;
   top: -10px;
@@ -659,7 +575,65 @@
   border-radius: 6px;
   pointer-events: none;
   white-space: nowrap;
+  z-index: 2;
+}
+
+/* ============================================================
+   3D 주사위 (YachtDiceRow3D — Three.js 단일 캔버스 + 5 mesh)
+   ============================================================ */
+.diceRow3D {
+  display: flex;
+  justify-content: center;
+  padding: 24px 20px;
+  background: var(--yacht-surface2);
+  border: 1px solid var(--yacht-border);
+  border-radius: 14px;
+}
+
+.diceRow3DInner {
+  position: relative;
+  display: flex;
+  gap: 16px;
+}
+
+.diceRow3DCanvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.diceRow3DHit {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   z-index: 1;
+}
+
+.diceRow3DHit:focus-visible {
+  outline: 2px solid var(--yacht-accent);
+  outline-offset: 2px;
+}
+
+.diceRow3DHit:active:not(:disabled) {
+  opacity: 0.75;
+}
+
+.diceRow3DHitKept {
+  outline: 3px solid var(--yacht-kept);
+  outline-offset: 2px;
+}
+
+.diceRow3DHitNotMyTurn,
+.diceRow3DHit:disabled {
+  cursor: default;
 }
 
 /* ============================================================
@@ -1272,38 +1246,19 @@
     border-top: 1px solid var(--yacht-border);
   }
 
-  .diceWrapper {
-    width: 64px;
-    height: 64px;
+  .diceRow3D {
+    padding: 20px 12px;
   }
 
-  .diceScene {
-    width: 64px;
-    height: 64px;
-    perspective: 256px;
+  .diceRow3DInner {
+    gap: 10px;
   }
 
-  .diceCube,
-  .diceFace {
-    width: 64px;
-    height: 64px;
-  }
-
-  .diceFace {
+  .diceRow3DHit {
+    width: 56px;
+    height: 56px;
     border-radius: 12px;
   }
-
-  .dicePip {
-    width: 11px;
-    height: 11px;
-  }
-
-  .diceFace1 { transform: rotateY(  0deg) translateZ(32px); }
-  .diceFace6 { transform: rotateY(180deg) translateZ(32px); }
-  .diceFace2 { transform: rotateX(-90deg) translateZ(32px); }
-  .diceFace5 { transform: rotateX( 90deg) translateZ(32px); }
-  .diceFace3 { transform: rotateY( 90deg) translateZ(32px); }
-  .diceFace4 { transform: rotateY(-90deg) translateZ(32px); }
 
   .scoreBoard {
     font-size: 0.72rem;
