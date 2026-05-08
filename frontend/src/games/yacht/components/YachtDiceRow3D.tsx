@@ -29,17 +29,17 @@ const PIP_R = 0.078;
 const PIP_DEPTH = 0.038;
 const SEGMENTS = 96;
 
-// 살짝의 isometric tilt
-const BASE_TILT_X = -0.32;
-const BASE_TILT_Y = 0.55;
-const BASE_TILT_Z = 0.06;
+// 정면 시점 — 한 면만 카메라를 향함 (tilt 없음)
+const BASE_TILT_X = 0;
+const BASE_TILT_Y = 0;
+const BASE_TILT_Z = 0;
 
 const ROLL_DURATION_MS = 800;
 const TWO_PI = Math.PI * 2;
 
-// 회전된 큐브의 화면 bounding box가 셀에 잘리지 않도록 화면상 cube 크기를 줄이는 비율
-// (BASE_TILT 기준 회전된 cube 화면 폭 ≈ 1.45 × SIZE; face별 추가 ±π/2 회전 포함 안전 마진 1.5)
-const FIT_MARGIN = 1.5;
+// 굴림 중 회전된 cube의 화면 bounding box가 셀에 잘리지 않도록 화면상 cube 크기를 줄이는 비율
+// (정지 시 한 면만 보여 cube 화면 폭 = SIZE; 굴림 중 임의 회전 시 √3 대각선까지 → 안전 마진 1.8)
+const FIT_MARGIN = 1.8;
 
 function smoothstep(a: number, b: number, x: number) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -76,8 +76,8 @@ function createDiceGeometry(
 
   const positions = geom.attributes.position;
   const colors = new Float32Array(positions.count * 3);
-  const baseColor: [number, number, number] = [0.97, 0.96, 0.93];
-  const pipColor:  [number, number, number] = [0.035, 0.035, 0.035];
+  const baseColor: [number, number, number] = [1.0, 1.0, 0.98];
+  const pipColor:  [number, number, number] = [0.05, 0.05, 0.05];
 
   type FaceInfo = { num: number; u: number; v: number; push: [number, number, number] };
 
@@ -263,14 +263,14 @@ export default function YachtDiceRow3D({
     renderer.toneMappingExposure = 1.0;
     // 그림자/바닥 없음
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.32));
-    const keyLight = new THREE.DirectionalLight(0xfff2dc, 1.1);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+    const keyLight = new THREE.DirectionalLight(0xfff8e8, 1.4);
     keyLight.position.set(4, 7, 5);
     scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight(0xc8d4f0, 0.4);
+    const fillLight = new THREE.DirectionalLight(0xdce6ff, 0.55);
     fillLight.position.set(-5, 3, -2);
     scene.add(fillLight);
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
     rimLight.position.set(-3, 5, -6);
     scene.add(rimLight);
 
