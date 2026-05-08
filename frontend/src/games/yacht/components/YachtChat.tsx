@@ -8,16 +8,134 @@ interface YachtChatProps {
   onSend: (message: string) => void;
 }
 
+const MIN_HEIGHT = 120;
+const MAX_HEIGHT = 480;
+const DEFAULT_HEIGHT = 200;
+
 export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps) {
   const [open, setOpen] = useState(true);
   const [draft, setDraft] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [chatHeight, setChatHeight] = useState(DEFAULT_HEIGHT);
+  const [fabPos, setFabPos] = useState({ right: 16, bottom: 80 });
+
+  const desktopBottomRef = useRef<HTMLDivElement>(null);
+  const mobileBottomRef = useRef<HTMLDivElement>(null);
+  const prevLengthRef = useRef(messages.length);
+  const heightDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const fabDragRef = useRef<{ startX: number; startY: number; startRight: number; startBottom: number } | null>(null);
+  const fabDidDragRef = useRef(false);
+
+  // 읽지 않은 메시지 카운트
+  useEffect(() => {
+    const newCount = messages.length - prevLengthRef.current;
+    if (newCount > 0 && !open) {
+      setUnreadCount((c) => c + newCount);
+    }
+    prevLengthRef.current = messages.length;
+  }, [messages.length, open]);
 
   useEffect(() => {
-    if (open) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (open) setUnreadCount(0);
+  }, [open]);
+
+  // 자동 스크롤 — 데스크탑
+  useEffect(() => {
+    if (open) desktopBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
+
+  // 자동 스크롤 — 모바일 오버레이
+  useEffect(() => {
+    if (open) mobileBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, open]);
+
+  // PC 높이 드래그 이벤트
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!heightDragRef.current) return;
+      const delta = heightDragRef.current.startY - e.clientY;
+      setChatHeight(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, heightDragRef.current.startHeight + delta)));
+    };
+    const onUp = () => {
+      if (heightDragRef.current) {
+        heightDragRef.current = null;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  // 모바일 FAB 드래그 이벤트
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!fabDragRef.current) return;
+      fabDidDragRef.current = true;
+      const dx = e.clientX - fabDragRef.current.startX;
+      const dy = e.clientY - fabDragRef.current.startY;
+      setFabPos({
+        right: Math.max(8, Math.min(window.innerWidth - 64, fabDragRef.current.startRight - dx)),
+        bottom: Math.max(8, Math.min(window.innerHeight - 64, fabDragRef.current.startBottom - dy)),
+      });
+    };
+    const onMouseUp = () => {
+      fabDragRef.current = null;
+      document.body.style.userSelect = '';
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!fabDragRef.current) return;
+      fabDidDragRef.current = true;
+      e.preventDefault();
+      const t = e.touches[0];
+      const dx = t.clientX - fabDragRef.current.startX;
+      const dy = t.clientY - fabDragRef.current.startY;
+      setFabPos({
+        right: Math.max(8, Math.min(window.innerWidth - 64, fabDragRef.current.startRight - dx)),
+        bottom: Math.max(8, Math.min(window.innerHeight - 64, fabDragRef.current.startBottom - dy)),
+      });
+    };
+    const onTouchEnd = () => { fabDragRef.current = null; };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, []);
+
+  const onHeightHandleDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    heightDragRef.current = { startY: e.clientY, startHeight: chatHeight };
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+  }, [chatHeight]);
+
+  const onFabMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    fabDidDragRef.current = false;
+    fabDragRef.current = { startX: e.clientX, startY: e.clientY, startRight: fabPos.right, startBottom: fabPos.bottom };
+    document.body.style.userSelect = 'none';
+  }, [fabPos]);
+
+  const onFabTouchStart = useCallback((e: React.TouchEvent) => {
+    fabDidDragRef.current = false;
+    const t = e.touches[0];
+    fabDragRef.current = { startX: t.clientX, startY: t.clientY, startRight: fabPos.right, startBottom: fabPos.bottom };
+  }, [fabPos]);
+
+  const onFabClick = useCallback(() => {
+    if (!fabDidDragRef.current) setOpen((v) => !v);
+  }, []);
 
   const submit = useCallback(() => {
     const text = draft.trim();
@@ -27,67 +145,129 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
   }, [draft, onSend]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      submit();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
   };
 
-  return (
-    <div className={styles.chatPanel}>
-      <button
-        type="button"
-        className={styles.chatHeader}
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span>채팅</span>
-        <span className={styles.chatToggleIcon}>{open ? '▼' : '▲'}</span>
+  const inputRow = (
+    <div className={styles.chatInputRow}>
+      <input
+        type="text"
+        className={styles.chatInput}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.slice(0, 200))}
+        onKeyDown={handleKeyDown}
+        placeholder="메시지 입력..."
+        maxLength={200}
+        aria-label="채팅 메시지 입력"
+      />
+      <button type="button" className={styles.chatSendBtn} onClick={submit} disabled={!draft.trim()}>
+        전송
       </button>
+    </div>
+  );
 
-      {open && (
-        <>
-          <div className={styles.chatMessages} role="log" aria-live="polite">
-            {messages.length === 0 && (
-              <p className={styles.chatEmpty}>아직 메시지가 없습니다</p>
-            )}
-            {messages.map((msg, i) => {
-              const isMe = msg.userId === myUserId;
-              return (
-                <div
-                  key={i}
-                  className={[styles.chatMessageItem, isMe ? styles.chatMine : ''].filter(Boolean).join(' ')}
-                >
-                  {!isMe && <span className={styles.chatNickname}>{msg.nickname}</span>}
-                  <span className={styles.chatText}>{msg.message}</span>
-                </div>
-              );
-            })}
-            <div ref={bottomRef} />
+  const messageItems = (ref: React.RefObject<HTMLDivElement | null>) => (
+    <div className={styles.chatMessages} role="log" aria-live="polite">
+      {messages.length === 0 && <p className={styles.chatEmpty}>아직 메시지가 없습니다</p>}
+      {messages.map((msg, i) => {
+        const isMe = msg.userId === myUserId;
+        return (
+          <div key={i} className={[styles.chatMessageItem, isMe ? styles.chatMine : ''].filter(Boolean).join(' ')}>
+            {!isMe && <span className={styles.chatNickname}>{msg.nickname}</span>}
+            <span className={styles.chatText}>{msg.message}</span>
           </div>
+        );
+      })}
+      <div ref={ref} />
+    </div>
+  );
 
-          <div className={styles.chatInputRow}>
-            <input
-              type="text"
-              className={styles.chatInput}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value.slice(0, 200))}
-              onKeyDown={handleKeyDown}
-              placeholder="메시지 입력..."
-              maxLength={200}
-              aria-label="채팅 메시지 입력"
-            />
+  return (
+    <>
+      {/* ── 데스크탑 패널 ── */}
+      <div className={styles.chatPanelDesktop}>
+        {open && (
+          <div
+            className={styles.chatHeightHandle}
+            onMouseDown={onHeightHandleDown}
+            role="separator"
+            aria-label="채팅창 높이 조절"
+          />
+        )}
+        <button
+          type="button"
+          className={styles.chatHeader}
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          <span>채팅</span>
+          <span className={styles.chatHeaderRight}>
+            {!open && unreadCount > 0 && (
+              <span className={styles.chatBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+            )}
+            <span className={styles.chatToggleIcon}>{open ? '▼' : '▲'}</span>
+          </span>
+        </button>
+        {open && (
+          <>
+            <div
+              className={styles.chatMessages}
+              style={{ height: chatHeight, maxHeight: 'none' }}
+              role="log"
+              aria-live="polite"
+            >
+              {messages.length === 0 && <p className={styles.chatEmpty}>아직 메시지가 없습니다</p>}
+              {messages.map((msg, i) => {
+                const isMe = msg.userId === myUserId;
+                return (
+                  <div key={i} className={[styles.chatMessageItem, isMe ? styles.chatMine : ''].filter(Boolean).join(' ')}>
+                    {!isMe && <span className={styles.chatNickname}>{msg.nickname}</span>}
+                    <span className={styles.chatText}>{msg.message}</span>
+                  </div>
+                );
+              })}
+              <div ref={desktopBottomRef} />
+            </div>
+            {inputRow}
+          </>
+        )}
+      </div>
+
+      {/* ── 모바일 FAB ── */}
+      <div
+        className={[styles.chatFab, open ? styles.chatFabHidden : ''].filter(Boolean).join(' ')}
+        style={{ right: fabPos.right, bottom: fabPos.bottom }}
+        onMouseDown={onFabMouseDown}
+        onTouchStart={onFabTouchStart}
+        onClick={onFabClick}
+        role="button"
+        aria-label={open ? '채팅 닫기' : '채팅 열기'}
+        tabIndex={0}
+      >
+        <span className={styles.chatFabIcon}>💬</span>
+        {unreadCount > 0 && (
+          <span className={styles.chatBadgeFab}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+        )}
+      </div>
+
+      {/* ── 모바일 채팅 오버레이 ── */}
+      {open && (
+        <div className={styles.chatOverlay}>
+          <div className={styles.chatOverlayHeader}>
+            <span className={styles.chatOverlayTitle}>채팅</span>
             <button
               type="button"
-              className={styles.chatSendBtn}
-              onClick={submit}
-              disabled={!draft.trim()}
+              className={styles.chatOverlayClose}
+              onClick={() => setOpen(false)}
+              aria-label="채팅 닫기"
             >
-              전송
+              ✕
             </button>
           </div>
-        </>
+          {messageItems(mobileBottomRef)}
+          {inputRow}
+        </div>
       )}
-    </div>
+    </>
   );
 }
