@@ -65,6 +65,7 @@ export const CLIENT_KEY_MAP: Record<ScoreKey, string> = {
 export interface Participant {
   userId: number;
   nickname: string;
+  profileImageUrl?: string | null;
   ready: boolean;
   isHost: boolean;
   /** 게임 중 합류한 관전자. WAITING/FINISHED에서는 false. */
