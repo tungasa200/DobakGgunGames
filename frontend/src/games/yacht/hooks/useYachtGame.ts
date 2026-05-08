@@ -29,6 +29,7 @@ import { SERVER_KEY_MAP } from '../types/yacht.types';
 export interface ChatMessage {
   userId: number;
   nickname: string;
+  profileImageUrl?: string | null;
   message: string;
   at: string;
 }
@@ -305,7 +306,7 @@ export function useYachtGame(): UseYachtGameReturn {
       onChat: (payload: ChatPayload) => {
         setChatMessages((prev) => [
           ...prev.slice(-99),
-          { userId: payload.userId, nickname: payload.nickname, message: payload.message, at: new Date().toISOString() },
+          { userId: payload.userId, nickname: payload.nickname, profileImageUrl: payload.profileImageUrl, message: payload.message, at: new Date().toISOString() },
         ]);
       },
       onError: (code: string, message: string) => {

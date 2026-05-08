@@ -955,7 +955,7 @@
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 2px;
 }
 
 .chatEmpty {
@@ -965,39 +965,94 @@
   margin: 12px 0;
 }
 
-.chatMessageItem {
+/* KakaoTalk-style layout */
+.chatRow {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  max-width: 85%;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 82%;
   align-self: flex-start;
 }
 
-.chatMine {
+.chatRowMine {
   align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.chatAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.chatAvatarLetter {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.chatAvatarSpacer {
+  width: 34px;
+  flex-shrink: 0;
+}
+
+.chatBubbleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chatBubbleRow {
+  display: flex;
   align-items: flex-end;
+  gap: 4px;
 }
 
 .chatNickname {
   font-size: 0.68rem;
   color: var(--yacht-text-sub);
   font-weight: 600;
+  padding-left: 2px;
 }
 
-.chatText {
+.chatBubble {
   font-size: 0.82rem;
   background: var(--yacht-surface2);
-  border-radius: 8px;
-  padding: 5px 9px;
+  border-radius: 4px 14px 14px 14px;
+  padding: 7px 11px;
   word-break: break-all;
   color: var(--yacht-text);
   border: 1px solid var(--yacht-border);
+  line-height: 1.4;
+  max-width: 100%;
 }
 
-.chatMine .chatText {
+.chatBubbleMine {
   background: var(--yacht-accent);
   color: #fff;
   border-color: transparent;
+  border-radius: 14px 4px 14px 14px;
+}
+
+.chatTimestamp {
+  font-size: 0.6rem;
+  color: var(--yacht-text-sub);
+  flex-shrink: 0;
+  padding-bottom: 3px;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .chatInputRow {

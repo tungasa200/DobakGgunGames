@@ -13,6 +13,19 @@ const MAX_HEIGHT = 480;
 const DEFAULT_HEIGHT = 200;
 const CLOSE_ANIM_MS = 280;
 
+const AVATAR_COLORS = [
+  '#4f6cd8', '#16a34a', '#d97706', '#dc2626',
+  '#7c3aed', '#0891b2', '#db2777', '#65a30d',
+];
+
+function getAvatarColor(userId: number): string {
+  return AVATAR_COLORS[userId % AVATAR_COLORS.length];
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
 export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps) {
   const [open, setOpen] = useState(true);
   const [overlayClosing, setOverlayClosing] = useState(false);
@@ -29,7 +42,6 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
   const fabDidDragRef = useRef(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 읽지 않은 메시지 카운트
   useEffect(() => {
     const newCount = messages.length - prevLengthRef.current;
     if (newCount > 0 && !open) {
@@ -42,19 +54,16 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
     if (open) setUnreadCount(0);
   }, [open]);
 
-  // 자동 스크롤 — 데스크탑
   useEffect(() => {
     if (open) desktopBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
-  // 자동 스크롤 — 모바일 오버레이
   useEffect(() => {
     if (open) mobileBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
   useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
 
-  // PC 높이 드래그 이벤트 (핸들이 하단 — 아래로 드래그 = 높이 증가)
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!heightDragRef.current) return;
@@ -76,7 +85,6 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
     };
   }, []);
 
-  // 모바일 FAB 드래그 이벤트
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!fabDragRef.current) return;
@@ -142,7 +150,6 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
     if (!fabDidDragRef.current) setOpen((v) => !v);
   }, []);
 
-  // 모바일 오버레이 닫기 (애니메이션 후 언마운트)
   const closeOverlay = useCallback(() => {
     setOverlayClosing(true);
     closeTimerRef.current = setTimeout(() => {
@@ -162,6 +169,51 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
   };
 
+  const renderAvatar = (msg: ChatMessage) => {
+    if (msg.profileImageUrl) {
+      return <img src={msg.profileImageUrl} className={styles.chatAvatar} alt={msg.nickname} />;
+    }
+    return (
+      <div className={styles.chatAvatarLetter} style={{ background: getAvatarColor(msg.userId) }}>
+        {msg.nickname.charAt(0)}
+      </div>
+    );
+  };
+
+  const renderMessages = (ref: React.RefObject<HTMLDivElement | null>) => (
+    <div className={styles.chatMessages} role="log" aria-live="polite">
+      {messages.length === 0 && <p className={styles.chatEmpty}>아직 메시지가 없습니다</p>}
+      {messages.map((msg, i) => {
+        const isMe = msg.userId === myUserId;
+        const isFirstInGroup = i === 0 || messages[i - 1].userId !== msg.userId;
+        const isLastInGroup = i === messages.length - 1 || messages[i + 1].userId !== msg.userId;
+
+        return (
+          <div
+            key={i}
+            className={[styles.chatRow, isMe ? styles.chatRowMine : ''].filter(Boolean).join(' ')}
+            style={{ marginTop: isFirstInGroup && i > 0 ? 8 : 2 }}
+          >
+            {!isMe && (isFirstInGroup ? renderAvatar(msg) : <div className={styles.chatAvatarSpacer} />)}
+            <div className={styles.chatBubbleGroup}>
+              {!isMe && isFirstInGroup && (
+                <span className={styles.chatNickname}>{msg.nickname}</span>
+              )}
+              <div className={styles.chatBubbleRow}>
+                {isMe && isLastInGroup && <span className={styles.chatTimestamp}>{formatTime(msg.at)}</span>}
+                <div className={[styles.chatBubble, isMe ? styles.chatBubbleMine : ''].filter(Boolean).join(' ')}>
+                  {msg.message}
+                </div>
+                {!isMe && isLastInGroup && <span className={styles.chatTimestamp}>{formatTime(msg.at)}</span>}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      <div ref={ref} />
+    </div>
+  );
+
   const inputRow = (
     <div className={styles.chatInputRow}>
       <input
@@ -177,22 +229,6 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
       <button type="button" className={styles.chatSendBtn} onClick={submit} disabled={!draft.trim()}>
         전송
       </button>
-    </div>
-  );
-
-  const messageItems = (ref: React.RefObject<HTMLDivElement | null>) => (
-    <div className={styles.chatMessages} role="log" aria-live="polite">
-      {messages.length === 0 && <p className={styles.chatEmpty}>아직 메시지가 없습니다</p>}
-      {messages.map((msg, i) => {
-        const isMe = msg.userId === myUserId;
-        return (
-          <div key={i} className={[styles.chatMessageItem, isMe ? styles.chatMine : ''].filter(Boolean).join(' ')}>
-            {!isMe && <span className={styles.chatNickname}>{msg.nickname}</span>}
-            <span className={styles.chatText}>{msg.message}</span>
-          </div>
-        );
-      })}
-      <div ref={ref} />
     </div>
   );
 
@@ -216,26 +252,10 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
         </button>
         {open && (
           <>
-            <div
-              className={styles.chatMessages}
-              style={{ height: chatHeight, maxHeight: 'none' }}
-              role="log"
-              aria-live="polite"
-            >
-              {messages.length === 0 && <p className={styles.chatEmpty}>아직 메시지가 없습니다</p>}
-              {messages.map((msg, i) => {
-                const isMe = msg.userId === myUserId;
-                return (
-                  <div key={i} className={[styles.chatMessageItem, isMe ? styles.chatMine : ''].filter(Boolean).join(' ')}>
-                    {!isMe && <span className={styles.chatNickname}>{msg.nickname}</span>}
-                    <span className={styles.chatText}>{msg.message}</span>
-                  </div>
-                );
-              })}
-              <div ref={desktopBottomRef} />
+            <div style={{ height: chatHeight, overflowY: 'auto', flexShrink: 0 }}>
+              {renderMessages(desktopBottomRef)}
             </div>
             {inputRow}
-            {/* 높이 조절 핸들 — 패널 하단 */}
             <div
               className={styles.chatHeightHandle}
               onMouseDown={onHeightHandleDown}
@@ -277,7 +297,7 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
               ✕
             </button>
           </div>
-          {messageItems(mobileBottomRef)}
+          {renderMessages(mobileBottomRef)}
           {inputRow}
         </div>
       )}

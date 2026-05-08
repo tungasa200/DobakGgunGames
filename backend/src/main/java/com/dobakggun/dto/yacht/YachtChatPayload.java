@@ -8,5 +8,6 @@ import lombok.Getter;
 public class YachtChatPayload {
     private Long userId;
     private String nickname;
+    private String profileImageUrl;
     private String message;
 }

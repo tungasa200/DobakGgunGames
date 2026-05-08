@@ -215,6 +215,7 @@ export interface WsErrorPayload {
 export interface ChatPayload {
   userId: number;
   nickname: string;
+  profileImageUrl?: string | null;
   message: string;
 }
 

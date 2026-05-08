@@ -8,6 +8,7 @@ import com.dobakggun.dto.yacht.YachtRollRequest;
 import com.dobakggun.dto.yacht.YachtScoreRequest;
 import com.dobakggun.dto.yacht.YachtVoteKickRequest;
 import com.dobakggun.security.ChatPrincipal;
+import com.dobakggun.repository.UserRepository;
 import com.dobakggun.service.YachtGameService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,13 +55,15 @@ public class YachtWebSocketController {
     private static final String SESSION_KEY = "yachtSubscribedRoomIds";
 
     private final YachtGameService yachtGameService;
+    private final UserRepository userRepository;
 
     @Lazy
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    public YachtWebSocketController(YachtGameService yachtGameService) {
+    public YachtWebSocketController(YachtGameService yachtGameService, UserRepository userRepository) {
         this.yachtGameService = yachtGameService;
+        this.userRepository = userRepository;
     }
 
     // ─── JOIN ────────────────────────────────────────────────────────────────
@@ -253,6 +256,9 @@ public class YachtWebSocketController {
                         .payload(YachtChatPayload.builder()
                                 .userId(cp.getUserId())
                                 .nickname(cp.getNickname())
+                                .profileImageUrl(userRepository.findById(cp.getUserId())
+                                        .map(u -> u.getProfileImage())
+                                        .orElse(null))
                                 .message(text)
                                 .build())
                         .build()
