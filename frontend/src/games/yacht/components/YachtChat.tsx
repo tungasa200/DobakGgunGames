@@ -10,7 +10,6 @@ interface YachtChatProps {
 
 const MIN_HEIGHT = 120;
 const MAX_HEIGHT = 480;
-const DEFAULT_HEIGHT = 200;
 const CLOSE_ANIM_MS = 280;
 
 const AVATAR_COLORS = [
@@ -27,11 +26,15 @@ function formatTime(iso: string): string {
 }
 
 export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps) {
-  const [open, setOpen] = useState(true);
+  // 모바일에서는 기본 닫힘, 데스크탑은 기본 열림
+  const [open, setOpen] = useState(() => window.innerWidth > 768);
   const [overlayClosing, setOverlayClosing] = useState(false);
   const [draft, setDraft] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-  const [chatHeight, setChatHeight] = useState(DEFAULT_HEIGHT);
+  // PC: 디바이스 높이 기반 기본값
+  const [chatHeight, setChatHeight] = useState(() =>
+    Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.round(window.innerHeight * 0.45)))
+  );
   const [fabPos, setFabPos] = useState({ right: 16, bottom: 80 });
 
   const desktopBottomRef = useRef<HTMLDivElement>(null);
@@ -191,21 +194,24 @@ export default function YachtChat({ messages, myUserId, onSend }: YachtChatProps
         return (
           <div
             key={i}
-            className={[styles.chatRow, isMe ? styles.chatRowMine : ''].filter(Boolean).join(' ')}
+            className={[styles.chatGroupItem, isMe ? styles.chatGroupItemMine : ''].filter(Boolean).join(' ')}
             style={{ marginTop: isFirstInGroup && i > 0 ? 8 : 2 }}
           >
-            {!isMe && (isFirstInGroup ? renderAvatar(msg) : <div className={styles.chatAvatarSpacer} />)}
-            <div className={styles.chatBubbleGroup}>
-              {!isMe && isFirstInGroup && (
+            {/* 상대방 첫 메시지: 아바타·닉네임 한 줄 */}
+            {!isMe && isFirstInGroup && (
+              <div className={styles.chatNameRow}>
+                {renderAvatar(msg)}
                 <span className={styles.chatNickname}>{msg.nickname}</span>
-              )}
-              <div className={styles.chatBubbleRow}>
-                {isMe && isLastInGroup && <span className={styles.chatTimestamp}>{formatTime(msg.at)}</span>}
-                <div className={[styles.chatBubble, isMe ? styles.chatBubbleMine : ''].filter(Boolean).join(' ')}>
-                  {msg.message}
-                </div>
-                {!isMe && isLastInGroup && <span className={styles.chatTimestamp}>{formatTime(msg.at)}</span>}
               </div>
+            )}
+            {/* 말풍선 행 */}
+            <div className={[styles.chatBubbleRow, isMe ? styles.chatBubbleRowMine : ''].filter(Boolean).join(' ')}>
+              {!isMe && <div className={styles.chatAvatarSpacer} />}
+              {isMe && isLastInGroup && <span className={styles.chatTimestamp}>{formatTime(msg.at)}</span>}
+              <div className={[styles.chatBubble, isMe ? styles.chatBubbleMine : ''].filter(Boolean).join(' ')}>
+                {msg.message}
+              </div>
+              {!isMe && isLastInGroup && <span className={styles.chatTimestamp}>{formatTime(msg.at)}</span>}
             </div>
           </div>
         );
