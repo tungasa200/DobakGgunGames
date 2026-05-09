@@ -581,8 +581,9 @@
 /* ============================================================
    3D 주사위 (YachtDiceRow3D — Three.js 단일 캔버스 + 5 mesh)
    ============================================================ */
-/* dice 레이아웃 토큰 — inner 폭을 명시 계산해 canvas intrinsic이 부모를
-   부풀리는 것을 차단. 부모 max-content 계산에 canvas가 끼지 못하게 함 */
+/* dice 레이아웃 토큰 — 박스가 좁아지면 dice가 비례 축소되도록 inner를 100% width
+   + max-width로, 버튼은 flex 1 1 0 + aspect-ratio:1로 구성. 5번째 dice가 박스를
+   벗어나는 오버플로우를 차단. */
 .diceRow3D {
   --die-size: 80px;
   --die-gap: 10px;
@@ -598,8 +599,8 @@
   border: 1px solid #0f172a;
   border-radius: 14px;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
-  width: calc(var(--dice-inner-width) + 56px);
-  max-width: 100%;
+  width: 100%;
+  max-width: calc(var(--dice-inner-width) + 56px);
   align-self: center;
   margin: 0 auto;
   box-sizing: border-box;
@@ -609,9 +610,10 @@
   position: relative;
   display: flex;
   gap: var(--die-gap);
-  width: var(--dice-inner-width);
-  flex: 0 0 var(--dice-inner-width);
-  justify-content: flex-start;
+  width: 100%;
+  max-width: var(--dice-inner-width);
+  min-width: 0;
+  justify-content: center;
 }
 
 .diceRow3DCanvas {
@@ -622,9 +624,10 @@
 
 .diceRow3DHit {
   position: relative;
-  width: var(--die-size);
-  height: var(--die-size);
-  flex: 0 0 var(--die-size);
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: var(--die-size);
+  aspect-ratio: 1;
   background: transparent;
   border: none;
   padding: 0;
@@ -1268,7 +1271,7 @@
   .diceRow3D {
     --die-size: 56px;
     padding: 28px 16px;
-    width: calc(var(--dice-inner-width) + 32px);
+    max-width: calc(var(--dice-inner-width) + 32px);
   }
 
   .diceRow3DHit {
