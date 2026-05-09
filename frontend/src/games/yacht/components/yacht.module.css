@@ -521,13 +521,12 @@
   color: #fff;
 }
 
-/* 주사위 영역 — container query 기준 (자손이 100cqw로 폭 참조) */
+/* 주사위 영역 */
 .diceArea {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  container-type: inline-size;
   width: 100%;
 }
 
@@ -583,36 +582,24 @@
 /* ============================================================
    3D 주사위 (YachtDiceRow3D — Three.js 단일 캔버스 + 5 mesh)
    ============================================================ */
-/* dice 레이아웃 — 결정론적 사이징.
-   container query로 die-size를 계산해 inner/dark-box 폭을 콘텐츠 기준으로
-   고정. dark-box는 inner+padding 합으로 정확히 inner를 감싸고, dice mesh의
-   FIT_MARGIN 여유를 위해 padding을 충분히 둔다.
-
-   계산: die-size = min(80, (100cqw - 56(padding) - 2(border) - 4*10(gaps)) / 5)
-   inner = die-size * 5 + 10 * 4
-   dark-box = inner + 56(padding) + 2(border)
+/* dice 레이아웃 — JS가 dark-box의 실측 폭에서 die-size를 직접 계산해
+   inline style로 inner/buttons에 박는다. CSS는 dark-box의 외곽만 담당.
+   - 5개 dice가 절대 dark-box 바깥으로 나가지 않도록 inner는 정확히
+     5*die + 4*gap, buttons는 die_size로 JS에서 폭을 결정.
+   - CSS는 width:100% + max-width(80px 5개 + gap + padding + border)만 둔다.
 */
 .diceRow3D {
-  --die-max: 80px;
-  --die-gap: 10px;
-  --die-count: 5;
-  --pad-x: 28px;
-  --avail: max(0px, calc(100cqw - var(--pad-x) * 2 - 2px - var(--die-gap) * (var(--die-count) - 1)));
-  --die-size: min(var(--die-max), calc(var(--avail) / var(--die-count)));
-  --dice-inner-width: calc(
-    var(--die-size) * var(--die-count) + var(--die-gap) * (var(--die-count) - 1)
-  );
-
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 36px var(--pad-x);
+  padding: 36px 28px;
   background: #1e293b;
   border: 1px solid #0f172a;
   border-radius: 14px;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
   width: 100%;
-  max-width: calc(var(--dice-inner-width) + var(--pad-x) * 2 + 2px);
+  /* 5*80 + 4*10 + 28*2 + 2(border) = 498 */
+  max-width: 498px;
   align-self: center;
   margin: 0 auto;
   box-sizing: border-box;
@@ -621,10 +608,9 @@
 .diceRow3DInner {
   position: relative;
   display: flex;
-  gap: var(--die-gap);
-  width: var(--dice-inner-width);
-  flex: 0 0 var(--dice-inner-width);
-  height: var(--die-size);
+  gap: 10px;
+  /* width / height는 JS에서 inline style로 주입 */
+  flex: 0 0 auto;
   justify-content: flex-start;
 }
 
@@ -636,9 +622,8 @@
 
 .diceRow3DHit {
   position: relative;
-  width: var(--die-size);
-  height: var(--die-size);
-  flex: 0 0 var(--die-size);
+  /* width / height는 JS에서 inline style로 주입 */
+  flex: 0 0 auto;
   background: transparent;
   border: none;
   padding: 0;
@@ -1280,9 +1265,9 @@
   }
 
   .diceRow3D {
-    --die-max: 56px;
-    --pad-x: 16px;
-    padding: 28px var(--pad-x);
+    padding: 28px 16px;
+    /* 5*56 + 4*10 + 16*2 + 2 = 354 */
+    max-width: 354px;
   }
 
   .diceRow3DHit {

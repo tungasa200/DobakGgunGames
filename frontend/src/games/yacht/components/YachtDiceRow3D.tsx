@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import styles from './yacht.module.css';
 
@@ -11,6 +11,12 @@ interface YachtDiceRow3DProps {
 }
 
 const NUM_DICE = 5;
+
+// die-size 계산 상수 (CSS와 동기화 필수)
+const DIE_GAP = 10;
+const DIE_BORDER = 2; // dark-box 좌우 border 합
+const MAX_DIE_SIZE = 80;
+const MIN_DIE_SIZE = 32;
 
 // 큐브의 어느 면이 카메라(+Z)를 향하도록 할지의 회전(라디안)
 // 면→축 매핑: +Z=1, -Z=6, -Y=2, +Y=5, -X=3, +X=4
@@ -225,8 +231,12 @@ export default function YachtDiceRow3D({
   isRolling,
   onToggleKeep,
 }: YachtDiceRow3DProps) {
+  const darkBoxRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // dark-box 실측 폭에서 die-size 결정 → 5개 dice가 절대 박스를 벗어날 수 없음
+  const [dieSize, setDieSize] = useState<number>(MAX_DIE_SIZE);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -479,15 +489,38 @@ export default function YachtDiceRow3D({
     }
   }, [dice, keptIndices, isRolling]);
 
+  // === dark-box 실측 → die-size 결정 (5개 dice가 박스 안에 정확히 fit) ===
+  useEffect(() => {
+    const dark = darkBoxRef.current;
+    if (!dark) return;
+
+    const compute = () => {
+      const cs = window.getComputedStyle(dark);
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const rect = dark.getBoundingClientRect();
+      const inner = Math.max(0, rect.width - padX - DIE_BORDER);
+      const avail = Math.max(0, inner - DIE_GAP * (NUM_DICE - 1));
+      const size = Math.min(MAX_DIE_SIZE, Math.max(MIN_DIE_SIZE, Math.floor(avail / NUM_DICE)));
+      setDieSize(size);
+    };
+
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(dark);
+    return () => ro.disconnect();
+  }, []);
+
   const canInteract = isMyTurn;
+  const innerWidth = dieSize * NUM_DICE + DIE_GAP * (NUM_DICE - 1);
 
   return (
-    <div className={styles.diceRow3D}>
+    <div className={styles.diceRow3D} ref={darkBoxRef}>
       <div
         ref={innerRef}
         className={styles.diceRow3DInner}
         role="list"
         aria-label="주사위"
+        style={{ width: `${innerWidth}px`, height: `${dieSize}px` }}
       >
         <canvas ref={canvasRef} className={styles.diceRow3DCanvas} />
         {dice.map((val, i) => {
@@ -505,6 +538,7 @@ export default function YachtDiceRow3D({
               ]
                 .filter(Boolean)
                 .join(' ')}
+              style={{ width: `${dieSize}px`, height: `${dieSize}px` }}
               onClick={canInteract ? () => onToggleKeep(i) : undefined}
               disabled={!canInteract}
               aria-label={
