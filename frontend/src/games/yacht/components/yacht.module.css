@@ -581,7 +581,16 @@
 /* ============================================================
    3D 주사위 (YachtDiceRow3D — Three.js 단일 캔버스 + 5 mesh)
    ============================================================ */
+/* dice 레이아웃 토큰 — inner 폭을 명시 계산해 canvas intrinsic이 부모를
+   부풀리는 것을 차단. 부모 max-content 계산에 canvas가 끼지 못하게 함 */
 .diceRow3D {
+  --die-size: 80px;
+  --die-gap: 10px;
+  --die-count: 5;
+  --dice-inner-width: calc(
+    var(--die-size) * var(--die-count) + var(--die-gap) * (var(--die-count) - 1)
+  );
+
   display: flex;
   justify-content: center;
   padding: 36px 28px;
@@ -589,18 +598,20 @@
   border: 1px solid #0f172a;
   border-radius: 14px;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
-  width: max-content;
+  width: calc(var(--dice-inner-width) + 56px);
   max-width: 100%;
   align-self: center;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .diceRow3DInner {
   position: relative;
   display: flex;
-  gap: 10px;
-  width: max-content;
-  flex: 0 0 max-content;
+  gap: var(--die-gap);
+  width: var(--dice-inner-width);
+  flex: 0 0 var(--dice-inner-width);
+  justify-content: flex-start;
 }
 
 .diceRow3DCanvas {
@@ -611,8 +622,9 @@
 
 .diceRow3DHit {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: var(--die-size);
+  height: var(--die-size);
+  flex: 0 0 var(--die-size);
   background: transparent;
   border: none;
   padding: 0;
@@ -1254,16 +1266,12 @@
   }
 
   .diceRow3D {
+    --die-size: 56px;
     padding: 28px 16px;
-  }
-
-  .diceRow3DInner {
-    gap: 10px;
+    width: calc(var(--dice-inner-width) + 32px);
   }
 
   .diceRow3DHit {
-    width: 56px;
-    height: 56px;
     border-radius: 12px;
   }
 
