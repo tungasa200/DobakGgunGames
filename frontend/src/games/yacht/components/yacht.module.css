@@ -585,12 +585,12 @@
    ============================================================ */
 /* dice 레이아웃 — 결정론적 사이징.
    container query로 die-size를 계산해 inner/dark-box 폭을 콘텐츠 기준으로
-   고정한다. flex 분배·max-width 절충 없이 자식 합계가 곧 부모 폭이 되므로
-   5번째 dice가 박스를 벗어날 수 없다.
+   고정. dark-box는 inner+padding 합으로 정확히 inner를 감싸고, dice mesh의
+   FIT_MARGIN 여유를 위해 padding을 충분히 둔다.
 
    계산: die-size = min(80, (100cqw - 56(padding) - 2(border) - 4*10(gaps)) / 5)
    inner = die-size * 5 + 10 * 4
-   dark-box = inner + 56(padding) + 2(border) (= max-content)
+   dark-box = inner + 56(padding) + 2(border)
 */
 .diceRow3D {
   --die-max: 80px;
@@ -605,17 +605,17 @@
 
   display: flex;
   justify-content: center;
+  align-items: center;
   padding: 36px var(--pad-x);
   background: #1e293b;
   border: 1px solid #0f172a;
   border-radius: 14px;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
-  width: max-content;
-  max-width: 100%;
+  width: 100%;
+  max-width: calc(var(--dice-inner-width) + var(--pad-x) * 2 + 2px);
   align-self: center;
   margin: 0 auto;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 .diceRow3DInner {
@@ -624,6 +624,7 @@
   gap: var(--die-gap);
   width: var(--dice-inner-width);
   flex: 0 0 var(--dice-inner-width);
+  height: var(--die-size);
   justify-content: flex-start;
 }
 
