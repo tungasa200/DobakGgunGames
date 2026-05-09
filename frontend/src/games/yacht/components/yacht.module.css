@@ -521,12 +521,14 @@
   color: #fff;
 }
 
-/* 주사위 영역 */
+/* 주사위 영역 — container query 기준 (자손이 100cqw로 폭 참조) */
 .diceArea {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  container-type: inline-size;
+  width: 100%;
 }
 
 .rollBtn {
@@ -581,39 +583,48 @@
 /* ============================================================
    3D 주사위 (YachtDiceRow3D — Three.js 단일 캔버스 + 5 mesh)
    ============================================================ */
-/* dice 레이아웃 토큰 — 박스가 좁아지면 dice가 비례 축소되도록 inner를 100% width
-   + max-width로, 버튼은 flex 1 1 0 + aspect-ratio:1로 구성. 5번째 dice가 박스를
-   벗어나는 오버플로우를 차단. */
+/* dice 레이아웃 — 결정론적 사이징.
+   container query로 die-size를 계산해 inner/dark-box 폭을 콘텐츠 기준으로
+   고정한다. flex 분배·max-width 절충 없이 자식 합계가 곧 부모 폭이 되므로
+   5번째 dice가 박스를 벗어날 수 없다.
+
+   계산: die-size = min(80, (100cqw - 56(padding) - 2(border) - 4*10(gaps)) / 5)
+   inner = die-size * 5 + 10 * 4
+   dark-box = inner + 56(padding) + 2(border) (= max-content)
+*/
 .diceRow3D {
-  --die-size: 80px;
+  --die-max: 80px;
   --die-gap: 10px;
   --die-count: 5;
+  --pad-x: 28px;
+  --avail: max(0px, calc(100cqw - var(--pad-x) * 2 - 2px - var(--die-gap) * (var(--die-count) - 1)));
+  --die-size: min(var(--die-max), calc(var(--avail) / var(--die-count)));
   --dice-inner-width: calc(
     var(--die-size) * var(--die-count) + var(--die-gap) * (var(--die-count) - 1)
   );
 
   display: flex;
   justify-content: center;
-  padding: 36px 28px;
+  padding: 36px var(--pad-x);
   background: #1e293b;
   border: 1px solid #0f172a;
   border-radius: 14px;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
-  width: 100%;
-  max-width: calc(var(--dice-inner-width) + 56px);
+  width: max-content;
+  max-width: 100%;
   align-self: center;
   margin: 0 auto;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .diceRow3DInner {
   position: relative;
   display: flex;
   gap: var(--die-gap);
-  width: 100%;
-  max-width: var(--dice-inner-width);
-  min-width: 0;
-  justify-content: center;
+  width: var(--dice-inner-width);
+  flex: 0 0 var(--dice-inner-width);
+  justify-content: flex-start;
 }
 
 .diceRow3DCanvas {
@@ -624,10 +635,9 @@
 
 .diceRow3DHit {
   position: relative;
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: var(--die-size);
-  aspect-ratio: 1;
+  width: var(--die-size);
+  height: var(--die-size);
+  flex: 0 0 var(--die-size);
   background: transparent;
   border: none;
   padding: 0;
@@ -1269,9 +1279,9 @@
   }
 
   .diceRow3D {
-    --die-size: 56px;
-    padding: 28px 16px;
-    max-width: calc(var(--dice-inner-width) + 32px);
+    --die-max: 56px;
+    --pad-x: 16px;
+    padding: 28px var(--pad-x);
   }
 
   .diceRow3DHit {
