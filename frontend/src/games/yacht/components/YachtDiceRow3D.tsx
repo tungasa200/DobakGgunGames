@@ -13,13 +13,15 @@ interface YachtDiceRow3DProps {
 const NUM_DICE = 5;
 
 // 큐브의 어느 면이 카메라(+Z)를 향하도록 할지의 회전(라디안)
+// 면→축 매핑: +Z=1, -Z=6, -Y=2, +Y=5, -X=3, +X=4
+// 해당 축 벡터를 +Z(카메라 방향)로 가져가는 회전을 사용
 const FACE_ROT: Record<number, { x: number; y: number }> = {
   1: { x: 0,             y: 0 },
-  2: { x: Math.PI / 2,   y: 0 },
-  3: { x: 0,             y: -Math.PI / 2 },
-  4: { x: 0,             y:  Math.PI / 2 },
-  5: { x: -Math.PI / 2,  y: 0 },
-  6: { x: 0,             y:  Math.PI },
+  2: { x: -Math.PI / 2,  y: 0 },              // -Y → +Z
+  3: { x: 0,             y:  Math.PI / 2 },   // -X → +Z
+  4: { x: 0,             y: -Math.PI / 2 },   // +X → +Z
+  5: { x:  Math.PI / 2,  y: 0 },              // +Y → +Z
+  6: { x: 0,             y:  Math.PI },       // -Z → +Z
 };
 
 // 주사위 메시 스펙(샘플과 동일)
@@ -38,8 +40,8 @@ const ROLL_DURATION_MS = 800;
 const TWO_PI = Math.PI * 2;
 
 // 굴림 중 회전된 cube의 화면 bounding box가 셀에 잘리지 않도록 화면상 cube 크기를 줄이는 비율
-// (정지 시 한 면만 보여 cube 화면 폭 = SIZE; 굴림 중 임의 회전 시 √3 대각선까지 → 안전 마진 1.8)
-const FIT_MARGIN = 1.8;
+// (정지 시 한 면 화면 폭 = SIZE; 굴림 중 회전은 평균 √2 근방, FIT 1.5면 약 15% 오버슈트 — 짧은 순간이라 허용)
+const FIT_MARGIN = 1.5;
 
 function smoothstep(a: number, b: number, x: number) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -341,8 +343,19 @@ export default function YachtDiceRow3D({
 
       renderer.setSize(w, h, false);
 
-      const diePx = h;
-      const pxPerUnit = diePx / (SIZE * FIT_MARGIN);
+      // hit-area 실제 DOM 위치/크기를 읽어 mesh를 정확히 정렬
+      // (inner가 의도와 다르게 스트레치되어도 dice가 hit-area 바깥으로 빠지지 않게 함)
+      const hits = inner.querySelectorAll<HTMLButtonElement>('button');
+      if (hits.length !== NUM_DICE) {
+        renderer.render(scene, camera);
+        return;
+      }
+
+      const firstHitRect = hits[0].getBoundingClientRect();
+      const dieSize = Math.min(firstHitRect.width, firstHitRect.height);
+      if (dieSize <= 0) return;
+
+      const pxPerUnit = dieSize / (SIZE * FIT_MARGIN);
 
       const wUnits = w / pxPerUnit;
       const hUnits = h / pxPerUnit;
@@ -352,13 +365,9 @@ export default function YachtDiceRow3D({
       camera.bottom = -hUnits / 2;
       camera.updateProjectionMatrix();
 
-      // hit-area는 flex로 배치되어 균등 간격. mesh 위치를 그에 정렬.
-      const totalDie = NUM_DICE * diePx;
-      const totalGap = w - totalDie;
-      const gapPx = NUM_DICE > 1 ? totalGap / (NUM_DICE - 1) : 0;
-
       for (let i = 0; i < NUM_DICE; i++) {
-        const centerPx = i * (diePx + gapPx) + diePx / 2;
+        const r = hits[i].getBoundingClientRect();
+        const centerPx = (r.left + r.right) / 2 - rect.left;
         const xUnit = (centerPx - w / 2) / pxPerUnit;
         wrappers[i].position.set(xUnit, 0, 0);
       }

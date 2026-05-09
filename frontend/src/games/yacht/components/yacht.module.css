@@ -594,7 +594,9 @@
 .diceRow3DInner {
   position: relative;
   display: flex;
-  gap: 16px;
+  gap: 10px;
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
 .diceRow3DCanvas {
