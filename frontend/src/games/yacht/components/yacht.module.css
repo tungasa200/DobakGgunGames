@@ -589,14 +589,18 @@
   border: 1px solid #0f172a;
   border-radius: 14px;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
+  width: max-content;
+  max-width: 100%;
+  align-self: center;
+  margin: 0 auto;
 }
 
 .diceRow3DInner {
   position: relative;
   display: flex;
   gap: 10px;
-  flex: 0 0 auto;
-  max-width: 100%;
+  width: max-content;
+  flex: 0 0 max-content;
 }
 
 .diceRow3DCanvas {

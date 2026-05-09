@@ -78,7 +78,7 @@ function createDiceGeometry(
 
   const positions = geom.attributes.position;
   const colors = new Float32Array(positions.count * 3);
-  const baseColor: [number, number, number] = [1.0, 1.0, 0.98];
+  const baseColor: [number, number, number] = [1.0, 1.0, 1.0];
   const pipColor:  [number, number, number] = [0.05, 0.05, 0.05];
 
   type FaceInfo = { num: number; u: number; v: number; push: [number, number, number] };
@@ -265,14 +265,14 @@ export default function YachtDiceRow3D({
     renderer.toneMappingExposure = 1.0;
     // 그림자/바닥 없음
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-    const keyLight = new THREE.DirectionalLight(0xfff8e8, 1.4);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
     keyLight.position.set(4, 7, 5);
     scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight(0xdce6ff, 0.55);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.7);
     fillLight.position.set(-5, 3, -2);
     scene.add(fillLight);
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.7);
     rimLight.position.set(-3, 5, -6);
     scene.add(rimLight);
 
