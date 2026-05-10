@@ -230,24 +230,16 @@ export default function YachtGameScreen({
             )}
 
             {!isMyTurn && (
-              <p style={{ color: 'var(--yacht-text-sub)', fontSize: '0.9rem', margin: 0 }}>
+              <button
+                type="button"
+                className={styles.rollBtn}
+                disabled
+                aria-label={`${currentPlayer?.nickname ?? '상대방'}의 턴입니다`}
+              >
                 {currentPlayer?.nickname ?? '상대방'}의 턴입니다
-              </p>
+              </button>
             )}
           </div>
-
-          {/* 안내 메시지 */}
-          {!isSpectator && isMyTurn && hasDice && !isFirstRoll && (
-            <p style={{ fontSize: '0.83rem', color: 'var(--yacht-text-sub)', textAlign: 'center', margin: 0 }}>
-              고정할 주사위를 클릭하고 다시 굴리거나, 오른쪽 점수판에서 족보를 선택하세요
-            </p>
-          )}
-
-          {!isSpectator && isMyTurn && rollsLeft === 0 && (
-            <p style={{ fontSize: '0.9rem', color: 'var(--yacht-warn)', textAlign: 'center', margin: 0 }}>
-              굴림 횟수를 모두 사용했습니다. 족보를 선택해 주세요.
-            </p>
-          )}
 
           {/* 채팅 */}
           <YachtChat
