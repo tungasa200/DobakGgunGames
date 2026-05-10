@@ -22,11 +22,15 @@ public interface YachtRecordRepository extends JpaRepository<YachtRecord, Long> 
 
     /**
      * 모드별 랭킹 상위 N명.
-     * 정렬 기준: 승수 DESC → lastPlayedAt DESC.
+     * 정렬 기준: 승수 DESC → 승률 DESC → lastPlayedAt DESC.
+     * 승수 0인 유저는 랭킹에서 제외.
+     * 승수 > 0 이면 totalGames >= 1 이 보장되므로 0 division 불가.
      */
     @Query("SELECT yr FROM YachtRecord yr JOIN FETCH yr.user " +
-           "WHERE yr.diceType = :diceType " +
-           "ORDER BY yr.winCount DESC, yr.lastPlayedAt DESC")
+           "WHERE yr.diceType = :diceType AND yr.winCount > 0 " +
+           "ORDER BY yr.winCount DESC, " +
+           "(yr.winCount * 1.0 / yr.totalGames) DESC, " +
+           "yr.lastPlayedAt DESC")
     List<YachtRecord> findTopRankingsByDiceType(@Param("diceType") YachtDiceType diceType,
                                                  Pageable pageable);
 }
