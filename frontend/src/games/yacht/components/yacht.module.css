@@ -1283,7 +1283,6 @@
   .diceRow3D {
     padding: 28px 16px;
     /* 5*56 + 4*10 + 16*2 + 2 = 354 */
-    max-width: 354px;
   }
 
   .diceRow3DHit {
