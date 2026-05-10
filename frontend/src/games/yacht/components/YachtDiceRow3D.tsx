@@ -520,11 +520,7 @@ export default function YachtDiceRow3D({
         className={styles.diceRow3DInner}
         role="list"
         aria-label="주사위"
-        style={{
-          width: `${innerWidth}px`,
-          height: `${dieSize}px`,
-          gridTemplateColumns: `repeat(${NUM_DICE}, ${dieSize}px)`,
-        }}
+        style={{ width: `${innerWidth}px`, height: `${dieSize}px` }}
       >
         <canvas ref={canvasRef} className={styles.diceRow3DCanvas} />
         {dice.map((val, i) => {
