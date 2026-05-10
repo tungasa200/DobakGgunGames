@@ -40,6 +40,12 @@ public class YachtRoom {
     @Builder.Default
     private YachtRoomStatus status = YachtRoomStatus.WAITING;
 
+    /** 주사위 타입: D6(정육면체) 또는 D8(정팔면체). Railway DB에 수동 추가 완료. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dice_type", nullable = false, length = 4)
+    @Builder.Default
+    private YachtDiceType diceType = YachtDiceType.D6;
+
     /** 방장 userId (User FK) */
     @Column(name = "host_user_id", nullable = false)
     private Long hostUserId;

@@ -3,6 +3,8 @@ package com.dobakggun.service;
 import com.dobakggun.dto.yacht.*;
 import com.dobakggun.entity.yacht.*;
 import com.dobakggun.repository.*;
+import com.dobakggun.service.yacht.YachtScoreRules;
+import com.dobakggun.service.yacht.YachtScoreRulesFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -39,17 +41,6 @@ public class YachtGameService {
 
     private static final String TOPIC_PREFIX = "/topic/yacht/room/";
     private static final int    ROOM_TTL_MINUTES = 10;
-    private static final int    TOTAL_SCORE_KEYS = 12;
-    private static final Set<String> VALID_SCORE_KEYS = Set.of(
-            "ONES","TWOS","THREES","FOURS","FIVES","SIXES",
-            "CHOICE","FOUR_OF_A_KIND","FULL_HOUSE",
-            "LITTLE_STRAIGHT","BIG_STRAIGHT","YACHT"
-    );
-    private static final Set<String> UPPER_KEYS = Set.of(
-            "ONES","TWOS","THREES","FOURS","FIVES","SIXES"
-    );
-    private static final int UPPER_BONUS_THRESHOLD = 63;
-    private static final int UPPER_BONUS_VALUE     = 35;
 
     /** 새로고침/연결 끊김 시 턴 양도까지의 유예 시간 (초) */
     private static final int RECONNECT_GRACE_SECONDS = 10;
@@ -73,6 +64,8 @@ public class YachtGameService {
         public volatile Long hostUserId;
         public volatile int maxPlayers;
         public volatile YachtRoomStatus status = YachtRoomStatus.WAITING;
+        /** D6 / D8 모드. DB에서 복사. */
+        public volatile YachtDiceType diceType = YachtDiceType.D6;
 
         /** 입장 순서대로 유지 */
         public final List<YachtPlayer> participants = new CopyOnWriteArrayList<>();
@@ -107,10 +100,11 @@ public class YachtGameService {
         /** 현재 활성 WebSocket 세션 ID: userId → sessionId */
         public final Map<Long, String> activeSessionIds = new ConcurrentHashMap<>();
 
-        public YachtRoomState(String roomId, Long hostUserId, int maxPlayers) {
-            this.roomId    = roomId;
+        public YachtRoomState(String roomId, Long hostUserId, int maxPlayers, YachtDiceType diceType) {
+            this.roomId     = roomId;
             this.hostUserId = hostUserId;
             this.maxPlayers = maxPlayers;
+            this.diceType   = diceType;
         }
     }
 
@@ -246,7 +240,8 @@ public class YachtGameService {
         if (dbRoom == null) return null;
         if (dbRoom.getStatus() == YachtRoomStatus.FINISHED) return null;
 
-        YachtRoomState newState = new YachtRoomState(roomId, dbRoom.getHostUserId(), dbRoom.getMaxPlayers());
+        YachtDiceType dt = dbRoom.getDiceType() != null ? dbRoom.getDiceType() : YachtDiceType.D6;
+        YachtRoomState newState = new YachtRoomState(roomId, dbRoom.getHostUserId(), dbRoom.getMaxPlayers(), dt);
         newState.status = dbRoom.getStatus();
 
         // DB에서 기존 참가자 복원 (재시작 대응)
@@ -337,11 +332,13 @@ public class YachtGameService {
         // DB 업데이트
         updateDbStatusPlaying(roomId);
 
-        int totalRounds = snapshot.size() * TOTAL_SCORE_KEYS;
+        YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
+        int totalRounds = snapshot.size() * rules.totalScoreKeys();
         Long firstTurnUserId = state.turnOrder.get(0);
 
         broadcast(roomId, "GAME_STARTED", YachtGameStartedPayload.builder()
                 .roomId(roomId)
+                .diceType(state.diceType.name())
                 .turnOrder(state.turnOrder)
                 .currentTurnUserId(firstTurnUserId)
                 .rollsLeft(3)
@@ -386,11 +383,12 @@ public class YachtGameService {
                 validKept = new ArrayList<>();
             }
 
-            // 서버 주사위 생성 (keep 안 된 인덱스만 새로 굴림)
+            // 서버 주사위 생성 (keep 안 된 인덱스만 새로 굴림) — 룰셋에서 면 수 가져옴
+            YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
             newDice = Arrays.copyOf(state.dice, 5);
             for (int i = 0; i < 5; i++) {
                 if (!validKept.contains(i)) {
-                    newDice[i] = rng.nextInt(6) + 1; // 1~6
+                    newDice[i] = rng.nextInt(rules.rngFaces()) + 1;
                 }
             }
 
@@ -458,7 +456,8 @@ public class YachtGameService {
 
             if (!state.hasRolled) return "MUST_ROLL_FIRST";
 
-            if (!VALID_SCORE_KEYS.contains(scoreKey)) return "INVALID_SCORE_KEY";
+            YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
+            if (!rules.validScoreKeys().contains(scoreKey)) return "INVALID_SCORE_KEY";
 
             Map<String, Integer> userScores = state.scoreMap.get(userId);
             if (userScores == null) {
@@ -468,7 +467,7 @@ public class YachtGameService {
             if (userScores.containsKey(scoreKey)) return "ALREADY_SCORED";
 
             diceSnapshot = Arrays.copyOf(state.dice, 5);
-            scoreValue = calculateScore(scoreKey, diceSnapshot);
+            scoreValue = rules.calculateScore(scoreKey, diceSnapshot);
             userScores.put(scoreKey, scoreValue);
 
             previousTurnUserId = userId;
@@ -499,9 +498,10 @@ public class YachtGameService {
 
         // 점수 계산 (상단 보너스 포함)
         Map<String, Integer> userScores = state.scoreMap.get(userId);
-        int upperTotal = computeUpperTotal(userScores);
-        boolean bonusEarned = isBonusJustEarned(userScores, scoreKey);
-        int grandTotal = computeGrandTotal(userScores, upperTotal, isBonusEarned(userScores));
+        YachtScoreRules rulesForBonus = YachtScoreRulesFactory.get(state.diceType);
+        int upperTotal = computeUpperTotal(userScores, rulesForBonus);
+        boolean bonusEarned = isBonusJustEarned(userScores, scoreKey, rulesForBonus);
+        int grandTotal = computeGrandTotal(userScores, upperTotal, isBonusEarned(userScores, rulesForBonus), rulesForBonus);
 
         // DB 저장
         saveScoreToDB(roomId, userId, scoreKey, scoreValue);
@@ -916,19 +916,21 @@ public class YachtGameService {
 
     /**
      * 끊긴 유저의 미기록 족보를 전부 0점으로 자동 기록.
+     * 룰셋에서 validScoreKeys를 가져오므로 D6/D8 모두 정확하게 채워진다.
      */
     @Transactional
     void autoFillScores(YachtRoomState state, Long userId) {
         Map<String, Integer> userScores = state.scoreMap.computeIfAbsent(userId, k -> new ConcurrentHashMap<>());
+        YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
 
-        for (String key : VALID_SCORE_KEYS) {
+        for (String key : rules.validScoreKeys()) {
             if (!userScores.containsKey(key)) {
                 userScores.put(key, 0);
                 saveScoreToDB(state.roomId, userId, key, 0);
 
-                int upperTotal = computeUpperTotal(userScores);
-                boolean bonusEarned = isBonusEarned(userScores);
-                int grandTotal = computeGrandTotal(userScores, upperTotal, bonusEarned);
+                int upperTotal = computeUpperTotal(userScores, rules);
+                boolean bonusEarned = isBonusEarned(userScores, rules);
+                int grandTotal = computeGrandTotal(userScores, upperTotal, bonusEarned, rules);
 
                 broadcast(state.roomId, "SCORE_RECORDED", YachtScoreRecordedPayload.builder()
                         .userId(userId)
@@ -979,7 +981,7 @@ public class YachtGameService {
 
         // 랭킹 전적 업데이트 (승자/패자 모두, 재시작 여부와 관계없이 누적)
         for (YachtRankingEntryDto entry : rankings) {
-            yachtRankingService.updateRecord(entry.getUserId(), entry.isWinner());
+            yachtRankingService.updateRecord(entry.getUserId(), entry.isWinner(), state.diceType);
         }
 
         // 재시작 가능 여부: 끊기지 않은 in-memory 참가자가 2명 이상
@@ -1063,14 +1065,15 @@ public class YachtGameService {
     private List<YachtRankingEntryDto> computeRankings(YachtRoomState state, List<YachtPlayer> participants) {
         // 관전자(turnOrder에 없는 사람)는 랭킹에서 제외
         Set<Long> ranked = new HashSet<>(state.turnOrder);
+        YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
 
         // userId → 최종 점수 계산
         Map<Long, Integer> totals = new LinkedHashMap<>();
         for (YachtPlayer p : participants) {
             if (!ranked.contains(p.userId)) continue;
             Map<String, Integer> scores = state.scoreMap.getOrDefault(p.userId, new ConcurrentHashMap<>());
-            int upper = computeUpperTotal(scores);
-            int grand = computeGrandTotal(scores, upper, isBonusEarned(scores));
+            int upper = computeUpperTotal(scores, rules);
+            int grand = computeGrandTotal(scores, upper, isBonusEarned(scores, rules), rules);
             totals.put(p.userId, grand);
         }
 
@@ -1113,117 +1116,42 @@ public class YachtGameService {
         return result;
     }
 
-    // ─── 점수 계산 (서버 전담) ────────────────────────────────────────────────
+    // ─── 상단 보너스 계산 (룰셋 기반) ────────────────────────────────────────
 
-    /**
-     * 족보별 점수 계산.
-     * 클라이언트 전송값 무시, 서버 dice 기반으로만 계산.
-     */
-    public static int calculateScore(String scoreKey, int[] dice) {
-        return switch (scoreKey) {
-            case "ONES"           -> sumOf(dice, 1);
-            case "TWOS"           -> sumOf(dice, 2);
-            case "THREES"         -> sumOf(dice, 3);
-            case "FOURS"          -> sumOf(dice, 4);
-            case "FIVES"          -> sumOf(dice, 5);
-            case "SIXES"          -> sumOf(dice, 6);
-            case "CHOICE"         -> Arrays.stream(dice).sum();
-            case "FOUR_OF_A_KIND" -> calcFourOfAKind(dice);
-            case "FULL_HOUSE"     -> calcFullHouse(dice);
-            case "LITTLE_STRAIGHT"-> calcLittleStraight(dice);
-            case "BIG_STRAIGHT"   -> calcBigStraight(dice);
-            case "YACHT"          -> calcYacht(dice);
-            default -> throw new IllegalArgumentException("Invalid scoreKey: " + scoreKey);
-        };
-    }
-
-    private static int sumOf(int[] dice, int face) {
+    private int computeUpperTotal(Map<String, Integer> scores, YachtScoreRules rules) {
         int sum = 0;
-        for (int d : dice) if (d == face) sum += d;
-        return sum;
-    }
-
-    private static int calcFourOfAKind(int[] dice) {
-        Map<Integer, Integer> counts = new HashMap<>();
-        for (int d : dice) counts.merge(d, 1, Integer::sum);
-        for (Map.Entry<Integer, Integer> e : counts.entrySet()) {
-            if (e.getValue() >= 4) return e.getKey() * 4;
-        }
-        return 0;
-    }
-
-    private static int calcFullHouse(int[] dice) {
-        Map<Integer, Integer> counts = new HashMap<>();
-        for (int d : dice) counts.merge(d, 1, Integer::sum);
-        List<Integer> vals = new ArrayList<>(counts.values());
-        Collections.sort(vals);
-        // 정확히 [2,3]인 경우만 (5개 동일=[5]은 0)
-        if (vals.equals(List.of(2, 3))) {
-            return Arrays.stream(dice).sum();
-        }
-        return 0;
-    }
-
-    private static int calcLittleStraight(int[] dice) {
-        // 로컬 룰: 어느 4개 연속이라도 포함하면 15점 (1-2-3-4 / 2-3-4-5 / 3-4-5-6)
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        if (set.containsAll(Set.of(1, 2, 3, 4))) return 15;
-        if (set.containsAll(Set.of(2, 3, 4, 5))) return 15;
-        if (set.containsAll(Set.of(3, 4, 5, 6))) return 15;
-        return 0;
-    }
-
-    private static int calcBigStraight(int[] dice) {
-        // 로컬 룰: 어느 5개 연속이라도 포함하면 30점 (1-2-3-4-5 / 2-3-4-5-6)
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        if (set.containsAll(Set.of(1, 2, 3, 4, 5))) return 30;
-        if (set.containsAll(Set.of(2, 3, 4, 5, 6))) return 30;
-        return 0;
-    }
-
-    private static int calcYacht(int[] dice) {
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        return set.size() == 1 ? 50 : 0;
-    }
-
-    // ─── 상단 보너스 계산 ─────────────────────────────────────────────────────
-
-    private int computeUpperTotal(Map<String, Integer> scores) {
-        int sum = 0;
-        for (String key : UPPER_KEYS) {
+        for (String key : rules.upperKeys()) {
             sum += scores.getOrDefault(key, 0);
         }
         return sum;
     }
 
     /**
-     * 상단 6개 모두 기록되었고 합계 >= 63 이면 보너스 획득.
+     * 상단 족보 전체가 기록되었고 합계 >= 임계값이면 보너스 획득.
+     * 임계값은 룰셋에서 가져옴 (D6=63 / D8=84).
      */
-    private boolean isBonusEarned(Map<String, Integer> scores) {
-        boolean allUpperFilled = UPPER_KEYS.stream().allMatch(scores::containsKey);
+    private boolean isBonusEarned(Map<String, Integer> scores, YachtScoreRules rules) {
+        boolean allUpperFilled = rules.upperKeys().stream().allMatch(scores::containsKey);
         if (!allUpperFilled) return false;
-        return computeUpperTotal(scores) >= UPPER_BONUS_THRESHOLD;
+        return computeUpperTotal(scores, rules) >= rules.upperBonusThreshold();
     }
 
     /**
      * 이번 족보 선택이 보너스를 막 획득하게 만들었는지 확인.
      */
-    private boolean isBonusJustEarned(Map<String, Integer> scores, String justRecordedKey) {
-        if (!UPPER_KEYS.contains(justRecordedKey)) return false;
-        return isBonusEarned(scores);
+    private boolean isBonusJustEarned(Map<String, Integer> scores, String justRecordedKey, YachtScoreRules rules) {
+        if (!rules.upperKeys().contains(justRecordedKey)) return false;
+        return isBonusEarned(scores, rules);
     }
 
-    private int computeGrandTotal(Map<String, Integer> scores, int upperTotal, boolean bonusEarned) {
+    private int computeGrandTotal(Map<String, Integer> scores, int upperTotal, boolean bonusEarned, YachtScoreRules rules) {
         int lowerTotal = 0;
         for (Map.Entry<String, Integer> e : scores.entrySet()) {
-            if (!UPPER_KEYS.contains(e.getKey())) {
+            if (!rules.upperKeys().contains(e.getKey())) {
                 lowerTotal += e.getValue();
             }
         }
-        return upperTotal + (bonusEarned ? UPPER_BONUS_VALUE : 0) + lowerTotal;
+        return upperTotal + (bonusEarned ? rules.upperBonusValue() : 0) + lowerTotal;
     }
 
     // ─── 게임 상태 헬퍼 ──────────────────────────────────────────────────────
@@ -1234,15 +1162,17 @@ public class YachtGameService {
     }
 
     /**
-     * 턴 순서에 들어있는 모든 플레이어가 12개 족보를 채웠는지 확인.
+     * 턴 순서에 들어있는 모든 플레이어가 총 족보 수를 채웠는지 확인.
+     * 족보 수는 룰셋에서 가져옴 (D6=12 / D8=14).
      * disconnected 플레이어도 turnOrder에 있으면 포함 (autoFill로 채워짐).
      * 게임 중 합류한 관전자(turnOrder에 없음)는 제외.
      */
     private boolean isGameOver(YachtRoomState state) {
+        YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
         for (Long playerId : state.turnOrder) {
             if (state.reconnectingPlayers.contains(playerId)) continue; // 유예 중 = 종료 예정
             Map<String, Integer> scores = state.scoreMap.getOrDefault(playerId, new ConcurrentHashMap<>());
-            if (scores.size() < TOTAL_SCORE_KEYS) return false;
+            if (scores.size() < rules.totalScoreKeys()) return false;
         }
         return !state.turnOrder.isEmpty();
     }
@@ -1262,10 +1192,12 @@ public class YachtGameService {
         List<YachtParticipantDto> participants;
         Long hostUserId;
         YachtRoomStatus status;
+        String diceTypeName;
 
         synchronized (state) {
-            hostUserId = state.hostUserId;
-            status     = state.status;
+            hostUserId   = state.hostUserId;
+            status       = state.status;
+            diceTypeName = state.diceType.name();
             participants = state.participants.stream()
                     .map(p -> YachtParticipantDto.builder()
                             .userId(p.userId)
@@ -1282,6 +1214,7 @@ public class YachtGameService {
         broadcast(state.roomId, "ROOM_STATE", YachtRoomStatePayload.builder()
                 .roomId(state.roomId)
                 .status(status.name())
+                .diceType(diceTypeName)
                 .hostUserId(hostUserId)
                 .maxPlayers(state.maxPlayers)
                 .participants(participants)
@@ -1479,19 +1412,20 @@ public class YachtGameService {
                             .build())
                     .collect(Collectors.toList());
 
-            // 점수판 — 관전자 제외
+            // 점수판 — 관전자 제외, 룰셋에서 키 셋 가져옴 (D6: 12개, D8: 14개)
+            YachtScoreRules snapshotRules = YachtScoreRulesFactory.get(state.diceType);
             List<YachtScoreboardDto> scoreboard = state.participants.stream()
                     .filter(p -> !isSpectator(state, p.userId))
                     .map(p -> {
                         Map<String, Integer> scores = state.scoreMap.getOrDefault(p.userId, new ConcurrentHashMap<>());
-                        // null 포함 전체 12개 맵 생성
+                        // null 포함 전체 맵 생성 (D6: 12개, D8: 14개)
                         Map<String, Integer> fullScores = new LinkedHashMap<>();
-                        for (String key : VALID_SCORE_KEYS) {
+                        for (String key : snapshotRules.validScoreKeys()) {
                             fullScores.put(key, scores.getOrDefault(key, null));
                         }
-                        int upper = computeUpperTotal(scores);
-                        boolean bonus = isBonusEarned(scores);
-                        int grand = computeGrandTotal(scores, upper, bonus);
+                        int upper = computeUpperTotal(scores, snapshotRules);
+                        boolean bonus = isBonusEarned(scores, snapshotRules);
+                        int grand = computeGrandTotal(scores, upper, bonus, snapshotRules);
                         return YachtScoreboardDto.builder()
                                 .userId(p.userId)
                                 .scores(fullScores)
@@ -1507,6 +1441,7 @@ public class YachtGameService {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("roomId", state.roomId);
             result.put("status", state.status.name());
+            result.put("diceType", state.diceType.name());
             result.put("hostUserId", state.hostUserId);
             result.put("maxPlayers", state.maxPlayers);
             result.put("currentTurnUserId", currentTurn);

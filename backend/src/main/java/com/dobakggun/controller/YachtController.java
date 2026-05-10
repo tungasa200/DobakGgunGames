@@ -1,7 +1,9 @@
 package com.dobakggun.controller;
 
+import com.dobakggun.dto.yacht.YachtMatchRequest;
 import com.dobakggun.dto.yacht.YachtMatchResponse;
 import com.dobakggun.dto.yacht.YachtRankingResponse;
+import com.dobakggun.entity.yacht.YachtDiceType;
 import com.dobakggun.service.YachtGameService;
 import com.dobakggun.service.YachtMatchService;
 import com.dobakggun.service.YachtRankingService;
@@ -17,9 +19,10 @@ import java.util.Map;
 /**
  * Yacht REST API 컨트롤러.
  *
- * POST /api/yacht/match      — 자동 매칭
- * GET  /api/yacht/rankings   — 역대 승수 TOP 10
- * GET  /api/yacht/room/{roomId} — 방 스냅샷
+ * POST /api/yacht/match         — 자동 매칭 (diceType 필수)
+ * GET  /api/yacht/rankings      — D6 / D8 분리 랭킹 TOP 10
+ * GET  /api/yacht/room/{roomId} — 방 스냅샷 (diceType 포함)
+ * GET  /api/yacht/rooms/status  — 모드별 방 현황
  */
 @Slf4j
 @RestController
@@ -27,27 +30,38 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class YachtController {
 
-    private final YachtMatchService  yachtMatchService;
-    private final YachtGameService   yachtGameService;
+    private final YachtMatchService   yachtMatchService;
+    private final YachtGameService    yachtGameService;
     private final YachtRankingService yachtRankingService;
 
     /**
      * POST /api/yacht/match — 자동 매칭.
+     *
+     * 요청 바디: { "diceType": "D6" | "D8" }
      * - 200: 기존 대기방 합류
      * - 201: 신규 방 자동 생성
-     * - 409: 이미 활성 방 참가 중
+     * - 400: INVALID_DICE_TYPE (누락 또는 D6/D8 외 값)
+     * - 409: ALREADY_IN_ROOM
      * - 429: Rate limit 초과
      * - 503: Redis 락 획득 실패
      */
     @PostMapping("/match")
-    public ResponseEntity<?> match(@AuthenticationPrincipal Long userId) {
+    public ResponseEntity<?> match(@AuthenticationPrincipal Long userId,
+                                   @RequestBody(required = false) YachtMatchRequest request) {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "UNAUTHORIZED"));
         }
 
+        // diceType 검증
+        YachtDiceType diceType = resolveDiceType(request == null ? null : request.getDiceType());
+        if (diceType == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "INVALID_DICE_TYPE"));
+        }
+
         try {
-            YachtMatchResponse response = yachtMatchService.match(userId);
+            YachtMatchResponse response = yachtMatchService.match(userId, diceType);
             HttpStatus status = response.isCreated() ? HttpStatus.CREATED : HttpStatus.OK;
             return ResponseEntity.status(status).body(response);
 
@@ -57,22 +71,22 @@ public class YachtController {
         }
     }
 
-    /** GET /api/yacht/rankings — 역대 승수 TOP 10, 인증 불필요. */
+    /**
+     * GET /api/yacht/rankings — D6 / D8 분리 응답, 인증 불필요.
+     */
     @GetMapping("/rankings")
     public ResponseEntity<YachtRankingResponse> getRankings() {
-        return ResponseEntity.ok(YachtRankingResponse.builder()
-                .topRankings(yachtRankingService.getTopRankings())
-                .build());
+        return ResponseEntity.ok(yachtRankingService.getTopRankings());
     }
 
-    /** GET /api/yacht/rooms/status — 공개 엔드포인트, 인증 불필요. */
+    /** GET /api/yacht/rooms/status — 모드별 방 현황, 인증 불필요. */
     @GetMapping("/rooms/status")
-    public ResponseEntity<Map<String, Long>> getRoomsStatus() {
+    public ResponseEntity<Map<String, Object>> getRoomsStatus() {
         return ResponseEntity.ok(yachtMatchService.getRoomStats());
     }
 
     /**
-     * GET /api/yacht/room/{roomId} — 방 스냅샷 조회.
+     * GET /api/yacht/room/{roomId} — 방 스냅샷 조회 (diceType 포함).
      * - 200: 방 상태
      * - 401: 비인증
      * - 403: 참가자 아님
@@ -86,13 +100,9 @@ public class YachtController {
                     .body(Map.of("error", "UNAUTHORIZED"));
         }
 
-        // 먼저 인메모리 상태 확인
         Map<String, Object> snapshot = yachtGameService.buildRoomSnapshot(roomId, userId);
 
         if (snapshot == null) {
-            // buildRoomSnapshot이 null을 반환하는 두 가지 경우:
-            // 1) 방이 인메모리에 없음 → ROOM_NOT_FOUND
-            // 2) 방은 있지만 requester가 참가자 아님 → NOT_IN_ROOM
             YachtGameService.YachtRoomState state = yachtGameService.getState(roomId);
             if (state == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -104,5 +114,17 @@ public class YachtController {
         }
 
         return ResponseEntity.ok(snapshot);
+    }
+
+    // ─── 헬퍼 ────────────────────────────────────────────────────────────────
+
+    /**
+     * diceType 문자열을 enum으로 변환.
+     * "D6" 또는 "D8" 외 모든 값(null 포함) → null 반환.
+     */
+    private YachtDiceType resolveDiceType(String raw) {
+        if ("D6".equals(raw)) return YachtDiceType.D6;
+        if ("D8".equals(raw)) return YachtDiceType.D8;
+        return null;
     }
 }

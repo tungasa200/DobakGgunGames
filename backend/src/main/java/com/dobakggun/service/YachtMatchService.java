@@ -2,6 +2,7 @@ package com.dobakggun.service;
 
 import com.dobakggun.dto.yacht.YachtMatchResponse;
 import com.dobakggun.entity.User;
+import com.dobakggun.entity.yacht.YachtDiceType;
 import com.dobakggun.entity.yacht.YachtParticipant;
 import com.dobakggun.entity.yacht.YachtRoom;
 import com.dobakggun.entity.yacht.YachtRoomStatus;
@@ -25,24 +26,25 @@ import java.util.concurrent.TimeUnit;
 /**
  * POST /api/yacht/match 처리 서비스.
  *
- * - 로그인 유저 전용 (userId != null 보장).
- * - Redis 분산락 yacht:match:global 으로 동시 매칭 제어.
- * - Rate limit: 10초 내 5회 초과 시 429.
- * - ALREADY_IN_ROOM: 인메모리 + DB 두 레이어 확인.
+ * d8 모드 도입 이후:
+ * - match(userId, diceType) — diceType 필수.
+ * - 매칭은 같은 diceType 방끼리만 (findAvailableRooms에 diceType 필터 추가).
+ * - 신규 방 생성 시 diceType 저장.
+ * - ALREADY_IN_ROOM 검사는 모드 무관 (한 사용자는 모드 막론 한 번에 한 방만).
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class YachtMatchService {
 
-    private static final String LOCK_KEY      = "yacht:match:global";
-    private static final long   LOCK_TTL      = 3L;
-    private static final int    LOCK_RETRY    = 3;
-    private static final long   LOCK_DELAY_MS = 100L;
+    private static final String LOCK_PREFIX    = "yacht:match:";
+    private static final long   LOCK_TTL       = 3L;
+    private static final int    LOCK_RETRY     = 3;
+    private static final long   LOCK_DELAY_MS  = 100L;
 
-    private static final String RATE_PREFIX      = "yacht:rate:";
-    private static final long   RATE_WINDOW_SECS = 10L;
-    private static final long   RATE_LIMIT       = 5L;
+    private static final String RATE_PREFIX       = "yacht:rate:";
+    private static final long   RATE_WINDOW_SECS  = 10L;
+    private static final long   RATE_LIMIT        = 5L;
 
     private final YachtRoomRepository        yachtRoomRepository;
     private final YachtParticipantRepository yachtParticipantRepository;
@@ -52,52 +54,54 @@ public class YachtMatchService {
 
     /**
      * 자동 매칭 요청 처리.
-     * @param userId 인증된 유저 ID (null 불가)
+     * @param userId   인증된 유저 ID (null 불가)
+     * @param diceType D6 | D8 (컨트롤러에서 검증 완료)
      * @return 201(신규 방) or 200(기존 방 합류) 응답 DTO
      */
     @Transactional
-    public YachtMatchResponse match(Long userId) {
+    public YachtMatchResponse match(Long userId, YachtDiceType diceType) {
         // 1. Rate limit
         checkRateLimit(RATE_PREFIX + userId);
 
-        // 2. 인메모리 ALREADY_IN_ROOM
+        // 2. 인메모리 ALREADY_IN_ROOM (모드 무관)
         Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
         if (inMemory.isPresent()) {
             throw new AlreadyInRoomException(inMemory.get());
         }
 
-        // 3. DB ALREADY_IN_ROOM
+        // 3. DB ALREADY_IN_ROOM (모드 무관)
         List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
                 userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
         if (!active.isEmpty()) {
             throw new AlreadyInRoomException(active.get(0).getRoomId());
         }
 
-        // 4. Redis 분산락
+        // 4. Redis 분산락 (diceType별 분리 락)
+        String lockKey   = LOCK_PREFIX + diceType.name();
         String lockValue = UUID.randomUUID().toString();
-        boolean locked = acquireLock(lockValue);
+        boolean locked   = acquireLock(lockKey, lockValue);
         if (!locked) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "MATCH_UNAVAILABLE");
         }
 
         try {
-            return doMatch(userId);
+            return doMatch(userId, diceType);
         } finally {
-            releaseLock(lockValue);
+            releaseLock(lockKey, lockValue);
         }
     }
 
-    private YachtMatchResponse doMatch(Long userId) {
+    private YachtMatchResponse doMatch(Long userId, YachtDiceType diceType) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED"));
 
-        // 1순위: WAITING + 정원 미달 방 FIFO
-        List<YachtRoom> available = yachtRoomRepository.findAvailableRooms(YachtRoomStatus.WAITING);
+        // 1순위: 같은 diceType + WAITING + 정원 미달 방 FIFO
+        List<YachtRoom> available = yachtRoomRepository.findAvailableRooms(YachtRoomStatus.WAITING, diceType);
         boolean asSpectator = false;
 
-        // 2순위: WAITING이 없으면 PLAYING + 정원 미달 방 (관전자로 입장)
+        // 2순위: WAITING이 없으면 같은 diceType + PLAYING + 정원 미달 방 (관전자로 입장)
         if (available.isEmpty()) {
-            List<YachtRoom> playing = yachtRoomRepository.findAvailableRooms(YachtRoomStatus.PLAYING);
+            List<YachtRoom> playing = yachtRoomRepository.findAvailableRooms(YachtRoomStatus.PLAYING, diceType);
             if (!playing.isEmpty()) {
                 available = playing;
                 asSpectator = true;
@@ -107,7 +111,6 @@ public class YachtMatchService {
         if (!available.isEmpty()) {
             YachtRoom room = available.get(0);
 
-            // 현재 참가자 수 확인 후 join_order 결정
             List<YachtParticipant> existing = yachtParticipantRepository.findByRoomOrderByJoinOrderAsc(room);
             int joinOrder = existing.size();
 
@@ -122,12 +125,13 @@ public class YachtMatchService {
             room.setCurrentPlayers(room.getCurrentPlayers() + 1);
             yachtRoomRepository.save(room);
 
-            log.info("doMatch: userId={} 기존 방 {} 입장 ({}명, status={}, spectator={})",
-                    userId, room.getRoomId(), room.getCurrentPlayers(), room.getStatus(), asSpectator);
+            log.info("doMatch: userId={} 기존 방 {} 입장 ({}명, status={}, diceType={}, spectator={})",
+                    userId, room.getRoomId(), room.getCurrentPlayers(), room.getStatus(), diceType, asSpectator);
 
             return YachtMatchResponse.builder()
                     .roomId(room.getRoomId())
                     .status(room.getStatus().name())
+                    .diceType(room.getDiceType().name())
                     .playerCount(room.getCurrentPlayers())
                     .maxPlayers(room.getMaxPlayers())
                     .created(false)
@@ -143,6 +147,7 @@ public class YachtMatchService {
                 .hostUserId(userId)
                 .maxPlayers(6)
                 .currentPlayers(1)
+                .diceType(diceType)
                 .build();
         yachtRoomRepository.save(newRoom);
 
@@ -154,28 +159,38 @@ public class YachtMatchService {
                 .build();
         yachtParticipantRepository.save(firstParticipant);
 
-        log.info("doMatch: userId={} 신규 방 {} 생성", userId, newRoomId);
+        log.info("doMatch: userId={} 신규 방 {} 생성 (diceType={})", userId, newRoomId, diceType);
 
         return YachtMatchResponse.builder()
                 .roomId(newRoomId)
                 .status(YachtRoomStatus.WAITING.name())
+                .diceType(diceType.name())
                 .playerCount(1)
                 .maxPlayers(6)
                 .created(true)
+                .joinedAsSpectator(false)
                 .build();
     }
 
     // ─── 방 현황 조회 ──────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public Map<String, Long> getRoomStats() {
-        long waiting = yachtRoomRepository.countByStatus(YachtRoomStatus.WAITING);
-        long playing  = yachtRoomRepository.countByStatus(YachtRoomStatus.PLAYING);
-        long players  = Optional.ofNullable(
+    public Map<String, Object> getRoomStats() {
+        long waitingD6  = yachtRoomRepository.countByStatusAndDiceType(YachtRoomStatus.WAITING, YachtDiceType.D6);
+        long waitingD8  = yachtRoomRepository.countByStatusAndDiceType(YachtRoomStatus.WAITING, YachtDiceType.D8);
+        long playingD6  = yachtRoomRepository.countByStatusAndDiceType(YachtRoomStatus.PLAYING, YachtDiceType.D6);
+        long playingD8  = yachtRoomRepository.countByStatusAndDiceType(YachtRoomStatus.PLAYING, YachtDiceType.D8);
+        long totalPlayers = Optional.ofNullable(
                 yachtRoomRepository.sumCurrentPlayersByStatusIn(
                         List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING))
         ).orElse(0L);
-        return Map.of("activeRooms", waiting + playing, "activePlayers", players);
+
+        return Map.of(
+                "activeRooms",   waitingD6 + waitingD8 + playingD6 + playingD8,
+                "activePlayers", totalPlayers,
+                "D6", Map.of("waiting", waitingD6, "playing", playingD6),
+                "D8", Map.of("waiting", waitingD8, "playing", playingD8)
+        );
     }
 
     // ─── Rate Limit ───────────────────────────────────────────────────────────
@@ -198,10 +213,10 @@ public class YachtMatchService {
 
     // ─── 분산락 ───────────────────────────────────────────────────────────────
 
-    private boolean acquireLock(String lockValue) {
+    private boolean acquireLock(String lockKey, String lockValue) {
         for (int i = 0; i < LOCK_RETRY; i++) {
             Boolean ok = redisTemplate.opsForValue()
-                    .setIfAbsent(LOCK_KEY, lockValue, LOCK_TTL, TimeUnit.SECONDS);
+                    .setIfAbsent(lockKey, lockValue, LOCK_TTL, TimeUnit.SECONDS);
             if (Boolean.TRUE.equals(ok)) return true;
             try { Thread.sleep(LOCK_DELAY_MS); } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
@@ -211,12 +226,12 @@ public class YachtMatchService {
         return false;
     }
 
-    private void releaseLock(String lockValue) {
+    private void releaseLock(String lockKey, String lockValue) {
         try {
-            String cur = redisTemplate.opsForValue().get(LOCK_KEY);
-            if (lockValue.equals(cur)) redisTemplate.delete(LOCK_KEY);
+            String cur = redisTemplate.opsForValue().get(lockKey);
+            if (lockValue.equals(cur)) redisTemplate.delete(lockKey);
         } catch (Exception e) {
-            log.warn("releaseLock: Redis 오류", e);
+            log.warn("releaseLock: Redis 오류 key={}", lockKey, e);
         }
     }
 
