@@ -617,7 +617,13 @@
 .diceRow3DCanvas {
   position: absolute;
   inset: 0;
+  /* canvas의 HTML width/height attribute는 drawing buffer 크기와 동시에
+     CSS intrinsic size hint로도 작용해 inset:0의 right/bottom 계산을 덮어쓴다.
+     explicit width/height: 100%로 inner를 정확히 채우도록 강제한다. */
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  display: block;
 }
 
 .diceRow3DHit {
