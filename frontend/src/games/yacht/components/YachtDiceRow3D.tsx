@@ -44,33 +44,26 @@ const FACE_ROT_D6: Record<number, { x: number; y: number; z: number }> = {
 //   face1: (+,+,+)  face2: (+,+,-)  face3: (+,-,+)  face4: (+,-,-)
 //   face5: (-,+,+)  face6: (-,+,-)  face7: (-,-,+)  face8: (-,-,-)
 //
-// 면 N의 법선 = (sx,sy,sz)/√3 where (sx,sy,sz) = 면 N의 옥탄트 부호
-// 그 법선을 +Z(0,0,1)로 가져오는 회전:
-//   normal → (0,0,1): R_x(θx) * R_y(θy) * normal = (0,0,1)
+// 면 N의 법선 = (sx,sy,sz)/√3.
+// Three.js Euler 'XYZ' 적용 시 행렬은 M = R_x(rx) * R_y(ry) * R_z(rz).
+// rz=0 일 때 M·(sx,sy,sz) = (0,0,√3) (즉 face 법선이 +Z) 인 (rx, ry) 도출:
+//   rx = sy · PITCH
+//   ry = -sx · (π/4 if sz=+1 else 3π/4)
+//   PITCH = arctan(1/√2) = arcsin(1/√3) ≈ 0.6155 rad (35.26°)
 //
-// 각 면별 계산:
-//   face1 (+,+,+)/√3: yaw=-45°,  pitch=-arcsin(1/√3) ≈ -35.26°
-//   face2 (+,+,-)/√3: yaw=+135°, pitch=-35.26°  → normal=(+,+,-)/√3
-//     더 직관적으로: Z축을 반전시켜 face1 위치에 매핑
-//   face3 (+,-,+)/√3: yaw=-45°,  pitch=+35.26°
-//   face4 (+,-,-)/√3: yaw=+135°, pitch=+35.26°
-//   face5 (-,+,+)/√3: yaw=+45°,  pitch=-35.26°
-//   face6 (-,+,-)/√3: yaw=-135°, pitch=-35.26°
-//   face7 (-,-,+)/√3: yaw=+45°,  pitch=+35.26°
-//   face8 (-,-,-)/√3: yaw=-135°, pitch=+35.26°
-//
-// pitch = arcsin(1/√3) ≈ 0.6155 rad (35.26°)
+// 또한 v-axis(글자 윗쪽 = (-sx·sy, 2, -sy·sz)/√6)도 위 매핑에서 +Y로
+// 보내져 글자가 정자세로 보임. (계산 검증 완료)
 // ====================================================================
 const PITCH = Math.asin(1 / Math.sqrt(3)); // ≈ 0.6155 rad
 const FACE_ROT_D8: Record<number, { x: number; y: number; z: number }> = {
-  1: { x: -PITCH,   y: -Math.PI / 4,        z: 0 }, // (+,+,+)
-  2: { x: -PITCH,   y:  Math.PI * 3 / 4,    z: 0 }, // (+,+,-)
-  3: { x:  PITCH,   y: -Math.PI / 4,        z: 0 }, // (+,-,+)
-  4: { x:  PITCH,   y:  Math.PI * 3 / 4,    z: 0 }, // (+,-,-)
-  5: { x: -PITCH,   y:  Math.PI / 4,        z: 0 }, // (-,+,+)
-  6: { x: -PITCH,   y: -Math.PI * 3 / 4,    z: 0 }, // (-,+,-)
-  7: { x:  PITCH,   y:  Math.PI / 4,        z: 0 }, // (-,-,+)
-  8: { x:  PITCH,   y: -Math.PI * 3 / 4,    z: 0 }, // (-,-,-)
+  1: { x:  PITCH,  y: -Math.PI / 4,     z: 0 }, // (+,+,+)
+  2: { x:  PITCH,  y: -Math.PI * 3 / 4, z: 0 }, // (+,+,-)
+  3: { x: -PITCH,  y: -Math.PI / 4,     z: 0 }, // (+,-,+)
+  4: { x: -PITCH,  y: -Math.PI * 3 / 4, z: 0 }, // (+,-,-)
+  5: { x:  PITCH,  y:  Math.PI / 4,     z: 0 }, // (-,+,+)
+  6: { x:  PITCH,  y:  Math.PI * 3 / 4, z: 0 }, // (-,+,-)
+  7: { x: -PITCH,  y:  Math.PI / 4,     z: 0 }, // (-,-,+)
+  8: { x: -PITCH,  y:  Math.PI * 3 / 4, z: 0 }, // (-,-,-)
 };
 
 // 주사위 메시 스펙
