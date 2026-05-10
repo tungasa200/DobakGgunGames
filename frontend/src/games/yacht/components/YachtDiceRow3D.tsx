@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import styles from './yacht.module.css';
+import type { DiceType } from '../types/yacht.types';
+import {
+  createOctahedronGeometry,
+  createAtlasTexture,
+} from './dice/createOctahedronGeometry';
 
 interface YachtDiceRow3DProps {
   dice: number[];
@@ -8,6 +13,7 @@ interface YachtDiceRow3DProps {
   isMyTurn: boolean;
   isRolling: boolean;
   onToggleKeep: (i: number) => void;
+  diceType?: DiceType;
 }
 
 const NUM_DICE = 5;
@@ -18,26 +24,70 @@ const DIE_BORDER = 2; // dark-box 좌우 border 합
 const MAX_DIE_SIZE = 80;
 const MIN_DIE_SIZE = 32;
 
-// 큐브의 어느 면이 카메라(+Z)를 향하도록 할지의 회전(라디안)
+// ====================================================================
+// D6 큐브 — 면→카메라(+Z) 회전 매핑
 // 면→축 매핑: +Z=1, -Z=6, -Y=2, +Y=5, -X=3, +X=4
-// 해당 축 벡터를 +Z(카메라 방향)로 가져가는 회전을 사용
-const FACE_ROT: Record<number, { x: number; y: number }> = {
-  1: { x: 0,             y: 0 },
-  2: { x: -Math.PI / 2,  y: 0 },              // -Y → +Z
-  3: { x: 0,             y:  Math.PI / 2 },   // -X → +Z
-  4: { x: 0,             y: -Math.PI / 2 },   // +X → +Z
-  5: { x:  Math.PI / 2,  y: 0 },              // +Y → +Z
-  6: { x: 0,             y:  Math.PI },       // -Z → +Z
+// ====================================================================
+const FACE_ROT_D6: Record<number, { x: number; y: number; z: number }> = {
+  1: { x: 0,             y: 0,            z: 0 },
+  2: { x: -Math.PI / 2,  y: 0,            z: 0 },
+  3: { x: 0,             y:  Math.PI / 2, z: 0 },
+  4: { x: 0,             y: -Math.PI / 2, z: 0 },
+  5: { x:  Math.PI / 2,  y: 0,            z: 0 },
+  6: { x: 0,             y:  Math.PI,     z: 0 },
 };
 
-// 주사위 메시 스펙(샘플과 동일)
+// ====================================================================
+// D8 옥타헤드론 — 면→카메라(+Z) 회전 매핑
+//
+// getFaceNumber 옥탄트 → 면 번호:
+//   face1: (+,+,+)  face2: (+,+,-)  face3: (+,-,+)  face4: (+,-,-)
+//   face5: (-,+,+)  face6: (-,+,-)  face7: (-,-,+)  face8: (-,-,-)
+//
+// 면 N의 법선 = (sx,sy,sz)/√3 where (sx,sy,sz) = 면 N의 옥탄트 부호
+// 그 법선을 +Z(0,0,1)로 가져오는 회전:
+//   normal → (0,0,1): R_x(θx) * R_y(θy) * normal = (0,0,1)
+//
+// 각 면별 계산:
+//   face1 (+,+,+)/√3: yaw=-45°,  pitch=-arcsin(1/√3) ≈ -35.26°
+//   face2 (+,+,-)/√3: yaw=+135°, pitch=-35.26°  → normal=(+,+,-)/√3
+//     더 직관적으로: Z축을 반전시켜 face1 위치에 매핑
+//   face3 (+,-,+)/√3: yaw=-45°,  pitch=+35.26°
+//   face4 (+,-,-)/√3: yaw=+135°, pitch=+35.26°
+//   face5 (-,+,+)/√3: yaw=+45°,  pitch=-35.26°
+//   face6 (-,+,-)/√3: yaw=-135°, pitch=-35.26°
+//   face7 (-,-,+)/√3: yaw=+45°,  pitch=+35.26°
+//   face8 (-,-,-)/√3: yaw=-135°, pitch=+35.26°
+//
+// pitch = arcsin(1/√3) ≈ 0.6155 rad (35.26°)
+// ====================================================================
+const PITCH = Math.asin(1 / Math.sqrt(3)); // ≈ 0.6155 rad
+const FACE_ROT_D8: Record<number, { x: number; y: number; z: number }> = {
+  1: { x: -PITCH,   y: -Math.PI / 4,        z: 0 }, // (+,+,+)
+  2: { x: -PITCH,   y:  Math.PI * 3 / 4,    z: 0 }, // (+,+,-)
+  3: { x:  PITCH,   y: -Math.PI / 4,        z: 0 }, // (+,-,+)
+  4: { x:  PITCH,   y:  Math.PI * 3 / 4,    z: 0 }, // (+,-,-)
+  5: { x: -PITCH,   y:  Math.PI / 4,        z: 0 }, // (-,+,+)
+  6: { x: -PITCH,   y: -Math.PI * 3 / 4,    z: 0 }, // (-,+,-)
+  7: { x:  PITCH,   y:  Math.PI / 4,        z: 0 }, // (-,-,+)
+  8: { x:  PITCH,   y: -Math.PI * 3 / 4,    z: 0 }, // (-,-,-)
+};
+
+// 주사위 메시 스펙
 const SIZE = 1.2;
 const CORNER_R = 0.18;
 const PIP_R = 0.078;
 const PIP_DEPTH = 0.038;
 const SEGMENTS = 96;
 
-// 정면 시점 — 한 면만 카메라를 향함 (tilt 없음)
+// D8 스펙 (octahedron.html 샘플 기준)
+const OCT_R = 1.0;
+const OCT_CORNER_R = 0.12;
+const OCT_DETAIL = 5;
+const OCT_NUMERAL_EXTENT = 1.15;
+// D8 scale: D6 큐브 (SIZE=1.2) 와 동일한 시각 크기
+const OCT_SCALE = 0.88;
+
 const BASE_TILT_X = 0;
 const BASE_TILT_Y = 0;
 const BASE_TILT_Z = 0;
@@ -45,8 +95,7 @@ const BASE_TILT_Z = 0;
 const ROLL_DURATION_MS = 800;
 const TWO_PI = Math.PI * 2;
 
-// 굴림 중 회전된 cube의 화면 bounding box가 셀에 잘리지 않도록 화면상 cube 크기를 줄이는 비율
-// (정지 시 한 면 화면 폭 = SIZE; 굴림 중 회전은 평균 √2 근방, FIT 1.5면 약 15% 오버슈트 — 짧은 순간이라 허용)
+// 굴림 중 회전된 cube의 화면 bounding box가 셀에 잘리지 않도록 화면상 크기를 줄이는 비율
 const FIT_MARGIN = 1.5;
 
 function smoothstep(a: number, b: number, x: number) {
@@ -58,7 +107,10 @@ function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function createDiceGeometry(
+// ====================================================================
+// D6 큐브 지오메트리 생성 (기존 코드 그대로 유지)
+// ====================================================================
+function createCubeGeometry(
   size: number,
   cornerRadius: number,
   pipRadius: number,
@@ -72,7 +124,6 @@ function createDiceGeometry(
   const B = half * 0.6;
   const eps = 1e-4;
 
-  // 면별 핍 위치(샘플과 동일)
   const pipLayouts: Record<number, [number, number][]> = {
     1: [[0, 0]],
     2: [[-A,  A], [ A, -A]],
@@ -82,7 +133,7 @@ function createDiceGeometry(
     6: [[-A,  B], [ A,  B], [-A,  0], [ A,  0], [-A, -B], [ A, -B]],
   };
 
-  const positions = geom.attributes.position;
+  const positions = geom.attributes.position as THREE.BufferAttribute;
   const colors = new Float32Array(positions.count * 3);
   const baseColor: [number, number, number] = [1.0, 1.0, 1.0];
   const pipColor:  [number, number, number] = [0.05, 0.05, 0.05];
@@ -94,7 +145,6 @@ function createDiceGeometry(
     let y = positions.getY(i);
     let z = positions.getZ(i);
 
-    // 모서리 둥글림
     const ix = Math.max(-inner, Math.min(inner, x));
     const iy = Math.max(-inner, Math.min(inner, y));
     const iz = Math.max(-inner, Math.min(inner, z));
@@ -106,8 +156,6 @@ function createDiceGeometry(
       z = iz + (dz / len) * cornerRadius;
     }
 
-    // 면 매핑(현재 CSS 야추 시스템과 일치 — 마주보는 면 합 7)
-    //  +Z → 1, -Z → 6, -Y → 2, +Y → 5, -X → 3, +X → 4
     let face: FaceInfo | null = null;
     if (Math.abs(x - half) < eps && Math.abs(y) < inner + eps && Math.abs(z) < inner + eps) {
       face = { num: 4, u: -z, v: y, push: [-1, 0, 0] };
@@ -166,7 +214,7 @@ function mergeCoincidentVertices(
   geom: THREE.BufferGeometry,
   tolerance = 1e-4,
 ): THREE.BufferGeometry {
-  const positions = geom.attributes.position;
+  const positions = geom.attributes.position as THREE.BufferAttribute;
   const colors = geom.attributes.color as THREE.BufferAttribute | undefined;
   const oldIndex = geom.index;
   if (!oldIndex) return geom;
@@ -209,8 +257,16 @@ function mergeCoincidentVertices(
   return merged;
 }
 
-function safeDie(v: number): number {
-  return v >= 1 && v <= 6 ? v : 1;
+function safeDie(v: number, diceType: DiceType = 'D6'): number {
+  const max = diceType === 'D8' ? 8 : 6;
+  return v >= 1 && v <= max ? v : 1;
+}
+
+function getFaceRot(v: number, diceType: DiceType): { x: number; y: number; z: number } {
+  if (diceType === 'D8') {
+    return FACE_ROT_D8[v] ?? FACE_ROT_D8[1];
+  }
+  return { ...(FACE_ROT_D6[v] ?? FACE_ROT_D6[1]), z: 0 };
 }
 
 interface RotState {
@@ -230,12 +286,12 @@ export default function YachtDiceRow3D({
   isMyTurn,
   isRolling,
   onToggleKeep,
+  diceType = 'D6',
 }: YachtDiceRow3DProps) {
   const darkBoxRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // dark-box 실측 폭에서 die-size 결정 → 5개 dice가 절대 박스를 벗어날 수 없음
   const [dieSize, setDieSize] = useState<number>(MAX_DIE_SIZE);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -250,6 +306,13 @@ export default function YachtDiceRow3D({
   const lastDiceRef = useRef<number[]>([]);
   const animationIdRef = useRef<number>(0);
   const rendererReadyRef = useRef<boolean>(false);
+  // 현재 마운트된 diceType (effect 클로저에서 최신값 참조)
+  const diceTypeRef = useRef<DiceType>(diceType);
+
+  // diceType 변경 시 ref 동기화
+  useEffect(() => {
+    diceTypeRef.current = diceType;
+  }, [diceType]);
 
   // === Three.js 1회 초기화 ===
   useEffect(() => {
@@ -273,7 +336,6 @@ export default function YachtDiceRow3D({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
-    // 그림자/바닥 없음
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.85));
     const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -286,30 +348,59 @@ export default function YachtDiceRow3D({
     rimLight.position.set(-3, 5, -6);
     scene.add(rimLight);
 
-    const geom = createDiceGeometry(SIZE, CORNER_R, PIP_R, PIP_DEPTH, SEGMENTS);
-    const matNormal = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      vertexColors: true,
-      roughness: 0.42,
-      metalness: 0,
-      clearcoat: 0.45,
-      clearcoatRoughness: 0.32,
-      reflectivity: 0.45,
-    });
-    const matKept = new THREE.MeshPhysicalMaterial({
-      color: 0xfde68a, // 노란 tint — vertex color에 곱해짐(KEPT 시각화)
-      vertexColors: true,
-      roughness: 0.42,
-      metalness: 0,
-      clearcoat: 0.45,
-      clearcoatRoughness: 0.32,
-      reflectivity: 0.45,
-    });
+    const currentDiceType = diceTypeRef.current;
 
-    // base tilt는 wrapper Group에, face/spin 회전은 mesh에 적용
-    // → 항상 "face 정렬 후 base tilt" 합성 순서가 보장됨(어떤 face 값이든 동일한 시각)
-    const initX = FACE_ROT[1].x;
-    const initY = FACE_ROT[1].y;
+    // diceType에 따라 지오메트리 / 머티리얼 분기
+    let geom: THREE.BufferGeometry;
+    let matNormal: THREE.MeshPhysicalMaterial;
+    let matKept: THREE.MeshPhysicalMaterial;
+
+    if (currentDiceType === 'D8') {
+      geom = createOctahedronGeometry(OCT_R, OCT_CORNER_R, OCT_DETAIL, OCT_NUMERAL_EXTENT);
+      const atlasTexture = createAtlasTexture(renderer);
+      matNormal = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        map: atlasTexture,
+        roughness: 0.42,
+        metalness: 0.0,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.32,
+        reflectivity: 0.45,
+      });
+      matKept = new THREE.MeshPhysicalMaterial({
+        color: 0xfde68a,
+        map: atlasTexture,
+        roughness: 0.42,
+        metalness: 0.0,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.32,
+        reflectivity: 0.45,
+      });
+    } else {
+      geom = createCubeGeometry(SIZE, CORNER_R, PIP_R, PIP_DEPTH, SEGMENTS);
+      matNormal = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        vertexColors: true,
+        roughness: 0.42,
+        metalness: 0,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.32,
+        reflectivity: 0.45,
+      });
+      matKept = new THREE.MeshPhysicalMaterial({
+        color: 0xfde68a,
+        vertexColors: true,
+        roughness: 0.42,
+        metalness: 0,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.32,
+        reflectivity: 0.45,
+      });
+    }
+
+    const initFace = getFaceRot(1, currentDiceType);
+    const initX = initFace.x;
+    const initY = initFace.y;
 
     const meshes: THREE.Mesh[] = [];
     const wrappers: THREE.Group[] = [];
@@ -320,6 +411,9 @@ export default function YachtDiceRow3D({
 
       const mesh = new THREE.Mesh(geom, matNormal);
       mesh.rotation.set(initX, initY, 0);
+      if (currentDiceType === 'D8') {
+        mesh.scale.set(OCT_SCALE, OCT_SCALE, OCT_SCALE);
+      }
       wrapper.add(mesh);
 
       meshes.push(mesh);
@@ -353,8 +447,6 @@ export default function YachtDiceRow3D({
 
       renderer.setSize(w, h, false);
 
-      // hit-area 실제 DOM 위치/크기를 읽어 mesh를 정확히 정렬
-      // (inner가 의도와 다르게 스트레치되어도 dice가 hit-area 바깥으로 빠지지 않게 함)
       const hits = inner.querySelectorAll<HTMLButtonElement>('button');
       if (hits.length !== NUM_DICE) {
         renderer.render(scene, camera);
@@ -425,8 +517,12 @@ export default function YachtDiceRow3D({
       matKept.dispose();
       renderer.dispose();
       rendererReadyRef.current = false;
+      meshesRef.current = [];
+      wrappersRef.current = [];
+      rotStatesRef.current = [];
     };
-  }, []);
+    // diceType 변경 시 Three.js 씬 전체 재초기화
+  }, [diceType]);
 
   // === dice / keptIndices / isRolling 변경 반영 ===
   useEffect(() => {
@@ -434,8 +530,10 @@ export default function YachtDiceRow3D({
     const states = rotStatesRef.current;
     if (meshes.length === 0) return;
 
+    const currentDiceType = diceTypeRef.current;
+
     for (let i = 0; i < NUM_DICE; i++) {
-      const v = safeDie(dice[i]);
+      const v = safeDie(dice[i], currentDiceType);
       const isKept = keptIndices.includes(i);
       const lastVal = lastDiceRef.current[i];
       const valueChanged = lastVal !== v;
@@ -448,9 +546,9 @@ export default function YachtDiceRow3D({
       }
 
       if (shouldAnimate) {
-        const face = FACE_ROT[v];
-        const finalX = face.x;
-        const finalY = face.y;
+        const faceRot = getFaceRot(v, currentDiceType);
+        const finalX = faceRot.x;
+        const finalY = faceRot.y;
 
         const spinsX = isRolling ? 3 + Math.floor(Math.random() * 3) : 1;
         const spinsY = isRolling ? 3 + Math.floor(Math.random() * 3) : 1;
@@ -459,7 +557,6 @@ export default function YachtDiceRow3D({
         const startX = s.currentX;
         const startY = s.currentY;
 
-        // 한 방향으로만 자연스럽게 굴러가도록: 시작값보다 큰 가장 가까운 2π 정렬점 + spins + face
         const targetX = Math.ceil(startX / TWO_PI) * TWO_PI + spinsX * TWO_PI + finalX;
         const targetY = Math.ceil(startY / TWO_PI) * TWO_PI + spinsY * TWO_PI + finalY;
 
@@ -470,26 +567,24 @@ export default function YachtDiceRow3D({
         s.startTime = performance.now();
         s.animating = true;
       } else if (valueChanged && isKept) {
-        // KEPT 상태에서 값이 바뀐 경우(드물지만) 즉시 정렬
-        const face = FACE_ROT[v];
-        meshes[i].rotation.x = face.x;
-        meshes[i].rotation.y = face.y;
+        const faceRot = getFaceRot(v, currentDiceType);
+        meshes[i].rotation.x = faceRot.x;
+        meshes[i].rotation.y = faceRot.y;
         const s = states[i];
-        s.currentX = face.x;
-        s.currentY = face.y;
+        s.currentX = faceRot.x;
+        s.currentY = faceRot.y;
         s.animating = false;
       }
 
       lastDiceRef.current[i] = v;
     }
 
-    // material swap만 일어난 경우라도 즉시 1프레임 재렌더
     if (rendererReadyRef.current && rendererRef.current && sceneRef.current && cameraRef.current) {
       rendererRef.current.render(sceneRef.current, cameraRef.current);
     }
   }, [dice, keptIndices, isRolling]);
 
-  // === dark-box 실측 → die-size 결정 (5개 dice가 박스 안에 정확히 fit) ===
+  // === dark-box 실측 → die-size 결정 ===
   useEffect(() => {
     const dark = darkBoxRef.current;
     if (!dark) return;
@@ -524,7 +619,7 @@ export default function YachtDiceRow3D({
       >
         <canvas ref={canvasRef} className={styles.diceRow3DCanvas} />
         {dice.map((val, i) => {
-          const v = safeDie(val);
+          const v = safeDie(val, diceType);
           const isKept = keptIndices.includes(i);
           return (
             <button

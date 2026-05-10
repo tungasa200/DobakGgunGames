@@ -1,19 +1,54 @@
+export type DiceType = 'D6' | 'D8';
+
 export type ScoreKey =
   | 'ones' | 'twos' | 'threes' | 'fours' | 'fives' | 'sixes'
+  | 'sevens' | 'eights'
   | 'choice' | 'fourOfAKind' | 'fullHouse' | 'littleStraight' | 'bigStraight' | 'yacht';
 
-export const SCORE_KEYS: ScoreKey[] = [
+// D6 전용 키 (12개)
+export const SCORE_KEYS_D6: ScoreKey[] = [
   'ones', 'twos', 'threes', 'fours', 'fives', 'sixes',
   'choice', 'fourOfAKind', 'fullHouse', 'littleStraight', 'bigStraight', 'yacht',
 ];
 
-export const UPPER_SCORE_KEYS: ScoreKey[] = [
+// D8 전용 키 (14개)
+export const SCORE_KEYS_D8: ScoreKey[] = [
+  'ones', 'twos', 'threes', 'fours', 'fives', 'sixes', 'sevens', 'eights',
+  'choice', 'fourOfAKind', 'fullHouse', 'littleStraight', 'bigStraight', 'yacht',
+];
+
+export const SCORE_KEYS_BY_MODE: Record<DiceType, ScoreKey[]> = {
+  D6: SCORE_KEYS_D6,
+  D8: SCORE_KEYS_D8,
+};
+
+// 하위 호환: 기존 코드가 SCORE_KEYS를 참조하는 경우 D6 기본값
+export const SCORE_KEYS: ScoreKey[] = SCORE_KEYS_D6;
+
+export const UPPER_SCORE_KEYS_D6: ScoreKey[] = [
   'ones', 'twos', 'threes', 'fours', 'fives', 'sixes',
 ];
+
+export const UPPER_SCORE_KEYS_D8: ScoreKey[] = [
+  'ones', 'twos', 'threes', 'fours', 'fives', 'sixes', 'sevens', 'eights',
+];
+
+export const UPPER_SCORE_KEYS_BY_MODE: Record<DiceType, ScoreKey[]> = {
+  D6: UPPER_SCORE_KEYS_D6,
+  D8: UPPER_SCORE_KEYS_D8,
+};
+
+// 하위 호환
+export const UPPER_SCORE_KEYS: ScoreKey[] = UPPER_SCORE_KEYS_D6;
 
 export const LOWER_SCORE_KEYS: ScoreKey[] = [
   'choice', 'fourOfAKind', 'fullHouse', 'littleStraight', 'bigStraight', 'yacht',
 ];
+
+export const UPPER_BONUS_THRESHOLD_BY_MODE: Record<DiceType, number> = {
+  D6: 63,
+  D8: 84,
+};
 
 export const SCORE_LABELS: Record<ScoreKey, string> = {
   ones: '원',
@@ -22,12 +57,32 @@ export const SCORE_LABELS: Record<ScoreKey, string> = {
   fours: '포',
   fives: '파이브',
   sixes: '식스',
+  sevens: '세븐',
+  eights: '에이트',
   choice: '초이스',
   fourOfAKind: '포카인드',
   fullHouse: '풀하우스',
   littleStraight: '리틀 스트레이트',
   bigStraight: '빅 스트레이트',
   yacht: '야추',
+};
+
+// 모바일 약자
+export const SCORE_LABELS_SHORT: Record<ScoreKey, string> = {
+  ones: '1',
+  twos: '2',
+  threes: '3',
+  fours: '4',
+  fives: '5',
+  sixes: '6',
+  sevens: '7',
+  eights: '8',
+  choice: 'Choice',
+  fourOfAKind: '4-Kind',
+  fullHouse: 'F.House',
+  littleStraight: 'L.Str',
+  bigStraight: 'B.Str',
+  yacht: 'Yacht',
 };
 
 // 서버 scoreKey enum 값 → 내부 ScoreKey 매핑
@@ -38,6 +93,8 @@ export const SERVER_KEY_MAP: Record<string, ScoreKey> = {
   FOURS: 'fours',
   FIVES: 'fives',
   SIXES: 'sixes',
+  SEVENS: 'sevens',
+  EIGHTS: 'eights',
   CHOICE: 'choice',
   FOUR_OF_A_KIND: 'fourOfAKind',
   FULL_HOUSE: 'fullHouse',
@@ -54,6 +111,8 @@ export const CLIENT_KEY_MAP: Record<ScoreKey, string> = {
   fours: 'FOURS',
   fives: 'FIVES',
   sixes: 'SIXES',
+  sevens: 'SEVENS',
+  eights: 'EIGHTS',
   choice: 'CHOICE',
   fourOfAKind: 'FOUR_OF_A_KIND',
   fullHouse: 'FULL_HOUSE',
@@ -119,6 +178,7 @@ export interface WsMessage<T = unknown> {
 export interface RoomStatePayload {
   roomId: string;
   status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  diceType?: DiceType;
   hostUserId: number;
   maxPlayers: number;
   participants: Participant[];
@@ -126,6 +186,7 @@ export interface RoomStatePayload {
 
 export interface GameStartedPayload {
   roomId: string;
+  diceType?: DiceType;
   turnOrder: number[];
   currentTurnUserId: number;
   rollsLeft: number;
@@ -226,17 +287,20 @@ export interface YachtRankingEntry {
   userId: number;
   nickname: string;
   winCount: number;
-  totalGames: number;
-  lastPlayedAt: string;
+  totalScore: number;
+  playedCount: number;
 }
 
+/** d8 도입 이후 모드별 분리 응답 */
 export interface YachtRankingResponse {
-  topRankings: YachtRankingEntry[];
+  D6: YachtRankingEntry[];
+  D8: YachtRankingEntry[];
 }
 
 export interface YachtMatchResponse {
   roomId: string;
   status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  diceType: DiceType;
   playerCount: number;
   maxPlayers: number;
   created: boolean;
@@ -256,6 +320,7 @@ export interface YachtScoreboardSnapshot {
 export interface YachtRoomResponse {
   roomId: string;
   status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  diceType: DiceType;
   hostUserId: number;
   maxPlayers: number;
   currentTurnUserId?: number | null;
@@ -266,4 +331,10 @@ export interface YachtRoomResponse {
   currentDice?: number[];
   currentKeptIndices?: number[];
   currentRollsLeft?: number;
+}
+
+/** GET /api/yacht/rooms/status 응답 — 모드별 분리 */
+export interface YachtRoomStatusByMode {
+  D6: { activeRooms: number; activePlayers: number } | null;
+  D8: { activeRooms: number; activePlayers: number } | null;
 }

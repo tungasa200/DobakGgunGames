@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import styles from './yacht.module.css';
-import type { Participant, YachtRankingEntry } from '../types/yacht.types';
+import type { Participant, DiceType, YachtRankingEntry } from '../types/yacht.types';
 import { getYachtRankings } from '../../../api/yacht';
 import YachtChat from './YachtChat';
+import YachtModeBadge from './YachtModeBadge';
 import type { ChatMessage } from '../hooks/useYachtGame';
 
 interface YachtWaitingRoomProps {
@@ -15,6 +16,7 @@ interface YachtWaitingRoomProps {
   onLeave: () => void;
   chatMessages: ChatMessage[];
   onSendChat: (message: string) => void;
+  diceType?: DiceType;
 }
 
 const AVATAR_COLORS = [
@@ -35,6 +37,7 @@ export default function YachtWaitingRoom({
   onLeave,
   chatMessages,
   onSendChat,
+  diceType = 'D6',
 }: YachtWaitingRoomProps) {
   const me = participants.find((p) => p.userId === myUserId);
   const isHost = myUserId === hostUserId;
@@ -44,21 +47,42 @@ export default function YachtWaitingRoom({
   const allNonHostReady = nonHostParticipants.length > 0 && nonHostParticipants.every((p) => p.ready);
   const canStart = isHost && allNonHostReady && participants.length >= 2;
 
-  const [rankings, setRankings] = useState<YachtRankingEntry[]>([]);
+  const [rankingsD6, setRankingsD6] = useState<YachtRankingEntry[]>([]);
+  const [rankingsD8, setRankingsD8] = useState<YachtRankingEntry[]>([]);
+  const [activeRankingTab, setActiveRankingTab] = useState<DiceType>(diceType);
+
+  useEffect(() => {
+    setActiveRankingTab(diceType);
+  }, [diceType]);
 
   useEffect(() => {
     getYachtRankings().then((res) => {
-      if (res) setRankings(res.topRankings);
+      if (res) {
+        setRankingsD6(res.D6 ?? []);
+        setRankingsD8(res.D8 ?? []);
+      }
     });
   }, []);
+
+  const activeRankings = activeRankingTab === 'D8' ? rankingsD8 : rankingsD6;
 
   return (
     <div className={styles.waitingRoom}>
       {/* 헤더 */}
       <div className={styles.waitingHeader}>
-        <h2 className={styles.waitingTitle}>대기실</h2>
+        <h2 className={`${styles.waitingTitle} ${styles.waitingTitleFlex}`}>
+          대기실
+          <YachtModeBadge diceType={diceType} />
+        </h2>
         <span className={styles.waitingCount}>{participants.length} / {maxPlayers} 명 입장</span>
       </div>
+
+      {/* 모드 안내 */}
+      <p className={styles.waitingModeSub}>
+        {diceType === 'D8'
+          ? 'D8 플레이어를 기다리는 중...'
+          : 'D6 플레이어를 기다리는 중...'}
+      </p>
 
       {/* 참여자 섹션 */}
       <div className={styles.waitingSection}>
@@ -147,7 +171,7 @@ export default function YachtWaitingRoom({
         </div>
       </div>
 
-      {/* 채팅 (자체 패널 스타일 유지) */}
+      {/* 채팅 */}
       <div style={{ width: '100%', maxWidth: '440px' }}>
         <YachtChat
           messages={chatMessages}
@@ -156,10 +180,44 @@ export default function YachtWaitingRoom({
         />
       </div>
 
-      {/* 역대 랭킹 */}
-      {rankings.length > 0 && (
-        <div className={styles.waitingSection}>
-          <table className={styles.rankTable} aria-label="야추 역대 랭킹">
+      {/* 역대 랭킹 — D6/D8 탭 */}
+      <div className={styles.waitingSection}>
+        <p className={styles.rankingSectionTitle}>역대 랭킹</p>
+        {/* 탭 */}
+        <div
+          className={styles.rankingTabs}
+          role="tablist"
+          aria-label="랭킹 모드 선택"
+        >
+          {(['D6', 'D8'] as DiceType[]).map((tab) => {
+            const isActive = activeRankingTab === tab;
+            const activeClass = tab === 'D8'
+              ? styles.rankingTabActiveD8
+              : styles.rankingTabActiveD6;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`ranking-panel-${tab.toLowerCase()}`}
+                className={`${styles.rankingTab} ${isActive ? activeClass : ''}`}
+                onClick={() => setActiveRankingTab(tab)}
+              >
+                {tab} TOP10
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 랭킹 테이블 */}
+        {activeRankings.length > 0 ? (
+          <table
+            className={styles.rankTable}
+            aria-label={`야추 ${activeRankingTab} 역대 랭킹`}
+            id={`ranking-panel-${activeRankingTab.toLowerCase()}`}
+            role="tabpanel"
+          >
             <thead>
               <tr>
                 <th>순위</th>
@@ -168,7 +226,7 @@ export default function YachtWaitingRoom({
               </tr>
             </thead>
             <tbody>
-              {rankings.map((entry) => {
+              {activeRankings.map((entry) => {
                 const isMe = entry.userId === myUserId;
                 return (
                   <tr key={entry.userId} className={isMe ? styles.rankRowMe : ''}>
@@ -180,8 +238,12 @@ export default function YachtWaitingRoom({
               })}
             </tbody>
           </table>
-        </div>
-      )}
+        ) : (
+          <p style={{ fontSize: '0.82rem', color: 'var(--yacht-text-sub)', textAlign: 'center', margin: '12px 0' }}>
+            랭킹 없음
+          </p>
+        )}
+      </div>
     </div>
   );
 }

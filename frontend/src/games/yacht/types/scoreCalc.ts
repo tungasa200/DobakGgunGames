@@ -1,10 +1,10 @@
-import type { ScoreKey } from './yacht.types';
+import type { ScoreKey, DiceType } from './yacht.types';
 
 /**
  * 클라이언트 점수 미리보기 계산 (표시 전용 — 실제 기록은 서버가 검증/기록)
  * PRD §5.6 의사 코드 기반 구현
  */
-export function calcScore(key: ScoreKey, dice: number[]): number {
+export function calcScore(key: ScoreKey, dice: number[], diceType: DiceType = 'D6'): number {
   switch (key) {
     case 'ones':
       return dice.filter((d) => d === 1).reduce((a, b) => a + b, 0);
@@ -18,6 +18,10 @@ export function calcScore(key: ScoreKey, dice: number[]): number {
       return dice.filter((d) => d === 5).reduce((a, b) => a + b, 0);
     case 'sixes':
       return dice.filter((d) => d === 6).reduce((a, b) => a + b, 0);
+    case 'sevens':
+      return dice.filter((d) => d === 7).reduce((a, b) => a + b, 0);
+    case 'eights':
+      return dice.filter((d) => d === 8).reduce((a, b) => a + b, 0);
     case 'choice':
       return dice.reduce((a, b) => a + b, 0);
     case 'fourOfAKind': {
@@ -37,17 +41,21 @@ export function calcScore(key: ScoreKey, dice: number[]): number {
       return 0;
     }
     case 'littleStraight': {
-      // 로컬 룰: 어느 4개 연속이든 15점
       const set = new Set(dice);
       const has = (...ns: number[]) => ns.every((n) => set.has(n));
+      // D6: {1234} {2345} {3456}
+      // D8: 위 3개 + {4567} {5678}
       if (has(1, 2, 3, 4) || has(2, 3, 4, 5) || has(3, 4, 5, 6)) return 15;
+      if (diceType === 'D8' && (has(4, 5, 6, 7) || has(5, 6, 7, 8))) return 15;
       return 0;
     }
     case 'bigStraight': {
-      // 로컬 룰: 어느 5개 연속이든 30점
       const set = new Set(dice);
       const has = (...ns: number[]) => ns.every((n) => set.has(n));
+      // D6: {12345} {23456}
+      // D8: 위 2개 + {34567} {45678}
       if (has(1, 2, 3, 4, 5) || has(2, 3, 4, 5, 6)) return 30;
+      if (diceType === 'D8' && (has(3, 4, 5, 6, 7) || has(4, 5, 6, 7, 8))) return 30;
       return 0;
     }
     case 'yacht': {

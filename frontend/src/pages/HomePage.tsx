@@ -129,7 +129,7 @@ interface RoomStatusData {
 const MULTI_GAMES: MultiGameConfig[] = [
   { icon: '✌️', name: '온라인 가위바위보', to: '/online-rps',      gameKey: 'online-rps',     statusKey: 'rps'    },
   { icon: '🟦', name: '블록폴 배틀',       to: '/blockfall-battle', gameKey: 'blockfall-battle', statusKey: 'battle' },
-  { icon: '🎲', name: '야추 (Yacht)',       to: '/yacht',            gameKey: 'yacht',          statusKey: 'yacht'  },
+  { icon: '🎲', name: '야추 (Yacht)',       to: '/yacht/select',     gameKey: 'yacht',          statusKey: 'yacht'  },
 ];
 
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
@@ -257,12 +257,17 @@ export default function HomePage() {
           battle: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
         }))
       );
-      getYachtRoomStatus().then((data) =>
+      getYachtRoomStatus().then((data) => {
+        // 모드별 분리 응답 — D6+D8 합산으로 홈 카드에 표시
+        const d6 = data?.D6;
+        const d8 = data?.D8;
+        const totalRooms = (d6?.activeRooms ?? 0) + (d8?.activeRooms ?? 0);
+        const totalPlayers = (d6?.activePlayers ?? 0) + (d8?.activePlayers ?? 0);
         setMultiRoomStatuses((prev) => ({
           ...prev,
-          yacht: data ? { activeRooms: data.activeRooms, activePlayers: data.activePlayers } : null,
-        }))
-      );
+          yacht: data ? { activeRooms: totalRooms, activePlayers: totalPlayers } : null,
+        }));
+      });
     };
 
     fetchStatuses();

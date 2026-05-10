@@ -38,6 +38,7 @@ import { AdminTestProvider } from './context/AdminTestContext';
 import OnlineRpsPage from './pages/OnlineRpsPage';
 import BlockfallBattlePage from './pages/BlockfallBattlePage';
 import YachtPage from './games/yacht/YachtPage';
+import YachtSelectPage from './games/yacht/YachtSelectPage';
 import BattleUITestPage from './pages/BattleUITestPage';
 import MafiaDevPage from './pages/MafiaDevPage';
 import RoulettePage from './pages/RoulettePage';
@@ -102,6 +103,10 @@ export default function App() {
         />
 
         {/* Yacht — 로그인 필수 */}
+        <Route
+          path="/yacht/select"
+          element={<AuthRoute><YachtSelectPage /></AuthRoute>}
+        />
         <Route
           path="/yacht"
           element={<AuthRoute><YachtPage /></AuthRoute>}

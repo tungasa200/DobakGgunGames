@@ -19,6 +19,17 @@
   --yacht-kept: #ca8a04;
   --yacht-preview: #16a34a;
 
+  /* D8 모드 accent */
+  --yacht-d8-accent: #d86a4f;
+  --yacht-d8-accent-subtle: rgba(216, 106, 79, 0.12);
+  --yacht-d8-accent-border: rgba(216, 106, 79, 0.3);
+
+  /* 모드 선택 화면 */
+  --yacht-mode-card-radius: 16px;
+  --yacht-mode-card-border: 2px solid var(--yacht-border);
+  --yacht-mode-card-hover-shadow-d6: 0 4px 20px rgba(79, 108, 216, 0.22);
+  --yacht-mode-card-hover-shadow-d8: 0 4px 20px rgba(216, 106, 79, 0.22);
+
   min-height: 100dvh;
   background: var(--yacht-bg);
   color: var(--yacht-text);
@@ -1422,5 +1433,397 @@
   .chatOverlay .chatInputRow {
     padding: 12px 14px;
     gap: 8px;
+  }
+}
+
+/* ============================================================
+   모드 배지 (YachtModeBadge) — 헤더/대기실/결과 공통
+   ============================================================ */
+.modeBadge {
+  display: inline-block;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.modeBadgeD6 {
+  background: rgba(79, 108, 216, 0.12);
+  color: var(--yacht-accent);
+  border: 1px solid rgba(79, 108, 216, 0.3);
+}
+
+.modeBadgeD8 {
+  background: var(--yacht-d8-accent-subtle);
+  color: var(--yacht-d8-accent);
+  border: 1px solid var(--yacht-d8-accent-border);
+}
+
+/* headerTitle flex 수용 (배지 인라인) */
+.headerTitleFlex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* waitingTitle flex 수용 */
+.waitingTitleFlex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* waitingRoom 모드 안내 서브 텍스트 */
+.waitingModeSub {
+  font-size: 0.82rem;
+  color: var(--yacht-text-sub);
+  margin: -4px 0 4px;
+  text-align: center;
+}
+
+/* ============================================================
+   랭킹 탭 (YachtWaitingRoom — D6/D8 탭)
+   ============================================================ */
+.rankingTabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--yacht-border);
+  margin-bottom: 8px;
+}
+
+.rankingTab {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--yacht-text-sub);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.rankingTabActiveD6 {
+  color: var(--yacht-accent);
+  border-bottom: 2px solid var(--yacht-accent);
+}
+
+.rankingTabActiveD8 {
+  color: var(--yacht-d8-accent);
+  border-bottom: 2px solid var(--yacht-d8-accent);
+}
+
+/* ============================================================
+   D8 점수판 (행 높이 / 폰트 override)
+   ============================================================ */
+.scoreBoardD8 .scoreBoard th,
+.scoreBoardD8 .scoreBoard td {
+  padding: 4px 2px;
+  font-size: 0.76rem;
+}
+
+.scoreBoardD8 .scoreLabelCell {
+  font-size: 0.74rem;
+}
+
+/* D8 모바일 점수판 스크롤 */
+@media (max-width: 768px) {
+  .scoreBoardD8 {
+    overflow-y: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 55vh;
+    position: relative;
+  }
+}
+
+/* ============================================================
+   모드 선택 화면 (YachtSelectPage)
+   ============================================================ */
+
+/* 페이지 레벨 override */
+.modeSelectPage {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--yacht-bg);
+}
+
+/* 헤더 */
+.modeSelectHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--yacht-surface);
+  border-bottom: 1px solid var(--yacht-border);
+  flex-shrink: 0;
+}
+
+.modeSelectHeaderTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--yacht-accent);
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.modeSelectBackBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--yacht-text-sub);
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+@media (hover: hover) {
+  .modeSelectBackBtn:hover {
+    background: var(--yacht-surface2);
+  }
+}
+
+/* 본문 */
+.modeSelectScreen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  gap: 16px;
+}
+
+.modeSelectTitle {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--yacht-text);
+  margin: 0;
+  text-align: center;
+}
+
+.modeSelectSub {
+  font-size: 14px;
+  color: var(--yacht-text-sub);
+  margin: 0;
+  text-align: center;
+}
+
+/* 두 카드 컨테이너 */
+.modeCardRow {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 12px;
+  width: 100%;
+  max-width: 760px;
+}
+
+/* ── 모드 카드 ── */
+.modeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 20px 20px;
+  background: var(--yacht-surface);
+  border: var(--yacht-mode-card-border);
+  border-radius: var(--yacht-mode-card-radius);
+  width: 100%;
+  max-width: 340px;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 120ms ease;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.modeCard:focus-visible {
+  outline: 3px solid var(--yacht-accent);
+  outline-offset: 2px;
+}
+
+.modeCard:active {
+  transform: translateY(0) !important;
+  box-shadow: none !important;
+  transition: transform 80ms ease;
+}
+
+/* D6 카드 hover/focus */
+@media (hover: hover) {
+  .modeCardD6:hover {
+    border-color: var(--yacht-accent);
+    box-shadow: var(--yacht-mode-card-hover-shadow-d6);
+    transform: translateY(-3px);
+  }
+}
+
+.modeCardD6:focus-visible {
+  outline-color: var(--yacht-accent);
+}
+
+/* D8 카드 hover/focus */
+@media (hover: hover) {
+  .modeCardD8:hover {
+    border-color: var(--yacht-d8-accent);
+    box-shadow: var(--yacht-mode-card-hover-shadow-d8);
+    transform: translateY(-3px);
+  }
+}
+
+.modeCardD8:focus-visible {
+  outline-color: var(--yacht-d8-accent);
+}
+
+/* 카드 내부 요소 */
+.modeCardIcon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.modeCardTitle {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+  text-align: center;
+}
+
+.modeCardTitleD6 {
+  color: var(--yacht-accent);
+}
+
+.modeCardTitleD8 {
+  color: var(--yacht-d8-accent);
+}
+
+.modeCardMeta {
+  font-size: 13px;
+  color: var(--yacht-text-sub);
+  margin: 0;
+  text-align: center;
+}
+
+.modeCardStats {
+  font-size: 12px;
+  color: var(--yacht-text-sub);
+  margin: 0;
+  text-align: center;
+}
+
+/* 랭킹 미리보기 */
+.modeCardRanking {
+  width: 100%;
+  border-top: 1px solid var(--yacht-border);
+  padding-top: 12px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.modeCardRankRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.modeCardRankNum {
+  width: 18px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--yacht-text-sub);
+  flex-shrink: 0;
+}
+
+.modeCardRankFirst {
+  color: var(--yacht-warn);
+}
+
+.modeCardRankNickname {
+  flex: 1;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modeCardRankScore {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--yacht-text-sub);
+  flex-shrink: 0;
+}
+
+.modeCardRankEmpty {
+  font-size: 12px;
+  color: var(--yacht-text-sub);
+  text-align: center;
+  margin: 4px 0;
+  opacity: 0.7;
+}
+
+/* CTA 버튼 */
+.modeCardCta {
+  width: 100%;
+  padding: 12px 0;
+  background: var(--yacht-accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  margin-top: 4px;
+}
+
+@media (hover: hover) {
+  .modeCardCta:hover:not(:disabled) {
+    opacity: 0.88;
+  }
+}
+
+.modeCardCta:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.modeCardCta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* D8 CTA 색상 override */
+.modeCardCtaD8 {
+  background: var(--yacht-d8-accent);
+}
+
+/* ── 반응형 ── */
+/* 태블릿 */
+@media (max-width: 768px) and (min-width: 481px) {
+  .modeCard {
+    max-width: 280px;
+  }
+
+  .modeCardRow {
+    gap: 16px;
+  }
+}
+
+/* 모바일 */
+@media (max-width: 480px) {
+  .modeCardRow {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .modeCard {
+    max-width: 100%;
   }
 }

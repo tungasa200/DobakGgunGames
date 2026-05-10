@@ -1,4 +1,10 @@
-import type { YachtMatchResponse, YachtRankingResponse, YachtRoomResponse } from '../games/yacht/types/yacht.types';
+import type {
+  DiceType,
+  YachtMatchResponse,
+  YachtRankingResponse,
+  YachtRoomResponse,
+  YachtRoomStatusByMode,
+} from '../games/yacht/types/yacht.types';
 
 const API_ORIGIN = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '');
 
@@ -24,16 +30,21 @@ export interface YachtMatchError {
 
 export type YachtMatchOutcome = YachtMatchResult | YachtMatchAlreadyInRoom | YachtMatchError;
 
+/** 하위 호환용 단일 모드 방 상태 타입 */
 export interface YachtRoomStatus {
   activeRooms: number;
   activePlayers: number;
 }
 
-export async function getYachtRoomStatus(): Promise<YachtRoomStatus | null> {
+/**
+ * GET /api/yacht/rooms/status — 모드별 분리 응답
+ * 백엔드가 { D6: {...}, D8: {...} } 구조를 반환함
+ */
+export async function getYachtRoomStatus(): Promise<YachtRoomStatusByMode | null> {
   try {
     const res = await fetch(`${API_ORIGIN}/api/yacht/rooms/status`);
     if (!res.ok) return null;
-    return res.json() as Promise<YachtRoomStatus>;
+    return res.json() as Promise<YachtRoomStatusByMode>;
   } catch {
     return null;
   }
@@ -42,8 +53,12 @@ export async function getYachtRoomStatus(): Promise<YachtRoomStatus | null> {
 /**
  * POST /api/yacht/match — 자동 매칭 진입점
  * JWT 로그인 필수 (비로그인 → 401)
+ * diceType 필수 ("D6" | "D8")
  */
-export async function postYachtMatch(token: string | null): Promise<YachtMatchOutcome> {
+export async function postYachtMatch(
+  token: string | null,
+  diceType: DiceType,
+): Promise<YachtMatchOutcome> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -54,7 +69,7 @@ export async function postYachtMatch(token: string | null): Promise<YachtMatchOu
   const res = await fetch(`${API_ORIGIN}/api/yacht/match`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({}),
+    body: JSON.stringify({ diceType }),
   });
 
   if (res.ok) {
@@ -76,7 +91,7 @@ export async function postYachtMatch(token: string | null): Promise<YachtMatchOu
   };
 }
 
-/** GET /api/yacht/rankings — 역대 승수 TOP 10 */
+/** GET /api/yacht/rankings — 모드별 분리 응답 */
 export async function getYachtRankings(): Promise<YachtRankingResponse | null> {
   try {
     const res = await fetch(`${API_ORIGIN}/api/yacht/rankings`);

@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import styles from './yacht.module.css';
-import type { Participant, PlayerScore, ScoreKey, KickVotePayload } from '../types/yacht.types';
+import type { Participant, PlayerScore, ScoreKey, KickVotePayload, DiceType } from '../types/yacht.types';
 import YachtDiceRow3D from './YachtDiceRow3D';
 import YachtScoreBoard from './YachtScoreBoard';
 import YachtChat from './YachtChat';
+import YachtModeBadge from './YachtModeBadge';
 import type { ChatMessage } from '../hooks/useYachtGame';
 
 interface YachtGameScreenProps {
@@ -27,6 +28,7 @@ interface YachtGameScreenProps {
   onVoteKick: (targetUserId: number) => void;
   chatMessages: ChatMessage[];
   onSendChat: (message: string) => void;
+  diceType?: DiceType;
 }
 
 const SCORE_MIN = 200;
@@ -55,6 +57,7 @@ export default function YachtGameScreen({
   onVoteKick,
   chatMessages,
   onSendChat,
+  diceType = 'D6',
 }: YachtGameScreenProps) {
   const currentPlayer = participants.find((p) => p.userId === currentTurnUserId);
   const rollsUsed = 3 - rollsLeft;
@@ -96,7 +99,10 @@ export default function YachtGameScreen({
     <div className={styles.gameScreen}>
       {/* 헤더 */}
       <header className={styles.header}>
-        <h1 className={styles.headerTitle}>Yacht</h1>
+        <h1 className={`${styles.headerTitle} ${styles.headerTitleFlex}`}>
+          Yacht
+          <YachtModeBadge diceType={diceType} />
+        </h1>
         <span className={styles.headerSub}>라운드 {roundNum}</span>
         <button
           type="button"
@@ -200,6 +206,7 @@ export default function YachtGameScreen({
               isMyTurn={isMyTurn && !isSpectator}
               isRolling={isRolling}
               onToggleKeep={onToggleKeep}
+              diceType={diceType}
             />
 
             {/* 굴리기 버튼 — 관전자에게는 숨김 */}
@@ -226,7 +233,7 @@ export default function YachtGameScreen({
             )}
           </div>
 
-          {/* 안내 메시지 — 관전자에게는 비표시 */}
+          {/* 안내 메시지 */}
           {!isSpectator && isMyTurn && hasDice && rollsLeft < 3 && (
             <p style={{ fontSize: '0.83rem', color: 'var(--yacht-text-sub)', textAlign: 'center', margin: 0 }}>
               고정할 주사위를 클릭하고 다시 굴리거나, 오른쪽 점수판에서 족보를 선택하세요
@@ -266,6 +273,7 @@ export default function YachtGameScreen({
             isMyTurn={isMyTurn && !isSpectator}
             rollsUsed={rollsUsed}
             onSelectScore={onSelectScore}
+            diceType={diceType}
           />
         </div>
       </div>

@@ -1,6 +1,12 @@
 import styles from './yacht.module.css';
-import type { Participant, PlayerScore, ScoreKey } from '../types/yacht.types';
-import { SCORE_KEYS, UPPER_SCORE_KEYS, LOWER_SCORE_KEYS, SCORE_LABELS } from '../types/yacht.types';
+import type { Participant, PlayerScore, ScoreKey, DiceType } from '../types/yacht.types';
+import {
+  SCORE_KEYS_BY_MODE,
+  UPPER_SCORE_KEYS_BY_MODE,
+  LOWER_SCORE_KEYS,
+  UPPER_BONUS_THRESHOLD_BY_MODE,
+  SCORE_LABELS,
+} from '../types/yacht.types';
 import { calcScore } from '../types/scoreCalc';
 
 interface YachtScoreBoardProps {
@@ -12,17 +18,23 @@ interface YachtScoreBoardProps {
   isMyTurn: boolean;
   rollsUsed: number;       // 3 - rollsLeft (rollsLeft=3 이면 0, 즉 아직 미굴림)
   onSelectScore: (scoreKey: ScoreKey) => void;
+  diceType?: DiceType;
 }
 
-const UPPER_BONUS_THRESHOLD = 63;
 const UPPER_BONUS_VALUE = 35;
 
-function getUpperTotal(scores: Partial<Record<ScoreKey, number>>): number {
-  return UPPER_SCORE_KEYS.reduce((sum, k) => sum + (scores[k] ?? 0), 0);
+function getUpperTotal(
+  scores: Partial<Record<ScoreKey, number>>,
+  upperKeys: ScoreKey[],
+): number {
+  return upperKeys.reduce((sum, k) => sum + (scores[k] ?? 0), 0);
 }
 
-function isUpperComplete(scores: Partial<Record<ScoreKey, number>>): boolean {
-  return UPPER_SCORE_KEYS.every((k) => scores[k] !== undefined);
+function isUpperComplete(
+  scores: Partial<Record<ScoreKey, number>>,
+  upperKeys: ScoreKey[],
+): boolean {
+  return upperKeys.every((k) => scores[k] !== undefined);
 }
 
 function getScoreForPlayer(
@@ -31,13 +43,13 @@ function getScoreForPlayer(
   isMyTurn: boolean,
   rollsUsed: number,
   currentDice: number[] | null,
+  diceType: DiceType,
 ): { value: number | null; isPreview: boolean } {
   const recorded = ps.scores[key];
   if (recorded !== undefined) return { value: recorded, isPreview: false };
 
-  // 미리보기: 내 턴이고 최소 1회 굴렸고 주사위가 있을 때
   if (isMyTurn && rollsUsed >= 1 && currentDice && currentDice.every((d) => d > 0)) {
-    return { value: calcScore(key, currentDice), isPreview: true };
+    return { value: calcScore(key, currentDice, diceType), isPreview: true };
   }
   return { value: null, isPreview: false };
 }
@@ -51,11 +63,16 @@ export default function YachtScoreBoard({
   isMyTurn,
   rollsUsed,
   onSelectScore,
+  diceType = 'D6',
 }: YachtScoreBoardProps) {
+  const upperKeys = UPPER_SCORE_KEYS_BY_MODE[diceType];
+  const bonusThreshold = UPPER_BONUS_THRESHOLD_BY_MODE[diceType];
+  const scoreKeys = SCORE_KEYS_BY_MODE[diceType];
+  const isD8 = diceType === 'D8';
+
   // 관전자(isSpectator=true)는 점수판 컬럼에서 제외
   const scoringPlayers = players.filter((p) => !p.isSpectator);
 
-  // players 순서 유지, playerScores에 없으면 빈 점수로
   const orderedScores: PlayerScore[] = scoringPlayers.map((p) => {
     const found = playerScores.find((ps) => ps.userId === p.userId);
     return found ?? {
@@ -87,10 +104,9 @@ export default function YachtScoreBoard({
       );
     }
 
-    // 미기록 & 내 턴 & 굴린 후 → 미리보기 + 선택 가능
     if (canSelect && isMe) {
       const preview = currentDice && currentDice.every((d) => d > 0)
-        ? calcScore(key, currentDice)
+        ? calcScore(key, currentDice, diceType)
         : null;
       return (
         <td
@@ -128,8 +144,8 @@ export default function YachtScoreBoard({
       <tr key={`sep-${label}`} className={styles.scoreSeparatorRow}>
         <td className={styles.scoreLabelCell}>{label}</td>
         {orderedScores.map((ps, i) => {
-          const upper = getUpperTotal(ps.scores);
-          const complete = isUpperComplete(ps.scores);
+          const upper = getUpperTotal(ps.scores, upperKeys);
+          const complete = isUpperComplete(ps.scores, upperKeys);
           const isMe = ps.userId === myUserId;
           const isActive = ps.userId === currentTurnUserId;
           let cellClass = '';
@@ -142,7 +158,7 @@ export default function YachtScoreBoard({
                 <div>{upper}</div>
                 {!complete && (
                   <div className={styles.bonusProgress}>
-                    /{UPPER_BONUS_THRESHOLD}
+                    /{bonusThreshold}
                   </div>
                 )}
               </td>
@@ -150,7 +166,7 @@ export default function YachtScoreBoard({
           }
           if (label === '상단 보너스') {
             const bonusText = complete
-              ? (upper >= UPPER_BONUS_THRESHOLD ? `+${UPPER_BONUS_VALUE}` : '0')
+              ? (upper >= bonusThreshold ? `+${UPPER_BONUS_VALUE}` : '0')
               : '?';
             return (
               <td key={i} className={cellClass}>
@@ -165,7 +181,7 @@ export default function YachtScoreBoard({
   }
 
   return (
-    <div className={styles.scoreBoardContainer}>
+    <div className={`${styles.scoreBoardContainer} ${isD8 ? styles.scoreBoardD8 : ''}`}>
       <p className={styles.scoreBoardTitle}>점수판</p>
       <div style={{ overflowX: 'auto' }}>
         <table className={styles.scoreBoard}>
@@ -193,8 +209,8 @@ export default function YachtScoreBoard({
             </tr>
           </thead>
           <tbody>
-            {/* 상단 6개 */}
-            {UPPER_SCORE_KEYS.map((key) => (
+            {/* 상단 (D6: 6개, D8: 8개) */}
+            {upperKeys.map((key) => (
               <tr key={key}>
                 <td className={styles.scoreLabelCell}>{SCORE_LABELS[key]}</td>
                 {orderedScores.map((ps, i) => {
@@ -203,6 +219,7 @@ export default function YachtScoreBoard({
                     isMyTurn && ps.userId === myUserId,
                     rollsUsed,
                     currentDice,
+                    diceType,
                   );
                   const isMe = ps.userId === myUserId;
                   const isActive = ps.userId === currentTurnUserId;
@@ -257,7 +274,7 @@ export default function YachtScoreBoard({
             {renderSeparatorRow('상단 합계')}
             {renderSeparatorRow('상단 보너스')}
 
-            {/* 하단 6개 */}
+            {/* 하단 6개 (공통) */}
             {LOWER_SCORE_KEYS.map((key) => (
               <tr key={key}>
                 <td className={styles.scoreLabelCell}>{SCORE_LABELS[key]}</td>
@@ -289,7 +306,7 @@ export default function YachtScoreBoard({
       {myUserId !== null && (() => {
         const myScore = orderedScores.find((ps) => ps.userId === myUserId);
         if (!myScore) return null;
-        const remaining = SCORE_KEYS.filter((k) => myScore.scores[k] === undefined).length;
+        const remaining = scoreKeys.filter((k) => myScore.scores[k] === undefined).length;
         return (
           <p style={{ fontSize: '0.72rem', color: 'var(--yacht-text-sub)', marginTop: '6px', textAlign: 'center' }}>
             남은 족보: {remaining}칸

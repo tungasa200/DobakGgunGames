@@ -5,6 +5,7 @@ import { postYachtMatch, getYachtRoom } from '../../../api/yacht';
 import { connectYacht } from '../../../lib/yachtStompClient';
 import type { YachtStompClientHandle } from '../../../lib/yachtStompClient';
 import type {
+  DiceType,
   YachtPhase,
   ConnectionStatus,
   Participant,
@@ -37,6 +38,7 @@ export interface ChatMessage {
 export interface UseYachtGameReturn {
   phase: YachtPhase;
   roomId: string | null;
+  diceType: DiceType;
   participants: Participant[];
   hostUserId: number | null;
   currentTurnUserId: number | null;
@@ -70,12 +72,13 @@ export interface UseYachtGameReturn {
   voteKick: (targetUserId: number) => void;
 }
 
-export function useYachtGame(): UseYachtGameReturn {
+export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameReturn {
   const { user, accessToken } = useAuth();
   const navigate = useNavigate();
 
   const [phase, setPhase] = useState<YachtPhase>('idle');
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [diceType, setDiceType] = useState<DiceType>(initialDiceType);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [hostUserId, setHostUserId] = useState<number | null>(null);
   const [currentTurnUserId, setCurrentTurnUserId] = useState<number | null>(null);
@@ -99,10 +102,19 @@ export function useYachtGame(): UseYachtGameReturn {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef<boolean>(false);
+  // diceType을 ref로도 유지 (훅 내부 콜백 클로저에서 최신값 접근 위함)
+  const diceTypeRef = useRef<DiceType>(initialDiceType);
+
+  // diceType 상태 변경 시 ref 동기화
+  useEffect(() => {
+    diceTypeRef.current = diceType;
+  }, [diceType]);
 
   // 게임 시작 시 한 번 무작위 표시용 (이후 턴부터는 직전 결과 유지)
-  const makeRandomDice = (): number[] =>
-    Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
+  const makeRandomDice = (): number[] => {
+    const max = diceTypeRef.current === 'D8' ? 8 : 6;
+    return Array.from({ length: 5 }, () => Math.floor(Math.random() * max) + 1);
+  };
 
   const myUserId = user?.id ?? null;
 
@@ -135,6 +147,12 @@ export function useYachtGame(): UseYachtGameReturn {
     hydratedRef.current = true;
     const snap = await getYachtRoom(id, token);
     if (!snap) return;
+
+    // diceType 동기화 (스냅샷에서 확인)
+    if (snap.diceType) {
+      setDiceType(snap.diceType);
+      diceTypeRef.current = snap.diceType;
+    }
 
     setHostUserId(snap.hostUserId);
     if (snap.currentTurnUserId !== null && snap.currentTurnUserId !== undefined) {
@@ -185,6 +203,11 @@ export function useYachtGame(): UseYachtGameReturn {
       onRoomState: (payload: RoomStatePayload) => {
         setParticipants(payload.participants);
         setHostUserId(payload.hostUserId);
+        // diceType 동기화
+        if (payload.diceType) {
+          setDiceType(payload.diceType);
+          diceTypeRef.current = payload.diceType;
+        }
         if (payload.status === 'PLAYING') {
           // 게임 진행 중인 방 — 관전자 합류 또는 진행 중 재진입
           setPhase((prev) => (prev === 'playing' ? prev : 'playing'));
@@ -199,6 +222,11 @@ export function useYachtGame(): UseYachtGameReturn {
         }
       },
       onGameStarted: (payload: GameStartedPayload) => {
+        // diceType 동기화
+        if (payload.diceType) {
+          setDiceType(payload.diceType);
+          diceTypeRef.current = payload.diceType;
+        }
         setCurrentTurnUserId(payload.currentTurnUserId);
         setRollsLeft(payload.rollsLeft);
         // 최초 1회: 무작위 눈금으로 표시 (실제 굴림은 ROLL_RESULT가 덮어씀)
@@ -222,7 +250,7 @@ export function useYachtGame(): UseYachtGameReturn {
         setCurrentTurnUserId(payload.currentTurnUserId);
         setRollsLeft(payload.rollsLeft);
         // 서버가 [0,0,0,0,0]을 보내는 턴 시작 직후엔 직전 dice를 유지한다.
-        // 진짜 dice 값(1~6)이 하나라도 들어오면 그때만 덮어쓴다.
+        // 진짜 dice 값(1~N)이 하나라도 들어오면 그때만 덮어쓴다.
         const incoming = payload.dice;
         if (incoming && incoming.some((d) => d > 0)) {
           setDice(incoming);
@@ -335,10 +363,15 @@ export function useYachtGame(): UseYachtGameReturn {
     setErrorMessage(null);
     hydratedRef.current = false;
 
-    const outcome = await postYachtMatch(accessToken);
+    const outcome = await postYachtMatch(accessToken, diceTypeRef.current);
 
     if (outcome.ok) {
       const id = outcome.data.roomId;
+      // 서버 응답의 diceType으로 동기화
+      if (outcome.data.diceType) {
+        setDiceType(outcome.data.diceType);
+        diceTypeRef.current = outcome.data.diceType;
+      }
       setRoomId(id);
       roomIdRef.current = id;
       if (outcome.data.joinedAsSpectator) {
@@ -448,6 +481,7 @@ export function useYachtGame(): UseYachtGameReturn {
   return {
     phase,
     roomId,
+    diceType,
     participants,
     hostUserId,
     currentTurnUserId,
