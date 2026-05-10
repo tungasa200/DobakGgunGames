@@ -50,9 +50,9 @@
 |---|---|---|
 | 주사위 면 수 | 6 (1~6) | 8 (1~8) |
 | 주사위 개수 | 5 | 5 |
-| 한 턴 굴림 횟수 | 최대 3 | 최대 3 |
+| 한 턴 굴림 횟수 | 최대 3 | **최대 4** (면당 적중률 1/8 보정) |
 | 상단 족보 | ONES~SIXES (6개) | ONES~EIGHTS (8개) |
-| 상단 보너스 임계 | 63점 | **84점** |
+| 상단 보너스 임계 | 63점 | **108점** (면 합 비례 63 × 36/21) |
 | 상단 보너스 점수 | +35 | **+35 (잠정 — §13 의문점)** |
 | 하단 족보 | CHOICE / FOUR_OF_A_KIND / FULL_HOUSE / LITTLE_STRAIGHT / BIG_STRAIGHT / YACHT (6개) | **동일 6개** (룰 동일, face 1~8) |
 | LITTLE_STRAIGHT 가능 셋 | {1,2,3,4} {2,3,4,5} {3,4,5,6} | {1,2,3,4} {2,3,4,5} {3,4,5,6} **{4,5,6,7} {5,6,7,8}** |
@@ -70,7 +70,8 @@
 
 - **US-D8-1** — As a logged-in user, I want to choose between D6 and D8 modes before matching, so that I can play the variant I prefer.
 - **US-D8-2** — As a player, I want D8 matching to only pair me with other D8 players, so that the rules are consistent.
-- **US-D8-3** — As a D8 player, I want the upper section to expose 8 categories (Ones~Eights) and apply the bonus threshold of 84, so that the rules scale with the dice.
+- **US-D8-3** — As a D8 player, I want the upper section to expose 8 categories (Ones~Eights) and apply the bonus threshold of 108, so that the rules scale with the dice.
+- **US-D8-7** — As a D8 player, I want one extra reroll per turn (4 instead of 3), so that the lower-category odds (Yacht/Full House/4-Kind/Straight) match what I expect from the standard 5-die game.
 - **US-D8-4** — As a D8 player, I want the straight conditions to recognize 4-/5-consecutive sets that include faces 7 and 8, so that I can score with the wider face range.
 - **US-D8-5** — As a player, I want my D6 and D8 rankings to be tracked separately, so that each mode has fair competition.
 - **US-D8-6** — As a player, I want the score table layout to remain readable when there are 14 categories, so that I can plan strategically without scrolling fatigue.
@@ -94,10 +95,11 @@
 
 ### 5.2 상단 보너스 (D8)
 
-- **임계값**: 상단 8개 합계 **≥ 84점**.
-- **보너스 점수**: **+35점** (D6와 동일 잠정 — §13 OQ-1).
+- **임계값**: 상단 8개 합계 **≥ 108점** (= 63 × 36/21, 면 합 비례).
+- **보너스 점수**: **+35점** (D6와 동일).
 - **판정 시점**: 상단 8개 모두 기록된 시점에 자동 판정 + `SCORE_RECORDED.payload.bonusEarned=true` 알림.
 - 8개 미만 기록 시 미확정 (현재 합계만 미리보기).
+- **균형 이론**: 평균 카테고리당 10.5점(=각 면 약 3개)으로 D6와 동일한 "각 면 3개" 목표. 4롤 + 단순 홀드 기대값 ≈ 36 × 5 × (1−(7/8)⁴) = 74.5점, 임계까지 부족분 비율 ~45%로 D6의 부족분 비율(~42%)과 거의 동일.
 
 ### 5.3 하단 (Lower Section) — 6개 (D6와 동일 룰, face 1~8)
 
@@ -180,9 +182,21 @@ fun calculateScoreD8(scoreKey: String, dice: Int[5]): Int {
 
 ### 5.7 주사위 굴림
 
-- 주사위 5개, 한 턴 최대 3회 굴림 — D6와 동일.
+- 주사위 5개. 한 턴 최대 굴림 횟수는 모드별 분리 — **D6: 3회 / D8: 4회**.
+- 서버는 룰셋(`YachtScoreRules.maxRollsPerTurn()`)에서 최대 횟수를 가져와 GAME_STARTED·TURN_CHANGED·TURN_STATE의 `rollsLeft` 초기값으로 사용.
+- 클라이언트는 `MAX_ROLLS_BY_MODE[diceType]`로 첫 굴림 여부(`rollsLeft === maxRolls`)를 판정.
 - 서버가 면 수에 맞춰 1~N 균등 분포 난수 생성 (D6: 1~6, D8: 1~8).
-- `keptIndices` 처리 등 모든 굴림 룰은 D6와 동일.
+- `keptIndices` 처리 등 그 외 굴림 룰은 D6와 동일.
+
+#### 5.7.1 D8 4롤 보정 근거
+
+D8는 면당 적중률이 1/8로 D6(1/6) 대비 낮아 하단 족보 단판 확률이 절반 이하로 떨어진다 (YACHT 1/3, FH/4K ~0.44×). 면당 적중률 균형을 회복하기 위해 4롤로 상향:
+
+| | D6 3롤 | D8 3롤 | D8 **4롤** |
+|---|---|---|---|
+| 1주사위 적중률 | 1−(5/6)³ ≈ 42.1% | 1−(7/8)³ ≈ 33.0% | 1−(7/8)⁴ ≈ 41.4% |
+
+D8 4롤은 D6 3롤과 사실상 동등한 면당 적중률을 회복한다. 동시에 상단 보너스 임계는 면 합 비례(108)로 상향해 4롤로 보너스가 자동 보장되는 사태를 방지.
 
 ---
 
@@ -416,7 +430,7 @@ UPDATE yacht_record SET dice_type = 'D6' WHERE dice_type IS NULL;
 
 - 페이로드 형식 변경 없음.
 - `scoreKey`로 `SEVENS` / `EIGHTS`가 들어올 수 있음 (D8 한정).
-- 보너스 임계는 서버가 모드에 따라 자동 적용 (D6=63 / D8=84).
+- 보너스 임계는 서버가 모드에 따라 자동 적용 (D6=63 / D8=108).
 
 ### 10.5 기타 이벤트
 - `TURN_STATE`, `TURN_CHANGED`, `GAME_OVER`, `PLAYER_LEFT`, `ROOM_CLOSED`: 페이로드 형식 변경 없음.
@@ -433,7 +447,7 @@ UPDATE yacht_record SET dice_type = 'D6' WHERE dice_type IS NULL;
         ↓ 클릭 (비로그인 시 라우트 가드 → 로그인 페이지)
 [모드 선택 화면] (신규)
   - 두 카드: "D6 (정육면체) — 12 족보" / "D8 (정팔면체) — 14 족보"
-  - 각 카드 하단 짧은 설명 (상단 8개·보너스 84점·스트레이트 확장 등)
+  - 각 카드 하단 짧은 설명 (상단 8개·보너스 108점·4롤·스트레이트 확장 등)
   - 카드 클릭 시 해당 모드로 매칭 호출
         ↓ 클릭
 [자동 매칭 호출] POST /api/yacht/match { diceType: "D6" | "D8" }
@@ -499,8 +513,8 @@ UPDATE yacht_record SET dice_type = 'D6' WHERE dice_type IS NULL;
 
 | ID | 질문 | 영향 | 임시 결정 |
 |---|---|---|---|
-| OQ-1 | **D8 보너스 점수가 35로 충분한가?** | 상단 8개를 다 채우려면 평균 face가 더 커야 하므로 D6보다 도달 난이도가 높음. 보상이 동일 35점이면 보너스 가성비가 D6보다 떨어질 수 있음. (대안: 50점, 또는 임계 84 + 보너스 50) | **잠정 35점**. 출시 후 도달률 모니터링하여 Phase 2에서 재조정. |
-| OQ-2 | 상단 보너스 임계 84점의 적정성 | 84 = (1+2+3+4+5+6+7+8) × 5 / 8 × 3 ≈ 표준 d8 야추 룰의 일반값. 도달 빈도 검증 필요. | **84점 확정.** 통계 누적 후 검토. |
+| OQ-1 | **D8 보너스 점수가 35로 충분한가?** | 상단 8개를 다 채우려면 평균 face가 더 커야 하므로 D6보다 도달 난이도가 높음. 4롤 보정으로 면당 적중률은 D6 수준으로 회복됐고 임계도 면 합 비례로 상향됐으므로 보너스 가성비는 D6와 유사할 것으로 예상. | **35점 확정.** 4롤 + 임계 108로 균형 맞춘 상태에서 도달률 모니터링. |
+| OQ-2 | 상단 보너스 임계 108점의 적정성 | 108 = 63 × 36/21 (면 합 비례). 4롤 단순 홀드 기대값 74.5점 대비 부족분 비율(~45%)이 D6의 부족분 비율(~42%)과 거의 동일. | **108점 확정.** 통계 누적 후 검토. |
 | OQ-3 | D8 첫 도입 시 매칭 풀이 작아 매칭 실패 빈도 증가 우려 | D8 모드 사용자가 적으면 매칭 대기 시간↑. | 신규 방 자동 생성 정책으로 완화. 출시 후 모니터링. |
 | OQ-4 | 14행 점수판 모바일 가독성 (특히 sticky 미구현 시) | UX 저하 가능. | designer가 sticky 여부 명세 결정. |
 | OQ-5 | 기존 D6 진행 중 게임이 있는 시점에 D8 배포 시 호환성 | `diceType` 컬럼은 DEFAULT 'D6'로 처리되므로 무중단 배포 가능. | 기 적용. 추가 작업 불필요. |
@@ -521,7 +535,8 @@ UPDATE yacht_record SET dice_type = 'D6' WHERE dice_type IS NULL;
 - [ ] 홈에서 야추 진입 시 D6/D8 모드 선택 화면 노출
 - [ ] D6 매칭과 D8 매칭이 절대 섞이지 않음 (E2E 검증)
 - [ ] D8 게임에서 상단 8 족보 + 14행 점수판이 정상 동작
-- [ ] D8 보너스(임계 84, 점수 35)가 8개 모두 기록 시점에 자동 부여
+- [ ] D8 보너스(임계 108, 점수 35)가 8개 모두 기록 시점에 자동 부여
+- [ ] D8 게임에서 한 턴 최대 4회 굴림이 가능하고, D6는 그대로 3회로 동작
 - [ ] D8 LITTLE_STRAIGHT / BIG_STRAIGHT가 face 7,8 포함 셋에서 정상 인정
 - [ ] `/api/yacht/rankings`가 `D6` / `D8` 분리 응답을 반환
 - [ ] 기존 D6 게임이 회귀 없이 동작 (점수 계산, 랭킹, 매칭)
@@ -545,7 +560,8 @@ UPDATE yacht_record SET dice_type = 'D6' WHERE dice_type IS NULL;
 | `yacht_record.dice_type` 마이그레이션 SQL 적용 (Railway는 사용자 수동 실행) | developer-backend |
 | `POST /api/yacht/match` 요청 바디 확장 (`diceType`) + 매칭 풀 분리 | developer-backend |
 | 점수 계산기 D8 분기 (`SEVENS`/`EIGHTS` 추가, 스트레이트 셋 확장) | developer-backend |
-| 보너스 판정 로직 모드별 분기 (D6=63/35, D8=84/35) | developer-backend |
+| 보너스 판정 로직 모드별 분기 (D6=63/35, D8=108/35) | developer-backend |
+| 턴당 굴림 횟수 모드별 분기 (D6=3, D8=4 — `YachtScoreRules.maxRollsPerTurn()`) | developer-backend |
 | `/api/yacht/rankings` D6/D8 분리 응답 | developer-backend |
 | WebSocket 페이로드 `diceType` 필드 추가 | developer-backend |
 | 모드 선택 화면 + 모드 라우팅 + 매칭 호출 시 `diceType` 전달 | developer-frontend |
@@ -560,3 +576,4 @@ UPDATE yacht_record SET dice_type = 'D6' WHERE dice_type IS NULL;
 | 날짜 | 변경 내용 |
 |---|---|
 | 2026-05-10 | 최초 작성. 사용자 정책 결정 8건 그대로 반영. |
+| 2026-05-10 | D8 균형 재조정: 턴당 굴림 3→4, 상단 보너스 임계 84→108(면 합 비례). D6 룰은 변경 없음. |

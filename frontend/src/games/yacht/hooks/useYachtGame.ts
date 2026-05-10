@@ -25,7 +25,7 @@ import type {
   PlayerReturnedPayload,
   ChatPayload,
 } from '../types/yacht.types';
-import { SERVER_KEY_MAP } from '../types/yacht.types';
+import { SERVER_KEY_MAP, MAX_ROLLS_BY_MODE } from '../types/yacht.types';
 
 export interface ChatMessage {
   userId: number;
@@ -84,7 +84,7 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
   const [currentTurnUserId, setCurrentTurnUserId] = useState<number | null>(null);
   const [dice, setDice] = useState<number[]>([0, 0, 0, 0, 0]);
   const [keptIndices, setKeptIndices] = useState<number[]>([]);
-  const [rollsLeft, setRollsLeft] = useState<number>(3);
+  const [rollsLeft, setRollsLeft] = useState<number>(MAX_ROLLS_BY_MODE[initialDiceType]);
   const [playerScores, setPlayerScores] = useState<PlayerScore[]>([]);
   const [rankings, setRankings] = useState<RankEntry[]>([]);
   const [gameOverData, setGameOverData] = useState<GameOverPayload | null>(null);
@@ -394,11 +394,12 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
 
   // 주사위 인덱스 keep 토글 (내 턴이고 주사위가 있을 때만)
   const toggleKeep = useCallback((index: number) => {
-    if (!isMyTurn || rollsLeft === 3) return; // 첫 굴림 전엔 keep 불가
+    // 첫 굴림 전(rollsLeft === maxRolls)엔 keep 불가 — D6=3 / D8=4
+    if (!isMyTurn || rollsLeft === MAX_ROLLS_BY_MODE[diceType]) return;
     setKeptIndices((prev) =>
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
-  }, [isMyTurn, rollsLeft]);
+  }, [isMyTurn, rollsLeft, diceType]);
 
   // 주사위 굴리기
   const rollDice = useCallback(() => {
@@ -409,13 +410,13 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
   // 점수 기록
   const recordScore = useCallback((scoreKey: ScoreKey) => {
     if (!clientRef.current || !isMyTurn) return;
-    // 최소 1회 굴린 뒤에만 허용 (rollsLeft가 3이면 아직 굴리지 않은 상태)
-    if (rollsLeft === 3) {
+    // 최소 1회 굴린 뒤에만 허용 (rollsLeft === maxRolls면 아직 굴리지 않은 상태)
+    if (rollsLeft === MAX_ROLLS_BY_MODE[diceType]) {
       showToast('먼저 주사위를 굴려야 합니다');
       return;
     }
     clientRef.current.score(scoreKey);
-  }, [isMyTurn, rollsLeft, showToast]);
+  }, [isMyTurn, rollsLeft, showToast, diceType]);
 
   // 준비 토글
   const readyToggle = useCallback((isReady: boolean) => {

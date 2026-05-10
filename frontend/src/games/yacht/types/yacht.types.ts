@@ -47,7 +47,17 @@ export const LOWER_SCORE_KEYS: ScoreKey[] = [
 
 export const UPPER_BONUS_THRESHOLD_BY_MODE: Record<DiceType, number> = {
   D6: 63,
-  D8: 84,
+  D8: 108, // 면 합 비례 (63 × 36/21) — D8 4롤 보정과 함께 균형 유지
+};
+
+/**
+ * 턴당 최대 굴림 횟수.
+ * D8는 면당 적중률(1/8)이 D6(1/6) 대비 낮아 1회 더 부여.
+ * 1주사위 적중률: D6 3롤 ≈ 42.1% / D8 4롤 ≈ 41.4% — 거의 동등.
+ */
+export const MAX_ROLLS_BY_MODE: Record<DiceType, number> = {
+  D6: 3,
+  D8: 4,
 };
 
 export const SCORE_LABELS: Record<ScoreKey, string> = {

@@ -10,7 +10,7 @@
 - `dto/yacht/YachtMatchRequest.java` — `{ diceType: "D6" | "D8" }`
 - `service/yacht/YachtScoreRules.java` — 룰셋 인터페이스
 - `service/yacht/D6Rules.java` — 기존 야추 룰
-- `service/yacht/D8Rules.java` — 8면 룰 (ONES~EIGHTS, 보너스 84점, 스트레이트 셋 확장)
+- `service/yacht/D8Rules.java` — 8면 룰 (ONES~EIGHTS, 보너스 108점, 4롤, 스트레이트 셋 확장)
 - `service/yacht/YachtScoreRulesFactory.java` — diceType → 룰셋 매핑
 - `resources/db/yacht-record-d8-migration.sql` — 마이그레이션 SQL
 

@@ -253,15 +253,21 @@ class YachtScoreCalculatorTest {
         }
 
         @Test
-        @DisplayName("D8 상단 보너스 임계 = 84")
+        @DisplayName("D8 상단 보너스 임계 = 108 (면 합 비례 63×36/21)")
         void upperBonusThreshold() {
-            assertThat(D8.upperBonusThreshold()).isEqualTo(84);
+            assertThat(D8.upperBonusThreshold()).isEqualTo(108);
         }
 
         @Test
         @DisplayName("D8 주사위 면 수 = 8")
         void rngFaces() {
             assertThat(D8.rngFaces()).isEqualTo(8);
+        }
+
+        @Test
+        @DisplayName("D8 턴당 굴림 = 4 (D6 대비 +1)")
+        void maxRollsPerTurn() {
+            assertThat(D8.maxRollsPerTurn()).isEqualTo(4);
         }
 
         @Test
@@ -274,6 +280,12 @@ class YachtScoreCalculatorTest {
         @DisplayName("D6 상단 보너스 임계 = 63")
         void d6UpperBonusThreshold() {
             assertThat(D6.upperBonusThreshold()).isEqualTo(63);
+        }
+
+        @Test
+        @DisplayName("D6 턴당 굴림 = 3 (default)")
+        void d6MaxRollsPerTurn() {
+            assertThat(D6.maxRollsPerTurn()).isEqualTo(3);
         }
     }
 }

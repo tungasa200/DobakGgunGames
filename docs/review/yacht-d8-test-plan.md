@@ -31,9 +31,9 @@
 | A-2-1 | D6: 상단 6개 합 = 62 (미달) | bonusEarned=false, grandTotal 미반영 |
 | A-2-2 | D6: 상단 6개 합 = 63 (정확) | bonusEarned=true, grandTotal +35 |
 | A-2-3 | D6: 상단 6개 합 = 70 (초과) | bonusEarned=true, grandTotal +35 |
-| A-2-4 | D8: 상단 8개 합 = 83 (미달) | bonusEarned=false |
-| A-2-5 | D8: 상단 8개 합 = 84 (정확) | bonusEarned=true, grandTotal +35 |
-| A-2-6 | D8: 상단 8개 합 = 100 (초과) | bonusEarned=true, grandTotal +35 |
+| A-2-4 | D8: 상단 8개 합 = 107 (미달) | bonusEarned=false |
+| A-2-5 | D8: 상단 8개 합 = 108 (정확) | bonusEarned=true, grandTotal +35 |
+| A-2-6 | D8: 상단 8개 합 = 130 (초과) | bonusEarned=true, grandTotal +35 |
 | A-2-7 | D8: 상단 7개만 기록 (EIGHTS 미기록) | bonusEarned 미판정 (8개 모두 기록 시점까지 대기) |
 
 ### A-3. bonusEarned=true 트리거 확인
@@ -163,7 +163,7 @@
 | ID | 확인 항목 |
 |---|---|
 | E-2-1 | D6 카드: "정육면체 (D6)", 12 족보, 63점, 활성 방 수, TOP 랭킹 표시 |
-| E-2-2 | D8 카드: "정팔면체 (D8)", 14 족보, 84점, 활성 방 수, TOP 랭킹 표시 |
+| E-2-2 | D8 카드: "정팔면체 (D8)", 14 족보, 4롤, 108점, 활성 방 수, TOP 랭킹 표시 |
 | E-2-3 | 랭킹 로딩 중 shimmer 스켈레톤 표시 |
 | E-2-4 | D6 카드 클릭 → /yacht?mode=D6 navigate, D6 매칭 시작 |
 | E-2-5 | D8 카드 클릭 → /yacht?mode=D8 navigate, D8 매칭 시작 |
@@ -188,7 +188,7 @@
 | E-4-1 | D6 게임: 점수판 상단 6행 (ONES~SIXES) |
 | E-4-2 | D8 게임: 점수판 상단 8행 (ONES~EIGHTS) |
 | E-4-3 | D6 상단 합계 표기: "현재합계 / 63" |
-| E-4-4 | D8 상단 합계 표기: "현재합계 / 84" |
+| E-4-4 | D8 상단 합계 표기: "현재합계 / 108" |
 | E-4-5 | D8 점수판에 SEVENS/EIGHTS 행 존재 + 클릭 가능 (내 턴일 때) |
 
 ### E-5. 모바일 점수판 (480px 이하)
@@ -254,6 +254,25 @@
 | G-10 | 기존 yacht_record D6 행에 dice_type='D6' 백필 완료 (마이그레이션 SQL) | Critical |
 | G-11 | /yacht 라우트가 AuthRoute로 보호됨 (회귀 없음) | Critical |
 | G-12 | GAME_STARTED D6 totalRounds = 참가자수 × 12 | Critical |
+| G-13 | **D6 게임의 한 턴 최대 굴림이 그대로 3회**로 동작 (4롤 회귀 없음) | Critical |
+| G-14 | D6 GAME_STARTED/TURN_CHANGED 페이로드 `rollsLeft` 초기값 = 3 | Critical |
+
+---
+
+## H. D8 굴림 횟수 (4롤) 검증
+
+| ID | 확인 항목 | 우선순위 |
+|---|---|---|
+| H-1 | D8 게임 시작 시 GAME_STARTED `rollsLeft = 4` | Critical |
+| H-2 | D8 첫 굴림 후 `rollsLeft = 3`, 두 번째 굴림 후 `2`, 세 번째 후 `1`, 네 번째 후 `0` | Critical |
+| H-3 | D8에서 `rollsLeft = 0` 상태에서 추가 ROLL 요청 시 `ALREADY_ROLLED_MAX` 에러 | Critical |
+| H-4 | D8 점수 기록 후 다음 턴 TURN_CHANGED 페이로드 `rollsLeft = 4` | Critical |
+| H-5 | D8 첫 굴림 직전(`rollsLeft = 4`)에 keptIndices 무시되고 5개 모두 새로 굴림 | High |
+| H-6 | D8 첫 굴림 직전 buttonText = "굴리기!", 이후 "다시 굴리기" | High |
+| H-7 | D8 4번째 굴림까지 keptIndices가 정상 적용되어 keep된 면 보존 | High |
+| H-8 | D8 게임 종료 (14턴 × N명) 후 GAME_OVER 정상, 4롤이 횟수 카운트에 영향 없음 | Critical |
+| H-9 | D8 재접속/강퇴/재시작 후 새 턴 시작 시 `rollsLeft = 4`로 정확히 리셋 | High |
+| H-10 | D8 4롤 정확성: `1−(7/8)⁴ ≈ 41.4%` 면당 적중률에 부합하는지 통계적 스폿체크 (수동) | Medium |
 
 ---
 

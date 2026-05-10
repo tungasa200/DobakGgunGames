@@ -4,7 +4,11 @@ import java.util.*;
 
 /**
  * D8 (정팔면체, 1~8) 룰셋.
- * 14종 족보 (상단 8 + 하단 6), 상단 보너스 임계 84점.
+ * 14종 족보 (상단 8 + 하단 6), 상단 보너스 임계 108점, 턴당 4롤.
+ *
+ * 균형 설계:
+ * - 면당 적중률이 1/8로 떨어져 하단 족보(YACHT/FH/4K/스트레이트) 단판 확률이 D6의 절반 이하 → 턴당 굴림 4회로 보정
+ * - 상단 임계는 면 합 비례(63 × 36/21 = 108) — 평균 면값 카테고리당 3개 = D6와 동일한 "각 면 3개"
  *
  * 스트레이트 확장:
  * - LITTLE_STRAIGHT: {4,5,6,7}, {5,6,7,8} 추가
@@ -51,7 +55,7 @@ public class D8Rules implements YachtScoreRules {
 
     @Override
     public int upperBonusThreshold() {
-        return 84;
+        return 108;
     }
 
     @Override
@@ -67,6 +71,11 @@ public class D8Rules implements YachtScoreRules {
     @Override
     public int rngFaces() {
         return 8;
+    }
+
+    @Override
+    public int maxRollsPerTurn() {
+        return 4;
     }
 
     @Override

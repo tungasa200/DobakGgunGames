@@ -220,7 +220,10 @@
 }
 ```
 - `dice`: 5칸 고정. kept 인덱스 값은 직전 결과와 동일.
-- `rollsLeft`: 이번 굴림 후 남은 횟수 (3→2→1→0)
+- `rollsLeft`: 이번 굴림 후 남은 횟수.
+  - **D6**: 3→2→1→0 (한 턴 최대 3회)
+  - **D8**: 4→3→2→1→0 (한 턴 최대 4회)
+  - 클라이언트는 첫 굴림 직전을 `rollsLeft === MAX_ROLLS_BY_MODE[diceType]`로 판정 (`rollsLeft === 3` 하드코딩 금지).
 
 #### SCORE_RECORDED — 족보 선택 완료
 
@@ -572,7 +575,7 @@ StompChannelInterceptor:
 
 #### SCORE_RECORDED — 형식 변경 없음
 - `scoreKey`로 `SEVENS`/`EIGHTS`가 들어올 수 있음 (D8 한정).
-- `bonusEarned` 판정 임계는 서버가 모드별로 자동 분기 (D6=63 / D8=84). 보너스 점수는 양 모드 공통 +35 (잠정).
+- `bonusEarned` 판정 임계는 서버가 모드별로 자동 분기 (D6=63 / D8=108). 보너스 점수는 양 모드 공통 +35.
 
 #### TURN_STATE / TURN_CHANGED / GAME_OVER / PLAYER_LEFT / ROOM_CLOSED
 - 페이로드 형식 변경 없음.
@@ -641,7 +644,7 @@ record YachtRankingEntry(
 | BIG_STRAIGHT | 어느 5개 연속 — {1,2,3,4,5} {2,3,4,5,6} {3,4,5,6,7} {4,5,6,7,8} 중 하나와 일치 → 30 |
 | YACHT | 5개 동일 → 50 |
 
-**상단 보너스 (D8)**: ONES~EIGHTS 합계 ≥ **84** → +35 (8개 모두 기록 시점 판정). 보너스 점수는 잠정 35 (PRD §13 OQ-1 참조).
+**상단 보너스 (D8)**: ONES~EIGHTS 합계 ≥ **108** → +35 (8개 모두 기록 시점 판정). 임계는 D6 면 합 비례(63 × 36/21 = 108)로 설계. 보너스 점수 +35는 D6와 동일.
 
 ### d8.9 DB 마이그레이션 (재확인)
 
@@ -657,3 +660,4 @@ record YachtRankingEntry(
 |---|---|
 | 2026-04-29 | 최초 작성. CP1 확정 사항 반영 (타임아웃 없음, yacht_win 테이블, 방장+준비 방식) |
 | 2026-05-10 | d8 모드 분기 섹션 추가. `diceType` 필수 필드 도입, 모드별 매칭/랭킹 분리, `SEVENS`/`EIGHTS` 추가, 상단 보너스 임계 84/35. |
+| 2026-05-10 | D8 균형 재조정: 턴당 굴림 D6=3 / D8=4, 상단 보너스 임계 84→108. `rollsLeft` 의미 명시 갱신. |

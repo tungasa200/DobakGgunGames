@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import styles from './yacht.module.css';
 import type { Participant, PlayerScore, ScoreKey, KickVotePayload, DiceType } from '../types/yacht.types';
+import { MAX_ROLLS_BY_MODE } from '../types/yacht.types';
 import YachtDiceRow3D from './YachtDiceRow3D';
 import YachtScoreBoard from './YachtScoreBoard';
 import YachtChat from './YachtChat';
@@ -60,7 +61,9 @@ export default function YachtGameScreen({
   diceType = 'D6',
 }: YachtGameScreenProps) {
   const currentPlayer = participants.find((p) => p.userId === currentTurnUserId);
-  const rollsUsed = 3 - rollsLeft;
+  const maxRolls = MAX_ROLLS_BY_MODE[diceType];
+  const rollsUsed = maxRolls - rollsLeft;
+  const isFirstRoll = rollsLeft === maxRolls;
   const hasDice = dice.every((d) => d > 0);
 
   const [scoreBoardWidth, setScoreBoardWidth] = useState(SCORE_DEFAULT);
@@ -222,7 +225,7 @@ export default function YachtGameScreen({
                     : `주사위 굴리기 (${rollsLeft}회 남음)`
                 }
               >
-                {isRolling ? '굴리는 중...' : rollsLeft === 3 ? '굴리기!' : '다시 굴리기'}
+                {isRolling ? '굴리는 중...' : isFirstRoll ? '굴리기!' : '다시 굴리기'}
               </button>
             )}
 
@@ -234,7 +237,7 @@ export default function YachtGameScreen({
           </div>
 
           {/* 안내 메시지 */}
-          {!isSpectator && isMyTurn && hasDice && rollsLeft < 3 && (
+          {!isSpectator && isMyTurn && hasDice && !isFirstRoll && (
             <p style={{ fontSize: '0.83rem', color: 'var(--yacht-text-sub)', textAlign: 'center', margin: 0 }}>
               고정할 주사위를 클릭하고 다시 굴리거나, 오른쪽 점수판에서 족보를 선택하세요
             </p>

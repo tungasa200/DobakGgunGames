@@ -27,6 +27,15 @@ public interface YachtScoreRules {
     int rngFaces();
 
     /**
+     * 한 턴당 굴림 횟수. 기본 3회(D6 표준).
+     * D8는 면당 적중률이 1/8로 낮아 4회로 override하고,
+     * 상단 보너스 임계도 면 합 비례(108)로 상향해 균형을 맞춘다.
+     */
+    default int maxRollsPerTurn() {
+        return 3;
+    }
+
+    /**
      * scoreKey에 따른 점수 계산.
      * @param scoreKey 족보 키
      * @param dice 서버가 생성한 5개 주사위 배열

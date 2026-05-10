@@ -16,7 +16,7 @@ interface YachtScoreBoardProps {
   myUserId: number | null;
   currentDice: number[] | null;
   isMyTurn: boolean;
-  rollsUsed: number;       // 3 - rollsLeft (rollsLeft=3 이면 0, 즉 아직 미굴림)
+  rollsUsed: number;       // maxRolls - rollsLeft (D6=3 / D8=4). 0이면 아직 미굴림.
   onSelectScore: (scoreKey: ScoreKey) => void;
   diceType?: DiceType;
 }

@@ -323,7 +323,7 @@ public class YachtGameService {
             state.roundIndex = 0;
             state.dice = new int[]{0, 0, 0, 0, 0};
             state.keptIndices = new ArrayList<>();
-            state.rollsLeft = 3;
+            state.rollsLeft = YachtScoreRulesFactory.get(state.diceType).maxRollsPerTurn();
             state.hasRolled = false;
 
             snapshot = new ArrayList<>(state.participants);
@@ -341,7 +341,7 @@ public class YachtGameService {
                 .diceType(state.diceType.name())
                 .turnOrder(state.turnOrder)
                 .currentTurnUserId(firstTurnUserId)
-                .rollsLeft(3)
+                .rollsLeft(rules.maxRollsPerTurn())
                 .totalRounds(totalRounds)
                 .build());
 
@@ -375,11 +375,11 @@ public class YachtGameService {
 
             // keptIndices 유효성 검증
             if (keptIndices == null) keptIndices = new ArrayList<>();
-            validKept = validateKeptIndices(keptIndices, state.rollsLeft == 3);
+            validKept = validateKeptIndices(keptIndices, !state.hasRolled);
             if (validKept == null) return "INVALID_KEPT_INDICES";
 
             // 첫 굴림이면 keptIndices 무시 (전부 새로 굴림)
-            if (state.rollsLeft == 3) {
+            if (!state.hasRolled) {
                 validKept = new ArrayList<>();
             }
 
@@ -448,6 +448,7 @@ public class YachtGameService {
         boolean gameOver;
         List<YachtPlayer> participantsSnapshot;
 
+        int rollsForNextTurn;
         synchronized (state) {
             if (state.status != YachtRoomStatus.PLAYING) return "GAME_NOT_ACTIVE";
 
@@ -458,6 +459,7 @@ public class YachtGameService {
 
             YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
             if (!rules.validScoreKeys().contains(scoreKey)) return "INVALID_SCORE_KEY";
+            rollsForNextTurn = rules.maxRollsPerTurn();
 
             Map<String, Integer> userScores = state.scoreMap.get(userId);
             if (userScores == null) {
@@ -486,7 +488,7 @@ public class YachtGameService {
             // 턴 상태 리셋
             state.dice = new int[]{0, 0, 0, 0, 0};
             state.keptIndices = new ArrayList<>();
-            state.rollsLeft = 3;
+            state.rollsLeft = rollsForNextTurn;
             state.hasRolled = false;
 
             nextTurnUserId = currentTurnUserId(state);
@@ -523,7 +525,7 @@ public class YachtGameService {
             broadcast(roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
                     .previousTurnUserId(previousTurnUserId)
                     .currentTurnUserId(nextTurnUserId)
-                    .rollsLeft(3)
+                    .rollsLeft(rollsForNextTurn)
                     .roundNum(newRoundIndex + 1)
                     .build());
 
@@ -679,11 +681,12 @@ public class YachtGameService {
         synchronized (state) {
             if (!state.reconnectingPlayers.contains(userId)) return; // 이미 재접속함
 
+            int maxRolls = YachtScoreRulesFactory.get(state.diceType).maxRollsPerTurn();
             state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
             if (state.turnOrderIndex == 0) state.roundIndex++;
             state.dice = new int[]{0, 0, 0, 0, 0};
             state.keptIndices = new ArrayList<>();
-            state.rollsLeft = 3;
+            state.rollsLeft = maxRolls;
             state.hasRolled = false;
 
             skipReconnectingTurns(state);
@@ -693,7 +696,7 @@ public class YachtGameService {
                 broadcast(state.roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
                         .previousTurnUserId(userId)
                         .currentTurnUserId(nextTurn)
-                        .rollsLeft(3)
+                        .rollsLeft(maxRolls)
                         .roundNum(state.roundIndex + 1)
                         .build());
                 broadcastTurnState(state);
@@ -796,11 +799,12 @@ public class YachtGameService {
                 // 강퇴된 플레이어가 현재 턴이었으면 다음으로 넘김
                 Long current = currentTurnUserId(state);
                 if (current != null && current.equals(targetUserId)) {
+                    int maxRolls = YachtScoreRulesFactory.get(state.diceType).maxRollsPerTurn();
                     state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
                     if (state.turnOrderIndex == 0) state.roundIndex++;
                     state.dice = new int[]{0, 0, 0, 0, 0};
                     state.keptIndices = new ArrayList<>();
-                    state.rollsLeft = 3;
+                    state.rollsLeft = maxRolls;
                     state.hasRolled = false;
                     skipReconnectingTurns(state);
                     Long nextTurn = currentTurnUserId(state);
@@ -808,7 +812,7 @@ public class YachtGameService {
                         broadcast(roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
                                 .previousTurnUserId(targetUserId)
                                 .currentTurnUserId(nextTurn)
-                                .rollsLeft(3)
+                                .rollsLeft(maxRolls)
                                 .roundNum(state.roundIndex + 1)
                                 .build());
                         broadcastTurnState(state);
@@ -878,13 +882,14 @@ public class YachtGameService {
         // 현재 턴이었다면 다음 턴으로
         if (wasCurrentTurn) {
             synchronized (state) {
+                int maxRolls = YachtScoreRulesFactory.get(state.diceType).maxRollsPerTurn();
                 Long prevTurn = userId;
                 state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
                 if (state.turnOrderIndex == 0) state.roundIndex++;
 
                 state.dice = new int[]{0, 0, 0, 0, 0};
                 state.keptIndices = new ArrayList<>();
-                state.rollsLeft = 3;
+                state.rollsLeft = maxRolls;
                 state.hasRolled = false;
 
                 Long nextTurn = currentTurnUserId(state);
@@ -898,7 +903,7 @@ public class YachtGameService {
                 broadcast(state.roomId, "TURN_CHANGED", YachtTurnChangedPayload.builder()
                         .previousTurnUserId(prevTurn)
                         .currentTurnUserId(nextTurn)
-                        .rollsLeft(3)
+                        .rollsLeft(maxRolls)
                         .roundNum(state.roundIndex + 1)
                         .build());
 
@@ -1032,7 +1037,7 @@ public class YachtGameService {
             state.roundIndex = 0;
             state.dice = new int[]{0, 0, 0, 0, 0};
             state.keptIndices = new ArrayList<>();
-            state.rollsLeft = 3;
+            state.rollsLeft = YachtScoreRulesFactory.get(state.diceType).maxRollsPerTurn();
             state.hasRolled = false;
             state.readySet.clear();
 
