@@ -599,7 +599,6 @@
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
   width: 100%;
   /* 5*80 + 4*10 + 28*2 + 2(border) = 498 */
-  max-width: 498px;
   align-self: center;
   margin: 0 auto;
   box-sizing: border-box;

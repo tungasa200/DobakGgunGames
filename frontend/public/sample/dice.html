@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>White Plastic Dice — Three.js</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  canvas { display: block; }
+  #info { position: absolute; top: 16px; left: 16px; color: rgba(255,255,255,0.4); font-size: 12px; pointer-events: none; user-select: none; letter-spacing: 0.3px; }
+</style>
+</head>
+<body>
+<div id="info">드래그: 회전  ·  휠: 줌</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+function smoothstep(a, b, x) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+// ============ Scene ============
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a1a);
+
+// ============ Camera ============
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 100);
+let camDist = 5.0;
+function updateCamera() {
+  camera.position.set(
+    camDist * Math.cos(0.45) * Math.sin(0.6),
+    camDist * Math.sin(0.45),
+    camDist * Math.cos(0.45) * Math.cos(0.6)
+  );
+  camera.lookAt(0, 0, 0);
+}
+updateCamera();
+
+// ============ Renderer ============
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+// ============ Floor (plain, no wood) ============
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 30),
+  new THREE.MeshStandardMaterial({ color: 0x252525, roughness: 0.85, metalness: 0 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.6;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ============ Lights ============
+scene.add(new THREE.AmbientLight(0xffffff, 0.32));
+const keyLight = new THREE.DirectionalLight(0xfff2dc, 1.1);
+keyLight.position.set(4, 7, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -3;
+keyLight.shadow.camera.right = 3;
+keyLight.shadow.camera.top = 3;
+keyLight.shadow.camera.bottom = -3;
+keyLight.shadow.camera.near = 0.5;
+keyLight.shadow.camera.far = 20;
+keyLight.shadow.bias = -0.0004;
+keyLight.shadow.radius = 4;
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xc8d4f0, 0.4);
+fillLight.position.set(-5, 3, -2);
+scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+rimLight.position.set(-3, 5, -6);
+scene.add(rimLight);
+
+// ============ Custom Dice Geometry ============
+// 1) BoxGeometry를 고밀도로 분할
+// 2) 모서리 둥글림 (corner clamp + radial push)
+// 3) 핍 위치에서 정점을 안쪽으로 밀어넣어 진짜 함몰 형성
+// 4) 핍 영역의 vertex color를 검정으로
+function createDiceGeometry(size, cornerRadius, pipRadius, pipDepth, segments) {
+  const geom = new THREE.BoxGeometry(size, size, size, segments, segments, segments);
+  const half = size / 2;
+  const inner = half - cornerRadius;
+  const A = half * 0.55;
+  const B = half * 0.6;
+  const eps = 1e-4;
+
+  const pipLayouts = {
+    1: [[0, 0]],
+    2: [[-A,  A], [ A, -A]],
+    3: [[-A,  A], [ 0,  0], [ A, -A]],
+    4: [[-A,  A], [ A,  A], [-A, -A], [ A, -A]],
+    5: [[-A,  A], [ A,  A], [ 0,  0], [-A, -A], [ A, -A]],
+    6: [[-A,  B], [ A,  B], [-A,  0], [ A,  0], [-A, -B], [ A, -B]]
+  };
+
+  const positions = geom.attributes.position;
+  const colors = new Float32Array(positions.count * 3);
+  const baseColor = [0.97, 0.96, 0.93];
+  const pipColor  = [0.035, 0.035, 0.035];
+
+  for (let i = 0; i < positions.count; i++) {
+    let x = positions.getX(i);
+    let y = positions.getY(i);
+    let z = positions.getZ(i);
+
+    // ---- Step 1: 둥근 모서리 ----
+    const ix = Math.max(-inner, Math.min(inner, x));
+    const iy = Math.max(-inner, Math.min(inner, y));
+    const iz = Math.max(-inner, Math.min(inner, z));
+    const dx = x - ix, dy = y - iy, dz = z - iz;
+    const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    if (len > 0) {
+      x = ix + (dx / len) * cornerRadius;
+      y = iy + (dy / len) * cornerRadius;
+      z = iz + (dz / len) * cornerRadius;
+    }
+
+    // ---- Step 2: 어느 평평한 면에 속한 정점인지 판별 ----
+    let face = null;
+    if (Math.abs(x - half) < eps && Math.abs(y) < inner + eps && Math.abs(z) < inner + eps) {
+      face = { num: 3, u: -z, v: y, push: [-1, 0, 0] };
+    } else if (Math.abs(x + half) < eps && Math.abs(y) < inner + eps && Math.abs(z) < inner + eps) {
+      face = { num: 4, u: z, v: y, push: [1, 0, 0] };
+    } else if (Math.abs(y - half) < eps && Math.abs(x) < inner + eps && Math.abs(z) < inner + eps) {
+      face = { num: 1, u: x, v: -z, push: [0, -1, 0] };
+    } else if (Math.abs(y + half) < eps && Math.abs(x) < inner + eps && Math.abs(z) < inner + eps) {
+      face = { num: 6, u: x, v: z, push: [0, 1, 0] };
+    } else if (Math.abs(z - half) < eps && Math.abs(x) < inner + eps && Math.abs(y) < inner + eps) {
+      face = { num: 2, u: x, v: y, push: [0, 0, -1] };
+    } else if (Math.abs(z + half) < eps && Math.abs(x) < inner + eps && Math.abs(y) < inner + eps) {
+      face = { num: 5, u: -x, v: y, push: [0, 0, 1] };
+    }
+
+    // ---- Step 3: 핍 함몰 + 색상 ----
+    let depthAmount = 0;
+    let colorBlend = 0;
+
+    if (face) {
+      for (const [pu, pv] of pipLayouts[face.num]) {
+        const ddu = face.u - pu;
+        const ddv = face.v - pv;
+        const d = Math.sqrt(ddu * ddu + ddv * ddv);
+
+        // 함몰: half-ellipsoid (중심에서 가장 깊고, 가장자리에서 0)
+        if (d < pipRadius) {
+          const t = d / pipRadius;
+          const depth = pipDepth * Math.sqrt(Math.max(0, 1 - t * t));
+          if (depth > depthAmount) depthAmount = depth;
+        }
+
+        // 색상은 함몰 영역 + 부드러운 가장자리
+        const blend = 1.0 - smoothstep(pipRadius * 0.78, pipRadius * 1.0, d);
+        if (blend > colorBlend) colorBlend = blend;
+      }
+
+      if (depthAmount > 0) {
+        x += face.push[0] * depthAmount;
+        y += face.push[1] * depthAmount;
+        z += face.push[2] * depthAmount;
+      }
+    }
+
+    positions.setXYZ(i, x, y, z);
+
+    colors[i*3]   = baseColor[0] * (1 - colorBlend) + pipColor[0] * colorBlend;
+    colors[i*3+1] = baseColor[1] * (1 - colorBlend) + pipColor[1] * colorBlend;
+    colors[i*3+2] = baseColor[2] * (1 - colorBlend) + pipColor[2] * colorBlend;
+  }
+
+  geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  positions.needsUpdate = true;
+  return geom;
+}
+
+// 면 경계의 normal seam 제거를 위한 정점 병합
+function mergeCoincidentVertices(geom, tolerance) {
+  tolerance = tolerance || 1e-4;
+  const positions = geom.attributes.position;
+  const colors = geom.attributes.color;
+  const oldIndex = geom.index;
+  const f = 1 / tolerance;
+
+  const map = new Map();
+  const remap = new Int32Array(positions.count);
+  const newPos = [];
+  const newCol = colors ? [] : null;
+
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+    const z = positions.getZ(i);
+    const key = `${Math.round(x*f)}_${Math.round(y*f)}_${Math.round(z*f)}`;
+    if (map.has(key)) {
+      remap[i] = map.get(key);
+    } else {
+      const idx = newPos.length / 3;
+      map.set(key, idx);
+      remap[i] = idx;
+      newPos.push(x, y, z);
+      if (newCol) newCol.push(colors.getX(i), colors.getY(i), colors.getZ(i));
+    }
+  }
+
+  const newIdx = new Uint32Array(oldIndex.count);
+  for (let i = 0; i < oldIndex.count; i++) {
+    newIdx[i] = remap[oldIndex.getX(i)];
+  }
+
+  const newGeom = new THREE.BufferGeometry();
+  newGeom.setAttribute('position', new THREE.Float32BufferAttribute(newPos, 3));
+  if (newCol) newGeom.setAttribute('color', new THREE.Float32BufferAttribute(newCol, 3));
+  newGeom.setIndex(new THREE.BufferAttribute(newIdx, 1));
+  newGeom.computeVertexNormals();
+  return newGeom;
+}
+
+const SIZE = 1.2;
+const CORNER_R = 0.18;
+const PIP_R = 0.078;
+const PIP_DEPTH = 0.038;
+const SEGMENTS = 96; // 함몰부 곡면 디테일
+
+let diceGeom = createDiceGeometry(SIZE, CORNER_R, PIP_R, PIP_DEPTH, SEGMENTS);
+diceGeom = mergeCoincidentVertices(diceGeom, 5e-5);
+
+const diceMat = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  vertexColors: true,
+  roughness: 0.42,
+  metalness: 0.0,
+  clearcoat: 0.45,
+  clearcoatRoughness: 0.32,
+  reflectivity: 0.45,
+});
+const dice = new THREE.Mesh(diceGeom, diceMat);
+dice.castShadow = true;
+dice.receiveShadow = true;
+scene.add(dice);
+dice.rotation.set(-0.32, 0.55, 0.06);
+
+// ============ Interaction ============
+let isDragging = false;
+let prev = { x: 0, y: 0 };
+let autoRotate = true;
+function onDown(e) {
+  isDragging = true; autoRotate = false;
+  const p = e.touches ? e.touches[0] : e;
+  prev.x = p.clientX; prev.y = p.clientY;
+}
+function onMove(e) {
+  if (!isDragging) return;
+  const p = e.touches ? e.touches[0] : e;
+  const dx = p.clientX - prev.x, dy = p.clientY - prev.y;
+  dice.rotation.y += dx * 0.008;
+  dice.rotation.x += dy * 0.008;
+  prev.x = p.clientX; prev.y = p.clientY;
+}
+function onUp() { isDragging = false; }
+renderer.domElement.addEventListener('mousedown', onDown);
+addEventListener('mousemove', onMove);
+addEventListener('mouseup', onUp);
+renderer.domElement.addEventListener('touchstart', onDown, { passive: true });
+addEventListener('touchmove', onMove, { passive: true });
+addEventListener('touchend', onUp);
+renderer.domElement.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  camDist = Math.max(2.8, Math.min(9, camDist + e.deltaY * 0.005));
+  updateCamera();
+}, { passive: false });
+
+// ============ Animate ============
+function animate() {
+  requestAnimationFrame(animate);
+  if (autoRotate) dice.rotation.y += 0.005;
+  renderer.render(scene, camera);
+}
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
