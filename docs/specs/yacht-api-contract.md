@@ -428,8 +428,232 @@ StompChannelInterceptor:
 
 ---
 
+## d8 모드 분기
+
+> 추가일: 2026-05-10. 기반 PRD: `docs/specs/yacht-d8-mode-prd.md`.
+> 본 섹션은 d8 모드 도입에 따라 **변경되는 엔드포인트/DTO 필드만** 명시한다. 명시되지 않은 항목은 본문 §1~§7과 동일.
+
+### d8.1 공통 — `diceType` 도입
+
+- 모든 야추 방은 `"D6"` 또는 `"D8"` 중 하나의 `diceType`에 귀속된다.
+- 매칭은 같은 `diceType`끼리만 이루어진다 (절대 섞이지 않음).
+- 기존 d6 데이터는 `dice_type='D6'`으로 백필.
+
+### d8.2 REST: `POST /api/yacht/match` 변경
+
+**요청 Body 변경 (필수 필드 추가)**:
+```json
+{ "diceType": "D6" }
+```
+또는
+```json
+{ "diceType": "D8" }
+```
+
+- `diceType`: **필수**. `"D6"` | `"D8"`. 누락/잘못된 값 → 400 `INVALID_DICE_TYPE`.
+
+**응답 변경 (모든 200/201에 `diceType` 추가)**:
+```json
+{
+  "roomId": "yachtab12",
+  "status": "WAITING",
+  "diceType": "D8",
+  "playerCount": 2,
+  "maxPlayers": 6,
+  "created": false,
+  "joinedAsSpectator": false
+}
+```
+
+**신규 에러**:
+| HTTP | error 코드 | 상황 |
+|---|---|---|
+| 400 | `INVALID_DICE_TYPE` | `diceType` 누락 또는 `"D6"`/`"D8"` 외 |
+
+### d8.3 REST: `GET /api/yacht/room/{roomId}` 변경
+
+**응답 변경**:
+- 최상위 필드에 `diceType` 추가.
+- `scoreboard[].scores`의 키 셋이 `diceType`에 따라 다름:
+  - D6: 12개 (`ONES`~`SIXES`, `CHOICE`, `FOUR_OF_A_KIND`, `FULL_HOUSE`, `LITTLE_STRAIGHT`, `BIG_STRAIGHT`, `YACHT`)
+  - D8: 14개 (위 12개 + `SEVENS`, `EIGHTS`)
+
+```json
+{
+  "roomId": "yachtab12",
+  "status": "PLAYING",
+  "diceType": "D8",
+  "hostUserId": 101,
+  "maxPlayers": 6,
+  "currentTurnUserId": 101,
+  "turnOrder": [101, 202],
+  "roundIndex": 2,
+  "participants": [
+    { "userId": 101, "nickname": "유저A", "ready": true, "isHost": true }
+  ],
+  "scoreboard": [
+    {
+      "userId": 101,
+      "scores": {
+        "ONES": 3, "TWOS": null, "THREES": null, "FOURS": null,
+        "FIVES": null, "SIXES": null, "SEVENS": null, "EIGHTS": null,
+        "CHOICE": null, "FOUR_OF_A_KIND": null, "FULL_HOUSE": null,
+        "LITTLE_STRAIGHT": null, "BIG_STRAIGHT": null, "YACHT": null
+      },
+      "upperTotal": 3,
+      "bonusEarned": false,
+      "grandTotal": 3
+    }
+  ]
+}
+```
+
+### d8.4 REST: `GET /api/yacht/rankings` (모드별 분리 응답)
+
+**응답 변경 — 모드별 분리 키**:
+```json
+{
+  "D6": [
+    { "rank": 1, "userId": 101, "nickname": "유저A", "winCount": 12, "totalScore": 4321, "playedCount": 30 }
+  ],
+  "D8": [
+    { "rank": 1, "userId": 303, "nickname": "유저C", "winCount": 5, "totalScore": 2450, "playedCount": 11 }
+  ]
+}
+```
+
+- 정렬/필터 규칙(승수 우선 / 누적점수 / 평균 등)은 기존 야추 랭킹 정책과 동일.
+- 본 변경의 핵심은 **모드별 응답 분리**.
+
+### d8.5 STOMP: 발행 메시지
+
+- `/app/yacht/room/{roomId}/score`의 `scoreKey` 허용 값:
+  - **D6 방**: 기존 12종.
+  - **D8 방**: 기존 12종 + `SEVENS`, `EIGHTS` = 총 14종.
+  - D6 방에서 `SEVENS`/`EIGHTS` 전송 → `INVALID_SCORE_KEY` 에러.
+- 다른 발행 메시지(`/join`, `/ready`, `/start`, `/roll`, `/leave`)의 Body는 변경 없음.
+
+### d8.6 STOMP: 서버 → 클라 페이로드
+
+#### ROOM_STATE — `diceType` 추가
+```json
+{
+  "type": "ROOM_STATE",
+  "timestamp": "2026-05-10T12:00:00.000Z",
+  "payload": {
+    "roomId": "yachtab12",
+    "status": "WAITING",
+    "diceType": "D8",
+    "hostUserId": 101,
+    "maxPlayers": 6,
+    "participants": [...]
+  }
+}
+```
+
+#### GAME_STARTED — `diceType` 추가, `totalRounds` 계산식 변경
+```json
+{
+  "type": "GAME_STARTED",
+  "timestamp": "2026-05-10T12:01:00.000Z",
+  "payload": {
+    "roomId": "yachtab12",
+    "diceType": "D8",
+    "turnOrder": [202, 101],
+    "currentTurnUserId": 202,
+    "totalRounds": 28
+  }
+}
+```
+- `totalRounds` = 참가자수 × **14 (D8)** / × 12 (D6).
+
+#### ROLL_RESULT — 형식 변경 없음
+- `dice` 값 범위만 모드별 (D6: 1~6, D8: 1~8). 0은 미굴림.
+
+#### SCORE_RECORDED — 형식 변경 없음
+- `scoreKey`로 `SEVENS`/`EIGHTS`가 들어올 수 있음 (D8 한정).
+- `bonusEarned` 판정 임계는 서버가 모드별로 자동 분기 (D6=63 / D8=84). 보너스 점수는 양 모드 공통 +35 (잠정).
+
+#### TURN_STATE / TURN_CHANGED / GAME_OVER / PLAYER_LEFT / ROOM_CLOSED
+- 페이로드 형식 변경 없음.
+
+### d8.7 DTO 변경 요약
+
+```java
+// 변경
+record YachtMatchRequest(String diceType)  // "D6" | "D8" 필수
+
+record YachtMatchResponse(
+    String roomId,
+    String status,
+    String diceType,         // 신규
+    int playerCount,
+    int maxPlayers,
+    boolean created,
+    boolean joinedAsSpectator
+)
+
+record YachtRoomResponse(
+    String roomId,
+    String status,
+    String diceType,         // 신규
+    Long hostUserId,
+    int maxPlayers,
+    Long currentTurnUserId,
+    List<Long> turnOrder,
+    int roundIndex,
+    List<ParticipantDto> participants,
+    List<ScoreboardDto> scoreboard
+)
+
+// 페이로드 신규 필드
+record YachtRoomStatePayload(
+    String roomId, String status, String diceType,  // 신규
+    Long hostUserId, int maxPlayers, List<ParticipantDto> participants
+)
+
+record YachtGameStartedPayload(
+    String roomId, String diceType,                  // 신규
+    List<Long> turnOrder, Long currentTurnUserId, int totalRounds
+)
+
+// 랭킹 응답
+record YachtRankingsResponse(
+    List<YachtRankingEntry> D6,
+    List<YachtRankingEntry> D8
+)
+
+record YachtRankingEntry(
+    int rank, Long userId, String nickname,
+    int winCount, int totalScore, int playedCount
+)
+```
+
+### d8.8 점수 계산 (서버 분기 — D8)
+
+| scoreKey | D8 계산 |
+|---|---|
+| ONES~EIGHTS | 해당 face 총합 (1~8 모두 지원) |
+| CHOICE | 5개 총합 (최대 40) |
+| FOUR_OF_A_KIND | 같은 눈 4개 이상 → 그 눈×4 (5개 동일 인정 — ×4) |
+| FULL_HOUSE | 정확히 [2,3] 카운트 → 5개 총합. [5]는 0 |
+| LITTLE_STRAIGHT | 어느 4개 연속 — {1,2,3,4} {2,3,4,5} {3,4,5,6} {4,5,6,7} {5,6,7,8} 중 하나 포함 → 15 |
+| BIG_STRAIGHT | 어느 5개 연속 — {1,2,3,4,5} {2,3,4,5,6} {3,4,5,6,7} {4,5,6,7,8} 중 하나와 일치 → 30 |
+| YACHT | 5개 동일 → 50 |
+
+**상단 보너스 (D8)**: ONES~EIGHTS 합계 ≥ **84** → +35 (8개 모두 기록 시점 판정). 보너스 점수는 잠정 35 (PRD §13 OQ-1 참조).
+
+### d8.9 DB 마이그레이션 (재확인)
+
+- `yacht_room.dice_type VARCHAR(4) NOT NULL DEFAULT 'D6'` — Railway 적용 **완료**.
+- `yacht_record.dice_type VARCHAR(4) NOT NULL DEFAULT 'D6'` — **미적용**, developer-backend가 마이그레이션 SQL 준비 후 사용자에게 Railway 실행 요청.
+- 마이그레이션 SQL 본문은 `docs/specs/yacht-d8-mode-prd.md §8.2` 참조.
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 내용 |
 |---|---|
 | 2026-04-29 | 최초 작성. CP1 확정 사항 반영 (타임아웃 없음, yacht_win 테이블, 방장+준비 방식) |
+| 2026-05-10 | d8 모드 분기 섹션 추가. `diceType` 필수 필드 도입, 모드별 매칭/랭킹 분리, `SEVENS`/`EIGHTS` 추가, 상단 보너스 임계 84/35. |

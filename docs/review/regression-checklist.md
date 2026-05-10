@@ -62,6 +62,8 @@
 | HMAC 검증 정상 유지 | Critical | 위조 점수 전송 시 400/403 응답 확인 |
 | `battle_record` 신규 테이블이 기존 `rankings` 테이블과 격리 | Critical | 솔로 랭킹 API (`/api/rankings/**`) 정상 응답, battle_record 데이터 혼입 없음 |
 | `GET /api/blockfall-battle/rankings` 새 엔드포인트 인증 없이 접근 가능 | High | 비인증으로 200 응답 확인 |
+| `GET /api/yacht/rankings` D6/D8 분리 응답 구조 유지 | Critical | 응답에 "D6"/"D8" 두 키 존재, 기존 D6 데이터 포함 확인 |
+| yacht_record D6/D8 모드 분리 집계 (D8 게임이 D6 행에 영향 없음) | Critical | 읽기 전용 DB 쿼리로 확인 |
 
 ### 1-5. 인증 시스템 변경 (JWT, OAuth2, Spring Security)
 
@@ -187,6 +189,29 @@
 | yachtSubscribedRoomIds 세션 키 분리 (기존 chat/rps 세션 키 간섭 없음) | Critical |
 | 기존 admin-rsp 라우트/API 영향 없음 확인 | High |
 
+### 2-12. Yacht D8 모드 (신규 — 2026-05-10 추가)
+
+| 확인 항목 | 우선순위 |
+|---|---|
+| `/yacht/select` 모드 선택 화면 정상 로드, D6/D8 카드 양쪽 표시 | Critical |
+| D6 카드 클릭 → D6 매칭 + GAME_STARTED diceType=D6 수신 | Critical |
+| D8 카드 클릭 → D8 매칭 + GAME_STARTED diceType=D8 수신 | Critical |
+| D6/D8 방이 절대 섞이지 않음 (D6 WAITING 방 있을 때 D8 매칭 → 신규 D8 방 생성) | Critical |
+| D8 점수판 14행 (ONES~EIGHTS + 하단 6개) 렌더 | Critical |
+| D8 상단 합계 "/84" 표기 | Critical |
+| D8 LITTLE_STRAIGHT {4567}{5678} 셋 인정 | Critical |
+| D8 BIG_STRAIGHT {34567}{45678} 셋 인정 | Critical |
+| D8 상단 보너스 임계 84점 (8개 모두 기록 시 판정) | Critical |
+| D6 방에서 SEVENS/EIGHTS scoreKey → INVALID_SCORE_KEY | Critical |
+| GET /api/yacht/rankings → { D6: [...], D8: [...] } 분리 응답 | Critical |
+| D8 게임 종료 후 yacht_record D8 행만 업데이트, D6 행 무변화 | Critical |
+| 기존 D6 게임 LITTLE_STRAIGHT/BIG_STRAIGHT/보너스 임계 63 회귀 없음 | Critical |
+| ROOM_STATE / GAME_STARTED 페이로드에 diceType 포함 | High |
+| D8 3D 정팔면체 주사위 렌더, 면 1~8 라벨 확인 | High |
+| /yacht 직접 접근 (mode 누락) → /yacht/select 리다이렉트 | High |
+| POST /api/yacht/match diceType 누락/D10 → 400 INVALID_DICE_TYPE | High |
+| 한 사용자가 D6 방에 있을 때 D8 매칭 시도 → 409 ALREADY_IN_ROOM | High |
+
 ### 2-10. 채팅 (chat-testroom)
 
 | 확인 항목 | 우선순위 |
@@ -223,3 +248,4 @@
 | 2026-04-24 | 최초 작성. Online RPS 추가 및 어드민 솔로 RSP 제거 맥락에서 신규 생성. §1~3 전체 초안 작성. | qa-tester |
 | 2026-04-27 | Blockfall Battle 추가. §1-1에 `/ws-battle` 격리 항목 추가. §1-3에 배틀 끊김 처리 항목 추가. §1-4에 battle_record 분리 항목 추가. §2-9 배틀 smoke test 항목 신규 추가. §3 게임 목록에 배틀 행 추가. | qa-tester |
 | 2026-04-29 | Yacht 추가. §2-11 Yacht smoke test 항목 신규 추가 (14개). §3 게임 목록에 Yacht 행 추가. | qa-tester |
+| 2026-05-10 | Yacht D8 모드 추가. §2-12 Yacht D8 smoke test 항목 신규 추가 (18개). §1-4에 yacht_record D6/D8 분리 항목 추가. | qa-tester |
