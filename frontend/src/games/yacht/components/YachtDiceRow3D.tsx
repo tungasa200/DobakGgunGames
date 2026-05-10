@@ -103,7 +103,7 @@ function easeOutCubic(t: number) {
 // ====================================================================
 // D6 큐브 지오메트리 생성 (기존 코드 그대로 유지)
 // ====================================================================
-function createCubeGeometry(
+export function createCubeGeometry(
   size: number,
   cornerRadius: number,
   pipRadius: number,

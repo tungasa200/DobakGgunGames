@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { postYachtMatch, getYachtRankings, getYachtRoomStatus } from '../../api/yacht';
-import type { DiceType, YachtRankingEntry } from './types/yacht.types';
+import { postYachtMatch, getYachtRoomStatus } from '../../api/yacht';
+import type { DiceType } from './types/yacht.types';
 import YachtModeCard from './components/YachtModeCard';
 import styles from './components/yacht.module.css';
 
@@ -10,23 +10,12 @@ export default function YachtSelectPage() {
   const navigate = useNavigate();
   const { accessToken } = useAuth();
 
-  const [rankingsD6, setRankingsD6] = useState<YachtRankingEntry[]>([]);
-  const [rankingsD8, setRankingsD8] = useState<YachtRankingEntry[]>([]);
   const [activeD6, setActiveD6] = useState<number | null>(null);
   const [activeD8, setActiveD8] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     document.title = 'Yacht — 모드 선택';
-
-    // 랭킹 로드
-    getYachtRankings().then((res) => {
-      if (res) {
-        setRankingsD6(res.D6 ?? []);
-        setRankingsD8(res.D8 ?? []);
-      }
-    });
 
     // 방 상태 로드
     getYachtRoomStatus().then((res) => {
@@ -35,13 +24,6 @@ export default function YachtSelectPage() {
         setActiveD8(res.D8?.activeRooms ?? 0);
       }
     });
-
-    // 반응형
-    const mq = window.matchMedia('(max-width: 480px)');
-    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
-    handleChange(mq);
-    mq.addEventListener('change', handleChange);
-    return () => mq.removeEventListener('change', handleChange);
   }, []);
 
   const showToast = (msg: string) => {
@@ -89,16 +71,12 @@ export default function YachtSelectPage() {
           <YachtModeCard
             diceType="D6"
             onSelect={handleSelectMode}
-            rankings={rankingsD6}
             activeRooms={activeD6}
-            isMobile={isMobile}
           />
           <YachtModeCard
             diceType="D8"
             onSelect={handleSelectMode}
-            rankings={rankingsD8}
             activeRooms={activeD8}
-            isMobile={isMobile}
           />
         </div>
       </main>
