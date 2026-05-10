@@ -42,7 +42,8 @@ export default function YachtPage() {
   const accentColor = ACCENT_BY_DICE_TYPE[diceType];
 
   // YachtSelectPage에서 이미 매칭을 완료하고 roomId + diceType을 state로 넘겨줌
-  // → useYachtGame은 initialDiceType만 받고, startMatch를 자동 호출
+  const initialRoomId = (location.state as { roomId?: string } | null)?.roomId ?? null;
+
   const {
     phase,
     diceType: gameDiceType,
@@ -66,6 +67,7 @@ export default function YachtPage() {
     reconnectingPlayers,
     kickVoteState,
     startMatch,
+    enterExistingRoom,
     toggleKeep,
     rollDice,
     recordScore,
@@ -81,16 +83,20 @@ export default function YachtPage() {
 
   const startedRef = useRef(false);
 
-  // 페이지 마운트 시 매칭 시작 (1회만)
-  // YachtSelectPage에서 이미 postYachtMatch를 호출했으므로,
-  // 여기서는 useYachtGame이 ALREADY_IN_ROOM으로 기존 방을 찾아 들어가게 됨
+  // 페이지 마운트 시 1회: SelectPage에서 넘겨준 roomId가 있으면 매칭을 건너뛰고
+  // 바로 그 방으로 입장. F5 새로고침이나 직접 URL 진입처럼 roomId가 없을 때만
+  // startMatch로 매칭 호출 (이때 ALREADY_IN_ROOM이면 기존 방 재진입).
   useEffect(() => {
     if (!resolvedDiceType) return; // 리다이렉트 대기 중
     if (!startedRef.current) {
       startedRef.current = true;
-      void startMatch();
+      if (initialRoomId) {
+        enterExistingRoom(initialRoomId);
+      } else {
+        void startMatch();
+      }
     }
-    // startMatch는 useCallback — 의도적으로 빈 배열
+    // startMatch/enterExistingRoom는 useCallback — 의도적으로 빈 배열
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedDiceType]);
 

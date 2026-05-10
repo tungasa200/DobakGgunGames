@@ -61,6 +61,7 @@ export interface UseYachtGameReturn {
   chatMessages: ChatMessage[];
   sendChat: (message: string) => void;
   startMatch: () => Promise<void>;
+  enterExistingRoom: (roomId: string) => void;
   toggleKeep: (index: number) => void;
   rollDice: () => void;
   recordScore: (scoreKey: ScoreKey) => void;
@@ -357,6 +358,17 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
     clientRef.current = handle;
   }, [goHome, showToast, hydrateFromSnapshot]);
 
+  // 매칭을 건너뛰고 이미 알고 있는 roomId로 바로 입장
+  // (YachtSelectPage에서 매칭 후 navigate state로 roomId를 넘겨준 케이스)
+  const enterExistingRoom = useCallback((id: string) => {
+    setErrorMessage(null);
+    hydratedRef.current = false;
+    setRoomId(id);
+    roomIdRef.current = id;
+    setPhase('connecting');
+    connectWs(id, accessToken);
+  }, [accessToken, connectWs]);
+
   // 매칭 시작
   const startMatch = useCallback(async () => {
     setPhase('matching');
@@ -505,6 +517,7 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
     chatMessages,
     sendChat,
     startMatch,
+    enterExistingRoom,
     toggleKeep,
     rollDice,
     recordScore,
