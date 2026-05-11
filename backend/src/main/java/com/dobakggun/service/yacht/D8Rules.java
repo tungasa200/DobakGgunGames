@@ -8,7 +8,7 @@ import java.util.*;
  *
  * 균형 설계:
  * - 면당 적중률이 1/8로 떨어져 하단 족보(YACHT/FH/4K/스트레이트) 단판 확률이 D6의 절반 이하 → 턴당 굴림 4회로 보정
- * - 상단 임계는 면 합 비례(63 × 36/21 = 108) — 평균 면값 카테고리당 3개 = D6와 동일한 "각 면 3개"
+ * - 상단 임계 103 — z-score 기준 D6 동등 난이도. 비례값 108은 분산이 평균보다 느리게 증가하는 특성으로 실제 달성 확률이 D6 대비 2배 어려워 하향.
  *
  * 스트레이트 확장:
  * - LITTLE_STRAIGHT: {4,5,6,7}, {5,6,7,8} 추가
@@ -55,7 +55,7 @@ public class D8Rules implements YachtScoreRules {
 
     @Override
     public int upperBonusThreshold() {
-        return 108;
+        return 103;
     }
 
     @Override

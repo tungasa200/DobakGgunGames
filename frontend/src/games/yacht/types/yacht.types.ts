@@ -47,7 +47,7 @@ export const LOWER_SCORE_KEYS: ScoreKey[] = [
 
 export const UPPER_BONUS_THRESHOLD_BY_MODE: Record<DiceType, number> = {
   D6: 63,
-  D8: 108, // 면 합 비례 (63 × 36/21) — D8 4롤 보정과 함께 균형 유지
+  D8: 103, // 희생 전략 포함 D6 동등 난이도 (z≈1.80) 기준 하향 조정
 };
 
 /**
