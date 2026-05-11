@@ -137,7 +137,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   const mouseButtonsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    if (state.status === 'won' && !sessionFailed) setModalOpen(true);
+    if (state.status === 'won' && !sessionFailed && level !== 'custom') setModalOpen(true);
   }, [state.status, sessionFailed]);
 
   // 어드민 강제 클리어
@@ -281,13 +281,14 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   }
 
   async function handleSubmitRanking() {
+    if (level === 'custom') return;
     const name = playerName.trim();
     if (!name) return;
     if (containsProfanity(name)) { setNameBanned(true); return; }
     setNameBanned(false);
     setSubmitState('loading');
     try {
-      const rankLv = level === 'custom' ? 'beginner' : level;
+      const rankLv = level;
       const roundedTime = parseFloat(state.elapsed.toFixed(2));
       await rankingsApi.submit('minesweeper', { level: rankLv, name, time: roundedTime, sessionId: sessionIdRef.current });
       setModalOpen(false);
