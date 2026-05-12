@@ -47,7 +47,7 @@ export const LOWER_SCORE_KEYS: ScoreKey[] = [
 
 export const UPPER_BONUS_THRESHOLD_BY_MODE: Record<DiceType, number> = {
   D6: 63,
-  D8: 103, // 희생 전략 포함 D6 동등 난이도 (z≈1.80) 기준 하향 조정
+  D8: 112, // windfall(7·8 넷 이상) 발생 시에도 나머지 카테고리 평균 이상 요구
 };
 
 /**
