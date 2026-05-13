@@ -72,6 +72,33 @@ public class YachtController {
     }
 
     /**
+     * POST /api/yacht/match-bot — 봇 전용 1:1 방 생성.
+     * 로그인 필수. 자동 매칭 풀과 완전히 격리된 봇 전용 방을 즉시 생성.
+     */
+    @PostMapping("/match-bot")
+    public ResponseEntity<?> matchBot(@AuthenticationPrincipal Long userId,
+                                      @RequestBody(required = false) YachtMatchRequest request) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "UNAUTHORIZED"));
+        }
+
+        YachtDiceType diceType = resolveDiceType(request == null ? null : request.getDiceType());
+        if (diceType == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "INVALID_DICE_TYPE"));
+        }
+
+        try {
+            YachtMatchResponse response = yachtMatchService.matchBot(userId, diceType);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (YachtMatchService.AlreadyInRoomException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        }
+    }
+
+    /**
      * GET /api/yacht/rankings — D6 / D8 분리 응답, 인증 불필요.
      */
     @GetMapping("/rankings")

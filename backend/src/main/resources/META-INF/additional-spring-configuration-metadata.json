@@ -1,0 +1,10 @@
+{
+  "properties": [
+    {
+      "name": "yacht.bot.user-id",
+      "type": "java.lang.Long",
+      "description": "야추 봇 유저 DB ID. 기본값 9999 (yacht-bot-seed.sql과 일치).",
+      "defaultValue": 9999
+    }
+  ]
+}

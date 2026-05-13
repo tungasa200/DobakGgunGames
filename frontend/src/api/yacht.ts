@@ -91,6 +91,42 @@ export async function postYachtMatch(
   };
 }
 
+/**
+ * POST /api/yacht/match-bot — 봇 전용 1:1 방 즉시 생성.
+ * 자동 매칭 풀과 격리. 로그인 필수.
+ */
+export async function postYachtBotMatch(
+  token: string | null,
+  diceType: DiceType,
+): Promise<YachtMatchOutcome> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_ORIGIN}/api/yacht/match-bot`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ diceType }),
+  });
+
+  if (res.ok) {
+    const data = (await res.json()) as YachtMatchResponse;
+    return { ok: true, data };
+  }
+
+  const body = await res.json().catch(() => ({})) as Partial<{ error: string; roomId: string }>;
+
+  if (res.status === 409 && body.error === 'ALREADY_IN_ROOM' && body.roomId) {
+    return { ok: false, alreadyInRoom: true, roomId: body.roomId };
+  }
+
+  return {
+    ok: false,
+    alreadyInRoom: false,
+    status: res.status,
+    error: body.error ?? '봇 매칭 요청에 실패했습니다',
+  };
+}
+
 /** GET /api/yacht/rankings — 모드별 분리 응답 */
 export async function getYachtRankings(): Promise<YachtRankingResponse | null> {
   try {

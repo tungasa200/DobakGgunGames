@@ -471,6 +471,18 @@ export default function HomePage() {
                     </span>
                   </div>
                 )}
+                <hr className={styles.labDivider} />
+                <Link
+                  to="/yacht-bot"
+                  className={`${styles.btn} ${styles.btnNormal}`}
+                  style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
+                >
+                  <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🤖</span>
+                  <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>야추 AI봇 대전</span>
+                  <span style={{ display: 'inline-block', background: '#6366f1', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
+                    BETA
+                  </span>
+                </Link>
               </div>
             </div>
           </div>

@@ -133,6 +133,10 @@ public class YachtGameService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Lazy
+    @Autowired
+    private YachtBotService yachtBotService;
+
     public YachtGameService(
             YachtRoomRepository yachtRoomRepository,
             YachtParticipantRepository yachtParticipantRepository,
@@ -347,6 +351,11 @@ public class YachtGameService {
 
         broadcastTurnState(state);
 
+        // 첫 턴이 봇이면 봇 액션 트리거
+        if (yachtBotService != null && yachtBotService.isBot(firstTurnUserId)) {
+            yachtBotService.onBotTurnStarted(roomId);
+        }
+
         log.info("startGame: roomId={} 게임 시작. turnOrder={}", roomId, state.turnOrder);
         return null;
     }
@@ -530,6 +539,11 @@ public class YachtGameService {
                     .build());
 
             broadcastTurnState(state);
+
+            // 다음 턴이 봇이면 봇 액션 트리거
+            if (yachtBotService != null && yachtBotService.isBot(nextTurnUserId)) {
+                yachtBotService.onBotTurnStarted(roomId);
+            }
         }
 
         log.info("recordScore: roomId={} userId={} scoreKey={} score={}", roomId, userId, scoreKey, scoreValue);
@@ -700,6 +714,9 @@ public class YachtGameService {
                         .roundNum(state.roundIndex + 1)
                         .build());
                 broadcastTurnState(state);
+                if (yachtBotService != null && yachtBotService.isBot(nextTurn)) {
+                    yachtBotService.onBotTurnStarted(state.roomId);
+                }
             } else if (isGameOver(state)) {
                 finishGame(state.roomId, state, new ArrayList<>(state.participants));
             }

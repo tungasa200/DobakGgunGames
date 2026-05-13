@@ -50,6 +50,7 @@ public class YachtMatchService {
     private final YachtParticipantRepository yachtParticipantRepository;
     private final UserRepository             userRepository;
     private final YachtGameService           yachtGameService;
+    private final YachtBotService            yachtBotService;
     private final StringRedisTemplate        redisTemplate;
 
     /**
@@ -167,6 +168,59 @@ public class YachtMatchService {
                 .diceType(diceType.name())
                 .playerCount(1)
                 .maxPlayers(6)
+                .created(true)
+                .joinedAsSpectator(false)
+                .build();
+    }
+
+    // ─── 봇 매칭 ─────────────────────────────────────────────────────────────
+
+    /**
+     * 봇 전용 1:1 방 생성.
+     * - 인간 플레이어(방장) + 봇 유저(ready=true) 2명짜리 방을 즉시 생성.
+     * - 자동 매칭 풀과 완전히 격리 (maxPlayers=2, 봇 전용 방).
+     * - Redis 락 불필요 (경쟁 없음).
+     */
+    @Transactional
+    public YachtMatchResponse matchBot(Long userId, YachtDiceType diceType) {
+        // 기존 활성 방 중복 참여 방지
+        Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
+        if (inMemory.isPresent()) throw new AlreadyInRoomException(inMemory.get());
+
+        List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
+                userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
+        if (!active.isEmpty()) throw new AlreadyInRoomException(active.get(0).getRoomId());
+
+        long botId = yachtBotService.getBotUserId();
+
+        // 봇 전용 2인 방 생성
+        String newRoomId = generateRoomId();
+        YachtRoom room = YachtRoom.builder()
+                .roomId(newRoomId)
+                .status(YachtRoomStatus.WAITING)
+                .hostUserId(userId)
+                .maxPlayers(2)
+                .currentPlayers(2)
+                .diceType(diceType)
+                .build();
+        yachtRoomRepository.save(room);
+
+        // 인간 참가자 (방장, ready 불필요)
+        yachtParticipantRepository.save(YachtParticipant.builder()
+                .room(room).userId(userId).joinOrder(0).ready(false).build());
+
+        // 봇 참가자 (ready=true — 인메모리 로딩 시 readySet에 자동 포함)
+        yachtParticipantRepository.save(YachtParticipant.builder()
+                .room(room).userId(botId).joinOrder(1).ready(true).build());
+
+        log.info("matchBot: userId={} 봇 방 {} 생성 (diceType={})", userId, newRoomId, diceType);
+
+        return YachtMatchResponse.builder()
+                .roomId(newRoomId)
+                .status(YachtRoomStatus.WAITING.name())
+                .diceType(diceType.name())
+                .playerCount(2)
+                .maxPlayers(2)
                 .created(true)
                 .joinedAsSpectator(false)
                 .build();

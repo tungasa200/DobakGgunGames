@@ -39,6 +39,7 @@ import OnlineRpsPage from './pages/OnlineRpsPage';
 import BlockfallBattlePage from './pages/BlockfallBattlePage';
 import YachtPage from './games/yacht/YachtPage';
 import YachtSelectPage from './games/yacht/YachtSelectPage';
+import YachtBotPage from './games/yacht-bot/YachtBotPage';
 import BattleUITestPage from './pages/BattleUITestPage';
 import MafiaDevPage from './pages/MafiaDevPage';
 import RoulettePage from './pages/RoulettePage';
@@ -110,6 +111,10 @@ export default function App() {
         <Route
           path="/yacht"
           element={<AuthRoute><YachtPage /></AuthRoute>}
+        />
+        <Route
+          path="/yacht-bot"
+          element={<AuthRoute><YachtBotPage /></AuthRoute>}
         />
 
         {/* 블록폴 배틀 (정식, 로그인/게스트 모두 허용) */}
