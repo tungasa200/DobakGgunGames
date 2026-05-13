@@ -89,6 +89,12 @@ export function useYachtBotGame(initialDiceType: DiceType = 'D6'): UseYachtBotGa
     diceTypeRef.current = diceType;
   }, [diceType]);
 
+  // 모드 선택 후 initialDiceType이 바뀌면 즉시 ref/state 동기화
+  useEffect(() => {
+    setDiceType(initialDiceType);
+    diceTypeRef.current = initialDiceType;
+  }, [initialDiceType]);
+
   const makeRandomDice = (): number[] => {
     const max = diceTypeRef.current === 'D8' ? 8 : 6;
     return Array.from({ length: 5 }, () => Math.floor(Math.random() * max) + 1);

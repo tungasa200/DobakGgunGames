@@ -6,6 +6,7 @@ import YachtBotWaitingRoom from './components/YachtBotWaitingRoom';
 import YachtGameScreen from '../yacht/components/YachtGameScreen';
 import YachtGameOverModal from '../yacht/components/YachtGameOverModal';
 import YachtResultScreen from '../yacht/components/YachtResultScreen';
+import YachtModeCard from '../yacht/components/YachtModeCard';
 import type { DiceType } from '../yacht/types/yacht.types';
 import styles from '../yacht/components/yacht.module.css';
 
@@ -38,7 +39,7 @@ export default function YachtBotPage() {
     }
   }, [pickedMode]);
 
-  const handlePickMode = useCallback((mode: DiceType) => {
+  const handlePickMode = useCallback(async (mode: DiceType) => {
     setPickedMode(mode);
   }, []);
 
@@ -48,40 +49,27 @@ export default function YachtBotPage() {
   // ── 모드 선택 화면 ──────────────────────────────────────────────────────────
   if (!pickedMode) {
     return (
-      <div className={styles.page}>
-        <NormalHeader currentGame="yacht" gameName="Yacht vs AI" accentColor="#6366f1" />
-        <div className={styles.modeSelectScreen}>
+      <div className={`${styles.page} ${styles.modeSelectPage}`}>
+        <header className={styles.modeSelectHeader}>
+          <button
+            type="button"
+            className={styles.modeSelectBackBtn}
+            onClick={() => navigate('/')}
+            aria-label="홈으로 돌아가기"
+          >
+            ← 홈으로
+          </button>
+          <h1 className={styles.modeSelectHeaderTitle}>Yacht vs AI</h1>
+          <div style={{ width: '80px' }} />
+        </header>
+        <main className={styles.modeSelectScreen}>
           <h2 className={styles.modeSelectTitle}>AI봇과 야추 대결</h2>
           <p className={styles.modeSelectSub}>주사위 모드를 선택해주세요</p>
           <div className={styles.modeCardRow}>
-            <button
-              type="button"
-              className={`${styles.modeCard} ${styles.modeCardD6}`}
-              onClick={() => handlePickMode('D6')}
-            >
-              <span className={styles.modeCardIcon}>⚅</span>
-              <span className={styles.modeCardTitle}>D6 모드</span>
-              <span className={styles.modeCardMeta}>정육면체 · 12개 족보</span>
-            </button>
-            <button
-              type="button"
-              className={`${styles.modeCard} ${styles.modeCardD8}`}
-              onClick={() => handlePickMode('D8')}
-            >
-              <span className={styles.modeCardIcon}>🎲</span>
-              <span className={styles.modeCardTitle}>D8 모드</span>
-              <span className={styles.modeCardMeta}>정팔면체 · 14개 족보</span>
-            </button>
+            <YachtModeCard diceType="D6" onSelect={handlePickMode} activeRooms={null} />
+            <YachtModeCard diceType="D8" onSelect={handlePickMode} activeRooms={null} />
           </div>
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            style={{ marginTop: '24px' }}
-            onClick={() => navigate('/')}
-          >
-            돌아가기
-          </button>
-        </div>
+        </main>
       </div>
     );
   }

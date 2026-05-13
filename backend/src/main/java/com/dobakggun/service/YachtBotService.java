@@ -27,9 +27,9 @@ public class YachtBotService {
     @Value("${yacht.bot.user-id:9999}")
     private long botUserId;
 
-    private static final long TURN_START_DELAY_MS  = 900;
-    private static final long BETWEEN_ROLL_DELAY_MS = 700;
-    private static final long BEFORE_SCORE_DELAY_MS = 500;
+    private static final long TURN_START_DELAY_MS  = 1200;
+    private static final long BETWEEN_ROLL_DELAY_MS = 1800;
+    private static final long BEFORE_SCORE_DELAY_MS = 1000;
 
     private final YachtGameService yachtGameService;
     private final YachtBotStrategy strategy = new YachtBotStrategy();
