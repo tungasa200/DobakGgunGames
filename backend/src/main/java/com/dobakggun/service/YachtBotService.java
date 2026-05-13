@@ -27,7 +27,7 @@ public class YachtBotService {
     @Value("${yacht.bot.user-id:9999}")
     private long botUserId;
 
-    private static final long TURN_START_DELAY_MS  = 1200;
+    private static final long TURN_START_DELAY_MS   = 1200;
     private static final long BETWEEN_ROLL_DELAY_MS = 1800;
     private static final long BEFORE_SCORE_DELAY_MS = 1000;
 
@@ -97,37 +97,32 @@ public class YachtBotService {
         YachtGameService.YachtRoomState state = yachtGameService.getState(roomId);
         if (state == null) return;
 
-        int[]            dice      = Arrays.copyOf(state.dice, 5);
-        int              rollsLeft = state.rollsLeft;
-        YachtScoreRules  rules     = YachtScoreRulesFactory.get(state.diceType);
-        Set<String>      remaining = remainingKeys(state);
+        int[]           dice            = Arrays.copyOf(state.dice, 5);
+        int             rollsLeft       = state.rollsLeft;
+        YachtScoreRules rules           = YachtScoreRulesFactory.get(state.diceType);
+        Set<String>     remaining       = remainingKeys(state);
+        int             upperTotal      = computeUpperTotal(state, rules);
 
         if (rollsLeft > 0) {
-            List<Integer> keep = strategy.decideKeep(dice, remaining, rules);
-
-            // YACHT/BIG_STRAIGHT 달성 시 조기 종료
-            if (strategy.isOptimalToStop(dice, remaining, rules)) {
-                scheduleScore(roomId, dice, remaining, rules);
-                return;
-            }
-
-            // 모든 주사위를 유지(keep=5)하면서도 아직 굴림이 남았다면 조기 종료
+            List<Integer> keep = strategy.decideKeep(dice, remaining, rules,
+                                                      rollsLeft, upperTotal);
+            // DP가 mask=11111을 선택하면 keep.size()==5 → 조기 종료
             if (keep.size() == 5) {
-                scheduleScore(roomId, dice, remaining, rules);
+                scheduleScore(roomId, dice, remaining, rules, upperTotal);
                 return;
             }
 
             scheduler.schedule(() -> doRoll(roomId, keep),
                     BETWEEN_ROLL_DELAY_MS, TimeUnit.MILLISECONDS);
         } else {
-            scheduleScore(roomId, dice, remaining, rules);
+            scheduleScore(roomId, dice, remaining, rules, upperTotal);
         }
     }
 
-    private void scheduleScore(String roomId, int[] dice,
-                                Set<String> remaining, YachtScoreRules rules) {
+    private void scheduleScore(String roomId, int[] dice, Set<String> remaining,
+                                YachtScoreRules rules, int upperTotal) {
         scheduler.schedule(() -> {
-            String key = strategy.decideScore(dice, remaining, rules);
+            String key = strategy.decideScore(dice, remaining, rules, upperTotal);
             if (key == null) {
                 log.error("YachtBotService: decideScore returned null roomId={}", roomId);
                 return;
@@ -142,11 +137,18 @@ public class YachtBotService {
     // ─── 헬퍼 ────────────────────────────────────────────────────────────────
 
     private Set<String> remainingKeys(YachtGameService.YachtRoomState state) {
-        YachtScoreRules rules  = YachtScoreRulesFactory.get(state.diceType);
+        YachtScoreRules      rules  = YachtScoreRulesFactory.get(state.diceType);
         Map<String, Integer> scored = state.scoreMap.getOrDefault(botUserId, Map.of());
         return rules.validScoreKeys().stream()
                 .filter(k -> !scored.containsKey(k))
                 .collect(Collectors.toSet());
+    }
+
+    private int computeUpperTotal(YachtGameService.YachtRoomState state, YachtScoreRules rules) {
+        Map<String, Integer> scored = state.scoreMap.getOrDefault(botUserId, Map.of());
+        return rules.upperKeys().stream()
+                .mapToInt(k -> scored.getOrDefault(k, 0))
+                .sum();
     }
 
     private static Long currentTurnUserId(YachtGameService.YachtRoomState state) {
