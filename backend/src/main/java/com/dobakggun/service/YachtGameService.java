@@ -1001,9 +1001,13 @@ public class YachtGameService {
                 .winnerUserIds(winnerIds)
                 .build());
 
-        // 랭킹 전적 업데이트 (승자/패자 모두, 재시작 여부와 관계없이 누적)
-        for (YachtRankingEntryDto entry : rankings) {
-            yachtRankingService.updateRecord(entry.getUserId(), entry.isWinner(), state.diceType);
+        // 랭킹 전적 업데이트 — 봇이 포함된 방은 집계 제외
+        boolean hasBotParticipant = yachtBotService != null &&
+                rankings.stream().anyMatch(e -> yachtBotService.isBot(e.getUserId()));
+        if (!hasBotParticipant) {
+            for (YachtRankingEntryDto entry : rankings) {
+                yachtRankingService.updateRecord(entry.getUserId(), entry.isWinner(), state.diceType);
+            }
         }
 
         // 재시작 가능 여부: 끊기지 않은 in-memory 참가자가 2명 이상
