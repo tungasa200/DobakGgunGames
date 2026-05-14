@@ -1639,6 +1639,7 @@
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 120ms ease;
   outline: none;
   box-sizing: border-box;
+  position: relative;
 }
 
 .modeCard:focus-visible {
@@ -1809,6 +1810,35 @@
 /* D8 CTA 색상 override */
 .modeCardCtaD8 {
   background: var(--yacht-d8-accent);
+}
+
+/* 준비중 배지 (카드 우상단 절대 위치) */
+.modeCardComingSoon {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: var(--yacht-warn);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}
+
+/* 비활성 카드 (준비중) */
+.modeCardDisabled {
+  cursor: not-allowed !important;
+  opacity: 0.72;
+}
+
+@media (hover: hover) {
+  .modeCardDisabled:hover {
+    border-color: var(--yacht-border) !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
 }
 
 /* ── 반응형 ── */

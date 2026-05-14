@@ -60,13 +60,16 @@ export default function YachtModeCard({
 
   return (
     <div
-      className={`${styles.modeCard} ${isD8 ? styles.modeCardD8 : styles.modeCardD6}`}
-      role="button"
-      tabIndex={0}
-      aria-label={info.ariaLabel}
-      onClick={() => void handleClick()}
-      onKeyDown={handleKeyDown}
+      className={`${styles.modeCard} ${isD8 ? styles.modeCardD8 : styles.modeCardD6} ${isD8 ? styles.modeCardDisabled : ''}`}
+      role={isD8 ? undefined : 'button'}
+      tabIndex={isD8 ? -1 : 0}
+      aria-label={isD8 ? `${info.title} — 준비중` : info.ariaLabel}
+      aria-disabled={isD8 ? true : undefined}
+      onClick={isD8 ? undefined : () => void handleClick()}
+      onKeyDown={isD8 ? undefined : handleKeyDown}
     >
+      {isD8 && <span className={styles.modeCardComingSoon}>준비중</span>}
+
       {/* 3D 주사위 프리뷰 */}
       <div className={styles.modeCardDicePreview} aria-hidden="true">
         <YachtModeDicePreview3D diceType={diceType} size={80} />
@@ -79,8 +82,9 @@ export default function YachtModeCard({
 
       {/* 활성 방 통계 */}
       <p className={styles.modeCardStats}>
-        현재 대기 중:{' '}
-        {activeRooms !== null ? `${activeRooms}개 방` : '—'}
+        {isD8
+          ? '정팔면체 봇 모드 준비 중'
+          : `현재 대기 중: ${activeRooms !== null ? `${activeRooms}개 방` : '—'}`}
       </p>
 
       {/* CTA 버튼 */}
@@ -88,11 +92,11 @@ export default function YachtModeCard({
         type="button"
         className={`${styles.modeCardCta} ${isD8 ? styles.modeCardCtaD8 : ''}`}
         onClick={(e) => { e.stopPropagation(); void handleClick(); }}
-        disabled={loading}
+        disabled={loading || isD8}
         aria-busy={loading}
-        aria-label={`${diceType}로 매칭 시작`}
+        aria-label={isD8 ? '준비중' : `${diceType}로 매칭 시작`}
       >
-        {loading ? '매칭 중...' : `${diceType}로 매칭 시작`}
+        {isD8 ? '준비중' : loading ? '매칭 중...' : `${diceType}로 매칭 시작`}
       </button>
     </div>
   );
