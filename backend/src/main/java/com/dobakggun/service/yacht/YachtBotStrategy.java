@@ -56,12 +56,13 @@ public class YachtBotStrategy {
         int    bestMask = 31;
         double bestEv   = Double.NEGATIVE_INFINITY;
 
-        int[] sorted = sortedCopy(dice);
+        int[]  sortOrder = sortOrder(dice);
+        int[]  sorted    = applySortOrder(dice, sortOrder);
         for (int mask = 0; mask < 32; mask++) {
             double ev = maskEv(sorted, mask, rollsLeft, remaining, rules, costMap, memo);
             if (ev > bestEv) { bestEv = ev; bestMask = mask; }
         }
-        return indicesFromMask(bestMask);
+        return sortedMaskToOriginalIndices(bestMask, sortOrder);
     }
 
     /**
@@ -108,14 +109,15 @@ public class YachtBotStrategy {
                                     int rollsLeft, Map<String, Double> costMap,
                                     Map<Long, Double> memo) {
         if (remaining.isEmpty() || rollsLeft == 0) return allIndices();
-        int    bestMask = 31;
-        double bestEv   = Double.NEGATIVE_INFINITY;
-        int[]  sorted   = sortedCopy(dice);
+        int    bestMask  = 31;
+        double bestEv    = Double.NEGATIVE_INFINITY;
+        int[]  sortOrder = sortOrder(dice);
+        int[]  sorted    = applySortOrder(dice, sortOrder);
         for (int mask = 0; mask < 32; mask++) {
             double ev = maskEv(sorted, mask, rollsLeft, remaining, rules, costMap, memo);
             if (ev > bestEv) { bestEv = ev; bestMask = mask; }
         }
-        return indicesFromMask(bestMask);
+        return sortedMaskToOriginalIndices(bestMask, sortOrder);
     }
 
     // ─── Multi-step DP ───────────────────────────────────────────────────────
@@ -128,19 +130,22 @@ public class YachtBotStrategy {
     private double stateEv(int[] sortedDice, int rollsLeft, Set<String> remaining,
                             YachtScoreRules rules, Map<String, Double> costMap,
                             Map<Long, Double> memo) {
-        if (rollsLeft == 0) return bestNetScore(sortedDice, remaining, rules, costMap);
-
         long   key    = packKey(sortedDice, rollsLeft);
         Double cached = memo.get(key);
         if (cached != null) return cached;
 
-        double best = Double.NEGATIVE_INFINITY;
-        for (int mask = 0; mask < 32; mask++) {
-            double ev = maskEv(sortedDice, mask, rollsLeft, remaining, rules, costMap, memo);
-            if (ev > best) best = ev;
+        double result;
+        if (rollsLeft == 0) {
+            result = bestNetScore(sortedDice, remaining, rules, costMap);
+        } else {
+            result = Double.NEGATIVE_INFINITY;
+            for (int mask = 0; mask < 32; mask++) {
+                double ev = maskEv(sortedDice, mask, rollsLeft, remaining, rules, costMap, memo);
+                if (ev > result) result = ev;
+            }
         }
-        memo.put(key, best);
-        return best;
+        memo.put(key, result);
+        return result;
     }
 
     /**
@@ -312,16 +317,27 @@ public class YachtBotStrategy {
              | ((long) s[4] << 20);
     }
 
-    private static int[] sortedCopy(int[] dice) {
-        int[] s = Arrays.copyOf(dice, 5);
-        Arrays.sort(s);
+    /** dice[i] 값 기준 오름차순 정렬 순서 반환. sortOrder[i] = sorted position i의 원본 인덱스. */
+    private static int[] sortOrder(int[] dice) {
+        Integer[] idx = {0, 1, 2, 3, 4};
+        Arrays.sort(idx, (a, b) -> dice[a] - dice[b]);
+        int[] order = new int[5];
+        for (int i = 0; i < 5; i++) order[i] = idx[i];
+        return order;
+    }
+
+    /** sortOrder를 적용해 정렬된 배열 반환. */
+    private static int[] applySortOrder(int[] dice, int[] sortOrder) {
+        int[] s = new int[5];
+        for (int i = 0; i < 5; i++) s[i] = dice[sortOrder[i]];
         return s;
     }
 
-    private static List<Integer> indicesFromMask(int mask) {
+    /** sorted 기준 mask의 유지 비트를 원본 dice 인덱스 리스트로 변환. */
+    private static List<Integer> sortedMaskToOriginalIndices(int mask, int[] sortOrder) {
         List<Integer> idx = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            if ((mask & (1 << i)) != 0) idx.add(i);
+            if ((mask & (1 << i)) != 0) idx.add(sortOrder[i]);
         }
         return idx;
     }
