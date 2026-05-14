@@ -16,14 +16,25 @@ import java.util.*;
  *   총 결정 1회: D6 ~5ms, D8 ~84ms — 성능 목표 충족.
  *
  * ── 점수 결정 (P0) ──────────────────────────────────────────────────────────
- * score − dynamic_cost 통합 비교. 0점 희생도 동일 기준 경쟁(음수 net 처리 수정).
+ * Phase B (하드 룰) → Phase C (보너스 우선) → score − dynamic_cost EV 비교.
+ * Phase E: 전 슬롯 net 음수 시 SACRIFICE_ORDER에 따른 희생 선택.
  *
- * ── 슬롯 기회비용 (P1+P3) ───────────────────────────────────────────────────
- * keep EV · score 결정 동일 costMap 사용.
- * 상단 슬롯: par(F) + dynamic_bonus_premium(currentUpperTotal, remaining)
- * 하단 슬롯: 정적 기준값.
+ * ── 슬롯 기회비용 (P1+P3+A) ─────────────────────────────────────────────────
+ * cost = realization_value + conservation_premium
+ *   상단 슬롯: dynamicUpperCost + conservationPremium
+ *   하단 슬롯: LOWER_COST + conservationPremium
+ *
+ * ── 개발 단계 플래그 ────────────────────────────────────────────────────────
+ * PHASE_A / PHASE_C / PHASE_E: 단계별 시뮬레이션 검증을 위해 on/off 가능.
+ * Phase B (hard rules)는 항상 활성.
  */
+@Deprecated(since = "2.0", forRemoval = false)
 public class YachtBotStrategy {
+
+    // ── Phase 활성 플래그 (시뮬레이션 단계 검증용) ─────────────────────────
+    private static final boolean PHASE_A = true;  // conservation_premium
+    private static final boolean PHASE_C = true;  // bonus-aware upper override
+    private static final boolean PHASE_E = true;  // sacrifice order
 
     // 하단 섹션 기회비용 (정적, 모드 공통)
     private static final Map<String, Double> LOWER_COST = Map.of(
@@ -33,6 +44,14 @@ public class YachtBotStrategy {
             "LITTLE_STRAIGHT",  8.60,
             "BIG_STRAIGHT",    13.60,
             "YACHT",            6.00
+    );
+
+    // Phase E: 완전 망한 패 희생 순서 (앞일수록 먼저 희생)
+    private static final List<String> SACRIFICE_ORDER = List.of(
+            "ONES", "TWOS", "YACHT", "BIG_STRAIGHT", "FOUR_OF_A_KIND",
+            "LITTLE_STRAIGHT", "FULL_HOUSE", "THREES", "CHOICE",
+            "FOURS", "FIVES", "SIXES",
+            "SEVENS", "EIGHTS"
     );
 
     private static final int[] FACT = {1, 1, 2, 6, 24, 120}; // 0!..5!
@@ -67,11 +86,21 @@ public class YachtBotStrategy {
 
     /**
      * 점수를 기록할 족보 키 결정.
-     * score − dynamic_cost 통합 비교 (음수 net과 0점 희생 동일 기준).
+     * Phase B (하드 룰) → Phase C (보너스 상단 우선) → EV 비교 → Phase E (희생 순서).
      */
     public String decideScore(int[] dice, Set<String> remaining, YachtScoreRules rules,
                               int currentUpperTotal) {
         Map<String, Double> costMap = buildCostMap(rules, remaining, currentUpperTotal);
+
+        // Phase B: 메이드 핸드 하드 룰 (항상 활성)
+        String forced = hardRuleScore(dice, remaining, rules);
+        if (forced != null) return forced;
+
+        // Phase C: 보너스 달성 가능 상황에서 4K보다 상단 슬롯 우선
+        if (PHASE_C) {
+            String override = bonusAwareUpperOverride(dice, remaining, rules, currentUpperTotal);
+            if (override != null) return override;
+        }
 
         String bestKey = null;
         double bestNet = Double.NEGATIVE_INFINITY;
@@ -80,6 +109,21 @@ public class YachtBotStrategy {
             double net = rules.calculateScore(key, dice) - costMap.getOrDefault(key, 10.0);
             if (net > bestNet) { bestNet = net; bestKey = key; }
         }
+
+        // Phase E: BASE cost 기준으로 전 슬롯 0점일 때만 희생 순서 적용
+        // (conservation premium 이 만든 인위적 음수 net에는 반응하지 않음)
+        if (PHASE_E) {
+            int bestRawScore = 0;
+            for (String key : remaining) {
+                bestRawScore = Math.max(bestRawScore, rules.calculateScore(key, dice));
+            }
+            if (bestRawScore == 0) {
+                for (String s : SACRIFICE_ORDER) {
+                    if (remaining.contains(s)) return s;
+                }
+            }
+        }
+
         return bestKey;
     }
 
@@ -206,16 +250,135 @@ public class YachtBotStrategy {
         return best;
     }
 
-    // ─── 동적 기회비용 (P3) ───────────────────────────────────────────────────
+    // ─── Phase B: 하드 룰 ────────────────────────────────────────────────────
+
+    /**
+     * 메이드 핸드에 대한 절대 우선 결정.
+     * EV 흔들림 없이 반드시 잡아야 할 케이스를 먼저 처리.
+     */
+    private static String hardRuleScore(int[] dice, Set<String> remaining,
+                                         YachtScoreRules rules) {
+        // 5개 동일 → YACHT 슬롯 살아있으면 무조건
+        if (allSame(dice) && remaining.contains("YACHT")) return "YACHT";
+
+        // Big Straight 메이드 → 슬롯 살아있으면 무조건
+        if (rules.calculateScore("BIG_STRAIGHT", dice) > 0
+                && remaining.contains("BIG_STRAIGHT")) return "BIG_STRAIGHT";
+
+        // Little Straight 메이드 + Big Straight는 아닌 패 → LS
+        if (rules.calculateScore("LITTLE_STRAIGHT", dice) > 0
+                && rules.calculateScore("BIG_STRAIGHT", dice) == 0
+                && remaining.contains("LITTLE_STRAIGHT")) return "LITTLE_STRAIGHT";
+
+        return null;
+    }
+
+    private static boolean allSame(int[] dice) {
+        for (int i = 1; i < dice.length; i++) {
+            if (dice[i] != dice[0]) return false;
+        }
+        return true;
+    }
+
+    // ─── Phase A: 보존 가치 ───────────────────────────────────────────────────
+
+    /**
+     * 슬롯별 보존 프리미엄.
+     * 양수 = "아직 쓰지 마라", 음수 = "먼저 희생해라".
+     *
+     * 튜닝된 수치: Phase A 시뮬레이션에서 회귀 없는 범위로 조정됨.
+     *   CHOICE: 후반 3슬롯부터 점진적 보존 (최대 +3)
+     *   YACHT:  게임 전반 보존 (후반부엔 소폭 완화)
+     *   ONES/TWOS: 음수 = 쓰레기통 우선 — EV 비교에서 먼저 희생 유도
+     */
+    private static double conservationPremium(String key, int remainingSlotCount) {
+        return switch (key) {
+            // 후반부(≤3슬롯)에만 보존 가중치 — 조기 과보존 방지
+            case "CHOICE" -> Math.max(0, 3.0 - remainingSlotCount);
+            // 게임 내내 보존
+            case "YACHT" -> remainingSlotCount > 4 ? 3.0 : 1.5;
+            // 중반까지만 보존
+            case "BIG_STRAIGHT" -> remainingSlotCount > 6 ? 2.0 : 0.0;
+            // 쓰레기통 슬롯 — Phase E 발동 전에도 먼저 사용 유도
+            case "ONES" -> -1.5;
+            case "TWOS" -> -0.75;
+            default -> 0.0;
+        };
+    }
+
+    // ─── Phase C: 4K vs 상단 슬롯 보너스 인식 ───────────────────────────────
+
+    /**
+     * 보너스 달성 가능 상황에서 [F,F,F,F,X] 패턴이면 4K 대신 상단 슬롯 선택.
+     * face ≥ 4이고, 원점수 차이 ≤ 5인 경우에만 발동.
+     */
+    private static String bonusAwareUpperOverride(int[] dice, Set<String> remaining,
+                                                   YachtScoreRules rules,
+                                                   int currentUpperTotal) {
+        int fourFace = findFourOfAKindFace(dice);
+        if (fourFace < 4) return null; // 낮은 면값은 보너스 기여 작음 → 4K 우선
+
+        String upperKey = upperKeyOf(fourFace);
+        if (upperKey == null || !remaining.contains(upperKey)) return null;
+
+        if (!bonusStillReachable(currentUpperTotal, remaining, rules)) return null;
+
+        // 4K 슬롯이 이미 사용됐으면 Phase C 미적용 (일반 EV에 위임)
+        if (!remaining.contains("FOUR_OF_A_KIND")) return null;
+
+        // 원점수 차이 ≤ 5일 때만 override (상단 점수가 충분히 경쟁력 있는 경우)
+        int upperScore = rules.calculateScore(upperKey, dice);
+        int fourKScore = rules.calculateScore("FOUR_OF_A_KIND", dice);
+        return (fourKScore - upperScore <= 5) ? upperKey : null;
+    }
+
+    /** dice에서 4개 이상 같은 면값 중 가장 높은 것. 없으면 -1. */
+    private static int findFourOfAKindFace(int[] dice) {
+        int[] counts = new int[9];
+        for (int d : dice) counts[d]++;
+        for (int f = 8; f >= 1; f--) {
+            if (counts[f] >= 4) return f;
+        }
+        return -1;
+    }
+
+    private static String upperKeyOf(int face) {
+        return switch (face) {
+            case 1 -> "ONES";   case 2 -> "TWOS";   case 3 -> "THREES";
+            case 4 -> "FOURS";  case 5 -> "FIVES";  case 6 -> "SIXES";
+            case 7 -> "SEVENS"; case 8 -> "EIGHTS"; default -> null;
+        };
+    }
+
+    /**
+     * 현재 상단 누적 + 남은 상단 슬롯 최대 기대치로 보너스 달성 가능 여부 판단.
+     * 낙관적 추정(각 상단 슬롯을 면값×5로 가정)을 사용.
+     */
+    private static boolean bonusStillReachable(int currentUpperTotal,
+                                                Set<String> remaining,
+                                                YachtScoreRules rules) {
+        Set<String> upperKs   = rules.upperKeys();
+        int         threshold = rules.upperBonusThreshold();
+        int maxRemaining = remaining.stream()
+                .filter(upperKs::contains)
+                .mapToInt(k -> faceOf(k) * 5)
+                .sum();
+        return currentUpperTotal + maxRemaining >= threshold;
+    }
+
+    // ─── 동적 기회비용 (P3 + Phase A) ────────────────────────────────────────
 
     private Map<String, Double> buildCostMap(YachtScoreRules rules, Set<String> remaining,
                                               int currentUpperTotal) {
-        Map<String, Double> map     = new HashMap<>();
-        Set<String>         upperKs = rules.upperKeys();
+        int                 remainingSlotCount = remaining.size();
+        Map<String, Double> map                = new HashMap<>();
+        Set<String>         upperKs            = rules.upperKeys();
         for (String key : remaining) {
-            map.put(key, upperKs.contains(key)
+            double base = upperKs.contains(key)
                     ? dynamicUpperCost(key, rules, currentUpperTotal, remaining)
-                    : LOWER_COST.getOrDefault(key, 10.0));
+                    : LOWER_COST.getOrDefault(key, 10.0);
+            double premium = PHASE_A ? conservationPremium(key, remainingSlotCount) : 0.0;
+            map.put(key, base + premium);
         }
         return map;
     }

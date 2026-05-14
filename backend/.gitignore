@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Yacht DP binary (재생성 가능, 2MB) ###
+src/main/resources/yacht-d6-dp.bin
