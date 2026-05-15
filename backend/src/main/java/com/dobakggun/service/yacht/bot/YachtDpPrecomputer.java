@@ -5,9 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * W 테이블 사전 계산 — Row 기반 최적화 + 병렬 처리.
@@ -18,12 +16,17 @@ import java.util.Map;
  * 2) parallelStream: 같은 비트 카운트 레벨의 filled 값들을 병렬 처리.
  *    Backward induction 순서는 레벨 단위로 직렬 (bc=11→bc=0),
  *    같은 레벨 내부는 완전 독립이므로 병렬 안전.
+ * 3) vMemo: HashMap<Long,double[]> → double[][] 배열 (boxing 제거).
+ *    KEY_TO_V_IDX 정적 맵으로 packKey → 0..755 인덱스 직접 조회.
  */
 @Slf4j
 public final class YachtDpPrecomputer {
 
     private static final D6Rules D6 = new D6Rules();
     private static final int[] POW6 = {1, 6, 36, 216, 1296, 7776};
+
+    /** vMemo 배열 크기: rollsLeft(0..2) × 252 멀티셋 = 756 */
+    private static final int V_MEMO_SIZE = 3 * 252;
 
     /**
      * W 테이블 전체 사전 계산 후 반환.
@@ -57,10 +60,10 @@ public final class YachtDpPrecomputer {
 
     /**
      * filled 하나에 대해 upperTotal 0..63을 동시에 계산.
-     * vMemo를 한 번만 생성하고, V 값도 double[64] 벡터로 관리.
+     * vMemo를 double[][] 배열로 관리 (boxing 없음).
      */
     private static void computeWRow(int filled, double[] w) {
-        Map<Long, double[]> vMemo = new HashMap<>(1024);
+        double[][] vMemo = new double[V_MEMO_SIZE][];  // null = 미계산
         double[] rowSum = new double[64];
 
         for (int i = 0; i < YachtDiceMultiset.ALL_MULTISETS.length; i++) {
@@ -81,10 +84,10 @@ public final class YachtDpPrecomputer {
      */
     private static double[] computeVRow(int[] sortedDice, int rollsLeft,
                                          int filled, double[] w,
-                                         Map<Long, double[]> vMemo) {
-        long key = YachtDiceMultiset.packKey(sortedDice, rollsLeft);
-        double[] cached = vMemo.get(key);
-        if (cached != null) return cached;
+                                         double[][] vMemo) {
+        int idx = YachtDiceMultiset.KEY_TO_V_IDX[
+                      YachtDiceMultiset.packKey(sortedDice, rollsLeft)];
+        if (idx >= 0 && vMemo[idx] != null) return vMemo[idx];
 
         // scoreOption 결과를 초기 baseline으로 사용 (rollsLeft=0일 때는 이것이 최종값)
         double[] result = scoreOptionRow(sortedDice, filled, w);
@@ -98,13 +101,13 @@ public final class YachtDpPrecomputer {
             }
         }
 
-        vMemo.put(key, result);
+        if (idx >= 0) vMemo[idx] = result;
         return result;
     }
 
     private static double[] maskEvRow(int[] sortedDice, int mask, int rollsLeft,
                                        int filled, double[] w,
-                                       Map<Long, double[]> vMemo) {
+                                       double[][] vMemo) {
         int rerollCount = 5 - Integer.bitCount(mask);
         if (rerollCount == 0) {
             return computeVRow(sortedDice, rollsLeft - 1, filled, w, vMemo);
@@ -120,7 +123,7 @@ public final class YachtDpPrecomputer {
 
     private static void sumRerollsRow(int[] kept, int[] rerolled, int pos, int minVal,
                                        int nextRolls, int filled, double[] w,
-                                       Map<Long, double[]> vMemo, double[] out) {
+                                       double[][] vMemo, double[] out) {
         if (pos == rerolled.length) {
             int[] full = YachtDiceMultiset.mergeSorted(kept, rerolled);
             int   mult = YachtDiceMultiset.multinomial(rerolled);

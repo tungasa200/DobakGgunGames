@@ -1,6 +1,7 @@
 package com.dobakggun.service.yacht.bot;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /** D6 5주사위 정렬 다중집합(multiset) 유틸리티. Spring 비의존, 순수 계산. */
@@ -15,12 +16,28 @@ public final class YachtDiceMultiset {
 
     private static final int[] FACT = {1, 1, 2, 6, 24, 120};
 
+    /**
+     * packKey(s, rl) → vCache 인덱스 (0..755 = rl*252+i).
+     * 유효하지 않은 키는 -1.
+     * 배열 크기: (6<<14)|(6<<11)|(6<<8)|(6<<5)|(6<<2)|2 + 1 = 112,347
+     */
+    public static final int[] KEY_TO_V_IDX;
+
     static {
         List<int[]>  list  = new ArrayList<>(252);
         List<Integer> mList = new ArrayList<>(252);
         enumerate(new int[5], 0, 1, list, mList);
         ALL_MULTISETS = list.toArray(new int[0][]);
         MULTINOMIALS  = mList.stream().mapToInt(Integer::intValue).toArray();
+
+        int mapSize = (6 << 14) | (6 << 11) | (6 << 8) | (6 << 5) | (6 << 2) | 2;
+        KEY_TO_V_IDX = new int[mapSize + 1];
+        Arrays.fill(KEY_TO_V_IDX, -1);
+        for (int rl = 0; rl <= 2; rl++) {
+            for (int i = 0; i < ALL_MULTISETS.length; i++) {
+                KEY_TO_V_IDX[packKey(ALL_MULTISETS[i], rl)] = rl * 252 + i;
+            }
+        }
     }
 
     private static void enumerate(int[] buf, int pos, int minVal,
@@ -72,12 +89,15 @@ public final class YachtDiceMultiset {
         return kept;
     }
 
-    /** 메모 키: 정렬 주사위 5개(각 4비트) + rollsLeft(4비트) = 24비트 long. */
-    public static long packKey(int[] s, int rollsLeft) {
-        return ((long) rollsLeft)
-             | ((long) s[0] << 4)  | ((long) s[1] << 8)
-             | ((long) s[2] << 12) | ((long) s[3] << 16)
-             | ((long) s[4] << 20);
+    /**
+     * 메모 키 (compact): 각 주사위 3비트(1-6) + rollsLeft 2비트(0-2) = 17비트 int.
+     * 최대값 = (6<<14)|(6<<11)|(6<<8)|(6<<5)|(6<<2)|2 = 112,346
+     */
+    public static int packKey(int[] s, int rollsLeft) {
+        return rollsLeft
+             | (s[0] << 2) | (s[1] << 5)
+             | (s[2] << 8) | (s[3] << 11)
+             | (s[4] << 14);
     }
 
     /** dice[i] 기준 오름차순 정렬 순서 반환. */

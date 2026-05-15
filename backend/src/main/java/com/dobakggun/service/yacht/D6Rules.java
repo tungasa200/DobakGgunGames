@@ -18,19 +18,6 @@ public class D6Rules implements YachtScoreRules {
             "ONES", "TWOS", "THREES", "FOURS", "FIVES", "SIXES"
     );
 
-    // Little Straight: 4개 연속 가능 셋
-    private static final List<Set<Integer>> LITTLE_STRAIGHT_SETS = List.of(
-            Set.of(1, 2, 3, 4),
-            Set.of(2, 3, 4, 5),
-            Set.of(3, 4, 5, 6)
-    );
-
-    // Big Straight: 5개 연속 가능 셋
-    private static final List<Set<Integer>> BIG_STRAIGHT_SETS = List.of(
-            Set.of(1, 2, 3, 4, 5),
-            Set.of(2, 3, 4, 5, 6)
-    );
-
     @Override
     public Set<String> validScoreKeys() {
         return VALID_SCORE_KEYS;
@@ -70,7 +57,7 @@ public class D6Rules implements YachtScoreRules {
             case "FOURS"           -> sumOf(dice, 4);
             case "FIVES"           -> sumOf(dice, 5);
             case "SIXES"           -> sumOf(dice, 6);
-            case "CHOICE"          -> Arrays.stream(dice).sum();
+            case "CHOICE"          -> sum(dice);
             case "FOUR_OF_A_KIND"  -> calcFourOfAKind(dice);
             case "FULL_HOUSE"      -> calcFullHouse(dice);
             case "LITTLE_STRAIGHT" -> calcLittleStraight(dice);
@@ -83,53 +70,60 @@ public class D6Rules implements YachtScoreRules {
     // ─── 점수 계산 헬퍼 ───────────────────────────────────────────────────────
 
     private static int sumOf(int[] dice, int face) {
-        int sum = 0;
-        for (int d : dice) if (d == face) sum += d;
-        return sum;
+        int s = 0;
+        for (int d : dice) if (d == face) s += face;
+        return s;
+    }
+
+    private static int sum(int[] dice) {
+        int s = 0;
+        for (int d : dice) s += d;
+        return s;
+    }
+
+    /** int[7]: 인덱스 1-6 → 해당 면 개수 */
+    private static int[] counts(int[] dice) {
+        int[] c = new int[7];
+        for (int d : dice) c[d]++;
+        return c;
     }
 
     private static int calcFourOfAKind(int[] dice) {
-        Map<Integer, Integer> counts = new HashMap<>();
-        for (int d : dice) counts.merge(d, 1, Integer::sum);
-        for (Map.Entry<Integer, Integer> e : counts.entrySet()) {
-            if (e.getValue() >= 4) return e.getKey() * 4;
-        }
+        int[] c = counts(dice);
+        for (int f = 1; f <= 6; f++)
+            if (c[f] >= 4) return f * 4;
         return 0;
     }
 
     private static int calcFullHouse(int[] dice) {
-        Map<Integer, Integer> counts = new HashMap<>();
-        for (int d : dice) counts.merge(d, 1, Integer::sum);
-        List<Integer> vals = new ArrayList<>(counts.values());
-        Collections.sort(vals);
-        // 정확히 [2,3]인 경우만 (5개 동일=[5]은 0)
-        if (vals.equals(List.of(2, 3))) {
-            return Arrays.stream(dice).sum();
+        int[] c = counts(dice);
+        boolean has2 = false, has3 = false;
+        for (int f = 1; f <= 6; f++) {
+            if (c[f] == 2) has2 = true;
+            else if (c[f] == 3) has3 = true;
         }
-        return 0;
+        if (!has2 || !has3) return 0;
+        return sum(dice);
     }
 
     private static int calcLittleStraight(int[] dice) {
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        for (Set<Integer> required : LITTLE_STRAIGHT_SETS) {
-            if (set.containsAll(required)) return 15;
-        }
-        return 0;
+        boolean[] seen = new boolean[7];
+        for (int d : dice) seen[d] = true;
+        return ((seen[1] && seen[2] && seen[3] && seen[4])
+             || (seen[2] && seen[3] && seen[4] && seen[5])
+             || (seen[3] && seen[4] && seen[5] && seen[6])) ? 15 : 0;
     }
 
     private static int calcBigStraight(int[] dice) {
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        for (Set<Integer> required : BIG_STRAIGHT_SETS) {
-            if (set.containsAll(required)) return 30;
-        }
-        return 0;
+        boolean[] seen = new boolean[7];
+        for (int d : dice) seen[d] = true;
+        return ((seen[1] && seen[2] && seen[3] && seen[4] && seen[5])
+             || (seen[2] && seen[3] && seen[4] && seen[5] && seen[6])) ? 30 : 0;
     }
 
     private static int calcYacht(int[] dice) {
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        return set.size() == 1 ? 50 : 0;
+        int first = dice[0];
+        for (int d : dice) if (d != first) return 0;
+        return 50;
     }
 }

@@ -12,6 +12,9 @@ import java.util.Map;
  *   filledSlotsMask: 12비트 (2^12 = 4096)
  *   upperTotalCapped: 0..63 (64값)
  *   W 인덱스: filled * 64 + upperTotal
+ *
+ * vCache 크기: 3 × 252 = 756 (rollsLeft 0..2 × 252 멀티셋)
+ * vDone[i] = true이면 vCache[i]에 유효한 값이 있음.
  */
 public final class YachtDpEngine {
 
@@ -21,6 +24,9 @@ public final class YachtDpEngine {
     public static final int UPPER_THRESHOLD = 63;
     public static final int UPPER_BONUS     = 35;
     public static final int TABLE_SIZE      = 4096 * 64;  // 262,144
+
+    /** vCache/vDone 배열 크기 (rollsLeft 0..2 × 252 멀티셋) */
+    public static final int V_CACHE_SIZE = 3 * 252;
 
     /** 비트 인덱스 → 슬롯 이름 (D6 전용, 0-11) */
     public static final String[] SLOT_NAMES = {
@@ -39,19 +45,21 @@ public final class YachtDpEngine {
     private static final D6Rules D6 = new D6Rules();
     private static final int[] POW6 = {1, 6, 36, 216, 1296, 7776};
 
-    // ── V 계산 ────────────────────────────────────────────────────────────────
+    // ── V 계산 (배열 기반 메모) ───────────────────────────────────────────────
 
     /**
      * V(sortedDice, rollsLeft, filled, upperTotal).
-     * vMemo는 턴 단위로 새로 생성해야 함 (filled/upperTotal 고정).
+     *
+     * @param vCache double[756] — 턴 단위로 재사용 (vDone으로 유효성 관리)
+     * @param vDone  boolean[756] — 시작 전 Arrays.fill(vDone, false)로 초기화 필요
      */
     public static double computeV(int[] sortedDice, int rollsLeft,
                                    int filled, int upperTotal,
                                    double[] wTable,
-                                   Map<Long, Double> vMemo) {
-        long key = YachtDiceMultiset.packKey(sortedDice, rollsLeft);
-        Double cached = vMemo.get(key);
-        if (cached != null) return cached;
+                                   double[] vCache, boolean[] vDone) {
+        int idx = YachtDiceMultiset.KEY_TO_V_IDX[
+                      YachtDiceMultiset.packKey(sortedDice, rollsLeft)];
+        if (idx >= 0 && vDone[idx]) return vCache[idx];
 
         double result;
         if (rollsLeft == 0) {
@@ -59,45 +67,46 @@ public final class YachtDpEngine {
         } else {
             double best = scoreOption(sortedDice, filled, upperTotal, wTable);
             for (int mask = 0; mask < 32; mask++) {
-                double ev = maskEv(sortedDice, mask, rollsLeft, filled, upperTotal, wTable, vMemo);
+                double ev = maskEv(sortedDice, mask, rollsLeft, filled, upperTotal, wTable, vCache, vDone);
                 if (ev > best) best = ev;
             }
             result = best;
         }
-        vMemo.put(key, result);
+
+        if (idx >= 0) { vCache[idx] = result; vDone[idx] = true; }
         return result;
     }
 
     /** keep mask에 대한 기대값. */
     public static double maskEv(int[] sortedDice, int mask, int rollsLeft,
                                  int filled, int upperTotal,
-                                 double[] wTable, Map<Long, Double> vMemo) {
+                                 double[] wTable, double[] vCache, boolean[] vDone) {
         int rerollCount = 5 - Integer.bitCount(mask);
         if (rerollCount == 0) {
-            return computeV(sortedDice, rollsLeft - 1, filled, upperTotal, wTable, vMemo);
+            return computeV(sortedDice, rollsLeft - 1, filled, upperTotal, wTable, vCache, vDone);
         }
         int[] kept    = YachtDiceMultiset.extractKeptSorted(sortedDice, mask);
         int[] rerolled = new int[rerollCount];
         double weightedSum = sumOverRerollMultisets(
                 kept, rerolled, 0, 1, rollsLeft - 1,
-                filled, upperTotal, wTable, vMemo);
+                filled, upperTotal, wTable, vCache, vDone);
         return weightedSum / POW6[rerollCount];
     }
 
     private static double sumOverRerollMultisets(int[] kept, int[] rerolled, int pos, int minVal,
                                                   int nextRollsLeft,
                                                   int filled, int upperTotal,
-                                                  double[] wTable, Map<Long, Double> vMemo) {
+                                                  double[] wTable, double[] vCache, boolean[] vDone) {
         if (pos == rerolled.length) {
             int[] full = YachtDiceMultiset.mergeSorted(kept, rerolled);
             int mult = YachtDiceMultiset.multinomial(rerolled);
-            return mult * computeV(full, nextRollsLeft, filled, upperTotal, wTable, vMemo);
+            return mult * computeV(full, nextRollsLeft, filled, upperTotal, wTable, vCache, vDone);
         }
         double sum = 0.0;
         for (int v = minVal; v <= 6; v++) {
             rerolled[pos] = v;
             sum += sumOverRerollMultisets(kept, rerolled, pos + 1, v,
-                    nextRollsLeft, filled, upperTotal, wTable, vMemo);
+                    nextRollsLeft, filled, upperTotal, wTable, vCache, vDone);
         }
         return sum;
     }

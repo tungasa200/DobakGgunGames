@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,12 +17,20 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * 기동 시 classpath에서 테이블 로드 시도.
  * 없으면 백그라운드 스레드에서 사전 계산 후 저장.
+ *
+ * vCache/vDone은 ThreadLocal로 재사용 — decideKeep 호출 시 boxing/GC 없음.
  */
 @Slf4j
 @Component
 public class YachtDpBot {
 
     private final AtomicReference<double[]> tableRef = new AtomicReference<>();
+
+    /** vCache: rollsLeft(0..2) × 252 멀티셋 = 756 항목 */
+    private static final ThreadLocal<double[]> V_CACHE_TL =
+            ThreadLocal.withInitial(() -> new double[YachtDpEngine.V_CACHE_SIZE]);
+    private static final ThreadLocal<boolean[]> V_DONE_TL =
+            ThreadLocal.withInitial(() -> new boolean[YachtDpEngine.V_CACHE_SIZE]);
 
     @PostConstruct
     public void init() {
@@ -73,13 +81,16 @@ public class YachtDpBot {
 
         int[] sortOrder = YachtDiceMultiset.sortOrder(dice);
         int[] sorted    = YachtDiceMultiset.applySortOrder(dice, sortOrder);
-        Map<Long, Double> vMemo = new HashMap<>(256);
+
+        double[] vCache = V_CACHE_TL.get();
+        boolean[] vDone = V_DONE_TL.get();
+        Arrays.fill(vDone, false);
 
         int    bestMask = 31;
         double bestEv   = Double.NEGATIVE_INFINITY;
         for (int mask = 0; mask < 32; mask++) {
             double ev = YachtDpEngine.maskEv(sorted, mask, rollsLeft,
-                                              filledMask, upperTotal, w, vMemo);
+                                              filledMask, upperTotal, w, vCache, vDone);
             if (ev > bestEv) { bestEv = ev; bestMask = mask; }
         }
         return YachtDiceMultiset.sortedMaskToOriginalIndices(bestMask, sortOrder);
@@ -102,6 +113,11 @@ public class YachtDpBot {
     /** W 테이블 준비 완료 여부. */
     public boolean isReady() {
         return tableRef.get() != null;
+    }
+
+    /** W 테이블 직접 접근 (시뮬레이터 검증용). */
+    public double[] getWTable() {
+        return requireTable();
     }
 
     // ── 변환 유틸 ─────────────────────────────────────────────────────────────

@@ -143,6 +143,8 @@ public class YachtBotSimulator {
     @Test
     void compareD6() {
         YachtDpBot dpBot = createAndWaitForBot();
+        // W[0][0]: filled=0, upperTotal=0 → DP 이론 기대값
+        System.out.printf("[D6] DP이론값(W[0][0]) = %.4f%n", dpBot.getWTable()[0]);
         compare("D6", new D6Rules(), new DpBot(dpBot));
     }
 
