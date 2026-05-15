@@ -1,7 +1,7 @@
 package com.dobakggun.service.yacht;
 
 import com.dobakggun.service.yacht.bot.YachtDpBot;
-import com.dobakggun.service.yacht.bot.YachtDpEngine;
+import com.dobakggun.service.yacht.bot.YachtDpContext;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -13,6 +13,8 @@ import java.util.stream.IntStream;
  * YachtDpBot Paired-Sampling 시뮬레이터.
  *
  * 실행: ./gradlew test --tests "*YachtBotSimulator*"
+ * D6만: ./gradlew test --tests "*YachtBotSimulator.compareD6"
+ * D8만: ./gradlew test --tests "*YachtBotSimulator.compareD8"
  *
  * ── Paired sampling ──────────────────────────────────────────────────────────
  * 베이스라인·DP봇이 동일한 dice tape를 소비 → 공통 분산 제거.
@@ -34,10 +36,9 @@ public class YachtBotSimulator {
     // ─── 전략 인터페이스 ─────────────────────────────────────────────────────
 
     private interface SimBot {
-        /** filledMask: 이미 채워진 슬롯 비트마스크 (12비트) */
-        List<Integer> decideKeep(int[] dice, int filledMask, int upperTotal,
+        List<Integer> decideKeep(YachtDpContext ctx, int[] dice, int filledMask, int upperTotal,
                                   YachtScoreRules rules, int rollsLeft);
-        String decideScore(int[] dice, int filledMask, int upperTotal,
+        String decideScore(YachtDpContext ctx, int[] dice, int filledMask, int upperTotal,
                            YachtScoreRules rules);
     }
 
@@ -45,36 +46,36 @@ public class YachtBotSimulator {
 
     private static final class BaselineBot implements SimBot {
 
-        private static final Map<String, Double> COST_D6 = Map.ofEntries(
+        private static final Map<String, Double> COST = Map.ofEntries(
                 Map.entry("ONES", 3.0),   Map.entry("TWOS", 6.0),    Map.entry("THREES", 9.0),
                 Map.entry("FOURS", 12.0), Map.entry("FIVES", 15.0),  Map.entry("SIXES", 18.0),
+                Map.entry("SEVENS", 21.0), Map.entry("EIGHTS", 24.0),
                 Map.entry("CHOICE", 17.5),         Map.entry("FOUR_OF_A_KIND", 9.5),
                 Map.entry("FULL_HOUSE", 9.2),      Map.entry("LITTLE_STRAIGHT", 8.6),
                 Map.entry("BIG_STRAIGHT", 13.6),   Map.entry("YACHT", 6.0));
 
         @Override
-        public List<Integer> decideKeep(int[] dice, int filledMask, int upperTotal,
+        public List<Integer> decideKeep(YachtDpContext ctx, int[] dice, int filledMask, int upperTotal,
                                          YachtScoreRules rules, int rollsLeft) {
-            Set<String> remaining = maskToRemaining(filledMask, rules);
+            Set<String> remaining = maskToRemaining(ctx, filledMask);
             if (remaining.isEmpty()) return ALL;
-            int faces = rules.rngFaces();
             int bestMask = 31; double bestEv = -1.0;
             for (int mask = 0; mask < 32; mask++) {
-                double ev = oneStepEv(dice, mask, remaining, rules, faces);
+                double ev = oneStepEv(dice, mask, remaining, rules);
                 if (ev > bestEv) { bestEv = ev; bestMask = mask; }
             }
             return indicesFromMask(bestMask);
         }
 
         @Override
-        public String decideScore(int[] dice, int filledMask, int upperTotal,
+        public String decideScore(YachtDpContext ctx, int[] dice, int filledMask, int upperTotal,
                                    YachtScoreRules rules) {
-            Set<String> remaining = maskToRemaining(filledMask, rules);
+            Set<String> remaining = maskToRemaining(ctx, filledMask);
             String bestNZ = null; double bestNet = Double.NEGATIVE_INFINITY; int bestScore = -1;
             String bestZ  = null; double lowestCost = Double.MAX_VALUE;
             for (String key : remaining) {
                 int    score = rules.calculateScore(key, dice);
-                double cost  = COST_D6.getOrDefault(key, 10.0);
+                double cost  = COST.getOrDefault(key, 10.0);
                 if (score > 0) {
                     double net = score - cost;
                     if (net > bestNet || (net == bestNet && score > bestScore)) {
@@ -86,7 +87,8 @@ public class YachtBotSimulator {
         }
 
         private static double oneStepEv(int[] dice, int mask, Set<String> remaining,
-                                         YachtScoreRules rules, int faces) {
+                                         YachtScoreRules rules) {
+            int faces  = rules.rngFaces();
             int reroll = 5 - Integer.bitCount(mask);
             int total  = ipow(faces, reroll);
             double sum = 0;
@@ -109,11 +111,11 @@ public class YachtBotSimulator {
             return r;
         }
 
-        private static Set<String> maskToRemaining(int filledMask, YachtScoreRules rules) {
-            Set<String> remaining = new HashSet<>(rules.validScoreKeys());
-            for (int k = 0; k < YachtDpEngine.NUM_SLOTS; k++) {
+        private static Set<String> maskToRemaining(YachtDpContext ctx, int filledMask) {
+            Set<String> remaining = new HashSet<>(ctx.rules.validScoreKeys());
+            for (int k = 0; k < ctx.numSlots; k++) {
                 if ((filledMask & (1 << k)) != 0)
-                    remaining.remove(YachtDpEngine.SLOT_NAMES[k]);
+                    remaining.remove(ctx.slotNames[k]);
             }
             return remaining;
         }
@@ -126,15 +128,15 @@ public class YachtBotSimulator {
         DpBot(YachtDpBot bot) { this.inner = bot; }
 
         @Override
-        public List<Integer> decideKeep(int[] dice, int filledMask, int upperTotal,
+        public List<Integer> decideKeep(YachtDpContext ctx, int[] dice, int filledMask, int upperTotal,
                                          YachtScoreRules rules, int rollsLeft) {
-            return inner.decideKeep(dice, rollsLeft, filledMask, upperTotal);
+            return inner.decideKeep(ctx, dice, rollsLeft, filledMask, upperTotal);
         }
 
         @Override
-        public String decideScore(int[] dice, int filledMask, int upperTotal,
+        public String decideScore(YachtDpContext ctx, int[] dice, int filledMask, int upperTotal,
                                    YachtScoreRules rules) {
-            return inner.decideScore(dice, filledMask, upperTotal);
+            return inner.decideScore(ctx, dice, filledMask, upperTotal);
         }
     }
 
@@ -142,26 +144,29 @@ public class YachtBotSimulator {
 
     @Test
     void compareD6() {
-        YachtDpBot dpBot = createAndWaitForBot();
-        // W[0][0]: filled=0, upperTotal=0 → DP 이론 기대값
-        System.out.printf("[D6] DP이론값(W[0][0]) = %.4f%n", dpBot.getWTable()[0]);
-        compare("D6", new D6Rules(), new DpBot(dpBot));
+        YachtDpBot dpBot = createAndWaitForBot(YachtDpContext.D6);
+        System.out.printf("[D6] DP이론값(W[0][0]) = %.4f%n", dpBot.getWTable(YachtDpContext.D6)[0]);
+        compare("D6", YachtDpContext.D6, new D6Rules(), new DpBot(dpBot));
     }
 
-    @Disabled("봇전 D8 미지원")
+    @Disabled("D8 W 테이블 사전 계산 ~30분 소요 — 수동 실행: ./gradlew test --tests \"*YachtBotSimulator.compareD8\"")
     @Test
-    void compareD8() {}
+    void compareD8() {
+        YachtDpBot dpBot = createAndWaitForBot(YachtDpContext.D8);
+        System.out.printf("[D8] DP이론값(W[0][0]) = %.4f%n", dpBot.getWTable(YachtDpContext.D8)[0]);
+        compare("D8", YachtDpContext.D8, new D8Rules(), new DpBot(dpBot));
+    }
 
     // ─── Paired 비교 ─────────────────────────────────────────────────────────
 
-    private static void compare(String label, YachtScoreRules rules, SimBot improved) {
+    private static void compare(String label, YachtDpContext ctx, YachtScoreRules rules, SimBot improved) {
         SimBot baseline = new BaselineBot();
         int games = GAMES_INITIAL;
         PairedResult r;
 
         do {
             long t0 = System.currentTimeMillis();
-            r = runPaired(baseline, improved, rules, games);
+            r = runPaired(ctx, baseline, improved, rules, games);
             long elapsed = System.currentTimeMillis() - t0;
 
             double tStat = r.meanDiff / r.stderrDiff;
@@ -187,12 +192,12 @@ public class YachtBotSimulator {
             games = next;
         } while (true);
 
-        measureLatency(label, improved, rules);
+        measureLatency(label, ctx, improved, rules);
     }
 
     // ─── Paired 실행 (parallelStream) ────────────────────────────────────────
 
-    private static PairedResult runPaired(SimBot baseline, SimBot improved,
+    private static PairedResult runPaired(YachtDpContext ctx, SimBot baseline, SimBot improved,
                                            YachtScoreRules rules, int games) {
         int maxRolls = rules.maxRollsPerTurn();
         int faces    = rules.rngFaces();
@@ -200,11 +205,11 @@ public class YachtBotSimulator {
         byte[][][][] tapes = pregenerateTapes(games, rules.totalScoreKeys(), maxRolls, faces);
 
         int[] baselineScores = IntStream.range(0, games).parallel()
-                .map(i -> playWithTape(baseline, rules, tapes[i], maxRolls).score)
+                .map(i -> playWithTape(ctx, baseline, rules, tapes[i], maxRolls).score)
                 .toArray();
 
         GameStats[] improvedResults = IntStream.range(0, games).parallel()
-                .mapToObj(i -> playWithTape(improved, rules, tapes[i], maxRolls))
+                .mapToObj(i -> playWithTape(ctx, improved, rules, tapes[i], maxRolls))
                 .toArray(GameStats[]::new);
 
         double sumB = 0, sumI = 0, sumD = 0, sumD2 = 0;
@@ -233,7 +238,7 @@ public class YachtBotSimulator {
 
     // ─── 1게임 플레이 ────────────────────────────────────────────────────────
 
-    private static GameStats playWithTape(SimBot bot, YachtScoreRules rules,
+    private static GameStats playWithTape(YachtDpContext ctx, SimBot bot, YachtScoreRules rules,
                                            byte[][][] tape, int maxRolls) {
         int     filledMask  = 0;
         int     upperTotal  = 0;
@@ -242,13 +247,13 @@ public class YachtBotSimulator {
         boolean choiceLate  = false;
         Map<String, Integer> scored = new HashMap<>();
 
-        while (filledMask != YachtDpEngine.ALL_FILLED) {
+        while (filledMask != ctx.allFilled) {
             int[] dice = tapeRow(tape[turn][0]);
-            int remainingBefore = YachtDpEngine.NUM_SLOTS - Integer.bitCount(filledMask);
+            int remainingBefore = ctx.numSlots - Integer.bitCount(filledMask);
 
             for (int r = 1; r < maxRolls; r++) {
                 int           rollsLeft = maxRolls - r;
-                List<Integer> keep      = bot.decideKeep(dice, filledMask, upperTotal, rules, rollsLeft);
+                List<Integer> keep      = bot.decideKeep(ctx, dice, filledMask, upperTotal, rules, rollsLeft);
                 if (keep.size() == 5) break;
 
                 int[]    next    = Arrays.copyOf(dice, 5);
@@ -258,19 +263,17 @@ public class YachtBotSimulator {
                 dice = next;
             }
 
-            String key = bot.decideScore(dice, filledMask, upperTotal, rules);
+            String key = bot.decideScore(ctx, dice, filledMask, upperTotal, rules);
             int    val = rules.calculateScore(key, dice);
             scored.put(key, val);
 
-            Integer slotIdx = YachtDpEngine.SLOT_INDEX.get(key);
+            Integer slotIdx = ctx.slotIndex.get(key);
             if (slotIdx != null) {
                 filledMask |= (1 << slotIdx);
-                if (YachtDpEngine.isUpperSlot(slotIdx))
-                    upperTotal = Math.min(63, upperTotal + val);
+                if (ctx.isUpperSlot(slotIdx))
+                    upperTotal = Math.min(ctx.upperCap, upperTotal + val);
             } else {
-                // D8 키 등 알 수 없는 슬롯은 비트 없이 처리 (시뮬레이터 호환)
-                // D6 전용이므로 사실상 도달 불가
-                filledMask |= nextUnknownBit(filledMask);
+                filledMask |= nextUnknownBit(filledMask, ctx.numSlots);
             }
 
             if ("YACHT".equals(key) && val == 0) yacht0 = true;
@@ -278,7 +281,7 @@ public class YachtBotSimulator {
             turn++;
         }
 
-        int bonus = upperTotal >= 63 ? 35 : 0;
+        int bonus = upperTotal >= ctx.upperCap ? ctx.upperBonus : 0;
         int total = scored.values().stream().mapToInt(Integer::intValue).sum() + bonus;
         return new GameStats(total, bonus > 0, yacht0, choiceLate);
     }
@@ -301,21 +304,22 @@ public class YachtBotSimulator {
 
     // ─── 결정 지연 측정 ──────────────────────────────────────────────────────
 
-    private static void measureLatency(String label, SimBot bot, YachtScoreRules rules) {
-        int[]  dice      = {3, 3, 3, 4, 5};
-        int    filledMask = 0;  // 아무것도 채우지 않은 상태
-        int    REPS      = 300;
-        int    WARMUP    = 30;
+    private static void measureLatency(String label, YachtDpContext ctx, SimBot bot, YachtScoreRules rules) {
+        int[] dice      = {3, 3, 3, 4, 5};
+        int   filledMask = 0;
+        int   rollsLeft  = ctx.maxRollsLeft;
+        int   REPS      = 300;
+        int   WARMUP    = 30;
 
         for (int i = 0; i < WARMUP; i++)
-            bot.decideKeep(dice, filledMask, 0, rules, 2);
+            bot.decideKeep(ctx, dice, filledMask, 0, rules, rollsLeft);
 
         long t0 = System.nanoTime();
         for (int i = 0; i < REPS; i++)
-            bot.decideKeep(dice, filledMask, 0, rules, 2);
+            bot.decideKeep(ctx, dice, filledMask, 0, rules, rollsLeft);
         long avgNs = (System.nanoTime() - t0) / REPS;
-        System.out.printf("[%s] dp decideKeep(rollsLeft=2) p50=%,d µs (%d회)%n",
-                label, avgNs / 1000, REPS);
+        System.out.printf("[%s] dp decideKeep(rollsLeft=%d) p50=%,d µs (%d회)%n",
+                label, rollsLeft, avgNs / 1000, REPS);
     }
 
     // ─── 유틸 ────────────────────────────────────────────────────────────────
@@ -338,8 +342,8 @@ public class YachtBotSimulator {
         return idx;
     }
 
-    private static int nextUnknownBit(int filledMask) {
-        for (int i = 0; i < 12; i++)
+    private static int nextUnknownBit(int filledMask, int numSlots) {
+        for (int i = 0; i < numSlots; i++)
             if ((filledMask & (1 << i)) == 0) return (1 << i);
         return 0;
     }
@@ -352,16 +356,17 @@ public class YachtBotSimulator {
 
     // ─── YachtDpBot 독립 생성 (Spring 없이 테스트용) ─────────────────────────
 
-    private static YachtDpBot createAndWaitForBot() {
+    private static YachtDpBot createAndWaitForBot(YachtDpContext ctx) {
         YachtDpBot bot = new YachtDpBot();
         bot.init();
-        long deadline = System.currentTimeMillis() + 60L * 60 * 1000;
-        while (!bot.isReady() && System.currentTimeMillis() < deadline) {
+        long deadline = System.currentTimeMillis() + 180L * 60 * 1000;  // 최대 3시간 (D8 사전 계산)
+        while (!bot.isReady(ctx) && System.currentTimeMillis() < deadline) {
             try { Thread.sleep(5_000); } catch (InterruptedException e) {
                 Thread.currentThread().interrupt(); break;
             }
         }
-        if (!bot.isReady()) throw new IllegalStateException("YachtDpBot 사전 계산 타임아웃");
+        if (!bot.isReady(ctx)) throw new IllegalStateException(
+                "YachtDpBot 사전 계산 타임아웃: " + ctx.binFileName);
         return bot;
     }
 

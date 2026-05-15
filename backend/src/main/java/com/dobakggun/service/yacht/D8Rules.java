@@ -1,6 +1,6 @@
 package com.dobakggun.service.yacht;
 
-import java.util.*;
+import java.util.Set;
 
 /**
  * D8 (정팔면체, 1~8) 룰셋.
@@ -8,7 +8,7 @@ import java.util.*;
  *
  * 균형 설계:
  * - 면당 적중률이 1/8로 떨어져 하단 족보(YACHT/FH/4K/스트레이트) 단판 확률이 D6의 절반 이하 → 턴당 굴림 4회로 보정
- * - 상단 임계 112 — windfall(7·8 넷 이상, ~19% 확률) 발생해도 나머지 카테고리 평균 이상 성능 요구. 3.11개/카테고리 기준.
+ * - 상단 임계 108 = 63 × (1+2+…+8)/(1+2+…+6) = 63 × 36/21. 면 합 비례 기준.
  *
  * 스트레이트 확장:
  * - LITTLE_STRAIGHT: {4,5,6,7}, {5,6,7,8} 추가
@@ -26,23 +26,6 @@ public class D8Rules implements YachtScoreRules {
             "ONES", "TWOS", "THREES", "FOURS", "FIVES", "SIXES", "SEVENS", "EIGHTS"
     );
 
-    // Little Straight: D6 셋 + D8 추가 셋
-    private static final List<Set<Integer>> LITTLE_STRAIGHT_SETS = List.of(
-            Set.of(1, 2, 3, 4),
-            Set.of(2, 3, 4, 5),
-            Set.of(3, 4, 5, 6),
-            Set.of(4, 5, 6, 7),  // D8 추가
-            Set.of(5, 6, 7, 8)   // D8 추가
-    );
-
-    // Big Straight: D6 셋 + D8 추가 셋
-    private static final List<Set<Integer>> BIG_STRAIGHT_SETS = List.of(
-            Set.of(1, 2, 3, 4, 5),
-            Set.of(2, 3, 4, 5, 6),
-            Set.of(3, 4, 5, 6, 7),  // D8 추가
-            Set.of(4, 5, 6, 7, 8)   // D8 추가
-    );
-
     @Override
     public Set<String> validScoreKeys() {
         return VALID_SCORE_KEYS;
@@ -55,7 +38,7 @@ public class D8Rules implements YachtScoreRules {
 
     @Override
     public int upperBonusThreshold() {
-        return 112;
+        return 108;
     }
 
     @Override
@@ -89,7 +72,7 @@ public class D8Rules implements YachtScoreRules {
             case "SIXES"           -> sumOf(dice, 6);
             case "SEVENS"          -> sumOf(dice, 7);
             case "EIGHTS"          -> sumOf(dice, 8);
-            case "CHOICE"          -> Arrays.stream(dice).sum();
+            case "CHOICE"          -> sum(dice);
             case "FOUR_OF_A_KIND"  -> calcFourOfAKind(dice);
             case "FULL_HOUSE"      -> calcFullHouse(dice);
             case "LITTLE_STRAIGHT" -> calcLittleStraight(dice);
@@ -107,49 +90,69 @@ public class D8Rules implements YachtScoreRules {
         return sum;
     }
 
+    private static int sum(int[] dice) {
+        int s = 0;
+        for (int d : dice) s += d;
+        return s;
+    }
+
+    /** int[9]: 인덱스 1-8 → 해당 면 개수 */
+    private static int[] counts(int[] dice) {
+        int[] c = new int[9];
+        for (int d : dice) c[d]++;
+        return c;
+    }
+
     private static int calcFourOfAKind(int[] dice) {
-        Map<Integer, Integer> counts = new HashMap<>();
-        for (int d : dice) counts.merge(d, 1, Integer::sum);
-        for (Map.Entry<Integer, Integer> e : counts.entrySet()) {
-            if (e.getValue() >= 4) return e.getKey() * 4;
-        }
+        int[] c = counts(dice);
+        for (int f = 1; f <= 8; f++)
+            if (c[f] >= 4) return f * 4;
         return 0;
     }
 
     private static int calcFullHouse(int[] dice) {
-        Map<Integer, Integer> counts = new HashMap<>();
-        for (int d : dice) counts.merge(d, 1, Integer::sum);
-        List<Integer> vals = new ArrayList<>(counts.values());
-        Collections.sort(vals);
-        // 정확히 [2,3]인 경우만 (5개 동일=[5]은 0)
-        if (vals.equals(List.of(2, 3))) {
-            return Arrays.stream(dice).sum();
+        int[] c = counts(dice);
+        boolean has2 = false, has3 = false;
+        for (int f = 1; f <= 8; f++) {
+            if (c[f] == 2) has2 = true;
+            else if (c[f] == 3) has3 = true;
         }
-        return 0;
+        // 정확히 2개+3개인 경우만 (5개 동일은 has3만 true → 0)
+        if (!has2 || !has3) return 0;
+        return sum(dice);
     }
 
     private static int calcLittleStraight(int[] dice) {
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        for (Set<Integer> required : LITTLE_STRAIGHT_SETS) {
-            if (set.containsAll(required)) return 15;
-        }
-        return 0;
+        // Little Straight: 4개 연속 (D6 3조합 + D8 추가 2조합)
+        // {1,2,3,4}, {2,3,4,5}, {3,4,5,6}, {4,5,6,7}, {5,6,7,8}
+        boolean[] seen = new boolean[9];
+        for (int d : dice) seen[d] = true;
+        return ((seen[1] && seen[2] && seen[3] && seen[4])
+             || (seen[2] && seen[3] && seen[4] && seen[5])
+             || (seen[3] && seen[4] && seen[5] && seen[6])
+             || (seen[4] && seen[5] && seen[6] && seen[7])
+             || (seen[5] && seen[6] && seen[7] && seen[8])) ? 15 : 0;
     }
 
     private static int calcBigStraight(int[] dice) {
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        // BIG_STRAIGHT는 정확히 5개 연속이어야 함 (containsAll + 크기 5 확인)
-        for (Set<Integer> required : BIG_STRAIGHT_SETS) {
-            if (set.equals(required)) return 30;
-        }
-        return 0;
+        // Big Straight: 정확히 5개 연속 (D6 2조합 + D8 추가 2조합)
+        // {1,2,3,4,5}, {2,3,4,5,6}, {3,4,5,6,7}, {4,5,6,7,8}
+        // 주사위 5개가 모두 다른 값이어야 하므로 seen true 개수도 5여야 함
+        boolean[] seen = new boolean[9];
+        for (int d : dice) seen[d] = true;
+        // seen 개수 5 확인 (중복 주사위 배제)
+        int cnt = 0;
+        for (int i = 1; i <= 8; i++) if (seen[i]) cnt++;
+        if (cnt != 5) return 0;
+        return ((seen[1] && seen[2] && seen[3] && seen[4] && seen[5])
+             || (seen[2] && seen[3] && seen[4] && seen[5] && seen[6])
+             || (seen[3] && seen[4] && seen[5] && seen[6] && seen[7])
+             || (seen[4] && seen[5] && seen[6] && seen[7] && seen[8])) ? 30 : 0;
     }
 
     private static int calcYacht(int[] dice) {
-        Set<Integer> set = new HashSet<>();
-        for (int d : dice) set.add(d);
-        return set.size() == 1 ? 50 : 0;
+        int first = dice[0];
+        for (int d : dice) if (d != first) return 0;
+        return 50;
     }
 }

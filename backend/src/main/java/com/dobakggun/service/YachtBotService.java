@@ -3,6 +3,7 @@ package com.dobakggun.service;
 import com.dobakggun.service.yacht.YachtScoreRules;
 import com.dobakggun.service.yacht.YachtScoreRulesFactory;
 import com.dobakggun.service.yacht.bot.YachtDpBot;
+import com.dobakggun.service.yacht.bot.YachtDpContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,7 @@ import java.util.concurrent.*;
  * YachtDpBot 알고리즘에 따라 roll → keep → score 액션을 순서대로 수행.
  * 모든 액션은 딜레이를 두어 자연스러운 플레이처럼 보이게 함.
  *
- * D6 전용: D8 룰셋으로 봇 호출 시 UnsupportedOperationException.
+ * D6/D8 공통 지원: diceType으로 YachtDpContext를 결정해 DP 봇에 전달.
  */
 @Slf4j
 @Service
@@ -92,30 +93,29 @@ public class YachtBotService {
         int[]           dice      = Arrays.copyOf(state.dice, 5);
         int             rollsLeft = state.rollsLeft;
         YachtScoreRules rules     = YachtScoreRulesFactory.get(state.diceType);
-
-        if (rules.rngFaces() != 6)
-            throw new UnsupportedOperationException("Bot only supports D6");
+        YachtDpContext  ctx       = rules.rngFaces() == 6 ? YachtDpContext.D6 : YachtDpContext.D8;
 
         Map<String, Integer> scored    = state.scoreMap.getOrDefault(botUserId, Map.of());
-        int                  filled    = YachtDpBot.computeFilledMaskFromScored(scored);
-        int                  upperTotal = computeUpperTotal(state, rules);
+        int                  filled    = YachtDpBot.computeFilledMaskFromScored(ctx, scored);
+        int                  upperTotal = Math.min(ctx.upperCap, computeUpperTotal(state, rules));
 
         if (rollsLeft > 0) {
-            List<Integer> keep = dpBot.decideKeep(dice, rollsLeft, filled, upperTotal);
+            List<Integer> keep = dpBot.decideKeep(ctx, dice, rollsLeft, filled, upperTotal);
             if (keep.size() == 5) {
-                scheduleScore(roomId, dice, filled, upperTotal);
+                scheduleScore(ctx, roomId, dice, filled, upperTotal);
                 return;
             }
             scheduler.schedule(() -> doRoll(roomId, keep),
                     BETWEEN_ROLL_DELAY_MS, TimeUnit.MILLISECONDS);
         } else {
-            scheduleScore(roomId, dice, filled, upperTotal);
+            scheduleScore(ctx, roomId, dice, filled, upperTotal);
         }
     }
 
-    private void scheduleScore(String roomId, int[] dice, int filledMask, int upperTotal) {
+    private void scheduleScore(YachtDpContext ctx, String roomId, int[] dice,
+                                int filledMask, int upperTotal) {
         scheduler.schedule(() -> {
-            String key = dpBot.decideScore(dice, filledMask, upperTotal);
+            String key = dpBot.decideScore(ctx, dice, filledMask, upperTotal);
             if (key == null) {
                 log.error("YachtBotService: decideScore returned null roomId={}", roomId);
                 return;
