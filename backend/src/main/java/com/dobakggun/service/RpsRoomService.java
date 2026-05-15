@@ -2,6 +2,7 @@ package com.dobakggun.service;
 
 import com.dobakggun.dto.rps.*;
 import com.dobakggun.entity.rps.*;
+import com.dobakggun.repository.RpsPlayerStatRepository;
 import com.dobakggun.repository.RpsRoomRepository;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -87,6 +88,7 @@ public class RpsRoomService {
     // ─── 의존성 ───────────────────────────────────────────────────────────────
 
     private final RpsRoomRepository rpsRoomRepository;
+    private final RpsPlayerStatRepository rpsPlayerStatRepository;
     private final ThreadPoolTaskScheduler taskScheduler;
     private final RpsGameService rpsGameService;
 
@@ -96,9 +98,11 @@ public class RpsRoomService {
 
     public RpsRoomService(
             RpsRoomRepository rpsRoomRepository,
+            RpsPlayerStatRepository rpsPlayerStatRepository,
             @Qualifier("rpsTaskScheduler") ThreadPoolTaskScheduler taskScheduler,
             RpsGameService rpsGameService) {
         this.rpsRoomRepository = rpsRoomRepository;
+        this.rpsPlayerStatRepository = rpsPlayerStatRepository;
         this.taskScheduler = taskScheduler;
         this.rpsGameService = rpsGameService;
     }
@@ -474,6 +478,13 @@ public class RpsRoomService {
         // 판정
         Map<Long, RpsResult> judgedResults = rpsGameService.judge(choicesSnapshot);
 
+        // 승패 통계 저장 (로그인 유저만)
+        saveMatchStats(participantsSnapshot, judgedResults);
+
+        // 저장 후 최신 승률 조회
+        List<Long> pIds = participantsSnapshot.stream().map(p -> p.userId).toList();
+        Map<Long, Double> winRateMap = fetchWinRateMap(pIds);
+
         // ROUND_RESULT payload 구성
         List<RpsPlayerResultDto> resultList = new ArrayList<>();
         for (RpsParticipant p : participantsSnapshot) {
@@ -488,6 +499,7 @@ public class RpsRoomService {
                     .choice(choice.name())
                     .autoPicked(autoPicked)
                     .result(result.name())
+                    .winRate(winRateMap.get(p.userId))
                     .build());
         }
 
@@ -553,17 +565,25 @@ public class RpsRoomService {
         RoomStatus status;
         String roomName;
         int maxPlayers;
+        List<Long> participantIds;
 
         synchronized (state) {
             hostUserId = state.hostUserId;
             status = state.status;
             roomName = state.roomName;
             maxPlayers = state.maxPlayers;
+            participantIds = state.participants.stream().map(p -> p.userId).toList();
+        }
+
+        Map<Long, Double> winRateMap = fetchWinRateMap(participantIds);
+
+        synchronized (state) {
             participants = state.participants.stream()
                     .map(p -> RpsParticipantDto.builder()
                             .userId(p.userId)
                             .nickname(p.nickname)
                             .isHost(p.userId.equals(state.hostUserId))
+                            .winRate(winRateMap.get(p.userId))
                             .build())
                     .collect(Collectors.toList());
         }
@@ -579,6 +599,26 @@ public class RpsRoomService {
     }
 
     // ─── DB 헬퍼 ──────────────────────────────────────────────────────────────
+
+    @Transactional
+    void saveMatchStats(List<RpsParticipant> participants, Map<Long, RpsResult> judgedResults) {
+        for (RpsParticipant p : participants) {
+            if (p.userId < 0) continue; // 게스트 제외
+            int win = judgedResults.getOrDefault(p.userId, RpsResult.DRAW) == RpsResult.WIN ? 1 : 0;
+            rpsPlayerStatRepository.upsert(p.userId, win);
+        }
+    }
+
+    private Map<Long, Double> fetchWinRateMap(List<Long> userIds) {
+        List<Long> loggedIn = userIds.stream().filter(id -> id > 0).toList();
+        if (loggedIn.isEmpty()) return Map.of();
+        return rpsPlayerStatRepository.findAllById(loggedIn).stream()
+                .collect(Collectors.toMap(
+                        com.dobakggun.entity.rps.RpsPlayerStat::getUserId,
+                        s -> s.getTotalGames() == 0 ? 0.0
+                                : s.getTotalWins() * 100.0 / s.getTotalGames()
+                ));
+    }
 
     @Transactional
     void updateDbStatus(String roomId, RoomStatus status) {

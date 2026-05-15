@@ -76,6 +76,9 @@ export default function WaitingScreen({
               {p.userId === myUserId && (
                 <span className={styles.meBadge}>(나)</span>
               )}
+              <span className={styles.winRate}>
+                {p.winRate != null ? `${p.winRate.toFixed(2)}%` : '-'}
+              </span>
             </li>
           ))}
         </ul>

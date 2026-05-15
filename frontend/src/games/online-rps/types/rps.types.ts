@@ -40,6 +40,7 @@ export interface RpsParticipant {
   userId: number;
   nickname: string;
   isHost: boolean;
+  winRate?: number | null;
 }
 
 export interface RoomStatePayload {
@@ -76,6 +77,7 @@ export interface RoundPlayerResult {
   choice: RpsChoice;
   autoPicked: boolean;
   result: RpsResult;
+  winRate?: number | null;
 }
 
 export interface RoundResultPayload {

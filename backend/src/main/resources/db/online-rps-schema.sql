@@ -18,6 +18,14 @@ CREATE TABLE IF NOT EXISTS rps_room (
     CONSTRAINT fk_rps_room_created_by FOREIGN KEY (created_by) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS rps_player_stat (
+    user_id     BIGINT NOT NULL COMMENT 'FK → users(id), PK',
+    total_games INT    NOT NULL DEFAULT 0,
+    total_wins  INT    NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id),
+    CONSTRAINT fk_rps_player_stat_user FOREIGN KEY (user_id) REFERENCES users (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS rps_round_result (
     id          BIGINT      NOT NULL AUTO_INCREMENT,
     room_id     BIGINT      NOT NULL COMMENT 'FK → rps_room(id)',

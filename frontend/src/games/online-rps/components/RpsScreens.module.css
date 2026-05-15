@@ -230,6 +230,19 @@
   margin-left: 4px;
 }
 
+.winRate {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.resultWinRate {
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: center;
+}
+
 .playerCount {
   font-size: 13px;
   color: #9ca3af;

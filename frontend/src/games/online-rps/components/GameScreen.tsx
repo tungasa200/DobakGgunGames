@@ -159,6 +159,9 @@ export default function GameScreen({
                 {p.userId === myUserId && (
                   <span className={styles.meBadge}>(나)</span>
                 )}
+                <span className={styles.winRate}>
+                  {p.winRate != null ? `${p.winRate.toFixed(2)}%` : '-'}
+                </span>
               </div>
             );
           })}

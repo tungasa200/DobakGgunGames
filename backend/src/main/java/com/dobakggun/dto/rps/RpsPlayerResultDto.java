@@ -12,4 +12,5 @@ public class RpsPlayerResultDto {
     private String choice;
     private boolean autoPicked;
     private String result;
+    private Double winRate;
 }

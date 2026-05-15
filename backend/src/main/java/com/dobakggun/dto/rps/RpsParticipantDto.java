@@ -13,4 +13,6 @@ public class RpsParticipantDto {
 
     @JsonProperty("isHost")
     private boolean isHost;
+
+    private Double winRate;
 }

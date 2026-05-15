@@ -118,12 +118,15 @@ export default function ResultScreen({
               className={styles.resultCardWrapper}
               style={{ animationDelay: `${i * STAGGER_BASE_MS}ms` }}
             >
-              {/* 닉네임 */}
+              {/* 닉네임 + 승률 */}
               <div className={styles.resultCardName}>
                 {r.nickname}
                 {r.userId === myUserId && (
                   <span className={styles.meBadge}>(나)</span>
                 )}
+              </div>
+              <div className={styles.resultWinRate}>
+                {r.winRate != null ? `${r.winRate.toFixed(2)}%` : '-'}
               </div>
 
               {/* 카드 */}
