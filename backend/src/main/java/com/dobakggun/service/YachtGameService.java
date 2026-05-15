@@ -1061,6 +1061,13 @@ public class YachtGameService {
             state.rollsLeft = YachtScoreRulesFactory.get(state.diceType).maxRollsPerTurn();
             state.hasRolled = false;
             state.readySet.clear();
+            // 봇은 WebSocket 클라이언트가 없으므로 자동 준비 복원
+            if (yachtBotService != null) {
+                state.participants.stream()
+                        .map(p -> p.userId)
+                        .filter(yachtBotService::isBot)
+                        .forEach(state.readySet::add);
+            }
 
             // 방장이 끊겨 사라졌다면 새 방장 위임 (남은 첫 참가자)
             if (!state.participants.isEmpty()) {
