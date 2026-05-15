@@ -1,5 +1,5 @@
 {
   "packages": {
-    "java": "17"
+    "java": "temurin-17"
   }
 }

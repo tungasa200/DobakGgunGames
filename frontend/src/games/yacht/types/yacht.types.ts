@@ -47,7 +47,7 @@ export const LOWER_SCORE_KEYS: ScoreKey[] = [
 
 export const UPPER_BONUS_THRESHOLD_BY_MODE: Record<DiceType, number> = {
   D6: 63,
-  D8: 112, // windfall(7·8 넷 이상) 발생 시에도 나머지 카테고리 평균 이상 요구
+  D8: 108, // 면 합 비례 기준: 63 × (1+2+…+8)/(1+2+…+6) = 63 × 36/21 ≈ 108
 };
 
 /**

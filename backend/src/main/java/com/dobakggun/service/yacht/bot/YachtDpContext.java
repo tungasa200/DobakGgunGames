@@ -50,7 +50,7 @@ public final class YachtDpContext {
     public final String[] slotNames;
     public final Map<String, Integer> slotIndex;
     public final int allFilled;       // (1 << numSlots) - 1
-    public final int upperCap;        // D6:63, D8:112
+    public final int upperCap;        // D6:63, D8:108
     public final int upperBonus;      // 35
     public final int maxRollsLeft;    // maxRollsPerTurn-1 (D6:2, D8:3)
 

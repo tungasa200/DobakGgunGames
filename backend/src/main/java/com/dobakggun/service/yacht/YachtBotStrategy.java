@@ -387,7 +387,7 @@ public class YachtBotStrategy {
      * 상단 슬롯 기회비용 = par(F) + dynamic_bonus_premium.
      *
      * par(F) = F × threshold / Σ(1..faces)
-     *   D6: F×63/21=3F  |  D8: F×112/36≈3.11F
+     *   D6: F×63/21=3F  |  D8: F×108/36=3F
      *
      * premium:
      *   gap = threshold − currentUpperTotal
