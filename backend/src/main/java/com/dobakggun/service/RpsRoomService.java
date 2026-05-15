@@ -476,7 +476,14 @@ public class RpsRoomService {
         }
 
         // 판정
-        Map<Long, RpsResult> judgedResults = rpsGameService.judge(choicesSnapshot);
+        Map<Long, RpsResult> judgedResults;
+        if (participantsSnapshot.size() == 1) {
+            // 상대방 퇴장으로 인한 몰수패: 잔존 플레이어 WIN
+            judgedResults = new HashMap<>();
+            judgedResults.put(participantsSnapshot.get(0).userId, RpsResult.WIN);
+        } else {
+            judgedResults = rpsGameService.judge(choicesSnapshot);
+        }
 
         // 승패 통계 저장 (로그인 유저만)
         saveMatchStats(participantsSnapshot, judgedResults);

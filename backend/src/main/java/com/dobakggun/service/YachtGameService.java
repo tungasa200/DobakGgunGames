@@ -187,6 +187,12 @@ public class YachtGameService {
                 return "ROOM_NOT_AVAILABLE";
             }
 
+            // 강퇴/영구 이탈된 플레이어는 재진입 불가
+            if (state.disconnectedPlayers.contains(userId)) {
+                log.warn("joinRoom: roomId={} 강퇴된 플레이어 {} 재진입 거부", roomId, userId);
+                return "ROOM_NOT_AVAILABLE";
+            }
+
             asSpectator = (state.status == YachtRoomStatus.PLAYING)
                     && !state.reconnectingPlayers.contains(userId)
                     && !state.turnOrder.contains(userId);
@@ -726,15 +732,21 @@ public class YachtGameService {
 
     /**
      * synchronized(state) 블록 내에서 호출.
-     * reconnecting/disconnected 플레이어의 턴을 연속으로 건너뜀.
+     * reconnecting/disconnected 플레이어 또는 이미 모든 족보를 채운 플레이어의 턴을 연속으로 건너뜀.
+     * 이미 완료된 플레이어 스킵은 reconnecting 플레이어 재접속 후 완료 플레이어로 턴이 고착되는 버그를 방지한다.
      */
     private void skipReconnectingTurns(YachtRoomState state) {
+        YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
+        int totalKeys = rules.totalScoreKeys();
         int maxSkips = state.turnOrder.size();
         int skips = 0;
         while (skips < maxSkips) {
             Long next = currentTurnUserId(state);
             if (next == null) break;
-            if (!state.reconnectingPlayers.contains(next) && !state.disconnectedPlayers.contains(next)) break;
+            boolean isReconnecting = state.reconnectingPlayers.contains(next);
+            boolean isDisconnected = state.disconnectedPlayers.contains(next);
+            boolean isDone = state.scoreMap.getOrDefault(next, Collections.emptyMap()).size() >= totalKeys;
+            if (!isReconnecting && !isDisconnected && !isDone) break;
             state.turnOrderIndex = (state.turnOrderIndex + 1) % state.turnOrder.size();
             if (state.turnOrderIndex == 0) state.roundIndex++;
             skips++;
@@ -1197,13 +1209,14 @@ public class YachtGameService {
     /**
      * 턴 순서에 들어있는 모든 플레이어가 총 족보 수를 채웠는지 확인.
      * 족보 수는 룰셋에서 가져옴 (D6=12 / D8=14).
-     * disconnected 플레이어도 turnOrder에 있으면 포함 (autoFill로 채워짐).
+     * disconnected 플레이어는 autoFill로 이미 채워졌으므로 포함.
+     * reconnecting 플레이어는 족보가 남아있을 수 있으므로 반드시 포함하여 체크.
+     * (reconnecting을 continue로 건너뛰면 족보 미완료 상태에서 게임 강제 종료되는 버그 발생)
      * 게임 중 합류한 관전자(turnOrder에 없음)는 제외.
      */
     private boolean isGameOver(YachtRoomState state) {
         YachtScoreRules rules = YachtScoreRulesFactory.get(state.diceType);
         for (Long playerId : state.turnOrder) {
-            if (state.reconnectingPlayers.contains(playerId)) continue; // 유예 중 = 종료 예정
             Map<String, Integer> scores = state.scoreMap.getOrDefault(playerId, new ConcurrentHashMap<>());
             if (scores.size() < rules.totalScoreKeys()) return false;
         }

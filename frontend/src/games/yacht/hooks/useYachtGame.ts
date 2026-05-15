@@ -105,6 +105,8 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
   const hydratedRef = useRef<boolean>(false);
   // diceType을 ref로도 유지 (훅 내부 콜백 클로저에서 최신값 접근 위함)
   const diceTypeRef = useRef<DiceType>(initialDiceType);
+  // myUserId를 ref로도 유지 (connectWs 클로저에서 최신값 접근 위함)
+  const myUserIdRef = useRef<number | null>(null);
 
   // diceType 상태 변경 시 ref 동기화
   useEffect(() => {
@@ -118,6 +120,7 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
   };
 
   const myUserId = user?.id ?? null;
+  myUserIdRef.current = myUserId;
 
   const isMyTurn = currentTurnUserId !== null && myUserId !== null && currentTurnUserId === myUserId;
 
@@ -302,6 +305,12 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
         // phase는 'playing' 유지 — 모달이 GameScreen 위에 떠 있음
       },
       onPlayerLeft: (payload: PlayerLeftPayload) => {
+        // 자신이 강퇴된 경우: 에러 화면으로 전환
+        if (payload.reason === 'KICK' && payload.userId === myUserIdRef.current) {
+          setErrorMessage('투표로 강퇴되었습니다.');
+          setPhase('error');
+          return;
+        }
         const reasonMsg = payload.reason === 'KICK' ? '강퇴되었습니다'
                         : payload.reason === 'DISCONNECT' ? '연결이 끊겼습니다'
                         : '나갔습니다';
