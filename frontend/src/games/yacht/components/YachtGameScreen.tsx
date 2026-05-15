@@ -30,6 +30,7 @@ interface YachtGameScreenProps {
   chatMessages: ChatMessage[];
   onSendChat: (message: string) => void;
   diceType?: DiceType;
+  isBotGame?: boolean;
 }
 
 const SCORE_MIN = 200;
@@ -59,6 +60,7 @@ export default function YachtGameScreen({
   chatMessages,
   onSendChat,
   diceType = 'D6',
+  isBotGame = false,
 }: YachtGameScreenProps) {
   const currentPlayer = participants.find((p) => p.userId === currentTurnUserId);
   const maxRolls = MAX_ROLLS_BY_MODE[diceType];
@@ -241,12 +243,14 @@ export default function YachtGameScreen({
             )}
           </div>
 
-          {/* 채팅 */}
-          <YachtChat
-            messages={chatMessages}
-            myUserId={myUserId}
-            onSend={onSendChat}
-          />
+          {/* 채팅 (봇전 제외) */}
+          {!isBotGame && (
+            <YachtChat
+              messages={chatMessages}
+              myUserId={myUserId}
+              onSend={onSendChat}
+            />
+          )}
         </div>
 
         {/* 드래그 핸들 */}

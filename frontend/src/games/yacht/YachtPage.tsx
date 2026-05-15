@@ -112,6 +112,9 @@ export default function YachtPage() {
   // 실제 게임에서 확정된 diceType (서버 응답 기반)
   const effectiveDiceType: DiceType = gameDiceType ?? diceType;
 
+  const BOT_USER_ID = 9999;
+  const isBotGame = participants.some((p) => p.userId === BOT_USER_ID);
+
   // 에러 화면
   if (phase === 'error') {
     return (
@@ -201,6 +204,7 @@ export default function YachtPage() {
           chatMessages={chatMessages}
           onSendChat={sendChat}
           diceType={effectiveDiceType}
+          isBotGame={isBotGame}
         />
         {toastMessage && (
           <div
@@ -247,6 +251,7 @@ export default function YachtPage() {
           chatMessages={chatMessages}
           onSendChat={sendChat}
           diceType={effectiveDiceType}
+          isBotGame={isBotGame}
         />
         {gameOverData && (
           <YachtGameOverModal

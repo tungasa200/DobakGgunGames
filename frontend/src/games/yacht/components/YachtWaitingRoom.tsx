@@ -17,6 +17,7 @@ interface YachtWaitingRoomProps {
   chatMessages: ChatMessage[];
   onSendChat: (message: string) => void;
   diceType?: DiceType;
+  isBotGame?: boolean;
 }
 
 const AVATAR_COLORS = [
@@ -38,6 +39,7 @@ export default function YachtWaitingRoom({
   chatMessages,
   onSendChat,
   diceType = 'D6',
+  isBotGame = false,
 }: YachtWaitingRoomProps) {
   const me = participants.find((p) => p.userId === myUserId);
   const isHost = myUserId === hostUserId;
@@ -171,14 +173,16 @@ export default function YachtWaitingRoom({
         </div>
       </div>
 
-      {/* 채팅 */}
-      <div style={{ width: '100%', maxWidth: '440px' }}>
-        <YachtChat
-          messages={chatMessages}
-          myUserId={myUserId}
-          onSend={onSendChat}
-        />
-      </div>
+      {/* 채팅 (봇전 제외) */}
+      {!isBotGame && (
+        <div style={{ width: '100%', maxWidth: '440px' }}>
+          <YachtChat
+            messages={chatMessages}
+            myUserId={myUserId}
+            onSend={onSendChat}
+          />
+        </div>
+      )}
 
       {/* 역대 랭킹 — D6/D8 탭 */}
       <div className={styles.waitingSection}>

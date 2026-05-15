@@ -2,7 +2,6 @@ package com.dobakggun.service.yacht;
 
 import com.dobakggun.service.yacht.bot.YachtDpBot;
 import com.dobakggun.service.yacht.bot.YachtDpContext;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -149,7 +148,6 @@ public class YachtBotSimulator {
         compare("D6", YachtDpContext.D6, new D6Rules(), new DpBot(dpBot));
     }
 
-    @Disabled("D8 W 테이블 사전 계산 ~30분 소요 — 수동 실행: ./gradlew test --tests \"*YachtBotSimulator.compareD8\"")
     @Test
     void compareD8() {
         YachtDpBot dpBot = createAndWaitForBot(YachtDpContext.D8);
