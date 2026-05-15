@@ -199,6 +199,7 @@ export default function YachtBotPage() {
           onSelectScore={game.recordScore}
           onLeave={game.leave}
           onVoteKick={() => {}}
+          isBotGame={true}
           chatMessages={[]}
           onSendChat={() => {}}
           diceType={effectiveDiceType}
