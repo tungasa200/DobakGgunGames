@@ -600,7 +600,6 @@ public class RpsRoomService {
 
     // ─── DB 헬퍼 ──────────────────────────────────────────────────────────────
 
-    @Transactional
     void saveMatchStats(List<RpsParticipant> participants, Map<Long, RpsResult> judgedResults) {
         for (RpsParticipant p : participants) {
             if (p.userId < 0) continue; // 게스트 제외
