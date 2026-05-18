@@ -13,6 +13,7 @@ const GAME_OPTIONS = [
   { value: 'SOLITAIRE',   label: '🃏 솔리테어' },
   { value: 'APPLE',       label: '🍎 사과게임' },
   { value: 'SUDOKU',      label: '🔢 스도쿠' },
+  { value: 'YACHT',       label: '🎲 야추' },
 ];
 
 export default function AdminPatchNoteFormPage() {

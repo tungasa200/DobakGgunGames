@@ -2,7 +2,7 @@ const API_ORIGIN = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '
 const BASE = `${API_ORIGIN}/api/patch-notes`;
 
 export type PatchNoteGame =
-  | 'ALL' | 'COMMON' | 'MINESWEEPER' | 'BASEBALL' | 'BLOCKFALL' | 'SOLITAIRE' | 'APPLE' | 'SUDOKU';
+  | 'ALL' | 'COMMON' | 'MINESWEEPER' | 'BASEBALL' | 'BLOCKFALL' | 'SOLITAIRE' | 'APPLE' | 'SUDOKU' | 'YACHT';
 
 export interface PatchNote {
   id: number;
