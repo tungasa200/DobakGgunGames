@@ -147,7 +147,7 @@ function MultiGameCard({ game, roomStatus, disabled }: { game: MultiGameConfig; 
         <div className={styles.btns}>
           <Link className={`${styles.btn} ${styles.btnNormal}`} to={game.to}>플레이</Link>
           {game.botTo && (
-            <Link className={`${styles.btn} ${styles.btnExcel}`} to={game.botTo}>🤖 봇전</Link>
+            <Link className={`${styles.btn} ${styles.btnNormal}`} to={game.botTo}>🤖 봇전</Link>
           )}
         </div>
       </div>
