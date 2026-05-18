@@ -117,6 +117,7 @@ interface MultiGameConfig {
   icon: string;
   name: string;
   to: string;
+  botTo?: string;
   gameKey: string;
   statusKey?: 'rps' | 'battle' | 'yacht';
 }
@@ -129,7 +130,7 @@ interface RoomStatusData {
 const MULTI_GAMES: MultiGameConfig[] = [
   { icon: '✌️', name: '온라인 가위바위보', to: '/online-rps',      gameKey: 'online-rps',     statusKey: 'rps'    },
   { icon: '🟦', name: '블록폴 배틀',       to: '/blockfall-battle', gameKey: 'blockfall-battle', statusKey: 'battle' },
-  { icon: '🎲', name: '야추 (Yacht)',       to: '/yacht/select',     gameKey: 'yacht',          statusKey: 'yacht'  },
+  { icon: '🎲', name: '야추 (Yacht)',       to: '/yacht/select',     botTo: '/yacht-bot',   gameKey: 'yacht',          statusKey: 'yacht'  },
 ];
 
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
@@ -145,6 +146,9 @@ function MultiGameCard({ game, roomStatus, disabled }: { game: MultiGameConfig; 
         </div>
         <div className={styles.btns}>
           <Link className={`${styles.btn} ${styles.btnNormal}`} to={game.to}>플레이</Link>
+          {game.botTo && (
+            <Link className={`${styles.btn} ${styles.btnExcel}`} to={game.botTo}>🤖 봇전</Link>
+          )}
         </div>
       </div>
       <div className={styles.cardRanking}>
@@ -471,18 +475,6 @@ export default function HomePage() {
                     </span>
                   </div>
                 )}
-                <hr className={styles.labDivider} />
-                <Link
-                  to="/yacht-bot"
-                  className={`${styles.btn} ${styles.btnNormal}`}
-                  style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
-                >
-                  <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🤖</span>
-                  <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>야추 AI봇 대전</span>
-                  <span style={{ display: 'inline-block', background: '#6366f1', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                    BETA
-                  </span>
-                </Link>
               </div>
             </div>
           </div>
