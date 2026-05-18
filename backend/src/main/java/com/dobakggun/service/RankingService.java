@@ -23,7 +23,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RankingService {
 
-    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "blockfall-insane", "solitaire", "apple", "sudoku", "brickbreaker");
+    private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "blockfall-insane", "solitaire", "apple", "sudoku", "brickbreaker", "block-crush");
     private static final int RATE_LIMIT_PER_MINUTE = 3;
 
     private final MinesweeperRankingRepository minesweeperRepo;
@@ -34,11 +34,13 @@ public class RankingService {
     private final AppleRankingRepository appleRepo;
     private final SudokuRankingRepository sudokuRepo;
     private final BrickBreakerRankingRepository brickBreakerRankingRepository;
+    private final BlockCrushRankingRepository blockCrushRankingRepository;
     private final SessionService sessionService;
     private final BaseballSessionService baseballSessionService;
     private final SolitaireMoveService solitaireMoveService;
     private final AppleValidationService appleValidationService;
     private final BlockfallValidationService blockfallValidationService;
+    private final BlockCrushValidationService blockCrushValidationService;
     private final IpHashUtil ipHashUtil;
 
     public List<RankingResponse> getWeeklyRankings(String game, String level) {
@@ -83,6 +85,7 @@ public class RankingService {
             case "apple"            -> appleValidationService.validate(session, req);
             case "blockfall"        -> blockfallValidationService.validate(session, req);
             case "blockfall-insane" -> blockfallValidationService.validate(session, req);
+            case "block-crush"      -> blockCrushValidationService.validate(session, req);
         }
 
         // 점수 범위 검증 (스도쿠는 서버 계산이므로 제외)
@@ -105,6 +108,7 @@ public class RankingService {
             case "apple"            -> appleRepo.findWeekly(level, weekStart);
             case "sudoku"           -> sudokuRepo.findWeekly(level, weekStart);
             case "brickbreaker"     -> brickBreakerRankingRepository.findWeeklyRankings(level, weekStart);
+            case "block-crush"      -> blockCrushRankingRepository.findWeekly(level, weekStart);
             default -> List.of();
         };
     }
@@ -119,6 +123,7 @@ public class RankingService {
             case "apple"            -> appleRepo.findAlltimeBest(level);
             case "sudoku"           -> sudokuRepo.findAlltimeBest(level);
             case "brickbreaker"     -> brickBreakerRankingRepository.findAlltimeBest(level);
+            case "block-crush"      -> blockCrushRankingRepository.findAlltimeBest(level);
             default -> null;
         };
     }
@@ -133,6 +138,7 @@ public class RankingService {
             case "apple"            -> appleRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "sudoku"           -> sudokuRepo.countByIpHashAndCreatedAtAfter(ipHash, after);
             case "brickbreaker"     -> brickBreakerRankingRepository.countByIpHashAndCreatedAtAfter(ipHash, after);
+            case "block-crush"      -> blockCrushRankingRepository.countByIpHashAndCreatedAtAfter(ipHash, after);
             default -> 0L;
         };
     }
@@ -175,6 +181,9 @@ public class RankingService {
             case "brickbreaker" -> brickBreakerRankingRepository.save(BrickBreakerRanking.builder()
                     .level(req.getLevel()).name(req.getName().trim())
                     .score(req.getScore()).gameLevel(req.getGameLevel()).ipHash(ipHash).userId(userId).build());
+            case "block-crush" -> blockCrushRankingRepository.save(BlockCrushRanking.builder()
+                    .level(req.getLevel()).name(req.getName().trim())
+                    .score(req.getScore()).linesCleared(req.getLinesCleared()).ipHash(ipHash).userId(userId).build());
             default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다.");
         };
     }
@@ -201,6 +210,10 @@ public class RankingService {
                 int stage = req.getGameLevel() != null ? req.getGameLevel() : -1;
                 yield !(score >= 0 && score <= 99_999_999 && stage >= 1 && stage <= 10);
             }
+            // block-crush: 비율 검증은 BlockCrushValidationService에서 이미 수행했으므로
+            // 여기서는 단순 null/범위만 재확인
+            case "block-crush"      -> req.getScore() == null || req.getScore() < 0 || req.getScore() > 9_999_999
+                                    || req.getLinesCleared() == null || req.getLinesCleared() < 0 || req.getLinesCleared() > 100_000;
             default -> true;
         };
         if (invalid) {
@@ -224,6 +237,7 @@ public class RankingService {
             case "apple"            -> Set.of("normal", "large");
             case "sudoku"           -> Set.of("easy", "normal", "hard");
             case "brickbreaker"     -> Set.of("normal");
+            case "block-crush"      -> Set.of("classic");
             default -> Set.of();
         };
         if (!valid.contains(level)) {

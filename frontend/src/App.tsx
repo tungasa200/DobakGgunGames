@@ -46,6 +46,7 @@ import RoulettePage from './pages/RoulettePage';
 import LadderPage from './pages/LadderPage';
 import DicePage from './pages/DicePage';
 import BrickBreakerPage from './pages/BrickBreakerPage';
+import BlockCrushPage from './pages/BlockCrushPage';
 
 export default function App() {
   useEffect(() => {
@@ -132,6 +133,12 @@ export default function App() {
         <Route
           path="/brickbreaker"
           element={<BrickBreakerPage />}
+        />
+
+        {/* 블록 크러시 — 로그인/게스트 모두 허용 */}
+        <Route
+          path="/block-crush"
+          element={<BlockCrushPage />}
         />
 
         {/* DEV — 배틀 UI 테스트 (통신 없이 로컬 확인용) */}

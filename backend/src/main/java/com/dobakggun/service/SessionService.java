@@ -24,14 +24,16 @@ import java.util.UUID;
 public class SessionService {
 
     // 게임별 세션 만료 시간 (초)
-    private static final Map<String, Long> EXPIRE_SECONDS = Map.of(
-        "apple",            7200L,
-        "minesweeper",      7200L,
-        "baseball",         7200L,
-        "solitaire",        7200L,
-        "blockfall",        7200L,
-        "blockfall-insane", 7200L,
-        "sudoku",           7200L
+    private static final Map<String, Long> EXPIRE_SECONDS = Map.ofEntries(
+        Map.entry("apple",            7200L),
+        Map.entry("minesweeper",      7200L),
+        Map.entry("baseball",         7200L),
+        Map.entry("solitaire",        7200L),
+        Map.entry("blockfall",        7200L),
+        Map.entry("blockfall-insane", 7200L),
+        Map.entry("sudoku",           7200L),
+        Map.entry("brickbreaker",     7200L),
+        Map.entry("block-crush",      7200L)
     );
 
     private final GameSessionRepository sessionRepo;

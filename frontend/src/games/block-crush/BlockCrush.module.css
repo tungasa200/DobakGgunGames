@@ -1,0 +1,630 @@
+/* =================================================================
+   Block Crush — CSS Modules
+   임시 색상 사용 (designer 명세 도착 시 --bcr-* 변수 교체)
+   ================================================================= */
+
+/* ── CSS 변수 ────────────────────────────────────────────────── */
+
+.gameWrapper {
+  /* 페이지 배경 */
+  --bcr-page-bg        : #f0f0f0;
+  --bcr-hud-bg         : #ffffff;
+  --bcr-hud-border     : #d1d5db;
+
+  /* 보드 */
+  --bcr-board-bg       : #1e1e2e;
+  --bcr-board-border   : #374151;
+  --bcr-cell-empty     : #2a2a3e;
+  --bcr-cell-border    : #374151;
+
+  /* 강조색 */
+  --bcr-accent         : #6366f1;
+  --bcr-accent-dark    : #4f46e5;
+  --bcr-accent-subtle  : rgba(99, 102, 241, 0.10);
+
+  /* 텍스트 */
+  --bcr-text-primary   : #111827;
+  --bcr-text-secondary : #4b5563;
+  --bcr-text-muted     : #9ca3af;
+
+  /* 점수/콤보 */
+  --bcr-score-color    : #6366f1;
+  --bcr-combo-color    : #f59e0b;
+
+  /* 미리보기 */
+  --bcr-preview-valid  : rgba(34, 197, 94, 0.55);
+  --bcr-preview-invalid: rgba(239, 68, 68, 0.55);
+}
+
+/* ── 키프레임 ────────────────────────────────────────────────── */
+
+@keyframes bcr-fade-out {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.85); }
+}
+
+@keyframes bcr-overlay-in {
+  0%   { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bcr-num-pop {
+  0%   { transform: scale(1.3); }
+  60%  { transform: scale(0.97); }
+  100% { transform: scale(1.0); }
+}
+
+@keyframes bcr-combo-pop {
+  0%   { opacity: 0; transform: translateY(-6px) scale(1.2); }
+  40%  { opacity: 1; transform: translateY(0) scale(1.0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0.9; transform: scale(1.0); }
+}
+
+/* ── 최상위 래퍼 ─────────────────────────────────────────────── */
+
+.gameWrapper {
+  display       : flex;
+  flex-direction: column;
+  align-items   : center;
+  background    : var(--bcr-page-bg);
+  min-height    : 100vh;
+  font-family   : sans-serif;
+  color         : var(--bcr-text-primary);
+}
+
+/* ── HUD 컨테이너 ────────────────────────────────────────────── */
+
+.hudContainer {
+  width    : 560px;
+  max-width: 100%;
+  display  : flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── 상단 HUD ────────────────────────────────────────────────── */
+
+.hudTop {
+  display      : flex;
+  align-items  : center;
+  gap          : 20px;
+  width        : 100%;
+  height       : 52px;
+  padding      : 0 16px;
+  background   : var(--bcr-hud-bg);
+  border       : 1px solid var(--bcr-hud-border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  box-sizing   : border-box;
+}
+
+.hudStat {
+  display       : flex;
+  flex-direction: column;
+  align-items   : center;
+  gap           : 1px;
+  flex-shrink   : 0;
+}
+
+.hudLabel {
+  font-size     : 0.60rem;
+  color         : var(--bcr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight   : 700;
+  line-height   : 1;
+}
+
+.hudValue {
+  font-size           : 1.1rem;
+  font-weight         : 800;
+  color               : var(--bcr-text-primary);
+  line-height         : 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hudValueScore {
+  font-size           : 1.3rem;
+  font-weight         : 800;
+  color               : var(--bcr-score-color);
+  line-height         : 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hudValueCombo {
+  font-size  : 1.1rem;
+  font-weight: 800;
+  color      : var(--bcr-combo-color);
+  line-height: 1;
+  animation  : bcr-combo-pop 0.3s ease-out;
+}
+
+/* ── 보드 영역 ───────────────────────────────────────────────── */
+
+.boardWrap {
+  position      : relative;
+  background    : var(--bcr-board-bg);
+  border        : 2px solid var(--bcr-board-border);
+  border-top    : none;
+  border-bottom : none;
+  width         : 100%;
+  display       : flex;
+  justify-content: center;
+  align-items   : center;
+  padding       : 12px;
+  box-sizing    : border-box;
+  user-select   : none;
+  -webkit-user-select: none;
+}
+
+/* 8×8 그리드 보드 */
+.board {
+  display              : grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows   : repeat(8, 1fr);
+  gap                  : 3px;
+  width                : 100%;
+  aspect-ratio         : 1 / 1;
+  max-width            : 480px;
+  touch-action         : none;
+}
+
+/* 셀 기본 */
+.cell {
+  border-radius: 3px;
+  background   : var(--bcr-cell-empty);
+  border       : 1px solid var(--bcr-cell-border);
+  transition   : background 0.08s ease;
+  aspect-ratio : 1 / 1;
+}
+
+/* 채워진 셀 */
+.cellFilled {
+  background: var(--cell-color, #6366f1);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* 미리보기 — 유효 (초록) */
+.cellPreviewValid {
+  background: var(--bcr-preview-valid);
+  border-color: rgba(34, 197, 94, 0.8);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5);
+}
+
+/* 미리보기 — 무효 (빨강) */
+.cellPreviewInvalid {
+  background: var(--bcr-preview-invalid);
+  border-color: rgba(239, 68, 68, 0.8);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.5);
+}
+
+/* 줄 클리어 애니메이션 */
+.cellClearing {
+  animation: bcr-fade-out 0.35s ease-out forwards;
+}
+
+/* ── 트레이 ──────────────────────────────────────────────────── */
+
+.tray {
+  display        : flex;
+  align-items    : center;
+  justify-content: space-around;
+  width          : 100%;
+  min-height     : 120px;
+  padding        : 12px 8px;
+  background     : var(--bcr-hud-bg);
+  border         : 1px solid var(--bcr-hud-border);
+  border-top     : none;
+  border-bottom  : none;
+  box-sizing     : border-box;
+  gap            : 8px;
+}
+
+.traySlot {
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  flex           : 1;
+  min-height     : 96px;
+  border-radius  : 6px;
+  border         : 1.5px dashed var(--bcr-hud-border);
+  padding        : 8px;
+  transition     : background 0.1s, border-color 0.1s;
+  cursor         : grab;
+}
+
+.traySlot:hover {
+  background   : rgba(99, 102, 241, 0.06);
+  border-color : var(--bcr-accent);
+}
+
+.traySlotDragging {
+  opacity     : 0.4;
+  border-color: var(--bcr-accent);
+}
+
+.traySlotEmpty {
+  width        : 48px;
+  height       : 48px;
+  border-radius: 4px;
+  background   : #e5e7eb;
+  opacity      : 0.4;
+}
+
+/* ── 미니 그리드 ─────────────────────────────────────────────── */
+
+.miniGrid {
+  pointer-events: none;
+}
+
+.miniCellFilled {
+  border-radius: 3px;
+  background   : var(--cell-color, #6366f1);
+  box-shadow   : inset 0 1px 0 rgba(255,255,255,0.25);
+}
+
+.miniCellEmpty {
+  border-radius: 3px;
+  background   : transparent;
+}
+
+/* ── 하단 HUD ────────────────────────────────────────────────── */
+
+.hudBottom {
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  gap            : 10px;
+  width          : 100%;
+  height         : 46px;
+  padding        : 0 14px;
+  background     : var(--bcr-hud-bg);
+  border         : 1px solid var(--bcr-hud-border);
+  border-top     : none;
+  border-radius  : 0 0 6px 6px;
+  box-sizing     : border-box;
+}
+
+.hudBtn {
+  height       : 30px;
+  padding      : 0 16px;
+  border-radius: 4px;
+  font-size    : 0.83rem;
+  font-weight  : 600;
+  cursor       : pointer;
+  transition   : background 0.1s, color 0.1s;
+  font-family  : inherit;
+  background   : transparent;
+  white-space  : nowrap;
+}
+
+.startBtn {
+  border: 1.5px solid var(--bcr-accent);
+  color : var(--bcr-accent);
+}
+.startBtn:hover { background: var(--bcr-accent-subtle); }
+
+.quitBtn {
+  border: 1.5px solid var(--bcr-hud-border);
+  color : var(--bcr-text-secondary);
+}
+.quitBtn:hover { background: #eeeeee; color: var(--bcr-text-primary); }
+
+/* ── 오버레이 ────────────────────────────────────────────────── */
+
+.overlay {
+  position       : absolute;
+  inset          : 0;
+  background     : rgba(0, 0, 0, 0.80);
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  justify-content: center;
+  gap            : 16px;
+  z-index        : 50;
+  animation      : bcr-overlay-in 250ms ease-out;
+  padding        : 24px;
+  text-align     : center;
+}
+
+.overlayTitle {
+  font-size  : 2.2rem;
+  font-weight: 900;
+  font-family: monospace;
+  line-height: 1.1;
+  margin     : 0;
+  color      : #ef4444;
+  animation  : bcr-num-pop 350ms ease-out;
+}
+
+.overlayScore {
+  display       : flex;
+  flex-direction: column;
+  align-items   : center;
+  gap           : 4px;
+}
+
+.overlayScoreLabel {
+  font-size     : 0.72rem;
+  color         : #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight   : 700;
+}
+
+.overlayScoreValue {
+  font-size           : 2.6rem;
+  font-weight         : 800;
+  font-family         : monospace;
+  color               : #f59e0b;
+  line-height         : 1;
+  font-variant-numeric: tabular-nums;
+  animation           : bcr-num-pop 350ms ease-out;
+}
+
+.overlayLines {
+  font-size  : 0.88rem;
+  color      : #d1d5db;
+  margin     : -8px 0 0;
+}
+
+.overlayActions {
+  display       : flex;
+  flex-direction: column;
+  gap           : 8px;
+  align-items   : center;
+  width         : 100%;
+  max-width     : 240px;
+  margin-top    : 4px;
+}
+
+/* ── 오버레이 버튼 ───────────────────────────────────────────── */
+
+.btnPrimary {
+  width        : 100%;
+  height       : 44px;
+  background   : var(--bcr-accent);
+  color        : #ffffff;
+  border       : none;
+  border-radius: 4px;
+  font-size    : 0.95rem;
+  font-weight  : 700;
+  cursor       : pointer;
+  transition   : background 0.1s;
+  font-family  : inherit;
+}
+.btnPrimary:hover     { background: var(--bcr-accent-dark); }
+.btnPrimary:disabled  { opacity: 0.45; cursor: default; pointer-events: none; }
+
+.btnSecondary {
+  width        : 100%;
+  height       : 44px;
+  background   : transparent;
+  color        : #f59e0b;
+  border       : 2px solid #f59e0b;
+  border-radius: 4px;
+  font-size    : 0.95rem;
+  font-weight  : 700;
+  cursor       : pointer;
+  transition   : background 0.1s;
+  font-family  : inherit;
+}
+.btnSecondary:hover    { background: rgba(245,158,11,0.12); }
+.btnSecondary:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+
+.btnGhost {
+  width        : 100%;
+  height       : 44px;
+  background   : transparent;
+  color        : #9ca3af;
+  border       : 1.5px solid #4b5563;
+  border-radius: 4px;
+  font-size    : 0.95rem;
+  font-weight  : 600;
+  cursor       : pointer;
+  transition   : background 0.1s, color 0.1s;
+  font-family  : inherit;
+}
+.btnGhost:hover  { background: rgba(255,255,255,0.08); color: #e5e7eb; }
+.btnGhost:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+
+/* ── 닉네임 폼 ───────────────────────────────────────────────── */
+
+.rankForm {
+  display       : flex;
+  flex-direction: column;
+  align-items   : center;
+  gap           : 6px;
+  width         : 100%;
+  max-width     : 280px;
+}
+
+.rankFormInput {
+  width        : 100%;
+  height       : 40px;
+  padding      : 0 12px;
+  background   : #1a1a2e;
+  border       : 1.5px solid #4b5563;
+  border-radius: 4px;
+  color        : #f0f0f0;
+  font-size    : 0.95rem;
+  font-family  : inherit;
+  box-sizing   : border-box;
+  outline      : none;
+  transition   : border-color 0.12s;
+}
+.rankFormInput::placeholder { color: #6b7280; }
+.rankFormInput:focus         { border-color: #f59e0b; }
+.rankFormInput.error         { border-color: #ef4444; }
+
+.rankFormError {
+  font-size : 0.76rem;
+  color     : #ef4444;
+  margin    : 0;
+  align-self: flex-start;
+}
+
+.rankFormNotice {
+  font-size: 0.70rem;
+  color    : #6b7280;
+  margin   : 0;
+}
+
+/* ── 랭킹 섹션 ───────────────────────────────────────────────── */
+
+.rankSection {
+  width     : 560px;
+  max-width : 100%;
+  margin-top: 24px;
+}
+
+.rankTitle {
+  font-size     : 0.82rem;
+  font-weight   : 700;
+  color         : var(--bcr-text-muted);
+  text-align    : center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin        : 0 0 10px;
+}
+
+.rankTable {
+  width          : 100%;
+  border-collapse: collapse;
+  font-size      : 0.85rem;
+  background     : #ffffff;
+  border         : 1px solid var(--bcr-hud-border);
+  border-radius  : 4px;
+  overflow       : hidden;
+}
+
+.rankTable th {
+  background    : #f9fafb;
+  color         : var(--bcr-text-secondary);
+  font-size     : 0.70rem;
+  font-weight   : 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding       : 7px 10px;
+  border-bottom : 1px solid var(--bcr-hud-border);
+  white-space   : nowrap;
+}
+
+.rankTable td {
+  padding            : 7px 10px;
+  border-bottom      : 1px solid #f3f4f6;
+  color              : var(--bcr-text-primary);
+  vertical-align     : middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.rankTable tr:last-child td      { border-bottom: none; }
+.rankTable tbody tr:nth-child(even) td { background: #fafafa; }
+
+.rankTable .colRank  { width: 36px; text-align: center; font-weight: 700; }
+.rankTable .colNick  { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.rankTable .colLines { width: 80px; text-align: center; font-size: 0.80rem; color: var(--bcr-text-secondary); }
+.rankTable .colScore { width: 90px; text-align: right; font-weight: 700; color: var(--bcr-score-color); }
+.rankTable .colDate  { width: 55px; text-align: center; color: var(--bcr-text-muted); font-size: 0.76rem; }
+
+.rank1 { color: #d97706; }
+.rank2 { color: #6b7280; }
+.rank3 { color: #b45309; }
+
+.rankEmpty {
+  text-align : center;
+  padding    : 24px;
+  color      : var(--bcr-text-muted);
+  font-size  : 0.85rem;
+}
+
+/* ── 전체 최고 기록 배너 ─────────────────────────────────────── */
+
+.alltimeBanner {
+  display       : flex;
+  align-items   : center;
+  justify-content: space-between;
+  background    : #fffbeb;
+  border        : 1px solid #fde68a;
+  border-radius : 6px;
+  padding       : 10px 16px;
+  margin-top    : 12px;
+  gap           : 8px;
+}
+
+.alltimeBannerLabel {
+  font-size  : 0.78rem;
+  font-weight: 700;
+  color      : #92400e;
+  white-space: nowrap;
+}
+
+.alltimeBannerName {
+  font-size  : 0.9rem;
+  font-weight: 700;
+  color      : #1f2937;
+  flex       : 1;
+  text-align : center;
+  overflow   : hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alltimeBannerScore {
+  font-size           : 1.05rem;
+  font-weight         : 800;
+  color               : #d97706;
+  font-variant-numeric: tabular-nums;
+  white-space         : nowrap;
+}
+
+/* ── 게임 시작 안내 ──────────────────────────────────────────── */
+
+.startGuide {
+  display       : flex;
+  flex-direction: column;
+  align-items   : center;
+  gap           : 8px;
+  padding       : 20px;
+  text-align    : center;
+}
+
+.startGuideText {
+  font-size : 0.88rem;
+  color     : #9ca3af;
+  line-height: 1.5;
+}
+
+/* ── 반응형 ──────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .hudContainer, .rankSection {
+    width    : 100%;
+    max-width: 100%;
+  }
+  .board { gap: 2px; }
+  .cell  { border-radius: 2px; }
+  .rankTable .colDate  { display: none; }
+  .rankTable .colLines { display: none; }
+  .traySlot { min-height: 80px; }
+  .hudTop   { gap: 12px; padding: 0 10px; }
+  .hudValueScore { font-size: 1.1rem; }
+}
+
+@media (max-width: 400px) {
+  .hudTop    { gap: 8px; padding: 0 8px; height: 46px; }
+  .hudLabel  { font-size: 0.55rem; }
+  .hudValue  { font-size: 0.9rem; }
+  .hudValueScore { font-size: 1.0rem; }
+  .tray      { padding: 10px 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gameWrapper *, .gameWrapper *::before, .gameWrapper *::after {
+    animation-duration      : 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration     : 0.01ms !important;
+  }
+}
