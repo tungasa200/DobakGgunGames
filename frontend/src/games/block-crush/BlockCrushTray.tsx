@@ -5,8 +5,14 @@
 import type { TraySlot, Piece } from './types';
 import styles from './BlockCrush.module.css';
 
-// 트레이 내 미니 셀 크기 (px)
-const MINI_CELL = 22;
+function getMiniCellSize(): number {
+  if (typeof window === 'undefined') return 22;
+  const vw = window.innerWidth;
+  if (vw <= 320) return 14;
+  if (vw <= 400) return 17;
+  return 22;
+}
+const MINI_CELL = getMiniCellSize();
 
 interface TraySlotProps {
   slot: TraySlot;

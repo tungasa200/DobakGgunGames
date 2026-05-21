@@ -1,6 +1,5 @@
 // ── Block Crush — 드래그&드롭 훅 (Pointer Events 방식) ────────
 // 마우스 + 터치 통합: onPointerDown, onPointerMove, onPointerUp
-// 모바일: 손가락 위 오프셋으로 미리보기 표시
 
 import { useState, useRef, useCallback } from 'react';
 import type { RefObject } from 'react';
@@ -26,11 +25,6 @@ interface UseDragDropOptions {
   board: Board;
   cellSize: number;
   onPlace: (slotIndex: 0 | 1 | 2, row: number, col: number) => void;
-}
-
-// 모바일 여부 판정 (터치 오프셋 적용용)
-function isTouchPointer(e: PointerEvent): boolean {
-  return e.pointerType === 'touch' || e.pointerType === 'pen';
 }
 
 // 보드 DOM에서 (clientX, clientY) → (row, col) 변환
@@ -94,9 +88,7 @@ export function useDragDrop({ boardRef, board, cellSize, onPlace }: UseDragDropO
           return { ...prev, previewRow: null, previewCol: null, isValid: false, pointerX: e.clientX, pointerY: e.clientY };
         }
 
-        // 모바일: 손가락 위로 약간 오프셋 (2셀 위) — 손가락에 가려지지 않도록
-        const offsetY = isTouchPointer(e as PointerEvent) ? -cellSize * 2 : 0;
-        const { row, col } = clientToCell(boardEl, e.clientX, e.clientY + offsetY, cellSize);
+        const { row, col } = clientToCell(boardEl, e.clientX, e.clientY, cellSize);
         // 드래그 오프셋 적용
         const targetRow = row - dragOffsetRef.current.dr;
         const targetCol = col - dragOffsetRef.current.dc;

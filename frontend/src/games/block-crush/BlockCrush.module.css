@@ -621,6 +621,17 @@
   .tray      { padding: 10px 6px; }
 }
 
+@media (max-width: 320px) {
+  .hudTop    { gap: 4px; padding: 0 6px; height: 40px; }
+  .hudLabel  { font-size: 0.50rem; }
+  .hudValue  { font-size: 0.80rem; }
+  .hudValueScore { font-size: 0.9rem; }
+  .tray      { padding: 8px 4px; min-height: 100px; }
+  .traySlot  { min-height: 68px; padding: 4px; }
+  .hudBottom { height: 40px; padding: 0 8px; }
+  .hudBtn    { height: 26px; padding: 0 10px; font-size: 0.76rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gameWrapper *, .gameWrapper *::before, .gameWrapper *::after {
     animation-duration      : 0.01ms !important;
