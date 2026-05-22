@@ -46,11 +46,11 @@ public class YachtBotStrategy {
             "YACHT",            6.00
     );
 
-    // Phase E: 완전 망한 패 희생 순서 (앞일수록 먼저 희생)
+    // Phase E: 완전 망한 패 희생 순서 (앞일수록 먼저 희생 — LOWER_COST 오름차순)
     private static final List<String> SACRIFICE_ORDER = List.of(
-            "ONES", "TWOS", "YACHT", "BIG_STRAIGHT", "FOUR_OF_A_KIND",
-            "LITTLE_STRAIGHT", "FULL_HOUSE", "THREES", "CHOICE",
-            "FOURS", "FIVES", "SIXES",
+            "ONES", "TWOS", "YACHT", "LITTLE_STRAIGHT", "THREES",
+            "FULL_HOUSE", "FOUR_OF_A_KIND", "FOURS", "BIG_STRAIGHT",
+            "FIVES", "CHOICE", "SIXES",
             "SEVENS", "EIGHTS"
     );
 
@@ -299,6 +299,9 @@ public class YachtBotStrategy {
             case "YACHT" -> remainingSlotCount > 4 ? 3.0 : 1.5;
             // 중반까지만 보존
             case "BIG_STRAIGHT" -> remainingSlotCount > 6 ? 2.0 : 0.0;
+            // 전반부 보존 (조기 희생 방지)
+            case "LITTLE_STRAIGHT" -> remainingSlotCount > 5 ? 1.5 : 0.0;
+            case "FULL_HOUSE"      -> remainingSlotCount > 4 ? 1.0 : 0.0;
             // 쓰레기통 슬롯 — Phase E 발동 전에도 먼저 사용 유도
             case "ONES" -> -1.5;
             case "TWOS" -> -0.75;

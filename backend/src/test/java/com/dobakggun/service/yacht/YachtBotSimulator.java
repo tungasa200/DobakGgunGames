@@ -111,12 +111,7 @@ public class YachtBotSimulator {
         }
 
         private static Set<String> maskToRemaining(YachtDpContext ctx, int filledMask) {
-            Set<String> remaining = new HashSet<>(ctx.rules.validScoreKeys());
-            for (int k = 0; k < ctx.numSlots; k++) {
-                if ((filledMask & (1 << k)) != 0)
-                    remaining.remove(ctx.slotNames[k]);
-            }
-            return remaining;
+            return YachtBotSimulator.maskToRemaining(ctx, filledMask);
         }
     }
 
@@ -139,20 +134,40 @@ public class YachtBotSimulator {
         }
     }
 
+    // ─── Strategy봇 래퍼 ─────────────────────────────────────────────────────
+
+    private static final class StrategyBot implements SimBot {
+        private final YachtBotStrategy strategy = new YachtBotStrategy();
+
+        @Override
+        public List<Integer> decideKeep(YachtDpContext ctx, int[] dice, int filledMask, int upperTotal,
+                                         YachtScoreRules rules, int rollsLeft) {
+            return strategy.decideKeep(dice, maskToRemaining(ctx, filledMask), rules, rollsLeft, upperTotal);
+        }
+
+        @Override
+        public String decideScore(YachtDpContext ctx, int[] dice, int filledMask, int upperTotal,
+                                   YachtScoreRules rules) {
+            return strategy.decideScore(dice, maskToRemaining(ctx, filledMask), rules, upperTotal);
+        }
+    }
+
     // ─── JUnit 진입점 ────────────────────────────────────────────────────────
 
     @Test
     void compareD6() {
         YachtDpBot dpBot = createAndWaitForBot(YachtDpContext.D6);
         System.out.printf("[D6] DP이론값(W[0][0]) = %.4f%n", dpBot.getWTable(YachtDpContext.D6)[0]);
-        compare("D6", YachtDpContext.D6, new D6Rules(), new DpBot(dpBot));
+        compare("D6-Baseline-vs-DP",       YachtDpContext.D6, new D6Rules(), new DpBot(dpBot));
+        compare("D6-Baseline-vs-Strategy", YachtDpContext.D6, new D6Rules(), new StrategyBot());
     }
 
     @Test
     void compareD8() {
         YachtDpBot dpBot = createAndWaitForBot(YachtDpContext.D8);
         System.out.printf("[D8] DP이론값(W[0][0]) = %.4f%n", dpBot.getWTable(YachtDpContext.D8)[0]);
-        compare("D8", YachtDpContext.D8, new D8Rules(), new DpBot(dpBot));
+        compare("D8-Baseline-vs-DP",       YachtDpContext.D8, new D8Rules(), new DpBot(dpBot));
+        compare("D8-Baseline-vs-Strategy", YachtDpContext.D8, new D8Rules(), new StrategyBot());
     }
 
     // ─── Paired 비교 ─────────────────────────────────────────────────────────
@@ -348,6 +363,15 @@ public class YachtBotSimulator {
 
     private static int ipow(int base, int exp) {
         int r = 1; for (int i = 0; i < exp; i++) r *= base; return r;
+    }
+
+    static Set<String> maskToRemaining(YachtDpContext ctx, int filledMask) {
+        Set<String> remaining = new HashSet<>(ctx.rules.validScoreKeys());
+        for (int k = 0; k < ctx.numSlots; k++) {
+            if ((filledMask & (1 << k)) != 0)
+                remaining.remove(ctx.slotNames[k]);
+        }
+        return remaining;
     }
 
     private static final List<Integer> ALL = List.of(0, 1, 2, 3, 4);
