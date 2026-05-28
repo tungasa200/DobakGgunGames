@@ -398,35 +398,29 @@ export default function HomePage() {
                 </div>
               </div>
               <div className={styles.cardRanking}>
-                <a
-                  href="https://mini.dobakggun.kr"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/roulette"
                   className={`${styles.btn} ${styles.btnNormal}`}
                   style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
                 >
                   <span>🎡</span><span style={{ fontWeight: 'bold' }}>룰렛</span>
-                </a>
+                </Link>
                 <hr className={styles.labDivider} />
-                <a
-                  href="https://mini.dobakggun.kr"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/dice"
                   className={`${styles.btn} ${styles.btnNormal}`}
                   style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
                 >
                   <span>🎲</span><span style={{ fontWeight: 'bold' }}>주사위</span>
-                </a>
+                </Link>
                 <hr className={styles.labDivider} />
-                <a
-                  href="https://mini.dobakggun.kr"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/ladder"
                   className={`${styles.btn} ${styles.btnNormal}`}
                   style={{ width: '100%', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}
                 >
                   <span>🪜</span><span style={{ fontWeight: 'bold' }}>사다리 타기</span>
-                </a>
+                </Link>
               </div>
             </div>
 
