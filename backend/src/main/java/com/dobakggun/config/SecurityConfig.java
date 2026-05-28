@@ -95,6 +95,8 @@ public class SecurityConfig {
                 // Blockfall Battle REST API — join은 게스트 허용, rankings는 공개
                 .requestMatchers("/api/blockfall-battle/join").permitAll()
                 .requestMatchers("/api/blockfall-battle/rankings").permitAll()
+                // Minesweeper Battle REST API — join은 게스트 허용
+                .requestMatchers("/api/minesweeper-battle/join").permitAll()
                 // 채팅 API — FRIEND 이상
                 .requestMatchers(HttpMethod.GET,    "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.POST,   "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")

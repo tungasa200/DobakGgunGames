@@ -37,6 +37,7 @@ import AuthRoute from './components/AuthRoute';
 import { AdminTestProvider } from './context/AdminTestContext';
 import OnlineRpsPage from './pages/OnlineRpsPage';
 import BlockfallBattlePage from './pages/BlockfallBattlePage';
+import MinesweeperBattleBoard from './games/minesweeper/battle/MinesweeperBattleBoard';
 import YachtPage from './games/yacht/YachtPage';
 import YachtSelectPage from './games/yacht/YachtSelectPage';
 import YachtBotPage from './games/yacht-bot/YachtBotPage';
@@ -116,6 +117,12 @@ export default function App() {
         <Route
           path="/yacht-bot"
           element={<AuthRoute><YachtBotPage /></AuthRoute>}
+        />
+
+        {/* 지뢰찾기 배틀 (로그인/게스트 모두 허용) */}
+        <Route
+          path="/games/minesweeper/battle"
+          element={<MinesweeperBattleBoard />}
         />
 
         {/* 블록폴 배틀 (정식, 로그인/게스트 모두 허용) */}

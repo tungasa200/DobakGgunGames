@@ -12,7 +12,8 @@ import java.time.LocalDateTime;
 @Table(
     name = "battle_record",
     indexes = {
-        @Index(name = "idx_battle_record_wins", columnList = "win_count DESC, last_played_at DESC")
+        @Index(name = "idx_battle_record_wins", columnList = "win_count DESC, last_played_at DESC"),
+        @Index(name = "idx_battle_record_game_wins", columnList = "game_key, win_count DESC, last_played_at DESC")
     }
 )
 @Getter
@@ -26,8 +27,16 @@ public class BattleRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * 게임 구분 키 — "blockfall" | "minesweeper".
+     * 기존 레코드는 DEFAULT 'blockfall' 으로 마이그레이션 됨 (docs/sql/minesweeper-battle.sql 참조).
+     */
+    @Column(name = "game_key", nullable = false, length = 32)
+    @Builder.Default
+    private String gameKey = "blockfall";
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "win_count", nullable = false)

@@ -29,8 +29,9 @@ public class BattleRankingService {
      */
     @Transactional(readOnly = true)
     public List<BattleRankingResponse.RankingEntry> getTopRankings() {
+        // game_key='blockfall' 전용 랭킹 (마이그레이션 이후 다른 게임 레코드와 분리)
         List<BattleRecord> records = battleRecordRepository
-                .findTopRankings(PageRequest.of(0, 10));
+                .findTopRankingsByGameKey("blockfall", PageRequest.of(0, 10));
 
         return IntStream.range(0, records.size())
                 .mapToObj(i -> {
@@ -59,9 +60,12 @@ public class BattleRankingService {
             return;
         }
 
-        BattleRecord record = battleRecordRepository.findByUserId(userId)
+        // game_key='blockfall' 레코드 조회 (마이그레이션 후 game_key 컬럼 존재 시 정확한 조회)
+        // findByUserId 는 game_key 조건 없음 → 복합 unique 환경에서 blockfall 전용 쿼리로 대체
+        BattleRecord record = battleRecordRepository.findByGameKeyAndUserId("blockfall", userId)
                 .orElseGet(() -> BattleRecord.builder()
                         .user(user)
+                        .gameKey("blockfall")
                         .lastPlayedAt(LocalDateTime.now())
                         .build());
 

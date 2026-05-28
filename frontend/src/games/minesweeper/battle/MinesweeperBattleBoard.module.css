@@ -1,0 +1,486 @@
+/* ================================================================
+   Minesweeper Battle — CSS Module
+   ================================================================ */
+
+/* ── 페이지 레이아웃 ──────────────────────────────────────── */
+.battlePage {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.battleContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* ── 공통 버튼 ───────────────────────────────────────────── */
+.btnPrimary {
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnPrimary:hover { background: #4f46e5; }
+.btnPrimary:disabled { background: #4b4b6e; cursor: not-allowed; }
+
+.btnSecondary {
+  background: #2d2d44;
+  color: #c0c0e0;
+  border: 1px solid #444466;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnSecondary:hover { background: #3a3a58; }
+
+.btnDanger {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnDanger:hover { background: #991b1b; }
+
+/* ── 대기 화면 ───────────────────────────────────────────── */
+.waitingScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 40px;
+}
+
+.waitingTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #a5b4fc;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #3b3b6e;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── 준비 화면 ───────────────────────────────────────────── */
+.readyScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.readyTitle {
+  font-size: 16px;
+  color: #c4b5fd;
+  text-align: center;
+  max-width: 320px;
+}
+
+.readyCountdown {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.readyIndicator {
+  display: flex;
+  gap: 24px;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.indicatorMe   { color: #86efac; }
+.indicatorOpp  { color: #fca5a5; }
+
+/* ── 9×9 보드 그리드 ─────────────────────────────────────── */
+.boardGrid {
+  display: grid;
+  grid-template-columns: repeat(9, 32px);
+  grid-template-rows: repeat(9, 32px);
+  gap: 1px;
+  background: #374151;
+  border: 2px solid #374151;
+  border-radius: 4px;
+  user-select: none;
+}
+
+/* 셀 기본 */
+.cell {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #d1d5db;
+  border: 2px solid transparent;
+  transition: background 0.05s;
+}
+
+.cellUnrevealed {
+  background: #4b5563;
+  cursor: pointer;
+}
+.cellUnrevealed:hover {
+  background: #5b6880;
+}
+
+.cellRevealed {
+  background: #1f2937;
+  cursor: default;
+}
+
+.cellMine {
+  background: #7f1d1d;
+  cursor: default;
+}
+
+.cellFlag {
+  background: #4b5563;
+  color: #ef4444;
+  font-size: 16px;
+}
+
+.cellQuestion {
+  background: #4b5563;
+  color: #fbbf24;
+  font-size: 15px;
+}
+
+/* 지정 셀 하이라이트 (4,4) */
+.designatedCell {
+  background: #78350f !important;
+  border-color: #fbbf24 !important;
+  animation: designatedPulse 1s ease-in-out infinite;
+}
+
+@keyframes designatedPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+  50%  { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
+
+/* 숫자 색상 */
+.n1 { color: #3b82f6; }
+.n2 { color: #22c55e; }
+.n3 { color: #ef4444; }
+.n4 { color: #1e40af; }
+.n5 { color: #b91c1c; }
+.n6 { color: #0891b2; }
+.n7 { color: #111827; }
+.n8 { color: #6b7280; }
+
+/* ── 게임 진행 레이아웃 ──────────────────────────────────── */
+.gameLayout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 700px;
+}
+
+.gameMain {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gameHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.timerDisplay {
+  font-size: 18px;
+  font-weight: 700;
+  color: #a5b4fc;
+  font-variant-numeric: tabular-nums;
+}
+
+.safeCellsDisplay {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* ── 사이드패널 ──────────────────────────────────────────── */
+.sidePanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 160px;
+}
+
+.playerCard {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.playerCardOpponent {
+  border-color: #f97316;
+}
+
+.playerCardMe {
+  border-color: #6366f1;
+}
+
+.playerNickname {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progressBarWrap {
+  height: 8px;
+  background: #374151;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+
+.progressBarFillOpponent {
+  background: #f97316;
+}
+
+.progressBarFillMe {
+  background: #6366f1;
+}
+
+.progressText {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* ── 상대 연결 끊김 오버레이 ─────────────────────────────── */
+.disconnectOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 10;
+  border-radius: 4px;
+}
+
+.disconnectText {
+  font-size: 14px;
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+/* 포기 버튼 */
+.forfeitBtn {
+  margin-top: auto;
+}
+
+/* ── 결과 화면 ───────────────────────────────────────────── */
+.resultScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 32px 24px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  min-width: 300px;
+  max-width: 440px;
+  width: 100%;
+}
+
+.resultTitle {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.resultWin  { color: #fbbf24; text-shadow: 0 0 16px rgba(251,191,36,0.6); }
+.resultLose { color: #6b7280; }
+
+.resultRecords {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resultRecord {
+  background: #111827;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #d1d5db;
+  display: flex;
+  justify-content: space-between;
+}
+
+.resultRecordLabel {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.resultBtns {
+  display: flex;
+  gap: 10px;
+}
+
+/* ── 확인 모달 ───────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modalBox {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  min-width: 260px;
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f9fafb;
+}
+
+.modalDesc {
+  font-size: 14px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.modalBtns {
+  display: flex;
+  gap: 10px;
+}
+
+/* ── 로딩 화면 ───────────────────────────────────────────── */
+.loadingScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loadingText {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* ── 에러 화면 ───────────────────────────────────────────── */
+.errorScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+}
+
+.errorTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fca5a5;
+}
+
+.errorMsg {
+  font-size: 14px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.errorBtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ── 재연결 배너 ─────────────────────────────────────────── */
+.reconnectBanner {
+  background: #78350f;
+  color: #fde68a;
+  text-align: center;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ── 모바일 대응 ─────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .gameLayout {
+    flex-direction: column;
+    align-items: center;
+  }
+  .sidePanel {
+    width: 100%;
+    max-width: 320px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .playerCard {
+    flex: 1;
+    min-width: 140px;
+  }
+}

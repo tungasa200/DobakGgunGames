@@ -28,8 +28,10 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     private static final Pattern ROOM_APP_PATTERN = Pattern.compile("^/app/chat/([a-z0-9]{8})$");
 
     // Blockfall Battle 경로 — StompChannelInterceptor 검사 제외 (별도 인터셉터가 처리)
-    private static final Pattern BATTLE_TOPIC_PATTERN = Pattern.compile("^/topic/blockfall-battle/.*$");
-    private static final Pattern BATTLE_APP_PATTERN = Pattern.compile("^/app/blockfall-battle/.*$");
+    private static final Pattern BATTLE_TOPIC_PATTERN = Pattern.compile(
+            "^/topic/(blockfall-battle|minesweeper-battle)/.*$");
+    private static final Pattern BATTLE_APP_PATTERN = Pattern.compile(
+            "^/app/(blockfall-battle|minesweeper-battle)/.*$");
 
     // Online RPS 경로 — 로그인/게스트 모두 허용 (role 체크 없음)
     private static final Pattern RPS_TOPIC_PATTERN = Pattern.compile("^/topic/rps/.*$");

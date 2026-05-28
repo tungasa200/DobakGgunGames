@@ -1,0 +1,1166 @@
+/* ================================================================
+   Minesweeper Battle — 전용 스타일
+   참조: docs/design/minesweeper-battle.md
+   ================================================================ */
+
+/* ── CSS 변수 (--msb- 네임스페이스) ─────────────────────────── */
+:root {
+  /* 배경 */
+  --msb-bg-page                  : #0d1117;
+  --msb-bg-header                : #161b22;
+  --msb-bg-panel                 : #1c2128;
+  --msb-bg-board                 : #21262d;
+  --msb-border-default           : #30363d;
+
+  /* 텍스트 */
+  --msb-text-primary             : #f0f6fc;
+  --msb-text-secondary           : #8b949e;
+  --msb-text-muted               : #9CA3AF;
+
+  /* 본인 액센트 — 인디고 */
+  --msb-accent                   : #6366F1;
+  --msb-accent-dark              : #4F46E5;
+  --msb-accent-subtle            : rgba(99, 102, 241, 0.12);
+
+  /* 상대 액센트 — 앰버 */
+  --msb-opponent-accent          : #F59E0B;
+  --msb-opponent-subtle          : rgba(245, 158, 11, 0.12);
+  --msb-opponent-accent-dark     : #D97706;
+
+  /* 지정 셀 (4,4) 하이라이트 */
+  --msb-highlight-cell           : #EAB308;
+  --msb-highlight-bg             : #78350F;
+  --msb-highlight-text           : #FDE68A;
+  --msb-highlight-border         : #FDE68A;
+  --msb-highlight-glow           : rgba(234, 179, 8, 0.65);
+
+  /* 결과 */
+  --msb-result-win               : #F59E0B;
+  --msb-result-win-glow          : rgba(245, 158, 11, 0.55);
+  --msb-result-lose              : #6B7280;
+
+  /* 위험 */
+  --msb-danger                   : #DC2626;
+  --msb-danger-subtle            : #FEF2F2;
+  --msb-danger-hover             : rgba(220, 38, 38, 0.10);
+
+  /* 배너 (TEST LAB) */
+  --msb-banner-bg                : #FEF3C7;
+  --msb-banner-border            : #F59E0B;
+  --msb-banner-text              : #92400E;
+}
+
+/* ── keyframes ───────────────────────────────────────────────── */
+
+/* 지정 셀 (4,4) 펄스 */
+@keyframes msb-cell-pulse {
+  0%   {
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.85);
+    background-color: #EAB308;
+  }
+  50%  {
+    box-shadow: 0 0 0 8px rgba(234, 179, 8, 0.0);
+    background-color: #FDE68A;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.0);
+    background-color: #EAB308;
+  }
+}
+
+/* 결과 화면 등장 */
+@keyframes msb-result-in {
+  0%   { opacity: 0; transform: scale(0.9) translateY(12px); }
+  60%  { opacity: 1; transform: scale(1.03) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 승리 텍스트 골드 글로우 */
+@keyframes msb-win-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 10px rgba(245, 158, 11, 0.55),
+      0 0 24px rgba(245, 158, 11, 0.30);
+  }
+  50% {
+    text-shadow:
+      0 0 20px rgba(245, 158, 11, 0.85),
+      0 0 48px rgba(245, 158, 11, 0.55);
+  }
+}
+
+/* 스피너 */
+@keyframes msb-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 로딩 닷 blink */
+@keyframes msb-dot-blink {
+  0%, 80%, 100% { opacity: 0; }
+  40%           { opacity: 1; }
+}
+
+/* 숫자 등장 팝 */
+@keyframes msb-num-pop {
+  0%   { transform: scale(1.3); opacity: 0.5; }
+  100% { transform: scale(1.0); opacity: 1; }
+}
+
+/* 아이콘 펄스 */
+@keyframes msb-icon-pulse {
+  0%   { transform: scale(1.0); }
+  50%  { transform: scale(1.1); }
+  100% { transform: scale(1.0); }
+}
+
+/* 보드 네온 펄스 */
+@keyframes msb-neon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px var(--msb-accent),
+      0 0 14px rgba(99, 102, 241, 0.55),
+      0 0 32px rgba(99, 102, 241, 0.30),
+      inset 0 0 22px rgba(99, 102, 241, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px var(--msb-accent),
+      0 0 22px rgba(99, 102, 241, 0.85),
+      0 0 50px rgba(99, 102, 241, 0.45),
+      inset 0 0 28px rgba(99, 102, 241, 0.14);
+  }
+}
+
+/* 토스트 인 */
+@keyframes msb-toast-in {
+  from { transform: translateX(-50%) translateY(-16px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}
+
+/* ── 페이지 레이아웃 ─────────────────────────────────────────── */
+.msb-page {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99, 102, 241, 0.16), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(234, 179, 8, 0.08), transparent 60%),
+    var(--msb-bg-page);
+  color: var(--msb-text-primary);
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 헤더 ────────────────────────────────────────────────────── */
+.msb-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--msb-bg-header);
+  border-bottom: 1px solid var(--msb-border-default);
+  gap: 12px;
+  flex-shrink: 0;
+  min-height: 48px;
+}
+
+.msb-header-back {
+  background: none;
+  border: 1.5px solid var(--msb-border-default);
+  color: var(--msb-text-primary);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background 0.12s;
+  font-family: sans-serif;
+}
+
+.msb-header-back:hover {
+  background: #21262d;
+}
+
+.msb-header-title {
+  font-weight: bold;
+  font-size: 1em;
+  color: var(--msb-text-primary);
+  flex: 1;
+}
+
+.msb-header-timer {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--msb-accent);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 6px rgba(99, 102, 241, 0.50);
+}
+
+/* 포기 버튼 (헤더 우측) */
+.msb-header-leave-btn {
+  background: none;
+  border: 1.5px solid var(--msb-border-default);
+  color: var(--msb-text-secondary);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 0.82em;
+  transition: background 0.12s, color 0.12s;
+  font-family: sans-serif;
+}
+
+.msb-header-leave-btn:hover {
+  background: var(--msb-danger-hover);
+  border-color: var(--msb-danger);
+  color: var(--msb-danger);
+}
+
+/* ── TEST LAB 배너 ───────────────────────────────────────────── */
+.msb-lab-banner {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--msb-banner-bg);
+  border-bottom: 3px solid var(--msb-banner-border);
+  color: var(--msb-banner-text);
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  z-index: 100;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+}
+
+.msb-lab-banner-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--msb-banner-border);
+  color: #FFFFFF;
+  font-weight: 900;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.msb-lab-banner-text {
+  flex: 1;
+}
+
+/* ── 메인 콘텐츠 영역 ────────────────────────────────────────── */
+.msb-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: auto;
+}
+
+/* ── 공통 버튼 ───────────────────────────────────────────────── */
+.msb-btn-primary {
+  background: var(--msb-accent);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 28px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.12s;
+  font-family: sans-serif;
+}
+
+.msb-btn-primary:hover {
+  background: var(--msb-accent-dark);
+}
+
+.msb-btn-secondary {
+  background: transparent;
+  color: var(--msb-text-secondary);
+  border: 1.5px solid var(--msb-border-default);
+  border-radius: 8px;
+  padding: 11px 28px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.12s;
+  font-family: sans-serif;
+}
+
+.msb-btn-secondary:hover {
+  background: #21262d;
+  color: var(--msb-text-primary);
+}
+
+.msb-btn-danger {
+  background: transparent;
+  color: var(--msb-danger);
+  border: 1.5px solid var(--msb-danger);
+  border-radius: 8px;
+  padding: 10px 28px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.12s;
+  font-family: sans-serif;
+}
+
+.msb-btn-danger:hover {
+  background: var(--msb-danger-hover);
+}
+
+/* BETA 배지 */
+.msb-beta-badge {
+  display: inline-block;
+  background: var(--msb-banner-border);
+  color: #FFFFFF;
+  font-size: 0.65em;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 6px;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+  margin-left: 6px;
+  position: relative;
+  top: -1px;
+}
+
+/* ── idle 화면 ───────────────────────────────────────────────── */
+.msb-idle-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  padding: 40px 16px;
+}
+
+.msb-idle-icon {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.msb-idle-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--msb-text-primary);
+  margin: 0;
+}
+
+.msb-idle-sub {
+  font-size: 14px;
+  color: var(--msb-text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.msb-idle-rules {
+  background: var(--msb-bg-panel);
+  border: 1px solid var(--msb-border-default);
+  border-radius: 10px;
+  padding: 16px 20px;
+  text-align: left;
+  width: 100%;
+  font-size: 13px;
+  color: var(--msb-text-secondary);
+  line-height: 1.7;
+}
+
+.msb-idle-rules ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.msb-idle-rules li {
+  margin-bottom: 4px;
+}
+
+.msb-idle-enter-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  background: var(--msb-accent);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s, box-shadow 0.12s;
+  font-family: sans-serif;
+}
+
+.msb-idle-enter-btn:hover {
+  background: var(--msb-accent-dark);
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.50);
+}
+
+.msb-idle-solo-link {
+  font-size: 13px;
+  color: var(--msb-text-muted);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--msb-text-muted);
+  transition: color 0.12s;
+}
+
+.msb-idle-solo-link:hover {
+  color: var(--msb-text-primary);
+}
+
+/* ── waiting 화면 ────────────────────────────────────────────── */
+.msb-waiting-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.msb-waiting-icon {
+  font-size: 48px;
+  line-height: 1;
+  animation: msb-icon-pulse 1.4s ease-in-out infinite;
+}
+
+.msb-waiting-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--msb-text-primary);
+  margin: 0;
+}
+
+/* 로딩 닷 3개 */
+.msb-dots-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.msb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--msb-accent);
+  animation: msb-dot-blink 1.2s ease infinite;
+}
+
+.msb-dot:nth-child(2) { animation-delay: 200ms; }
+.msb-dot:nth-child(3) { animation-delay: 400ms; }
+
+/* 내 플레이어 카드 */
+.msb-player-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--msb-bg-panel);
+  border: 1px solid var(--msb-border-default);
+  border-radius: 8px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--msb-text-primary);
+}
+
+.msb-player-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--msb-accent);
+  flex-shrink: 0;
+}
+
+.msb-player-name {
+  flex: 1;
+  text-align: left;
+}
+
+.msb-badge-me {
+  font-size: 11px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--msb-accent);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  border: 1px solid var(--msb-accent-subtle);
+}
+
+.msb-badge-guest {
+  font-size: 11px;
+  background: var(--msb-banner-bg);
+  color: var(--msb-banner-text);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.msb-waiting-sub {
+  font-size: 13px;
+  color: var(--msb-text-muted);
+  margin: 0;
+}
+
+.msb-waiting-cancel-btn {
+  background: transparent;
+  border: 1.5px solid var(--msb-danger);
+  color: var(--msb-danger);
+  border-radius: 8px;
+  padding: 10px 32px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.12s;
+  margin-top: 8px;
+  font-family: sans-serif;
+}
+
+.msb-waiting-cancel-btn:hover {
+  background: var(--msb-danger-hover);
+}
+
+/* 스피너 */
+.msb-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--msb-border-default);
+  border-top-color: var(--msb-accent);
+  border-radius: 50%;
+  animation: msb-spin 0.8s linear infinite;
+}
+
+/* ── ready 화면 ──────────────────────────────────────────────── */
+.msb-ready-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 380px;
+  padding: 16px;
+}
+
+/* 준비 안내 텍스트 */
+.msb-ready-guide {
+  font-size: 14px;
+  color: var(--msb-text-primary);
+  text-align: center;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.msb-ready-guide strong {
+  color: var(--msb-highlight-cell);
+}
+
+/* 카운트다운 바 (30초) */
+.msb-countdown-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msb-countdown-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--msb-text-muted);
+}
+
+.msb-countdown-label .msb-countdown-sec {
+  color: var(--msb-text-primary);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.msb-countdown-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: var(--msb-border-default);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.msb-countdown-bar-fill {
+  height: 100%;
+  background: var(--msb-accent);
+  border-radius: 2px;
+  transition: width 1000ms linear, background 0.3s;
+}
+
+/* 10초 이하일 때 위험색으로 전환 (JS에서 클래스 추가) */
+.msb-countdown-bar-fill.msb-countdown-danger {
+  background: var(--msb-danger);
+}
+
+/* 클릭 상태 인디케이터 */
+.msb-click-status-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  font-size: 13px;
+  width: 100%;
+}
+
+.msb-click-status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--msb-text-muted);
+}
+
+.msb-click-status-item.done-me {
+  color: var(--msb-accent);
+  font-weight: 600;
+}
+
+.msb-click-status-item.done-opponent {
+  color: var(--msb-opponent-accent);
+  font-weight: 600;
+}
+
+/* ── playing 화면 — 메인 레이아웃 ───────────────────────────── */
+.msb-playing-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  max-width: 1000px;
+  padding: 8px 0;
+}
+
+/* 좌측 보드 영역 */
+.msb-board-area {
+  flex: 0 0 65%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 보드 정보 바 */
+.msb-info-bar {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--msb-text-secondary);
+  width: 100%;
+  padding: 4px 0;
+}
+
+.msb-info-mine-count {
+  font-weight: 700;
+  color: var(--msb-danger);
+}
+
+.msb-info-safe-cells {
+  color: var(--msb-text-secondary);
+}
+
+/* 보드 래퍼 */
+.msb-board-wrapper {
+  position: relative;
+  border: 1.5px solid var(--msb-accent);
+  border-radius: 6px;
+  overflow: hidden;
+  animation: msb-neon-pulse 2.6s ease-in-out infinite;
+  background: var(--msb-bg-board);
+}
+
+/* 우측 사이드패널 */
+.msb-side-panel {
+  flex: 0 0 35%;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── 상대 카드 / 본인 카드 ───────────────────────────────────── */
+.msb-opponent-card,
+.msb-self-card {
+  background: var(--msb-bg-panel);
+  border: 1.5px solid var(--msb-border-default);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msb-opponent-card {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.12);
+}
+
+.msb-self-card {
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.12);
+}
+
+.msb-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--msb-text-primary);
+}
+
+.msb-card-nickname {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msb-opponent-card .msb-card-nickname {
+  color: var(--msb-opponent-accent);
+  text-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
+}
+
+.msb-self-card .msb-card-nickname {
+  color: var(--msb-accent);
+  text-shadow: 0 0 6px rgba(99, 102, 241, 0.45);
+}
+
+/* 프로그레스 바 */
+.msb-progress-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msb-progress-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--msb-text-muted);
+}
+
+.msb-progress-percent {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.msb-opponent-card .msb-progress-percent {
+  color: var(--msb-opponent-accent);
+}
+
+.msb-self-card .msb-progress-percent {
+  color: var(--msb-accent);
+}
+
+.msb-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--msb-border-default);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.msb-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 200ms ease-out;
+  will-change: width;
+}
+
+.msb-opponent-card .msb-progress-fill {
+  background: var(--msb-opponent-accent);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.50);
+}
+
+.msb-self-card .msb-progress-fill {
+  background: var(--msb-accent);
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.50);
+}
+
+.msb-progress-cells {
+  font-size: 11px;
+  color: var(--msb-text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 지정 셀 (4,4) 하이라이트 ───────────────────────────────── */
+
+/* 전역 클래스 — module.css와 병용 */
+.msb-cell-highlight {
+  background-color: var(--msb-highlight-bg) !important;
+  color: var(--msb-highlight-text) !important;
+  border-color: var(--msb-highlight-border) !important;
+  animation: msb-cell-pulse 1.0s ease-out infinite !important;
+  cursor: pointer;
+  z-index: 1;
+  position: relative;
+}
+
+.msb-cell-highlight:hover {
+  background-color: #92400E !important;
+}
+
+/* 클릭 후 펄스 중지 */
+.msb-cell-highlight-done {
+  animation: none !important;
+  background-color: var(--msb-bg-panel) !important;
+}
+
+/* ── 결과 화면 ───────────────────────────────────────────────── */
+.msb-result-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 520px;
+  width: 100%;
+  padding: 24px 16px;
+  animation: msb-result-in 400ms ease-out forwards;
+}
+
+.msb-result-icon {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.msb-result-outcome {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.msb-result-outcome.win {
+  color: var(--msb-result-win);
+  animation: msb-win-glow 2.0s ease-in-out infinite;
+}
+
+.msb-result-outcome.lose {
+  color: var(--msb-result-lose);
+}
+
+/* 결과 상세 카드 */
+.msb-result-card {
+  background: var(--msb-bg-panel);
+  border: 1.5px solid var(--msb-border-default);
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+}
+
+.msb-result-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--msb-border-default);
+}
+
+.msb-result-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.msb-result-row:first-child {
+  padding-top: 0;
+}
+
+.msb-result-row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.msb-result-row-header.mine {
+  color: var(--msb-accent);
+}
+
+.msb-result-row-header.opponent {
+  color: var(--msb-text-secondary);
+}
+
+.msb-result-elapsed {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--msb-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.msb-result-reason {
+  font-size: 12px;
+  color: var(--msb-text-muted);
+}
+
+/* 자동 전환 카운트다운 */
+.msb-result-countdown-area {
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.msb-result-countdown-text {
+  font-size: 13px;
+  color: var(--msb-text-muted);
+  margin: 0;
+}
+
+.msb-result-countdown-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: var(--msb-border-default);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.msb-result-countdown-bar-fill {
+  height: 100%;
+  background: var(--msb-accent);
+  border-radius: 2px;
+  transition: width 1000ms linear;
+}
+
+/* 결과 버튼 */
+.msb-result-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+/* ── 연결 끊김 배너 ──────────────────────────────────────────── */
+
+/* 본인 재연결 시도 — 앰버 배너 */
+.msb-reconnect-banner {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--msb-banner-bg);
+  border-bottom: 2px solid var(--msb-banner-border);
+  color: var(--msb-banner-text);
+  font-size: 13px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  animation: msb-toast-in 200ms ease-out;
+}
+
+/* 상대 연결 끊김 — 다크 배너 */
+.msb-disconnect-banner {
+  width: 100%;
+  padding: 10px 16px;
+  background: #1c2128;
+  border-bottom: 2px solid var(--msb-border-default);
+  color: var(--msb-text-secondary);
+  font-size: 13px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  role: alert;
+}
+
+.msb-disconnect-banner strong {
+  color: var(--msb-text-primary);
+}
+
+/* ── 포기 확인 모달 ──────────────────────────────────────────── */
+.msb-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.70);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 16px;
+}
+
+.msb-modal-box {
+  background: var(--msb-bg-panel);
+  border: 1px solid var(--msb-border-default);
+  border-radius: 12px;
+  padding: 28px 24px;
+  text-align: center;
+  width: 90%;
+  max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.50);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.msb-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--msb-text-primary);
+  margin: 0;
+}
+
+.msb-modal-desc {
+  font-size: 13px;
+  color: var(--msb-text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.msb-modal-desc em {
+  color: var(--msb-text-muted);
+  font-style: normal;
+  font-size: 12px;
+  display: block;
+  margin-top: 4px;
+}
+
+.msb-modal-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.msb-modal-confirm-btn {
+  background: var(--msb-danger);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.12s;
+  font-family: sans-serif;
+}
+
+.msb-modal-confirm-btn:hover {
+  opacity: 0.85;
+}
+
+.msb-modal-cancel-btn {
+  background: var(--msb-accent);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.12s;
+  font-family: sans-serif;
+}
+
+.msb-modal-cancel-btn:hover {
+  background: var(--msb-accent-dark);
+}
+
+/* ── 에러 화면 ───────────────────────────────────────────────── */
+.msb-error-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 400px;
+  text-align: center;
+}
+
+.msb-error-icon {
+  font-size: 3em;
+  color: var(--msb-danger);
+}
+
+.msb-error-title {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: var(--msb-text-primary);
+  margin: 0;
+}
+
+.msb-error-msg {
+  font-size: 0.9em;
+  color: var(--msb-text-secondary);
+  margin: 0;
+}
+
+.msb-error-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── 반응형 ──────────────────────────────────────────────────── */
+
+/* 모바일 — 600px 이하 */
+@media (max-width: 600px) {
+  .msb-content {
+    justify-content: flex-start;
+    padding: 8px;
+  }
+
+  /* playing 레이아웃: 세로 스택 */
+  .msb-playing-layout {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+  }
+
+  .msb-board-area {
+    flex: none;
+    width: 100%;
+  }
+
+  .msb-side-panel {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* 결과 버튼 세로 배치 */
+  .msb-result-btns {
+    flex-direction: column;
+  }
+
+  .msb-result-btns .msb-btn-primary,
+  .msb-result-btns .msb-btn-secondary {
+    width: 100%;
+    text-align: center;
+  }
+
+  .msb-idle-screen {
+    padding: 24px 16px;
+  }
+}
+
+/* 매우 좁은 화면 — 380px 이하 */
+@media (max-width: 380px) {
+  .msb-modal-btns {
+    flex-direction: column;
+  }
+
+  .msb-modal-confirm-btn,
+  .msb-modal-cancel-btn {
+    width: 100%;
+  }
+}
