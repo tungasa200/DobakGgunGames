@@ -106,14 +106,15 @@ export default function MinesweeperBattleBoard() {
     }
   }, [accessToken, user, dispatchBattle]);
 
-  // 마운트 시 1회 실행
+  // 마운트 시 1회 실행 (로그인 유저만)
   useEffect(() => {
+    if (!user) return;
     if (!startedRef.current) {
       startedRef.current = true;
       void startJoin();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   // 페이지 타이틀
   useEffect(() => {
@@ -249,11 +250,34 @@ export default function MinesweeperBattleBoard() {
     </div>
   ) : null;
 
+  // 로그인 필요 화면
+  if (!user) {
+    return (
+      <div className={styles.battlePage}>
+        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
+        <div className={styles.battleContent}>
+          <div className={styles.errorScreen}>
+            <div className={styles.errorTitle}>로그인이 필요합니다</div>
+            <div className={styles.errorMsg}>지뢰찾기 배틀은 로그인 후 이용할 수 있습니다.</div>
+            <div className={styles.errorBtns}>
+              <button className={styles.btnPrimary} onClick={() => navigate('/login')} type="button">
+                로그인
+              </button>
+              <button className={styles.btnSecondary} onClick={() => navigate('/games/minesweeper')} type="button">
+                나가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 에러 화면
   if (battleState.phase === 'idle' && battleState.errorMessage) {
     return (
       <div className={styles.battlePage}>
-        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#6366f1" />
+        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
         <div className={styles.battleContent}>
           <div className={styles.errorScreen}>
             <div className={styles.errorTitle}>오류가 발생했습니다</div>
@@ -284,7 +308,7 @@ export default function MinesweeperBattleBoard() {
   if (battleState.phase === 'idle') {
     return (
       <div className={styles.battlePage}>
-        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#6366f1" />
+        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
         <div className={styles.battleContent}>
           <div className={styles.loadingScreen}>
             <div className={styles.spinner} role="status" aria-label="매칭 중" />
@@ -299,7 +323,7 @@ export default function MinesweeperBattleBoard() {
   if (battleState.phase === 'waiting') {
     return (
       <div className={styles.battlePage}>
-        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#6366f1" />
+        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
         {renderReconnectBanner()}
         <div className={styles.battleContent}>
           <MinesweeperBattleWaiting
@@ -315,7 +339,7 @@ export default function MinesweeperBattleBoard() {
   if (battleState.phase === 'ready') {
     return (
       <div className={styles.battlePage}>
-        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#6366f1" />
+        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
         {renderReconnectBanner()}
         <div className={styles.battleContent}>
           <MinesweeperBattleReady
@@ -325,6 +349,7 @@ export default function MinesweeperBattleBoard() {
             opponentFirstClickConfirmed={battleState.opponentFirstClickConfirmed}
             firstClickTimeoutMs={firstClickTimeoutMsRef.current}
             onFirstClick={handleFirstClick}
+            onLeave={handleCancel}
           />
         </div>
       </div>
@@ -335,7 +360,7 @@ export default function MinesweeperBattleBoard() {
   if (battleState.phase === 'playing') {
     return (
       <div className={styles.battlePage}>
-        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#6366f1" />
+        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
         {renderReconnectBanner()}
         <div className={styles.battleContent} style={{ justifyContent: 'flex-start', paddingTop: 16 }}>
           <MinesweeperBattleGameView
@@ -362,13 +387,13 @@ export default function MinesweeperBattleBoard() {
   if (battleState.phase === 'finished' && battleState.result) {
     return (
       <div className={styles.battlePage}>
-        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#6366f1" />
+        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
         <div className={styles.battleContent}>
           <MinesweeperBattleResult
             result={battleState.result}
             myPlayerId={battleState.myPlayerId}
             onPlayAgain={handlePlayAgain}
-            onHome={() => { clearMbJoinInfo(); navigate('/'); }}
+            onLeave={() => { clearMbJoinInfo(); navigate('/games/minesweeper'); }}
           />
         </div>
       </div>
@@ -378,7 +403,7 @@ export default function MinesweeperBattleBoard() {
   // 기본: 로딩
   return (
     <div className={styles.battlePage}>
-      <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#6366f1" />
+      <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
       <div className={styles.battleContent}>
         <div className={styles.loadingScreen}>
           <div className={styles.spinner} role="status" />

@@ -1,5 +1,5 @@
 /* ================================================================
-   Minesweeper Battle — CSS Module
+   Minesweeper Battle — CSS Module (솔로 지뢰찾기 테마 기반)
    ================================================================ */
 
 /* ── 페이지 레이아웃 ──────────────────────────────────────── */
@@ -7,9 +7,9 @@
   position: fixed;
   inset: 0;
   overflow: auto;
-  background: #1a1a2e;
-  color: #e0e0e0;
-  font-family: 'Segoe UI', sans-serif;
+  background: #fff;
+  color: #2c3e50;
+  font-family: sans-serif;
   display: flex;
   flex-direction: column;
 }
@@ -26,43 +26,47 @@
 
 /* ── 공통 버튼 ───────────────────────────────────────────── */
 .btnPrimary {
-  background: #6366f1;
+  background: #3498db;
   color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 10px 24px;
+  border-radius: 5px;
+  padding: 10px 22px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: bold;
   cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.15s;
 }
-.btnPrimary:hover { background: #4f46e5; }
-.btnPrimary:disabled { background: #4b4b6e; cursor: not-allowed; }
+.btnPrimary:hover { background: #2980b9; }
+.btnPrimary:disabled { background: #aaa; cursor: not-allowed; }
 
 .btnSecondary {
-  background: #2d2d44;
-  color: #c0c0e0;
-  border: 1px solid #444466;
-  border-radius: 8px;
-  padding: 10px 24px;
+  background: #95a5a6;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 22px;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: bold;
   cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.15s;
 }
-.btnSecondary:hover { background: #3a3a58; }
+.btnSecondary:hover { background: #7f8c8d; }
 
 .btnDanger {
-  background: #7f1d1d;
-  color: #fca5a5;
+  background: #e74c3c;
+  color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 5px;
   padding: 8px 18px;
   font-size: 14px;
+  font-weight: bold;
   cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.15s;
 }
-.btnDanger:hover { background: #991b1b; }
+.btnDanger:hover { background: #c0392b; }
 
 /* ── 대기 화면 ───────────────────────────────────────────── */
 .waitingScreen {
@@ -75,15 +79,15 @@
 
 .waitingTitle {
   font-size: 20px;
-  font-weight: 600;
-  color: #a5b4fc;
+  font-weight: bold;
+  color: #2c3e50;
 }
 
 .spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #3b3b6e;
-  border-top-color: #6366f1;
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ddd;
+  border-top-color: #3498db;
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
@@ -101,112 +105,111 @@
 }
 
 .readyTitle {
-  font-size: 16px;
-  color: #c4b5fd;
+  font-size: 15px;
+  color: #2c3e50;
   text-align: center;
   max-width: 320px;
+  line-height: 1.6;
 }
 
 .readyCountdown {
   font-size: 20px;
-  font-weight: 700;
-  color: #fbbf24;
+  font-weight: bold;
+  color: #e67e22;
 }
 
 .readyIndicator {
   display: flex;
   gap: 24px;
   font-size: 14px;
-  color: #9ca3af;
+  color: #555;
 }
 
-.indicatorMe   { color: #86efac; }
-.indicatorOpp  { color: #fca5a5; }
+.indicatorMe   { color: #27ae60; font-weight: bold; }
+.indicatorOpp  { color: #e74c3c; font-weight: bold; }
 
 /* ── 9×9 보드 그리드 ─────────────────────────────────────── */
 .boardGrid {
   display: grid;
-  grid-template-columns: repeat(9, 32px);
-  grid-template-rows: repeat(9, 32px);
-  gap: 1px;
-  background: #374151;
-  border: 2px solid #374151;
-  border-radius: 4px;
+  grid-template-columns: repeat(9, 30px);
+  grid-template-rows: repeat(9, 30px);
+  border: 2px solid #333;
   user-select: none;
 }
 
 /* 셀 기본 */
 .cell {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #ccc;
+  background-color: #ddd;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: bold;
   cursor: pointer;
-  background: #d1d5db;
-  border: 2px solid transparent;
-  transition: background 0.05s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  box-sizing: border-box;
 }
 
 .cellUnrevealed {
-  background: #4b5563;
+  background-color: #ddd;
   cursor: pointer;
 }
-.cellUnrevealed:hover {
-  background: #5b6880;
-}
+.cellUnrevealed:hover { background-color: #ccc; }
 
 .cellRevealed {
-  background: #1f2937;
+  background-color: #fff;
   cursor: default;
 }
 
 .cellMine {
-  background: #7f1d1d;
+  background-color: #e74c3c;
+  color: #fff;
   cursor: default;
 }
 
 .cellFlag {
-  background: #4b5563;
-  color: #ef4444;
-  font-size: 16px;
+  background-color: #f1c40f;
+  color: #fff;
 }
 
 .cellQuestion {
-  background: #4b5563;
-  color: #fbbf24;
-  font-size: 15px;
+  background-color: #9b59b6;
+  color: #fff;
 }
 
 /* 지정 셀 하이라이트 (4,4) */
 .designatedCell {
-  background: #78350f !important;
-  border-color: #fbbf24 !important;
+  background-color: #f1c40f !important;
+  border-color: #e67e22 !important;
   animation: designatedPulse 1s ease-in-out infinite;
+  cursor: pointer;
 }
 
 @keyframes designatedPulse {
-  0%   { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
-  50%  { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); }
+  50%  { box-shadow: 0 0 0 5px rgba(230, 126, 34, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); }
 }
 
-/* 숫자 색상 */
-.n1 { color: #3b82f6; }
-.n2 { color: #22c55e; }
-.n3 { color: #ef4444; }
-.n4 { color: #1e40af; }
-.n5 { color: #b91c1c; }
-.n6 { color: #0891b2; }
-.n7 { color: #111827; }
-.n8 { color: #6b7280; }
+/* 숫자 색상 — 솔로 모드와 동일 */
+.n1 { color: #1565c0; }
+.n2 { color: #2e7d32; }
+.n3 { color: #c62828; }
+.n4 { color: #1a237e; }
+.n5 { color: #b71c1c; }
+.n6 { color: #00838f; }
+.n7 { color: #212121; }
+.n8 { color: #757575; }
 
 /* ── 게임 진행 레이아웃 ──────────────────────────────────── */
 .gameLayout {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   align-items: flex-start;
   width: 100%;
   max-width: 700px;
@@ -224,19 +227,19 @@
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  color: #9ca3af;
+  color: #555;
 }
 
 .timerDisplay {
   font-size: 18px;
-  font-weight: 700;
-  color: #a5b4fc;
+  font-weight: bold;
+  color: #2c3e50;
   font-variant-numeric: tabular-nums;
 }
 
 .safeCellsDisplay {
   font-size: 13px;
-  color: #9ca3af;
+  color: #7f8c8d;
 }
 
 /* ── 사이드패널 ──────────────────────────────────────────── */
@@ -249,9 +252,9 @@
 }
 
 .playerCard {
-  background: #1f2937;
-  border: 1px solid #374151;
-  border-radius: 8px;
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
@@ -259,17 +262,17 @@
 }
 
 .playerCardOpponent {
-  border-color: #f97316;
+  border-left: 3px solid #e74c3c;
 }
 
 .playerCardMe {
-  border-color: #6366f1;
+  border-left: 3px solid #3498db;
 }
 
 .playerNickname {
   font-size: 13px;
-  font-weight: 600;
-  color: #e5e7eb;
+  font-weight: bold;
+  color: #2c3e50;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -277,7 +280,7 @@
 
 .progressBarWrap {
   height: 8px;
-  background: #374151;
+  background: #ecf0f1;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -288,24 +291,22 @@
   transition: width 0.2s ease;
 }
 
-.progressBarFillOpponent {
-  background: #f97316;
-}
-
-.progressBarFillMe {
-  background: #6366f1;
-}
+.progressBarFillOpponent { background: #e74c3c; }
+.progressBarFillMe       { background: #3498db; }
 
 .progressText {
   font-size: 12px;
-  color: #9ca3af;
+  color: #7f8c8d;
 }
+
+/* 포기 버튼 */
+.forfeitBtn { margin-top: auto; }
 
 /* ── 상대 연결 끊김 오버레이 ─────────────────────────────── */
 .disconnectOverlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(255,255,255,0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -317,13 +318,8 @@
 
 .disconnectText {
   font-size: 14px;
-  color: #fca5a5;
-  font-weight: 600;
-}
-
-/* 포기 버튼 */
-.forfeitBtn {
-  margin-top: auto;
+  color: #e74c3c;
+  font-weight: bold;
 }
 
 /* ── 결과 화면 ───────────────────────────────────────────── */
@@ -333,12 +329,13 @@
   align-items: center;
   gap: 20px;
   padding: 32px 24px;
-  background: #1f2937;
-  border: 1px solid #374151;
+  background: #fff;
+  border: 2px solid #ddd;
   border-radius: 12px;
   min-width: 300px;
   max-width: 440px;
   width: 100%;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 .resultTitle {
@@ -347,8 +344,8 @@
   letter-spacing: 2px;
 }
 
-.resultWin  { color: #fbbf24; text-shadow: 0 0 16px rgba(251,191,36,0.6); }
-.resultLose { color: #6b7280; }
+.resultWin  { color: #e67e22; }
+.resultLose { color: #7f8c8d; }
 
 .resultRecords {
   width: 100%;
@@ -358,18 +355,21 @@
 }
 
 .resultRecord {
-  background: #111827;
+  background: #f9f9f9;
+  border: 1px solid #eee;
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 14px;
-  color: #d1d5db;
+  color: #2c3e50;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
 .resultRecordLabel {
-  color: #9ca3af;
+  color: #7f8c8d;
   font-size: 12px;
+  margin-right: 6px;
 }
 
 .resultBtns {
@@ -381,7 +381,7 @@
 .modalBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0,0,0,0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -389,8 +389,8 @@
 }
 
 .modalBox {
-  background: #1f2937;
-  border: 1px solid #374151;
+  background: #fff;
+  border: 1px solid #ddd;
   border-radius: 10px;
   padding: 28px 32px;
   display: flex;
@@ -398,24 +398,22 @@
   gap: 16px;
   align-items: center;
   min-width: 260px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
 }
 
 .modalTitle {
   font-size: 18px;
-  font-weight: 700;
-  color: #f9fafb;
+  font-weight: bold;
+  color: #2c3e50;
 }
 
 .modalDesc {
   font-size: 14px;
-  color: #9ca3af;
+  color: #555;
   text-align: center;
 }
 
-.modalBtns {
-  display: flex;
-  gap: 10px;
-}
+.modalBtns { display: flex; gap: 10px; }
 
 /* ── 로딩 화면 ───────────────────────────────────────────── */
 .loadingScreen {
@@ -426,7 +424,7 @@
 }
 
 .loadingText {
-  color: #9ca3af;
+  color: #7f8c8d;
   font-size: 14px;
 }
 
@@ -441,13 +439,13 @@
 
 .errorTitle {
   font-size: 18px;
-  font-weight: 700;
-  color: #fca5a5;
+  font-weight: bold;
+  color: #e74c3c;
 }
 
 .errorMsg {
   font-size: 14px;
-  color: #9ca3af;
+  color: #555;
   text-align: center;
 }
 
@@ -459,12 +457,13 @@
 
 /* ── 재연결 배너 ─────────────────────────────────────────── */
 .reconnectBanner {
-  background: #78350f;
-  color: #fde68a;
+  background: #fef9e7;
+  color: #e67e22;
+  border-bottom: 1px solid #f0b27a;
   text-align: center;
   padding: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: bold;
 }
 
 /* ── 모바일 대응 ─────────────────────────────────────────── */

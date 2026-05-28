@@ -12,6 +12,7 @@ interface MinesweeperBattleReadyProps {
   opponentFirstClickConfirmed: boolean;
   firstClickTimeoutMs: number;
   onFirstClick: () => void;
+  onLeave: () => void;
 }
 
 export default function MinesweeperBattleReady({
@@ -21,6 +22,7 @@ export default function MinesweeperBattleReady({
   opponentFirstClickConfirmed,
   firstClickTimeoutMs,
   onFirstClick,
+  onLeave,
 }: MinesweeperBattleReadyProps) {
   const [remainSec, setRemainSec] = useState(Math.ceil(firstClickTimeoutMs / 1000));
 
@@ -88,6 +90,10 @@ export default function MinesweeperBattleReady({
           {opponentFirstClickConfirmed ? '상대 완료' : '상대 대기 중'}
         </span>
       </div>
+
+      <button className={styles.btnSecondary} onClick={onLeave} type="button">
+        나가기
+      </button>
     </div>
   );
 }
