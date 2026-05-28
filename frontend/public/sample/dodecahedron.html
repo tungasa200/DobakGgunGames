@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>White Plastic D12 — Three.js</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  canvas { display: block; }
+  #info { position: absolute; top: 16px; left: 16px; color: rgba(255,255,255,0.4); font-size: 12px; pointer-events: none; user-select: none; letter-spacing: 0.3px; }
+</style>
+</head>
+<body>
+<div id="info">드래그: 회전  ·  휠: 줌</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============ Scene/Camera/Renderer ============
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a1a);
+
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 100);
+let camDist = 5.0;
+function updateCamera() {
+  camera.position.set(
+    camDist * Math.cos(0.45) * Math.sin(0.6),
+    camDist * Math.sin(0.45),
+    camDist * Math.cos(0.45) * Math.cos(0.6)
+  );
+  camera.lookAt(0, 0, 0);
+}
+updateCamera();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+// === Floor ===
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 30),
+  new THREE.MeshStandardMaterial({ color: 0x252525, roughness: 0.85, metalness: 0 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -1.25;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// === Lights ===
+scene.add(new THREE.AmbientLight(0xffffff, 0.32));
+const keyLight = new THREE.DirectionalLight(0xfff2dc, 1.1);
+keyLight.position.set(4, 7, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -3; keyLight.shadow.camera.right = 3;
+keyLight.shadow.camera.top = 3; keyLight.shadow.camera.bottom = -3;
+keyLight.shadow.camera.near = 0.5; keyLight.shadow.camera.far = 20;
+keyLight.shadow.bias = -0.0004; keyLight.shadow.radius = 4;
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xc8d4f0, 0.4);
+fillLight.position.set(-5, 3, -2);
+scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+rimLight.position.set(-3, 5, -6);
+scene.add(rimLight);
+
+// ============ Atlas Texture (4x3 grid of numerals 1-12) ============
+const ATLAS_W = 2048, ATLAS_H = 1536;
+const CELL_W = ATLAS_W / 4, CELL_H = ATLAS_H / 3;
+const atlasCanvas = document.createElement('canvas');
+atlasCanvas.width = ATLAS_W; atlasCanvas.height = ATLAS_H;
+const atlasCtx = atlasCanvas.getContext('2d');
+atlasCtx.fillStyle = '#faf9f5';
+atlasCtx.fillRect(0, 0, ATLAS_W, ATLAS_H);
+const cellPos = [ null,[0,0],[1,0],[2,0],[3,0],[0,1],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2],[3,2] ];
+atlasCtx.fillStyle = '#0c0c0c';
+atlasCtx.font = `bold ${Math.round(CELL_H * 0.42)}px "Helvetica Neue", Arial, sans-serif`;
+atlasCtx.textAlign = 'center';
+atlasCtx.textBaseline = 'middle';
+for (let n=1;n<=12;n++){
+  const [cx,cy]=cellPos[n];
+  const xc=cx*CELL_W+CELL_W/2, yc=cy*CELL_H+CELL_H/2;
+  atlasCtx.fillText(String(n), xc, yc);
+  if(n===6||n===9){const ulw=CELL_W*0.16,ulh=CELL_H*0.018;atlasCtx.fillRect(xc-ulw/2,yc+CELL_H*0.19,ulw,ulh);}
+}
+const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
+atlasTexture.minFilter = THREE.LinearMipmapLinearFilter;
+atlasTexture.magFilter = THREE.LinearFilter;
+atlasTexture.wrapS = THREE.ClampToEdgeWrapping;
+atlasTexture.wrapT = THREE.ClampToEdgeWrapping;
+atlasTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+atlasTexture.encoding = THREE.sRGBEncoding;
+
+// ============ Dodecahedron data (circumradius = 1) ============
+const PHI = 1.6180339887498949, IP = 0.6180339887498949;
+const RAW_V = [
+  [-1,-1,-1],[-1,-1,1],[-1,1,-1],[-1,1,1],
+  [1,-1,-1],[1,-1,1],[1,1,-1],[1,1,1],
+  [0,-IP,-PHI],[0,-IP,PHI],[0,IP,-PHI],[0,IP,PHI],
+  [-IP,-PHI,0],[-IP,PHI,0],[IP,-PHI,0],[IP,PHI,0],
+  [-PHI,0,-IP],[PHI,0,-IP],[-PHI,0,IP],[PHI,0,IP]
+];
+const CR = Math.sqrt(3);
+const VERTS = RAW_V.map(v => v.map(x => x / CR));
+// faces with CONSISTENT CCW outward winding (verified: all 30 edges opposite-traversed)
+const FACES = [
+  [0,8,4,14,12],[16,2,10,8,0],[0,12,1,18,16],[12,14,5,9,1],
+  [1,9,11,3,18],[13,15,6,10,2],[16,18,3,13,2],[3,11,7,15,13],
+  [4,8,10,6,17],[17,19,5,14,4],[19,7,11,9,5],[6,15,7,19,17]
+];
+const FACE_NUM = [1,2,3,4,5,9,6,12,8,7,11,10];
+
+// ---- vec helpers ----
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const scl=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const crs=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const nrm=a=>{const l=len(a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
+const mix=(a,b,t)=>[a[0]*(1-t)+b[0]*t, a[1]*(1-t)+b[1]*t, a[2]*(1-t)+b[2]*t];
+
+// ============ Build die ============
+// 12 flat inset pentagons + 30 edge bevels (rounded via 2-segment arc) + 20 vertex caps.
+// 베벨은 면 평면 안쪽 모서리에서 시작해 인접 면 모서리로 잇되, 중간점을 바깥으로 살짝
+// 부풀려(외접구 쪽) 둥근 모서리를 만든다. 면 winding이 일관되므로 꼬임 없음.
+function buildDie(scaleR, gap, bulge, segs) {
+  const V = VERTS.map(v=>scl(v,scaleR));
+  const fNorm=[], fCent=[];
+  for(let fi=0;fi<12;fi++){
+    const P=FACES[fi].map(i=>V[i]);
+    let c=[0,0,0]; P.forEach(p=>{c=add(c,p);}); c=scl(c,1/5);
+    fNorm.push(nrm(c)); fCent.push(c);
+  }
+  // inset vertices per face
+  const insV=[];
+  for(let fi=0;fi<12;fi++){
+    const f=FACES[fi], n=fNorm[fi], P=f.map(i=>V[i]), fc=fCent[fi];
+    const E=[];
+    for(let k=0;k<5;k++){
+      const a=P[k], b=P[(k+1)%5];
+      const dir=nrm(sub(b,a));
+      let inw=crs(n,dir);
+      if(dot(inw,sub(fc,a))<0) inw=scl(inw,-1);
+      E.push({p:add(a,scl(inw,gap)), dir});
+    }
+    function X(e1,e2){
+      const d1=e1.dir,d2=e2.dir,p1=e1.p,p2=e2.p;
+      const r=sub(p2,p1); const c=crs(d1,d2); const cl2=dot(c,c);
+      const rc=crs(r,d2); const s=dot(rc,c)/cl2;
+      return add(p1,scl(d1,s));
+    }
+    const nv=[]; for(let k=0;k<5;k++){const pr=(k+4)%5; nv.push(X(E[pr],E[k]));}
+    insV.push(nv);
+  }
+  const rIn = len(insV[0][0]); // inset corner radius (target sphere radius for bevel crown)
+
+  const positions=[], normals=[], uvs=[];
+  function tri(p,q,r){ positions.push(p[0],p[1],p[2],q[0],q[1],q[2],r[0],r[1],r[2]); }
+  const WUV=[0.5/4, 1-0.012/3];
+
+  const idxInFace = FACES.map(f=>{const m={}; f.forEach((vi,k)=>m[vi]=k); return m;});
+
+  // numeral-face triangles stored separately (need real UV)
+  const faceTris=[]; // {p,q,r, up,uq,ur}
+  for(let fi=0;fi<12;fi++){
+    const n=fNorm[fi], fc=fCent[fi];
+    let up = Math.abs(n[1])>0.95?[0,0,1]:[0,1,0];
+    let v=nrm(sub(up,scl(n,dot(up,n))));
+    const u=crs(v,n);
+    const P=insV[fi];
+    // pr = inset pentagon circumradius. UV 0..1 maps to ±uvHalf; uvHalf must be >= pr
+    // so corner vertices stay inside the cell (otherwise UV clamps and the numeral smears).
+    const pr=len(sub(P[0],fc));
+    const uvHalf=pr*1.18;
+    const uvF=(p)=>{
+      const r=sub(p,fc);
+      let cu=0.5+dot(r,u)/(2*uvHalf), cv=0.5-dot(r,v)/(2*uvHalf);
+      cu=Math.max(0,Math.min(1,cu)); cv=Math.max(0,Math.min(1,cv));
+      const [cx,cy]=cellPos[FACE_NUM[fi]];
+      return [(cx+cu)/4, 1-(cy+cv)/3];
+    };
+    const uvCen=uvF(fc);
+    for(let k=0;k<5;k++){const k2=(k+1)%5; faceTris.push({p:fc,q:P[k],r:P[k2],up:uvCen,uq:uvF(P[k]),ur:uvF(P[k2])});}
+  }
+
+  // edge bevels
+  const edgeMap=new Map();
+  FACES.forEach((f,fi)=>{for(let k=0;k<5;k++){const a=f[k],b=f[(k+1)%5];const key=[a,b].sort((x,y)=>x-y).join('-');if(!edgeMap.has(key))edgeMap.set(key,[]);edgeMap.get(key).push({fi,a,b});}});
+
+  const bevelTris=[];
+  for(const [key,arr] of edgeMap){
+    if(arr.length!==2) continue;
+    const [E1,E2]=arr;
+    // inset edge corners on both faces (same original vertices A,B)
+    const a1=insV[E1.fi][idxInFace[E1.fi][E1.a]];
+    const b1=insV[E1.fi][idxInFace[E1.fi][E1.b]];
+    const a2=insV[E2.fi][idxInFace[E2.fi][E1.a]];
+    const b2=insV[E2.fi][idxInFace[E2.fi][E1.b]];
+    // single flat quad connecting the two inset edges (a1-b1 on face1, a2-b2 on face2).
+    // 곡선 베벨은 꼭짓점에서 캡과 곡률이 어긋나 균열이 생기므로, 평평한 띠로 통일.
+    // 둥근 느낌은 smoothSeams의 normal 평균이 만들어준다.
+    bevelTris.push({p:a1,q:b2,r:b1});
+    bevelTris.push({p:a1,q:a2,r:b2});
+  }
+
+  // vertex caps: single flat triangle through the 3 inset corners (shares exact corner
+  // points with the bevel quads, so no gaps/cracks). Rounded look comes from smoothSeams.
+  const vFaces=Array.from({length:20},()=>[]);
+  FACES.forEach((f,fi)=>f.forEach(vi=>vFaces[vi].push(fi)));
+  const capTris=[];
+  for(let vi=0;vi<20;vi++){
+    const fl=vFaces[vi];
+    if(fl.length!==3) continue;
+    let corners=fl.map(fi=>insV[fi][idxInFace[fi][vi]]);
+    const vn=nrm(V[vi]);
+    let bu=nrm(sub(corners[0],scl(vn,dot(corners[0],vn))));
+    let bv=crs(vn,bu);
+    corners=corners.map(c=>({c,ang:Math.atan2(dot(c,bv),dot(c,bu))})).sort((a,b)=>a.ang-b.ang).map(o=>o.c);
+    capTris.push({p:corners[0],q:corners[1],r:corners[2]});
+  }
+
+  // assemble: faces (with uv) + bevels + caps (white uv)
+  for(const f of faceTris){ tri(f.p,f.q,f.r); uvs.push(f.up[0],f.up[1],f.uq[0],f.uq[1],f.ur[0],f.ur[1]); }
+  for(const b of bevelTris){ tri(b.p,b.q,b.r); uvs.push(WUV[0],WUV[1],WUV[0],WUV[1],WUV[0],WUV[1]); }
+  for(const c of capTris){ tri(c.p,c.q,c.r); uvs.push(WUV[0],WUV[1],WUV[0],WUV[1],WUV[0],WUV[1]); }
+
+  const geom=new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+  geom.setAttribute('uv',       new THREE.Float32BufferAttribute(uvs,2));
+  geom.computeVertexNormals(); // 실제 면 법선에서 시작
+  return geom;
+}
+
+// 같은 위치 정점 normal 평균 -> 베벨/캡 매끈하게. 평평한 면은 자기들끼리 평균이라 평면 유지.
+function smoothSeams(geom, tol){
+  const pos=geom.attributes.position, nor=geom.attributes.normal, count=pos.count;
+  const f=1/tol;
+  const flat=new Float32Array(count*3);
+  for(let i=0;i<count;i++){flat[i*3]=nor.getX(i);flat[i*3+1]=nor.getY(i);flat[i*3+2]=nor.getZ(i);}
+  const groups=new Map();
+  for(let i=0;i<count;i++){
+    const k=`${Math.round(pos.getX(i)*f)}_${Math.round(pos.getY(i)*f)}_${Math.round(pos.getZ(i)*f)}`;
+    if(!groups.has(k))groups.set(k,[]); groups.get(k).push(i);
+  }
+  for(const idxs of groups.values()){
+    if(idxs.length<2)continue;
+    let nx=0,ny=0,nz=0;
+    for(const i of idxs){nx+=flat[i*3];ny+=flat[i*3+1];nz+=flat[i*3+2];}
+    const l=Math.hypot(nx,ny,nz); if(l>1e-9){nx/=l;ny/=l;nz/=l;}
+    for(const i of idxs) nor.setXYZ(i,nx,ny,nz);
+  }
+  nor.needsUpdate=true;
+}
+
+// ============ Build mesh ============
+const SCALE_R = 1.15;  // circumradius
+const GAP     = 0.03; // 면 축소량 (모서리 띠 폭 = 둥근 정도). 작을수록 면이 넓고 모서리만 살짝 둥금
+const BULGE   = 0.02;
+const SEGS    = 3;
+
+const dieGeom = buildDie(SCALE_R, GAP, BULGE, SEGS);
+smoothSeams(dieGeom, 1e-3);
+
+const dieMat = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  map: atlasTexture,
+  roughness: 0.42,
+  metalness: 0.0,
+  clearcoat: 0.45,
+  clearcoatRoughness: 0.32,
+  reflectivity: 0.45,
+});
+
+const die = new THREE.Mesh(dieGeom, dieMat);
+die.castShadow = true;
+die.receiveShadow = true;
+die.scale.set(0.82, 0.82, 0.82);
+die.rotation.set(0.45, 0.5, 0.08);
+scene.add(die);
+
+// ============ Interaction ============
+let isDragging=false, prev={x:0,y:0}, autoRotate=true;
+function onDown(e){isDragging=true;autoRotate=false;const p=e.touches?e.touches[0]:e;prev.x=p.clientX;prev.y=p.clientY;}
+function onMove(e){if(!isDragging)return;const p=e.touches?e.touches[0]:e;const dx=p.clientX-prev.x,dy=p.clientY-prev.y;die.rotation.y+=dx*0.008;die.rotation.x+=dy*0.008;prev.x=p.clientX;prev.y=p.clientY;}
+function onUp(){isDragging=false;}
+renderer.domElement.addEventListener('mousedown',onDown);
+addEventListener('mousemove',onMove);
+addEventListener('mouseup',onUp);
+renderer.domElement.addEventListener('touchstart',onDown,{passive:true});
+addEventListener('touchmove',onMove,{passive:true});
+addEventListener('touchend',onUp);
+renderer.domElement.addEventListener('wheel',(e)=>{e.preventDefault();camDist=Math.max(2.8,Math.min(9,camDist+e.deltaY*0.005));updateCamera();},{passive:false});
+
+// ============ Animate ============
+function animate(){requestAnimationFrame(animate);if(autoRotate)die.rotation.y+=0.005;renderer.render(scene,camera);}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>
