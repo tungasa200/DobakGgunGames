@@ -11,10 +11,53 @@
   flex-direction: column;
   align-items: center;
   padding: 32px 20px 56px;
-  gap: 28px;
+  gap: 24px;
 }
 
-/* Controls */
+/* 모드 선택 */
+.modeSelector {
+  display: flex;
+  gap: 8px;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.modeBtn {
+  padding: 8px 24px;
+  background: transparent;
+  color: #6b7280;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.modeBtn:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modeBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.modeBtnActive {
+  background: #3b82f6;
+  color: white;
+}
+
+.modeBtnActive:hover:not(:disabled) {
+  background: #2563eb;
+  color: white;
+}
+
+/* 개수 조절 */
 .controls {
   display: flex;
   align-items: center;
@@ -51,7 +94,7 @@
   text-align: center;
 }
 
-/* Dice grid */
+/* 주사위 그리드 */
 .diceGrid {
   display: flex;
   flex-wrap: wrap;
@@ -65,50 +108,14 @@
   box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
-/* 3D scene */
+/* Three.js 캔버스 컨테이너 */
 .scene {
   width: 80px;
   height: 80px;
-  perspective: 320px;
+  display: block;
 }
 
-.die {
-  width: 80px;
-  height: 80px;
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.9s ease-out;
-}
-
-/* Faces */
-.face {
-  position: absolute;
-  width: 80px;
-  height: 80px;
-  background: #f8f9fa;
-  border: 2px solid #d1d5db;
-  border-radius: 14px;
-  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.08);
-}
-
-.pip {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  background: #1e293b;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* Face positions — die size 80px, half = 40px */
-.f1 { transform: rotateY(  0deg) translateZ(40px); }
-.f6 { transform: rotateY(180deg) translateZ(40px); }
-.f2 { transform: rotateX(-90deg) translateZ(40px); }
-.f5 { transform: rotateX( 90deg) translateZ(40px); }
-.f3 { transform: rotateY( 90deg) translateZ(40px); }
-.f4 { transform: rotateY(-90deg) translateZ(40px); }
-
-/* Roll button */
+/* 굴리기 버튼 */
 .rollBtn {
   padding: 14px 56px;
   background: #3b82f6;
@@ -136,7 +143,7 @@
   box-shadow: none;
 }
 
-/* Results */
+/* 결과 패널 */
 .results {
   background: white;
   border: 1px solid #e5e7eb;
@@ -201,27 +208,7 @@
   .scene {
     width: 66px;
     height: 66px;
-    perspective: 264px;
   }
-  .die {
-    width: 66px;
-    height: 66px;
-  }
-  .face {
-    width: 66px;
-    height: 66px;
-    border-radius: 10px;
-  }
-  .pip {
-    width: 11px;
-    height: 11px;
-  }
-  .f1 { transform: rotateY(  0deg) translateZ(33px); }
-  .f6 { transform: rotateY(180deg) translateZ(33px); }
-  .f2 { transform: rotateX(-90deg) translateZ(33px); }
-  .f5 { transform: rotateX( 90deg) translateZ(33px); }
-  .f3 { transform: rotateY( 90deg) translateZ(33px); }
-  .f4 { transform: rotateY(-90deg) translateZ(33px); }
 
   .diceGrid {
     gap: 16px;
