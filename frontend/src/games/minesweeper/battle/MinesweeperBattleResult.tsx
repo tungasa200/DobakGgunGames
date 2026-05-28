@@ -14,38 +14,41 @@ export default function MinesweeperBattleResult({
   onPlayAgain,
   onLeave,
 }: MinesweeperBattleResultProps) {
-  const myResult = result.results.find(r => r.playerId === myPlayerId);
-  const opResult = result.results.find(r => r.playerId !== myPlayerId);
   const isWin = myPlayerId === result.winnerId;
+  const isMineHit = result.reason === 'MINE_HIT';
+  const isClear = result.reason === 'BOARD_CLEAR';
+
+  // 클리어 타임: 승자의 elapsed (BOARD_CLEAR 시에만 의미 있음)
+  const winnerResult = result.results.find(r => r.playerId === result.winnerId);
+  const clearTime = isClear && winnerResult && winnerResult.elapsedMs > 0
+    ? winnerResult.elapsedSeconds.toFixed(2)
+    : null;
 
   return (
-    <div className={styles.resultScreen}>
-      <div className={`${styles.resultTitle} ${isWin ? styles.resultWin : styles.resultLose}`}>
-        {isWin ? '승리!' : '패배...'}
-      </div>
-
-      <div className={styles.resultRecords}>
-        {myResult && (
-          <div className={styles.resultRecord}>
-            <span className={styles.resultRecordLabel}>내 기록</span>
-            <span>{myResult.elapsedMs > 0 ? `${myResult.elapsedSeconds.toFixed(2)}초` : '-'}</span>
-          </div>
+    <div className={styles.resultModalBackdrop}>
+      <div className={styles.resultModal}>
+        {/* 메인 비주얼 */}
+        {isMineHit && (
+          <div className={styles.resultBoom}>💣 BOOM!</div>
         )}
-        {opResult && (
-          <div className={styles.resultRecord}>
-            <span className={styles.resultRecordLabel}>상대 기록</span>
-            <span>{opResult.elapsedMs > 0 ? `${opResult.elapsedSeconds.toFixed(2)}초` : '-'}</span>
-          </div>
+        {isClear && clearTime && (
+          <div className={styles.resultClearTime}>⏱ {clearTime}초</div>
         )}
-      </div>
 
-      <div className={styles.resultBtns}>
-        <button className={styles.btnPrimary} onClick={onPlayAgain} type="button">
-          다시 매칭
-        </button>
-        <button className={styles.btnSecondary} onClick={onLeave} type="button">
-          나가기
-        </button>
+        {/* 승리/패배 */}
+        <div className={`${styles.resultOutcome} ${isWin ? styles.resultWin : styles.resultLose}`}>
+          {isWin ? '승리!' : '패배...'}
+        </div>
+
+        {/* 버튼 */}
+        <div className={styles.resultBtns}>
+          <button className={styles.btnPrimary} onClick={onPlayAgain} type="button">
+            다시 매칭
+          </button>
+          <button className={styles.btnSecondary} onClick={onLeave} type="button">
+            나가기
+          </button>
+        </div>
       </div>
     </div>
   );

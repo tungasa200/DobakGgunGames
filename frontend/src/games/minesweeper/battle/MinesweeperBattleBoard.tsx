@@ -239,9 +239,6 @@ export default function MinesweeperBattleBoard() {
     void startJoin();
   }, [resetGame, startJoin]);
 
-  // ── 본인 진행률 계산 ────────────────────────────────────────
-  const myProgressPercent = Math.floor(boardState.revealedCount / TOTAL_SAFE * 100);
-
   // ── 렌더 ──────────────────────────────────────────────────
 
   const renderReconnectBanner = () => wsStatus === 'reconnecting' ? (
@@ -356,8 +353,8 @@ export default function MinesweeperBattleBoard() {
     );
   }
 
-  // 게임 진행 화면
-  if (battleState.phase === 'playing') {
+  // 게임 진행 화면 + 결과 모달 (finished 시 보드 위에 오버레이)
+  if (battleState.phase === 'playing' || battleState.phase === 'finished') {
     return (
       <div className={styles.battlePage}>
         <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
@@ -369,7 +366,6 @@ export default function MinesweeperBattleBoard() {
             revealedCount={boardState.revealedCount}
             myNickname={battleState.myNickname}
             opponentNickname={battleState.opponentNickname}
-            myProgressPercent={myProgressPercent}
             opponentProgressPercent={battleState.opponentProgress.progressPercent}
             opponentRevealedCount={battleState.opponentProgress.revealedCount}
             opponentReconnecting={battleState.reconnecting}
@@ -379,23 +375,14 @@ export default function MinesweeperBattleBoard() {
             onForfeit={handleForfeit}
           />
         </div>
-      </div>
-    );
-  }
-
-  // 결과 화면
-  if (battleState.phase === 'finished' && battleState.result) {
-    return (
-      <div className={styles.battlePage}>
-        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
-        <div className={styles.battleContent}>
+        {battleState.phase === 'finished' && battleState.result && (
           <MinesweeperBattleResult
             result={battleState.result}
             myPlayerId={battleState.myPlayerId}
             onPlayAgain={handlePlayAgain}
             onLeave={() => { clearMbJoinInfo(); navigate('/games/minesweeper'); }}
           />
-        </div>
+        )}
       </div>
     );
   }

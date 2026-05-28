@@ -128,7 +128,32 @@
 .indicatorMe   { color: #27ae60; font-weight: bold; }
 .indicatorOpp  { color: #e74c3c; font-weight: bold; }
 
-/* ── 9×9 보드 그리드 ─────────────────────────────────────── */
+/* ── 솔로 지뢰찾기와 동일한 인포바 ─────────────────────── */
+.infoBar {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  margin: 6px 0;
+}
+.mineCount { font-size: 1.1em; font-weight: bold; color: #e74c3c; }
+.timer     { font-size: 1.1em; font-weight: bold; color: #2c3e50; }
+
+/* ── 보드 래퍼 (솔로와 동일) ─────────────────────────────── */
+.boardWrapper {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
+  border: 2px solid #333;
+}
+
+/* ── 보드 그리드 (솔로와 동일) ──────────────────────────── */
+.board {
+  display: inline-grid;
+  user-select: none;
+}
+
+/* 준비 화면용 9×9 보드 그리드 (고정 크기) */
 .boardGrid {
   display: grid;
   grid-template-columns: repeat(9, 30px);
@@ -137,7 +162,7 @@
   user-select: none;
 }
 
-/* 셀 기본 */
+/* ── 셀 기본 (솔로와 동일: 30px, font-size 15px) ─────────── */
 .cell {
   width: 30px;
   height: 30px;
@@ -146,7 +171,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: bold;
   cursor: pointer;
   user-select: none;
@@ -155,32 +180,23 @@
   box-sizing: border-box;
 }
 
-.cellUnrevealed {
-  background-color: #ddd;
-  cursor: pointer;
-}
+/* 솔로와 동일한 셀 상태 클래스 */
+.revealed  { background-color: #fff; cursor: default; }
+.flag      { background-color: #f1c40f; color: white; }
+.question  { background-color: #9b59b6; color: white; }
+.mine      { background-color: #e74c3c; color: white; }
+.wrongFlag { background-color: #fff; }
+
+/* 미열람 호버 */
+.cell:not(.revealed):not(.flag):not(.question):not(.mine):hover { background-color: #ccc; }
+
+/* 이전 클래스명 (준비 화면 boardGrid 에서 사용) */
+.cellUnrevealed { background-color: #ddd; cursor: pointer; }
 .cellUnrevealed:hover { background-color: #ccc; }
-
-.cellRevealed {
-  background-color: #fff;
-  cursor: default;
-}
-
-.cellMine {
-  background-color: #e74c3c;
-  color: #fff;
-  cursor: default;
-}
-
-.cellFlag {
-  background-color: #f1c40f;
-  color: #fff;
-}
-
-.cellQuestion {
-  background-color: #9b59b6;
-  color: #fff;
-}
+.cellRevealed   { background-color: #fff; cursor: default; }
+.cellMine       { background-color: #e74c3c; color: #fff; cursor: default; }
+.cellFlag       { background-color: #f1c40f; color: #fff; }
+.cellQuestion   { background-color: #9b59b6; color: #fff; }
 
 /* 지정 셀 하이라이트 (4,4) */
 .designatedCell {
@@ -195,16 +211,6 @@
   50%  { box-shadow: 0 0 0 5px rgba(230, 126, 34, 0); }
   100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); }
 }
-
-/* 숫자 색상 — 솔로 모드와 동일 */
-.n1 { color: #1565c0; }
-.n2 { color: #2e7d32; }
-.n3 { color: #c62828; }
-.n4 { color: #1a237e; }
-.n5 { color: #b71c1c; }
-.n6 { color: #00838f; }
-.n7 { color: #212121; }
-.n8 { color: #757575; }
 
 /* ── 게임 진행 레이아웃 ──────────────────────────────────── */
 .gameLayout {
@@ -322,59 +328,80 @@
   font-weight: bold;
 }
 
-/* ── 결과 화면 ───────────────────────────────────────────── */
-.resultScreen {
+/* ── 결과 모달 (게임 보드 위 오버레이) ───────────────────── */
+.resultModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 32px 24px;
+  justify-content: center;
+  z-index: 200;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.resultModal {
   background: #fff;
-  border: 2px solid #ddd;
-  border-radius: 12px;
-  min-width: 300px;
-  max-width: 440px;
-  width: 100%;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-}
-
-.resultTitle {
-  font-size: 36px;
-  font-weight: 800;
-  letter-spacing: 2px;
-}
-
-.resultWin  { color: #e67e22; }
-.resultLose { color: #7f8c8d; }
-
-.resultRecords {
-  width: 100%;
+  border-radius: 16px;
+  padding: 36px 40px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.resultRecord {
-  background: #f9f9f9;
-  border: 1px solid #eee;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: #2c3e50;
-  display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 18px;
+  min-width: 280px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.25s ease;
 }
 
-.resultRecordLabel {
-  color: #7f8c8d;
-  font-size: 12px;
-  margin-right: 6px;
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }
+
+/* BOOM! 텍스트 */
+.resultBoom {
+  font-size: 44px;
+  font-weight: 900;
+  color: #e74c3c;
+  letter-spacing: 2px;
+  animation: boom 0.4s ease;
+}
+
+@keyframes boom {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 클리어 타임 */
+.resultClearTime {
+  font-size: 40px;
+  font-weight: 800;
+  color: #e67e22;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 승리/패배 */
+.resultOutcome {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.resultWin  { color: #27ae60; }
+.resultLose { color: #7f8c8d; }
 
 .resultBtns {
   display: flex;
   gap: 10px;
+  margin-top: 4px;
 }
 
 /* ── 확인 모달 ───────────────────────────────────────────── */

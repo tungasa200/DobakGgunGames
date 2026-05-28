@@ -533,7 +533,7 @@ public class MinesweeperBattleRoomService {
         log.info("finishGame: roomId={} winnerId={} reason={}", roomId, winnerId, reason);
 
         // 플레이어 결과 목록 구성
-        List<GameResultPayload.ResultEntry> results = buildResultEntries(room, winnerId);
+        List<GameResultPayload.ResultEntry> results = buildResultEntries(room, winnerId, reason);
 
         // winner/loser endReason 보완 (승자에게 OPPONENT_FORFEIT 등)
         assignWinnerEndReason(room, winnerId, reason);
@@ -573,18 +573,32 @@ public class MinesweeperBattleRoomService {
     }
 
     private List<GameResultPayload.ResultEntry> buildResultEntries(
-            MinesweeperBattleRoom room, String winnerId) {
+            MinesweeperBattleRoom room, String winnerId, String reason) {
         return room.getPlayers().stream()
                 .map(p -> {
                     boolean isWinner = p.getPlayerId().equals(winnerId);
-                    long elapsedMs = p.getReportedElapsedMs();
-                    if (elapsedMs < 0) {
-                        // 미보고 — 서버 기준으로 추산
-                        elapsedMs = (room.getServerStartAtMillis() > 0)
-                                ? System.currentTimeMillis() - room.getServerStartAtMillis()
-                                : 0;
+
+                    // 게임을 실제로 끝낸 플레이어만 시간 표시
+                    // MINE_HIT  → 지뢰 밟은 패자 시간만 의미 있음
+                    // BOARD_CLEAR → 클리어한 승자 시간만 의미 있음
+                    // 그 외(LEAVE, DISCONNECT 등) → 양쪽 모두 시간 없음
+                    boolean showElapsed = switch (reason) {
+                        case "MINE_HIT"    -> !isWinner;
+                        case "BOARD_CLEAR" -> isWinner;
+                        default            -> false;
+                    };
+
+                    long elapsedMs = 0;
+                    if (showElapsed) {
+                        elapsedMs = p.getReportedElapsedMs();
+                        if (elapsedMs < 0) {
+                            elapsedMs = (room.getServerStartAtMillis() > 0)
+                                    ? System.currentTimeMillis() - room.getServerStartAtMillis()
+                                    : 0;
+                        }
                     }
-                    double elapsedSeconds = Math.round(elapsedMs / 10.0) / 100.0;
+
+                    double elapsedSeconds = elapsedMs > 0 ? Math.round(elapsedMs / 10.0) / 100.0 : 0.0;
                     return GameResultPayload.ResultEntry.builder()
                             .playerId(p.getPlayerId())
                             .nickname(p.getNickname())
