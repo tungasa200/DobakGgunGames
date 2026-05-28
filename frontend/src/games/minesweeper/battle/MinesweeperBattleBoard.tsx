@@ -88,9 +88,6 @@ export default function MinesweeperBattleBoard() {
         // 새로고침 등으로 인한 재진입 → 저장된 joinInfo로 WS 재연결
         const stored = getStoredMbJoinInfo();
         if (stored) {
-          const authParam = stored.isGuest
-            ? (stored.guestToken ?? '')
-            : (accessToken ?? '');
           const nickname = user?.nickname ?? '나';
           dispatchBattle({
             type: 'JOIN_REQUESTED',
