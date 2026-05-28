@@ -97,7 +97,7 @@ export default function MinesweeperBattleGameView({
   return (
     <>
       <div className={styles.gameLayout}>
-        {/* 좌측: 보드 영역 */}
+        {/* 상단: 보드 영역 */}
         <div className={styles.gameMain}>
           {/* 솔로 지뢰찾기와 동일한 인포바 */}
           <div className={styles.infoBar}>
@@ -173,7 +173,7 @@ export default function MinesweeperBattleGameView({
           </div>
         </div>
 
-        {/* 우측: 사이드패널 */}
+        {/* 하단: 사이드패널 (상대 카드 → 내 카드 순) */}
         <div className={styles.sidePanel}>
           <OpponentProgress
             nickname={opponentNickname ?? '상대'}

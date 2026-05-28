@@ -7,6 +7,7 @@ const COLS = 9;
 
 interface MinesweeperBattleReadyProps {
   opponentNickname: string | null;
+  myNickname: string | null;
   designatedCell: DesignatedCell;
   myFirstClickConfirmed: boolean;
   opponentFirstClickConfirmed: boolean;
@@ -17,6 +18,7 @@ interface MinesweeperBattleReadyProps {
 
 export default function MinesweeperBattleReady({
   opponentNickname,
+  myNickname,
   designatedCell,
   myFirstClickConfirmed,
   opponentFirstClickConfirmed,
@@ -81,14 +83,25 @@ export default function MinesweeperBattleReady({
         )}
       </div>
 
-      {/* 클릭 상태 인디케이터 */}
-      <div className={styles.readyIndicator}>
-        <span className={styles.indicatorMe}>
-          {myFirstClickConfirmed ? '내 클릭 완료' : '내 클릭 대기 중'}
-        </span>
-        <span className={styles.indicatorOpp}>
-          {opponentFirstClickConfirmed ? '상대 완료' : '상대 대기 중'}
-        </span>
+      {/* 플레이어 카드 (상대 → 나 순서) */}
+      <div className={styles.readyPlayerCards}>
+        <div className={`${styles.playerCard} ${styles.playerCardOpponent}`}>
+          <div className={styles.playerNickname} title={opponentNickname ?? '상대'}>
+            {opponentNickname ?? '상대'}
+          </div>
+          <div className={`${styles.readyStatusBadge}${opponentFirstClickConfirmed ? ` ${styles.readyStatusBadgeDone}` : ''}`}>
+            {opponentFirstClickConfirmed ? '클릭 완료' : '대기 중...'}
+          </div>
+        </div>
+
+        <div className={`${styles.playerCard} ${styles.playerCardMe}`}>
+          <div className={styles.playerNickname} title={myNickname ?? '나'}>
+            {myNickname ?? '나'} (나)
+          </div>
+          <div className={`${styles.readyStatusBadge}${myFirstClickConfirmed ? ` ${styles.readyStatusBadgeDone}` : ''}`}>
+            {myFirstClickConfirmed ? '클릭 완료' : '대기 중...'}
+          </div>
+        </div>
       </div>
 
       <button className={styles.btnSecondary} onClick={onLeave} type="button">

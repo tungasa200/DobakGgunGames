@@ -128,6 +128,17 @@
 .indicatorMe   { color: #27ae60; font-weight: bold; }
 .indicatorOpp  { color: #e74c3c; font-weight: bold; }
 
+.readyPlayerCards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 274px;
+  max-width: 100%;
+}
+
+.readyStatusBadge { font-size: 13px; color: #555; padding: 2px 0; }
+.readyStatusBadgeDone { color: #27ae60; font-weight: bold; }
+
 /* ── 솔로 지뢰찾기와 동일한 인포바 ─────────────────────── */
 .infoBar {
   display: flex;
@@ -155,7 +166,7 @@
 
 /* 준비 화면용 9×9 보드 그리드 (고정 크기) */
 .boardGrid {
-  display: grid;
+  display: inline-grid;
   grid-template-columns: repeat(9, 30px);
   grid-template-rows: repeat(9, 30px);
   border: 2px solid #333;
@@ -215,10 +226,9 @@
 /* ── 게임 진행 레이아웃 ──────────────────────────────────── */
 .gameLayout {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 20px;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 700px;
 }
 
 .gameMain {
@@ -250,11 +260,11 @@
 
 /* ── 사이드패널 ──────────────────────────────────────────── */
 .sidePanel {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-width: 160px;
+  gap: 8px;
+  width: 274px;
+  max-width: 100%;
 }
 
 .playerCard {
@@ -306,7 +316,7 @@
 }
 
 /* 포기 버튼 */
-.forfeitBtn { margin-top: auto; }
+.forfeitBtn { }
 
 /* ── 상대 연결 끊김 오버레이 ─────────────────────────────── */
 .disconnectOverlay {
@@ -495,18 +505,8 @@
 
 /* ── 모바일 대응 ─────────────────────────────────────────── */
 @media (max-width: 600px) {
-  .gameLayout {
-    flex-direction: column;
-    align-items: center;
-  }
   .sidePanel {
     width: 100%;
     max-width: 320px;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .playerCard {
-    flex: 1;
-    min-width: 140px;
   }
 }

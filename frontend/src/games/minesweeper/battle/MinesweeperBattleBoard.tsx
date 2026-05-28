@@ -341,6 +341,7 @@ export default function MinesweeperBattleBoard() {
         <div className={styles.battleContent}>
           <MinesweeperBattleReady
             opponentNickname={battleState.opponentNickname}
+            myNickname={battleState.myNickname}
             designatedCell={battleState.designatedCell ?? { r: 4, c: 4 }}
             myFirstClickConfirmed={battleState.myFirstClickConfirmed}
             opponentFirstClickConfirmed={battleState.opponentFirstClickConfirmed}
