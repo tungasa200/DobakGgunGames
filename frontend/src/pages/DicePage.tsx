@@ -23,30 +23,51 @@ const ROLL_DURATION = 900;
 const CANVAS_SIZE = 80;
 const TWO_PI = Math.PI * 2;
 
-// D6 큐브 상수
 const D6_SIZE = 1.2;
 const D6_CORNER_R = 0.18;
 const D6_PIP_R = 0.078;
 const D6_PIP_DEPTH = 0.038;
 const D6_SEGMENTS = 96;
 
-// D8 옥타헤드론 상수
 const D8_R = 1.0;
 const D8_CORNER_R = 0.12;
 const D8_DETAIL = 5;
 const D8_NUMERAL_EXTENT = 1.15;
 const D8_SCALE = 0.88;
 
-// D12 상수
 const D12_SCALE = 0.75;
 
-// 카메라 프러스텀: D6_SIZE × 1.5 / 2 = 0.9 (회전 중에도 클립 없도록)
 const CAM_HALF = (D6_SIZE * 1.5) / 2;
 
 // ============================================================
-// 면별 카메라 방향 Euler 회전 (법선 → +Z)
+// 공유 WebGL 렌더러 (모듈 싱글톤)
+// 모바일 WebGL 컨텍스트 한도 초과 방지
 // ============================================================
-const PITCH_D8 = Math.asin(1 / Math.sqrt(3)); // ≈ 0.6155 rad
+const SHARED_DPR = typeof window !== 'undefined'
+  ? Math.min(window.devicePixelRatio || 1, 2)
+  : 1;
+
+let _sharedRenderer: THREE.WebGLRenderer | null = null;
+
+function getSharedRenderer(): THREE.WebGLRenderer {
+  if (_sharedRenderer) return _sharedRenderer;
+  const offscreen = document.createElement('canvas');
+  offscreen.width = CANVAS_SIZE * SHARED_DPR;
+  offscreen.height = CANVAS_SIZE * SHARED_DPR;
+  _sharedRenderer = new THREE.WebGLRenderer({ canvas: offscreen, antialias: true, alpha: true });
+  _sharedRenderer.setPixelRatio(1);
+  _sharedRenderer.setSize(CANVAS_SIZE * SHARED_DPR, CANVAS_SIZE * SHARED_DPR, false);
+  _sharedRenderer.outputColorSpace = THREE.SRGBColorSpace;
+  _sharedRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  _sharedRenderer.toneMappingExposure = 1.0;
+  _sharedRenderer.setClearColor(0x000000, 0);
+  return _sharedRenderer;
+}
+
+// ============================================================
+// 면별 카메라 방향 Euler 회전
+// ============================================================
+const PITCH_D8 = Math.asin(1 / Math.sqrt(3));
 
 const FACE_ROT_D6: Record<number, { x: number; y: number }> = {
   1: { x: 0,            y: 0           },
@@ -78,72 +99,71 @@ function maxFaces(mode: DiceMode): number {
   return mode === 'd6' ? 6 : mode === 'd8' ? 8 : 12;
 }
 
-// ============================================================
-// easeOutCubic
-// ============================================================
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
 // ============================================================
-// Die3D — 주사위 1개 Three.js 렌더러
+// Die3D — 공유 렌더러로 그린 뒤 2D 캔버스에 blit
 // ============================================================
 interface Die3DProps {
   rotX: number;
   rotY: number;
   diceMode: DiceMode;
+  instant?: boolean;
 }
 
-function Die3D({ rotX, rotY, diceMode }: Die3DProps) {
+function Die3D({ rotX, rotY, diceMode, instant }: Die3DProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Three.js 리소스
   const threeRef = useRef<{
     scene: THREE.Scene;
     camera: THREE.OrthographicCamera;
-    renderer: THREE.WebGLRenderer;
     mesh: THREE.Mesh;
     geom: THREE.BufferGeometry;
     mat: THREE.MeshPhysicalMaterial;
   } | null>(null);
 
-  // 애니메이션 상태
   const animRef = useRef<{ startX: number; startY: number; startTime: number; rafId: number } | null>(null);
-  const currentRotRef = useRef({ x: 0, y: 0 });
-  const prevTargetRef = useRef({ x: 0, y: 0 });
+  const currentRotRef = useRef({ x: rotX, y: rotY });
+  const prevTargetRef = useRef({ x: rotX, y: rotY });
 
-  // ── Three.js 씬 초기화 (diceMode 변경 시 재생성) ──────────────
+  // 공유 렌더러로 씬 렌더 → 2D 캔버스에 복사
+  const blit = useCallback(() => {
+    const three = threeRef.current;
+    const canvas = canvasRef.current;
+    if (!three || !canvas) return;
+    const renderer = getSharedRenderer();
+    renderer.render(three.scene, three.camera);
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(renderer.domElement, 0, 0, canvas.width, canvas.height);
+    }
+  }, []);
+
+  // 씬 초기화 (diceMode 변경 시 재생성)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // 이전 씬 정리
     if (animRef.current) {
       cancelAnimationFrame(animRef.current.rafId);
       animRef.current = null;
     }
     if (threeRef.current) {
-      const { geom, mat, renderer } = threeRef.current;
+      const { geom, mat } = threeRef.current;
       geom.dispose();
-      if ((mat as THREE.MeshPhysicalMaterial).map) {
-        (mat as THREE.MeshPhysicalMaterial).map!.dispose();
-      }
+      if (mat.map) mat.map.dispose();
       mat.dispose();
-      renderer.dispose();
       threeRef.current = null;
     }
 
+    const renderer = getSharedRenderer();
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-CAM_HALF, CAM_HALF, CAM_HALF, -CAM_HALF, 0.1, 100);
     camera.position.set(0, 0, 10);
     camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    renderer.setSize(CANVAS_SIZE, CANVAS_SIZE, false);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.85));
     const kl = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -189,14 +209,13 @@ function Die3D({ rotX, rotY, diceMode }: Die3DProps) {
     if (diceMode === 'd12') mesh.scale.set(D12_SCALE, D12_SCALE, D12_SCALE);
     scene.add(mesh);
 
-    // 초기 자세: rotX/rotY prop (= 면1 or 이미 굴린 후 값)
     mesh.rotation.x = rotX;
     mesh.rotation.y = rotY;
     currentRotRef.current = { x: rotX, y: rotY };
     prevTargetRef.current = { x: rotX, y: rotY };
 
-    renderer.render(scene, camera);
-    threeRef.current = { scene, camera, renderer, mesh, geom, mat };
+    threeRef.current = { scene, camera, mesh, geom, mat };
+    blit();
 
     return () => {
       if (animRef.current) {
@@ -206,13 +225,12 @@ function Die3D({ rotX, rotY, diceMode }: Die3DProps) {
       geom.dispose();
       if (mat.map) mat.map.dispose();
       mat.dispose();
-      renderer.dispose();
       threeRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diceMode]);
 
-  // ── 목표 회전 변경 → 애니메이션 시작 ──────────────────────────
+  // 회전 목표 변경 → 애니메이션 or 즉시 적용
   useEffect(() => {
     const three = threeRef.current;
     if (!three) return;
@@ -222,6 +240,15 @@ function Die3D({ rotX, rotY, diceMode }: Die3DProps) {
     prevTargetRef.current = { x: rotX, y: rotY };
 
     if (animRef.current) cancelAnimationFrame(animRef.current.rafId);
+
+    if (instant) {
+      // rotation 정규화 시 — 애니메이션 없이 즉시 적용
+      three.mesh.rotation.x = rotX;
+      three.mesh.rotation.y = rotY;
+      currentRotRef.current = { x: rotX, y: rotY };
+      blit();
+      return;
+    }
 
     const startX = currentRotRef.current.x;
     const startY = currentRotRef.current.y;
@@ -236,7 +263,7 @@ function Die3D({ rotX, rotY, diceMode }: Die3DProps) {
       currentRotRef.current = { x: cx, y: cy };
       three.mesh.rotation.x = cx;
       three.mesh.rotation.y = cy;
-      three.renderer.render(three.scene, three.camera);
+      blit();
       if (t < 1) {
         anim.rafId = requestAnimationFrame(loop);
       } else {
@@ -252,15 +279,15 @@ function Die3D({ rotX, rotY, diceMode }: Die3DProps) {
         animRef.current = null;
       }
     };
-  }, [rotX, rotY]);
+  }, [rotX, rotY, instant, blit]);
 
   return (
     <div className={styles.scene}>
       <canvas
         ref={canvasRef}
-        width={CANVAS_SIZE}
-        height={CANVAS_SIZE}
-        style={{ width: `${CANVAS_SIZE}px`, height: `${CANVAS_SIZE}px`, display: 'block' }}
+        width={CANVAS_SIZE * SHARED_DPR}
+        height={CANVAS_SIZE * SHARED_DPR}
+        style={{ width: '100%', height: '100%', display: 'block' }}
       />
     </div>
   );
@@ -290,6 +317,7 @@ export default function DicePage() {
   });
   const [rolling, setRolling] = useState(false);
   const [hasRolled, setHasRolled] = useState(false);
+  const [instant, setInstant] = useState(false);
 
   const handleModeChange = (mode: DiceMode) => {
     if (rolling) return;
@@ -332,7 +360,16 @@ export default function DicePage() {
         rotY: baseY + spinsY * TWO_PI + faceRot.y,
       };
     }));
-    setTimeout(() => setRolling(false), ROLL_DURATION + 100);
+    setTimeout(() => {
+      setRolling(false);
+      // 회전값 누적 방지: 면 각도로 즉시 리셋 (애니메이션 없음)
+      setInstant(true);
+      setDice(prev => prev.map(die => {
+        const faceRot = getFaceRot(die.value, diceMode);
+        return { ...die, rotX: faceRot.x, rotY: faceRot.y };
+      }));
+      requestAnimationFrame(() => requestAnimationFrame(() => setInstant(false)));
+    }, ROLL_DURATION + 100);
   }, [rolling, diceMode]);
 
   const total = dice.reduce((s, d) => s + d.value, 0);
@@ -384,6 +421,7 @@ export default function DicePage() {
               rotX={die.rotX}
               rotY={die.rotY}
               diceMode={diceMode}
+              instant={instant}
             />
           ))}
         </div>
