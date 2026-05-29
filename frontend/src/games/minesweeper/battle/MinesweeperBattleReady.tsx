@@ -35,14 +35,6 @@ export default function MinesweeperBattleReady({
     return () => clearInterval(interval);
   }, []);
 
-  const handleCellClick = (r: number, c: number) => {
-    if (myFirstClickConfirmed) return;
-    if (r === designatedCell.r && c === designatedCell.c) {
-      onFirstClick();
-    }
-    // 지정 셀이 아닌 경우 무시
-  };
-
   return (
     <div className={styles.readyScreen}>
       <div className={styles.readyTitle}>
@@ -67,14 +59,20 @@ export default function MinesweeperBattleReady({
               <div
                 key={`${r}-${c}`}
                 className={cellClass}
-                onClick={() => handleCellClick(r, c)}
+                onPointerDown={(e) => {
+                  if (!isDesignated || myFirstClickConfirmed) return;
+                  // 마우스 우클릭/중간클릭 제외 (터치는 button=0이므로 통과)
+                  if (e.button !== 0) return;
+                  e.preventDefault();
+                  onFirstClick();
+                }}
                 role="gridcell"
                 aria-label={isDesignated ? '시작 셀 (클릭하세요)' : `셀 (${r},${c})`}
                 tabIndex={isDesignated ? 0 : -1}
                 onKeyDown={(e) => {
-                  if (isDesignated && (e.key === 'Enter' || e.key === ' ')) {
+                  if (isDesignated && !myFirstClickConfirmed && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault();
-                    handleCellClick(r, c);
+                    onFirstClick();
                   }
                 }}
               />

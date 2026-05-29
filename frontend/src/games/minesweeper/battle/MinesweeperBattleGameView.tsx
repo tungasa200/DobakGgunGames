@@ -58,6 +58,8 @@ export default function MinesweeperBattleGameView({
   const [showForfeitModal, setShowForfeitModal] = useState(false);
   const pressedButtonsRef = useRef<Set<number>>(new Set());
 
+  // ── 마우스 이벤트 (데스크탑) ───────────────────────────────
+
   const handleMouseDown = useCallback((e: React.MouseEvent, r: number, c: number) => {
     e.preventDefault();
     pressedButtonsRef.current.add(e.button);
@@ -83,11 +85,73 @@ export default function MinesweeperBattleGameView({
     }
   }, [board, onReveal, onChord]);
 
+  const handleMouseLeave = useCallback(() => {
+    pressedButtonsRef.current.clear();
+  }, []);
+
   const handleContextMenu = useCallback((e: React.MouseEvent, r: number, c: number) => {
     e.preventDefault();
+    // 모바일 long press가 이미 처리했으면 중복 방지
+    if (lpFiredRef.current) return;
+    if (lpRef.current !== null) {
+      clearTimeout(lpRef.current);
+      lpRef.current = null;
+      const cell = board[r]?.[c];
+      if (!cell?.isRevealed) onToggleMark(r, c);
+      return;
+    }
     const cell = board[r]?.[c];
     if (!cell?.isRevealed) onToggleMark(r, c);
   }, [board, onToggleMark]);
+
+  // ── 터치 이벤트 (모바일 / 웨일 사이드바) ─────────────────
+
+  const lpRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lpFiredRef = useRef(false);
+  const lpStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleTouchStart = useCallback((r: number, c: number, e: React.TouchEvent) => {
+    lpFiredRef.current = false;
+    const touch = e.touches[0];
+    lpStartRef.current = { x: touch.clientX, y: touch.clientY };
+    lpRef.current = setTimeout(() => {
+      lpFiredRef.current = true;
+      navigator.vibrate?.(60);
+      const cell = board[r]?.[c];
+      if (!cell?.isRevealed) onToggleMark(r, c);
+    }, 500);
+  }, [board, onToggleMark]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!lpRef.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - lpStartRef.current.x;
+    const dy = touch.clientY - lpStartRef.current.y;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      clearTimeout(lpRef.current);
+      lpRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback((r: number, c: number, e: React.TouchEvent) => {
+    if (lpRef.current) {
+      clearTimeout(lpRef.current);
+      lpRef.current = null;
+    }
+    if (lpFiredRef.current) {
+      e.preventDefault();
+      return;
+    }
+    // 짧은 터치 → 셀 열기 또는 chord
+    const cell = board[r]?.[c];
+    if (cell?.isRevealed) {
+      onChord(r, c);
+    } else {
+      onReveal(r, c);
+    }
+  }, [board, onReveal, onChord]);
+
+  // ── 렌더 ─────────────────────────────────────────────────
 
   const elapsedSec = (elapsedMs / 1000).toFixed(1);
   const flagCount = board.flat().filter(c => c.mark === 'flag').length;
@@ -156,7 +220,11 @@ export default function MinesweeperBattleGameView({
                       style={{ color: numColor }}
                       onMouseDown={(e) => handleMouseDown(e, r, c)}
                       onMouseUp={(e) => handleMouseUp(e, r, c)}
+                      onMouseLeave={handleMouseLeave}
                       onContextMenu={(e) => handleContextMenu(e, r, c)}
+                      onTouchStart={(e) => handleTouchStart(r, c, e)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={(e) => handleTouchEnd(r, c, e)}
                       role="gridcell"
                       aria-label={
                         !cell.isRevealed
