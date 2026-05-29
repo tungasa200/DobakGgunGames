@@ -259,7 +259,6 @@ export function useBattleWebSocket(
     clientRef.current = handle;
 
     return () => {
-      handle.sendLeave();
       handle.disconnect();
       clientRef.current = null;
     };

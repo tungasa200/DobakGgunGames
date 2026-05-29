@@ -71,13 +71,14 @@ public class BlockfallBattleWebSocketController {
         // /ws-battle 연결만 처리 (isGuest 속성 존재 여부로 구분)
         if (!attrs.containsKey("isGuest")) return;
 
+        // Handshake에서 설정된 wsGameType이 blockfall인 경우만 처리
+        if (!"blockfall".equals(attrs.get("wsGameType"))) return;
+
         Principal principal = event.getUser();
         if (!(principal instanceof BattlePrincipal bp)) return;
 
         String sessionId = accessor.getSessionId();
         if (sessionId == null) return;
-
-        attrs.put("wsGameType", "blockfall");
 
         // 이미 방에 배정된 경우 sessionId 등록
         battleRoomManager.findActiveRoomByPlayerId(bp.getPlayerId())

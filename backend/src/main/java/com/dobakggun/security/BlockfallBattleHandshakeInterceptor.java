@@ -42,6 +42,10 @@ public class BlockfallBattleHandshakeInterceptor implements HandshakeInterceptor
                                    Map<String, Object> attributes) {
         String token = extractQueryParam(request, "token");
 
+        // gameType 파라미터 저장 (blockfall / minesweeper 구분용)
+        String gameType = extractQueryParam(request, "gameType");
+        attributes.put("wsGameType", (gameType != null && !gameType.isBlank()) ? gameType : "blockfall");
+
         // 1. JWT 검증 시도
         if (StringUtils.hasText(token) && !token.startsWith(GUEST_PREFIX)) {
             if (jwtUtil.validateToken(token)) {

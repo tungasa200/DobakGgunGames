@@ -159,7 +159,7 @@ export function useMinesweeperBattleSocket(
     const baseUrl = WS_BATTLE_URL
       ?? (import.meta.env.DEV ? 'http://localhost:8080/ws-battle' : '');
 
-    const wsUrl = `${baseUrl}?token=${encodeURIComponent(authParam)}`;
+    const wsUrl = `${baseUrl}?token=${encodeURIComponent(authParam)}&gameType=minesweeper`;
 
     const client = new Client({
       webSocketFactory: () => new SockJS(wsUrl) as unknown as WebSocket,

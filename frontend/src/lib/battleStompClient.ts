@@ -86,7 +86,7 @@ export function connectBattle(
 
   // JWT 유저: ?token=<JWT>
   // 게스트:   ?token=guest_<uuid>  (joinBattle 응답의 guestToken 값 그대로)
-  const wsUrl = `${baseUrl}?token=${encodeURIComponent(authParam)}`;
+  const wsUrl = `${baseUrl}?token=${encodeURIComponent(authParam)}&gameType=blockfall`;
 
   const connectHeaders: Record<string, string> = {};
 

@@ -339,7 +339,7 @@ export default function BlockfallBattlePage() {
   const handleLeave = useCallback(() => {
     ws.sendLeave();
     clearJoinInfo(); // joinInfo + guestToken 모두 정리 → 재연결 방지
-    setTimeout(() => navigate('/'), 100);
+    setTimeout(() => navigate('/'), 500); // LEAVE 메시지 서버 처리 대기
   }, [ws, navigate]);
 
   const handleReady = useCallback(() => {
