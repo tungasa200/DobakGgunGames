@@ -82,6 +82,8 @@ public class MinesweeperBattleWebSocketController {
         String sessionId = accessor.getSessionId();
         if (sessionId == null) return;
 
+        attrs.put("wsGameType", "minesweeper");
+
         minesweeperService.handleConnect(bp.getPlayerId(), sessionId);
 
         log.debug("MinesweeperBattle CONNECT: playerId={} sessionId={}", bp.getPlayerId(), sessionId);
@@ -183,7 +185,10 @@ public class MinesweeperBattleWebSocketController {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         Principal principal = event.getUser();
 
-        // BattlePrincipal 인 경우만 처리
+        // gameType 체크 — Blockfall 세션은 무시
+        Map<String, Object> attrs = accessor.getSessionAttributes();
+        if (attrs == null || !"minesweeper".equals(attrs.get("wsGameType"))) return;
+
         if (!(principal instanceof BattlePrincipal bp)) return;
 
         String sessionId = accessor.getSessionId();

@@ -58,9 +58,17 @@ public class BoardPostService {
                 ? boardPostRepository.findAllByOrderByCreatedAtDesc(pageable)
                 : boardPostRepository.findByPostTypeOrderByCreatedAtDesc(postType, pageable);
 
+        List<Long> postIds = result.getContent().stream()
+                .map(BoardPost::getId)
+                .collect(Collectors.toList());
+        Map<Long, Long> commentCountMap = boardCommentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
         List<BoardPostSummaryResponse> content = result.getContent().stream()
                 .map(post -> BoardPostSummaryResponse.of(post,
-                        boardCommentRepository.countByPostId(post.getId())))
+                        commentCountMap.getOrDefault(post.getId(), 0L)))
                 .collect(Collectors.toList());
 
         return Map.of(

@@ -1,53 +1,57 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import ExcelHomePage from './pages/ExcelHomePage';
-import GamePage from './pages/GamePage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import PasswordResetPage from './pages/PasswordResetPage';
-import ProfilePage from './pages/ProfilePage';
-import OAuthCallbackPage from './pages/OAuthCallbackPage';
-import EmailVerifyPage from './pages/EmailVerifyPage';
-import ContactPage from './pages/ContactPage';
-import PatchNotesPage from './pages/PatchNotesPage';
-import PatchNoteDetailPage from './pages/PatchNoteDetailPage';
 import AdminRoute from './components/admin/AdminRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import FriendRoute from './components/guards/FriendRoute';
-import DbgChatListPage from './pages/DbgChatListPage';
-import DbgChatRoomPage from './pages/DbgChatRoomPage';
-import BoardListPage from './pages/BoardListPage';
-import BoardDetailPage from './pages/BoardDetailPage';
-import BoardWritePage from './pages/BoardWritePage';
-import BoardEditPage from './pages/BoardEditPage';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminContactsPage from './pages/admin/AdminContactsPage';
-import AdminRankingsPage from './pages/admin/AdminRankingsPage';
-import AdminLeaderboardPage from './pages/admin/AdminLeaderboardPage';
-import AdminPatchNotesPage from './pages/admin/AdminPatchNotesPage';
-import AdminPatchNoteFormPage from './pages/admin/AdminPatchNoteFormPage';
-import AdminIpBansPage from './pages/admin/AdminIpBansPage';
-import AdminGamesPage from './pages/admin/AdminGamesPage';
-import AdminClearButton from './components/admin/AdminClearButton';
 import AuthRoute from './components/AuthRoute';
+import AdminClearButton from './components/admin/AdminClearButton';
 import { AdminTestProvider } from './context/AdminTestContext';
-import OnlineRpsPage from './pages/OnlineRpsPage';
-import BlockfallBattlePage from './pages/BlockfallBattlePage';
-import MinesweeperBattleBoard from './games/minesweeper/battle/MinesweeperBattleBoard';
-import YachtPage from './games/yacht/YachtPage';
-import YachtSelectPage from './games/yacht/YachtSelectPage';
-import YachtBotPage from './games/yacht-bot/YachtBotPage';
-import BattleUITestPage from './pages/BattleUITestPage';
-import MafiaDevPage from './pages/MafiaDevPage';
-import RoulettePage from './pages/RoulettePage';
-import LadderPage from './pages/LadderPage';
-import DicePage from './pages/DicePage';
-import BrickBreakerPage from './pages/BrickBreakerPage';
-import BlockCrushPage from './pages/BlockCrushPage';
+
+// 페이지 lazy 로딩 — 방문 시점에 청크 다운로드
+const HomePage = lazy(() => import('./pages/HomePage'));
+const ExcelHomePage = lazy(() => import('./pages/ExcelHomePage'));
+const GamePage = lazy(() => import('./pages/GamePage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SignupPage = lazy(() => import('./pages/SignupPage'));
+const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage'));
+const EmailVerifyPage = lazy(() => import('./pages/EmailVerifyPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const PatchNotesPage = lazy(() => import('./pages/PatchNotesPage'));
+const PatchNoteDetailPage = lazy(() => import('./pages/PatchNoteDetailPage'));
+const DbgChatListPage = lazy(() => import('./pages/DbgChatListPage'));
+const DbgChatRoomPage = lazy(() => import('./pages/DbgChatRoomPage'));
+const BoardListPage = lazy(() => import('./pages/BoardListPage'));
+const BoardDetailPage = lazy(() => import('./pages/BoardDetailPage'));
+const BoardWritePage = lazy(() => import('./pages/BoardWritePage'));
+const BoardEditPage = lazy(() => import('./pages/BoardEditPage'));
+const OnlineRpsPage = lazy(() => import('./pages/OnlineRpsPage'));
+const BlockfallBattlePage = lazy(() => import('./pages/BlockfallBattlePage'));
+const MinesweeperBattleBoard = lazy(() => import('./games/minesweeper/battle/MinesweeperBattleBoard'));
+const YachtPage = lazy(() => import('./games/yacht/YachtPage'));
+const YachtSelectPage = lazy(() => import('./games/yacht/YachtSelectPage'));
+const YachtBotPage = lazy(() => import('./games/yacht-bot/YachtBotPage'));
+const BattleUITestPage = lazy(() => import('./pages/BattleUITestPage'));
+const MafiaDevPage = lazy(() => import('./pages/MafiaDevPage'));
+const RoulettePage = lazy(() => import('./pages/RoulettePage'));
+const LadderPage = lazy(() => import('./pages/LadderPage'));
+const DicePage = lazy(() => import('./pages/DicePage'));
+const BrickBreakerPage = lazy(() => import('./pages/BrickBreakerPage'));
+const BlockCrushPage = lazy(() => import('./pages/BlockCrushPage'));
+
+// 어드민 페이지
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminContactsPage = lazy(() => import('./pages/admin/AdminContactsPage'));
+const AdminRankingsPage = lazy(() => import('./pages/admin/AdminRankingsPage'));
+const AdminLeaderboardPage = lazy(() => import('./pages/admin/AdminLeaderboardPage'));
+const AdminPatchNotesPage = lazy(() => import('./pages/admin/AdminPatchNotesPage'));
+const AdminPatchNoteFormPage = lazy(() => import('./pages/admin/AdminPatchNoteFormPage'));
+const AdminIpBansPage = lazy(() => import('./pages/admin/AdminIpBansPage'));
+const AdminGamesPage = lazy(() => import('./pages/admin/AdminGamesPage'));
 
 export default function App() {
   useEffect(() => {
@@ -73,6 +77,7 @@ export default function App() {
   return (
     <AdminTestProvider>
     <BrowserRouter>
+      <Suspense fallback={null}>
       <Routes>
         {/* 기존 라우트 */}
         <Route path="/" element={<HomePage />} />
@@ -189,6 +194,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       <AdminClearButton />
     </BrowserRouter>
     </AdminTestProvider>

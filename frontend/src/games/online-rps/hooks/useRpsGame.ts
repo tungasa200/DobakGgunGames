@@ -250,7 +250,6 @@ export function useRpsGame(): UseRpsGameReturn {
   useEffect(() => {
     return () => {
       if (clientRef.current) {
-        clientRef.current.leave();
         clientRef.current.disconnect();
         clientRef.current = null;
       }

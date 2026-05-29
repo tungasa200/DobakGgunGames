@@ -120,7 +120,10 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
   };
 
   const myUserId = user?.id ?? null;
-  myUserIdRef.current = myUserId;
+
+  useEffect(() => {
+    myUserIdRef.current = myUserId;
+  }, [myUserId]);
 
   const isMyTurn = currentTurnUserId !== null && myUserId !== null && currentTurnUserId === myUserId;
 
@@ -491,7 +494,6 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
   useEffect(() => {
     return () => {
       if (clientRef.current) {
-        clientRef.current.leave();
         clientRef.current.disconnect();
         clientRef.current = null;
       }

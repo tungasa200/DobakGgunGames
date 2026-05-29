@@ -77,6 +77,8 @@ public class BlockfallBattleWebSocketController {
         String sessionId = accessor.getSessionId();
         if (sessionId == null) return;
 
+        attrs.put("wsGameType", "blockfall");
+
         // 이미 방에 배정된 경우 sessionId 등록
         battleRoomManager.findActiveRoomByPlayerId(bp.getPlayerId())
                 .ifPresent(rid -> battleRoomManager.registerSession(rid, bp.getPlayerId(), sessionId));
@@ -201,7 +203,10 @@ public class BlockfallBattleWebSocketController {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         Principal principal = event.getUser();
 
-        // BattlePrincipal 인 경우만 처리 (ChatPrincipal 등 다른 Principal 은 무시)
+        // gameType 체크 — Minesweeper 세션은 무시
+        Map<String, Object> attrs = accessor.getSessionAttributes();
+        if (attrs == null || !"blockfall".equals(attrs.get("wsGameType"))) return;
+
         if (!(principal instanceof BattlePrincipal)) return;
 
         String sessionId = accessor.getSessionId();

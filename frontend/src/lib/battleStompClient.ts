@@ -77,6 +77,8 @@ export function connectBattle(
 
   let retryCount = 0;
   let disconnectRequested = false;
+  let boardStateThrottleTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastBoardStateJson = '';
 
   // /ws-battle 엔드포인트 (기존 /ws와 분리)
   const baseUrl = WS_BATTLE_URL
@@ -241,17 +243,19 @@ export function connectBattle(
   return {
     sendBoardState: (board, score, lines, level, combo) => {
       if (!client.connected) return;
-      client.publish({
-        destination: `/app/blockfall-battle/room/${roomId}/board-state`,
-        body: JSON.stringify({
-          type: 'BOARD_STATE',
-          board,
-          score,
-          lines,
-          level,
-          combo,
-        }),
-      });
+      const payload = JSON.stringify({ board, score, lines, level, combo });
+      if (payload === lastBoardStateJson) return;
+      if (boardStateThrottleTimer !== null) return;
+      boardStateThrottleTimer = setTimeout(() => {
+        boardStateThrottleTimer = null;
+        if (!client.connected) return;
+        const currentPayload = JSON.stringify({ board, score, lines, level, combo });
+        lastBoardStateJson = currentPayload;
+        client.publish({
+          destination: `/app/blockfall-battle/room/${roomId}/board-state`,
+          body: currentPayload,
+        });
+      }, 100);
     },
     sendComboAttack: (combo, targetPlayerId = null) => {
       if (!client.connected) return;
@@ -287,6 +291,10 @@ export function connectBattle(
     },
     disconnect: () => {
       disconnectRequested = true;
+      if (boardStateThrottleTimer !== null) {
+        clearTimeout(boardStateThrottleTimer);
+        boardStateThrottleTimer = null;
+      }
       client.deactivate().catch(() => {});
     },
   };

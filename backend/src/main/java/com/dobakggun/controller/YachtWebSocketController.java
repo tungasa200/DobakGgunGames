@@ -7,6 +7,7 @@ import com.dobakggun.dto.yacht.YachtReadyRequest;
 import com.dobakggun.dto.yacht.YachtRollRequest;
 import com.dobakggun.dto.yacht.YachtScoreRequest;
 import com.dobakggun.dto.yacht.YachtVoteKickRequest;
+import com.dobakggun.entity.User;
 import com.dobakggun.security.ChatPrincipal;
 import com.dobakggun.repository.UserRepository;
 import com.dobakggun.service.YachtGameService;
@@ -98,6 +99,15 @@ public class YachtWebSocketController {
                 attrs.put(SESSION_KEY, rooms);
             }
             rooms.add(roomId);
+
+            // 프로필 이미지 세션 캐시 — chat 메시지에서 재사용
+            if (!attrs.containsKey("profileImageUrl")) {
+                Long userId = cp.getUserId();
+                String profileImageUrl = (userId != null)
+                        ? userRepository.findById(userId).map(User::getProfileImage).orElse(null)
+                        : null;
+                attrs.put("profileImageUrl", profileImageUrl);
+            }
         }
 
         log.info("WS YACHT JOIN roomId={} userId={}", roomId, cp.getUserId());
@@ -236,6 +246,7 @@ public class YachtWebSocketController {
     @MessageMapping("/yacht/room/{roomId}/chat")
     public void handleChat(@DestinationVariable String roomId,
                             @Payload YachtChatRequest request,
+                            StompHeaderAccessor accessor,
                             Principal principal) {
         ChatPrincipal cp = toChatPrincipal(principal);
         if (cp == null) return;
@@ -247,6 +258,8 @@ public class YachtWebSocketController {
         if (text.isEmpty()) return;
         if (text.length() > 200) text = text.substring(0, 200);
 
+        Map<String, Object> attrs = accessor.getSessionAttributes();
+
         messagingTemplate.convertAndSend(
                 "/topic/yacht/room/" + roomId,
                 YachtEnvelopeDto.builder()
@@ -256,9 +269,7 @@ public class YachtWebSocketController {
                         .payload(YachtChatPayload.builder()
                                 .userId(cp.getUserId())
                                 .nickname(cp.getNickname())
-                                .profileImageUrl(userRepository.findById(cp.getUserId())
-                                        .map(u -> u.getProfileImage())
-                                        .orElse(null))
+                                .profileImageUrl(attrs != null ? (String) attrs.get("profileImageUrl") : null)
                                 .message(text)
                                 .build())
                         .build()

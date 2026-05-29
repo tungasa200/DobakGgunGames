@@ -45,8 +45,8 @@ export interface UseMinesweeperBattleSocketReturn {
   requestState: () => void;
 }
 
-const MAX_RETRY = 5;
-const RETRY_DELAYS = [2000, 4000, 6000, 8000, 10000];
+const MAX_RETRY = 3;
+const RETRY_DELAYS = [2000, 4000, 8000];
 
 export function useMinesweeperBattleSocket(
   opts: UseMinesweeperBattleSocketOptions,
@@ -166,7 +166,7 @@ export function useMinesweeperBattleSocket(
         const rid = roomIdRef.current;
         if (!rid) return;
 
-        // 방 브로드캐스트 채널: MATCH_READY(공개), PROGRESS_UPDATE, GAME_RESULT
+        // 방 브로드캐스트 채널: MATCH_READY, PROGRESS_UPDATE, GAME_RESULT
         client.subscribe(`/topic/minesweeper-battle/room/${rid}`, (frame) => {
           try {
             const msg = JSON.parse(frame.body) as MbWsMessage;
@@ -174,7 +174,7 @@ export function useMinesweeperBattleSocket(
           } catch { /* 파싱 실패 무시 */ }
         });
 
-        // 개인 채널: MATCH_READY(개별), STATE_SNAPSHOT, OPPONENT_DISCONNECTED, OPPONENT_RECONNECTED
+        // 개인 채널: STATE_SNAPSHOT, OPPONENT_DISCONNECTED, OPPONENT_RECONNECTED
         client.subscribe('/user/queue/minesweeper-battle/state', (frame) => {
           try {
             const msg = JSON.parse(frame.body) as MbWsMessage;
