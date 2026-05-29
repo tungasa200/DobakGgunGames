@@ -230,6 +230,14 @@ public class MinesweeperBattleRoomService {
         room.getFirstClickSet().add(playerId);
         log.debug("handleFirstClick: roomId={} playerId={} firstClickSet={}", roomId, playerId, room.getFirstClickSet().size());
 
+        // 상대방에게 클릭 완료 알림 (opponentFirstClickConfirmed 실시간 반영)
+        PlayerInfo opponent = room.findOpponent(playerId);
+        if (opponent != null && opponent.getPlayerId() != null) {
+            messagingTemplate.convertAndSendToUser(
+                    opponent.getPlayerId(), USER_QUEUE_STATE,
+                    buildEnvelope("FIRST_CLICK_CONFIRMED", Map.of("playerId", playerId)));
+        }
+
         // 양쪽 FIRST_CLICK 수신 확인
         if (room.getFirstClickSet().size() >= 2) {
             // FIRST_CLICK 타임아웃 취소

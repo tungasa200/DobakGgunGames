@@ -262,6 +262,8 @@ function battleReducer(state: BattleState, action: BattleAction): BattleState {
     }
     case 'FIRST_CLICK_SENT':
       return { ...state, myFirstClickConfirmed: true };
+    case 'OPPONENT_FIRST_CLICK_CONFIRMED':
+      return { ...state, opponentFirstClickConfirmed: true };
     case 'GAME_STARTED':
       return {
         ...state,
@@ -339,6 +341,7 @@ export interface UseMinesweeperBattleGameReturn {
   handleProgress: (payload: ProgressUpdatePayload, myPlayerId: string) => void;
   handleGameResult: (payload: GameResultPayload) => void;
   handleStateSnapshot: (payload: StateSnapshotPayload, myPlayerId: string) => void;
+  handleOpponentFirstClickConfirmed: () => void;
   handleOpponentDisconnected: () => void;
   handleOpponentReconnected: () => void;
   handleError: (code: string, message: string) => void;
@@ -498,6 +501,10 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
     }
   }, []);
 
+  const handleOpponentFirstClickConfirmed = useCallback(() => {
+    dispatchBattle({ type: 'OPPONENT_FIRST_CLICK_CONFIRMED' });
+  }, []);
+
   const handleOpponentDisconnected = useCallback(() => {
     dispatchBattle({ type: 'OPPONENT_DISCONNECTED' });
   }, []);
@@ -532,6 +539,7 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
     handleProgress,
     handleGameResult,
     handleStateSnapshot,
+    handleOpponentFirstClickConfirmed,
     handleOpponentDisconnected,
     handleOpponentReconnected,
     handleError,

@@ -29,6 +29,7 @@ export interface UseMinesweeperBattleSocketOptions {
   onProgress: (p: ProgressUpdatePayload) => void;
   onGameResult: (p: GameResultPayload) => void;
   onStateSnapshot: (p: StateSnapshotPayload) => void;
+  onOpponentFirstClickConfirmed: () => void;
   onOpponentDisconnected: () => void;
   onOpponentReconnected: () => void;
   onError: (code: string, message: string) => void;
@@ -61,6 +62,7 @@ export function useMinesweeperBattleSocket(
     onProgress,
     onGameResult,
     onStateSnapshot,
+    onOpponentFirstClickConfirmed,
     onOpponentDisconnected,
     onOpponentReconnected,
     onError,
@@ -85,6 +87,7 @@ export function useMinesweeperBattleSocket(
     onProgress,
     onGameResult,
     onStateSnapshot,
+    onOpponentFirstClickConfirmed,
     onOpponentDisconnected,
     onOpponentReconnected,
     onError,
@@ -97,6 +100,7 @@ export function useMinesweeperBattleSocket(
       onProgress,
       onGameResult,
       onStateSnapshot,
+      onOpponentFirstClickConfirmed,
       onOpponentDisconnected,
       onOpponentReconnected,
       onError,
@@ -124,6 +128,9 @@ export function useMinesweeperBattleSocket(
         break;
       case 'STATE_SNAPSHOT':
         h.onStateSnapshot(payload as StateSnapshotPayload);
+        break;
+      case 'FIRST_CLICK_CONFIRMED':
+        h.onOpponentFirstClickConfirmed();
         break;
       case 'OPPONENT_DISCONNECTED':
         h.onOpponentDisconnected();

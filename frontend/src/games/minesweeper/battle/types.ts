@@ -2,7 +2,7 @@ export type BattlePhase = 'idle' | 'waiting' | 'ready' | 'playing' | 'finished' 
 
 export type MbEventType =
   | 'MATCH_READY' | 'GAME_STARTED' | 'PROGRESS_UPDATE'
-  | 'GAME_RESULT' | 'STATE_SNAPSHOT'
+  | 'GAME_RESULT' | 'STATE_SNAPSHOT' | 'FIRST_CLICK_CONFIRMED'
   | 'OPPONENT_DISCONNECTED' | 'OPPONENT_RECONNECTED' | 'ERROR';
 
 export interface DesignatedCell { r: number; c: number; }
@@ -85,6 +85,7 @@ export type BattleAction =
   | { type: 'JOIN_REQUESTED'; roomId: string; playerId: string; nickname: string }
   | { type: 'MATCH_READY'; payload: MatchReadyPayload; myPlayerId: string }
   | { type: 'FIRST_CLICK_SENT' }
+  | { type: 'OPPONENT_FIRST_CLICK_CONFIRMED' }
   | { type: 'GAME_STARTED'; payload: GameStartedPayload }
   | { type: 'PROGRESS_UPDATE'; payload: ProgressUpdatePayload }
   | { type: 'GAME_RESULT'; payload: GameResultPayload }
