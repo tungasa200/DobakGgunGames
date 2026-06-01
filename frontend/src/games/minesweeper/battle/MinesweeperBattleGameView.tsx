@@ -79,9 +79,7 @@ export default function MinesweeperBattleGameView({
     }
     if (e.button === 0) {
       const cell = board[r]?.[c];
-      if (cell?.isRevealed) {
-        onChord(r, c);
-      } else {
+      if (!cell?.isRevealed) {
         onReveal(r, c);
       }
     }
