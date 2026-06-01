@@ -446,6 +446,14 @@ public class MinesweeperBattleRoomService {
         PlayerInfo opponent = room.findOpponent(playerId);
 
         if (room.getRematchSet().size() < 2) {
+            // 상대가 이미 연결 끊긴 경우 — 즉시 DECLINED 반환
+            if (opponent != null && opponent.isDisconnected()) {
+                room.getRematchSet().remove(playerId);
+                messagingTemplate.convertAndSendToUser(
+                        playerId, USER_QUEUE_STATE,
+                        buildEnvelope("REMATCH_DECLINED", Map.of("reason", "OPPONENT_LEFT")));
+                return;
+            }
             // 한 명만 요청 — 상대에게 알림
             if (opponent != null && opponent.getPlayerId() != null) {
                 messagingTemplate.convertAndSendToUser(
@@ -535,8 +543,17 @@ public class MinesweeperBattleRoomService {
         String playerId = player.getPlayerId();
         roomManager.unregisterSession(sessionId);
 
-        // FINISHED 방은 무시
-        if (room.getStatus() == MinesweeperBattleRoom.Status.FINISHED) return;
+        // FINISHED 방 — 재대결 대기 중인 상대에게 REMATCH_DECLINED 발송 후 종료
+        if (room.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
+            PlayerInfo finishedOpponent = room.findOpponent(playerId);
+            if (finishedOpponent != null && finishedOpponent.getPlayerId() != null
+                    && room.getRematchSet().contains(finishedOpponent.getPlayerId())) {
+                messagingTemplate.convertAndSendToUser(
+                        finishedOpponent.getPlayerId(), USER_QUEUE_STATE,
+                        buildEnvelope("REMATCH_DECLINED", Map.of("reason", "OPPONENT_LEFT")));
+            }
+            return;
+        }
 
         log.info("handleDisconnect: roomId={} playerId={} — grace period 시작", roomId, playerId);
 

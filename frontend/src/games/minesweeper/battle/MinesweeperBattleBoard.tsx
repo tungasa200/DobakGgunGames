@@ -573,6 +573,8 @@ export default function MinesweeperBattleBoard() {
             opponentNickname={battleState.opponentNickname}
             myNickname={battleState.myNickname}
             designatedCell={battleState.designatedCell ?? { r: 4, c: 4 }}
+            rows={battleState.rows}
+            cols={battleState.cols}
             myFirstClickConfirmed={battleState.myFirstClickConfirmed}
             opponentFirstClickConfirmed={battleState.opponentFirstClickConfirmed}
             firstClickTimeoutMs={firstClickTimeoutMs}

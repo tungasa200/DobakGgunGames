@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import type { DesignatedCell } from './types';
 import styles from './MinesweeperBattleBoard.module.css';
 
-const ROWS = 9;
-const COLS = 9;
+const CELL_SIZE = 30;
 
 interface MinesweeperBattleReadyProps {
   opponentNickname: string | null;
   myNickname: string | null;
   designatedCell: DesignatedCell;
+  rows: number;
+  cols: number;
   myFirstClickConfirmed: boolean;
   opponentFirstClickConfirmed: boolean;
   firstClickTimeoutMs: number;
@@ -20,6 +21,8 @@ export default function MinesweeperBattleReady({
   opponentNickname,
   myNickname,
   designatedCell,
+  rows,
+  cols,
   myFirstClickConfirmed,
   opponentFirstClickConfirmed,
   firstClickTimeoutMs,
@@ -46,10 +49,18 @@ export default function MinesweeperBattleReady({
         {remainSec}초
       </div>
 
-      {/* 9×9 보드 (모든 셀 unrevealed) */}
-      <div className={styles.boardGrid} role="grid" aria-label="준비 보드">
-        {Array.from({ length: ROWS }, (_, r) =>
-          Array.from({ length: COLS }, (_, c) => {
+      {/* 보드 (모든 셀 unrevealed) */}
+      <div
+        className={styles.boardGrid}
+        style={{
+          gridTemplateColumns: `repeat(${cols}, ${CELL_SIZE}px)`,
+          gridTemplateRows: `repeat(${rows}, ${CELL_SIZE}px)`,
+        }}
+        role="grid"
+        aria-label="준비 보드"
+      >
+        {Array.from({ length: rows }, (_, r) =>
+          Array.from({ length: cols }, (_, c) => {
             const isDesignated = r === designatedCell.r && c === designatedCell.c;
             const cellClass = [
               styles.cell,
