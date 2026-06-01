@@ -5,6 +5,8 @@ import com.dobakggun.domain.minesweeper.MinesweeperBattleRoom.PlayerInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -164,6 +166,23 @@ public class MinesweeperBattleRoomManager {
     /** 현재 활성 방 수 (모니터링용) */
     public int activeRoomCount() {
         return rooms.size();
+    }
+
+    /**
+     * WAITING 상태이고 플레이어가 1명인 방 목록을 반환한다.
+     * GET /api/minesweeper-battle/rooms/waiting 에서 사용.
+     * 최대 20개, 순서는 ConcurrentHashMap 탐색 순.
+     */
+    public List<MinesweeperBattleRoom> getWaitingRooms() {
+        List<MinesweeperBattleRoom> result = new ArrayList<>();
+        for (MinesweeperBattleRoom room : rooms.values()) {
+            if (room.getStatus() == MinesweeperBattleRoom.Status.WAITING
+                    && room.getPlayerCount() < 2) {
+                result.add(room);
+                if (result.size() >= 20) break;
+            }
+        }
+        return result;
     }
 
     /** 방별 ReentrantLock 반환 (Service 에서 방 상태 변경 시 사용) */

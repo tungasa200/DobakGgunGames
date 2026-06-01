@@ -1,6 +1,7 @@
 package com.dobakggun.service;
 
 import com.dobakggun.dto.yacht.YachtMatchResponse;
+import com.dobakggun.dto.yacht.YachtWaitingRoomInfo;
 import com.dobakggun.entity.User;
 import com.dobakggun.entity.yacht.YachtDiceType;
 import com.dobakggun.entity.yacht.YachtParticipant;
@@ -17,11 +18,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * POST /api/yacht/match 처리 서비스.
@@ -295,6 +298,150 @@ public class YachtMatchService {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toLowerCase();
     }
 
+    // ─── 방 목록 조회 ────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/yacht/rooms/waiting?diceType=D6
+     * WAITING + 정원 미달 방 최대 20개, 생성 순 정렬.
+     */
+    @Transactional(readOnly = true)
+    public List<YachtWaitingRoomInfo> listWaitingRooms(YachtDiceType diceType) {
+        List<YachtRoom> rooms = yachtRoomRepository.findAvailableRooms(YachtRoomStatus.WAITING, diceType);
+        return rooms.stream()
+                .limit(20)
+                .map(room -> {
+                    String hostNickname = userRepository.findById(room.getHostUserId())
+                            .map(User::getNickname)
+                            .orElse(null);
+                    String createdAt = room.getCreatedAt() != null
+                            ? room.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                            : null;
+                    return YachtWaitingRoomInfo.builder()
+                            .roomId(room.getRoomId())
+                            .currentPlayers(room.getCurrentPlayers())
+                            .maxPlayers(room.getMaxPlayers())
+                            .hostNickname(hostNickname)
+                            .diceType(room.getDiceType().name())
+                            .createdAt(createdAt)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ─── 방 직접 생성 ────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/yacht/create — 신규 방 생성만 (자동 합류 없음).
+     * 기존 방 탐색 없이 항상 신규 방을 만들고 방장으로 입장.
+     */
+    @Transactional
+    public YachtMatchResponse createRoom(Long userId, YachtDiceType diceType) {
+        // Rate limit
+        checkRateLimit(RATE_PREFIX + userId);
+
+        // 인메모리 ALREADY_IN_ROOM
+        Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
+        if (inMemory.isPresent()) {
+            throw new AlreadyInRoomException(inMemory.get());
+        }
+
+        // DB ALREADY_IN_ROOM
+        List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
+                userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
+        if (!active.isEmpty()) {
+            throw new AlreadyInRoomException(active.get(0).getRoomId());
+        }
+
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED"));
+
+        String newRoomId = generateRoomId();
+        YachtRoom newRoom = YachtRoom.builder()
+                .roomId(newRoomId)
+                .status(YachtRoomStatus.WAITING)
+                .hostUserId(userId)
+                .maxPlayers(6)
+                .currentPlayers(1)
+                .diceType(diceType)
+                .build();
+        yachtRoomRepository.save(newRoom);
+
+        yachtParticipantRepository.save(YachtParticipant.builder()
+                .room(newRoom)
+                .userId(userId)
+                .joinOrder(0)
+                .ready(false)
+                .build());
+
+        log.info("createRoom: userId={} 신규 방 {} 생성 (diceType={})", userId, newRoomId, diceType);
+
+        return YachtMatchResponse.builder()
+                .roomId(newRoomId)
+                .status(YachtRoomStatus.WAITING.name())
+                .diceType(diceType.name())
+                .playerCount(1)
+                .maxPlayers(6)
+                .created(true)
+                .joinedAsSpectator(false)
+                .build();
+    }
+
+    // ─── 방 직접 입장 ────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/yacht/join/{roomId} — 특정 방에 직접 입장.
+     */
+    @Transactional
+    public YachtMatchResponse joinRoom(Long userId, String roomId) {
+        // 인메모리 ALREADY_IN_ROOM
+        Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
+        if (inMemory.isPresent()) {
+            throw new AlreadyInRoomException(inMemory.get());
+        }
+
+        // DB ALREADY_IN_ROOM
+        List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
+                userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
+        if (!active.isEmpty()) {
+            throw new AlreadyInRoomException(active.get(0).getRoomId());
+        }
+
+        // 방 조회
+        YachtRoom room = yachtRoomRepository.findByRoomId(roomId)
+                .orElseThrow(RoomNotFoundException::new);
+
+        // 방 상태 확인
+        if (room.getStatus() != YachtRoomStatus.WAITING
+                || room.getCurrentPlayers() >= room.getMaxPlayers()) {
+            throw new RoomFullOrStartedException();
+        }
+
+        List<YachtParticipant> existing = yachtParticipantRepository.findByRoomOrderByJoinOrderAsc(room);
+        int joinOrder = existing.size();
+
+        yachtParticipantRepository.save(YachtParticipant.builder()
+                .room(room)
+                .userId(userId)
+                .joinOrder(joinOrder)
+                .ready(false)
+                .build());
+
+        room.setCurrentPlayers(room.getCurrentPlayers() + 1);
+        yachtRoomRepository.save(room);
+
+        log.info("joinRoom: userId={} 방 {} 직접 입장 ({}명)", userId, roomId, room.getCurrentPlayers());
+
+        return YachtMatchResponse.builder()
+                .roomId(room.getRoomId())
+                .status(room.getStatus().name())
+                .diceType(room.getDiceType().name())
+                .playerCount(room.getCurrentPlayers())
+                .maxPlayers(room.getMaxPlayers())
+                .created(false)
+                .joinedAsSpectator(false)
+                .build();
+    }
+
     // ─── 예외 ────────────────────────────────────────────────────────────────
 
     public static class AlreadyInRoomException extends RuntimeException {
@@ -306,5 +453,17 @@ public class YachtMatchService {
         }
 
         public String getRoomId() { return roomId; }
+    }
+
+    public static class RoomNotFoundException extends RuntimeException {
+        public RoomNotFoundException() {
+            super("ROOM_NOT_FOUND");
+        }
+    }
+
+    public static class RoomFullOrStartedException extends RuntimeException {
+        public RoomFullOrStartedException() {
+            super("ROOM_FULL_OR_STARTED");
+        }
     }
 }

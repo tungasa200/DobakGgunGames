@@ -81,6 +81,84 @@ export async function joinBattle(
   return data;
 }
 
+// ── 방 목록 / 직접 생성 / 직접 입장 ─────────────────────────────────────────
+
+export interface BattleWaitingRoomInfo {
+  roomId: string;
+  currentPlayers: number;
+  maxPlayers: number;
+  hostNickname: string | null;
+  createdAt: string | null;
+}
+
+/** GET /api/blockfall-battle/rooms/waiting */
+export async function getBattleWaitingRooms(): Promise<BattleWaitingRoomInfo[]> {
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/blockfall-battle/rooms/waiting`);
+    if (!res.ok) return [];
+    return res.json() as Promise<BattleWaitingRoomInfo[]>;
+  } catch {
+    return [];
+  }
+}
+
+/** POST /api/blockfall-battle/create — 신규 방 직접 생성 */
+export async function createBattle(
+  accessToken: string | null,
+  guestToken?: string | null,
+): Promise<BattleJoinResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+  const res = await fetch(`${API_ORIGIN}/api/blockfall-battle/create`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ guestToken: guestToken ?? null }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string };
+    const err = new Error(body.error ?? '방 생성에 실패했습니다') as Error & { status: number; code?: string; roomId?: string };
+    err.status = res.status;
+    err.code = body.error;
+    err.roomId = body.roomId;
+    throw err;
+  }
+
+  const data = (await res.json()) as BattleJoinResponse;
+  if (data.guestToken) sessionStorage.setItem(GUEST_TOKEN_KEY, data.guestToken);
+  return data;
+}
+
+/** POST /api/blockfall-battle/join/{roomId} — 특정 방 직접 입장 */
+export async function joinBattleRoom(
+  roomId: string,
+  accessToken: string | null,
+  guestToken?: string | null,
+): Promise<BattleJoinResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+  const res = await fetch(`${API_ORIGIN}/api/blockfall-battle/join/${encodeURIComponent(roomId)}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ guestToken: guestToken ?? null }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string };
+    const err = new Error(body.error ?? '방 입장에 실패했습니다') as Error & { status: number; code?: string; roomId?: string };
+    err.status = res.status;
+    err.code = body.error;
+    err.roomId = body.roomId;
+    throw err;
+  }
+
+  const data = (await res.json()) as BattleJoinResponse;
+  if (data.guestToken) sessionStorage.setItem(GUEST_TOKEN_KEY, data.guestToken);
+  return data;
+}
+
 export async function getBattleRankings(): Promise<BattleRankingResponse> {
   const res = await fetch(`${API_ORIGIN}/api/blockfall-battle/rankings`);
   if (!res.ok) {
@@ -127,6 +205,7 @@ export interface BattleWebSocketState {
   boardUpdates: Map<string, BoardUpdatePayload>;
   garbagePending: number;
   playerFinished: Map<string, PlayerFinishedPayload>;
+  playerLeft: PlayerLeftPayload | null;
   gameResult: GameResultPayload | null;
   queuePosition: QueuePositionPayload | null;
   countdown: number;
@@ -155,6 +234,7 @@ export function useBattleWebSocket(
   const [boardUpdates, setBoardUpdates] = useState<Map<string, BoardUpdatePayload>>(new Map());
   const [garbagePending, setGarbagePending] = useState(0);
   const [playerFinished, setPlayerFinished] = useState<Map<string, PlayerFinishedPayload>>(new Map());
+  const [playerLeft, setPlayerLeft] = useState<PlayerLeftPayload | null>(null);
   const [gameResult, setGameResult] = useState<GameResultPayload | null>(null);
   const [queuePosition, setQueuePosition] = useState<QueuePositionPayload | null>(null);
   const [countdown, setCountdown] = useState(0);
@@ -208,8 +288,8 @@ export function useBattleWebSocket(
     setQueuePosition(payload);
   }, []);
 
-  const handlePlayerLeft = useCallback((_payload: PlayerLeftPayload) => {
-    // roomState가 ROOM_STATE 메시지로 갱신되므로 별도 처리 불필요
+  const handlePlayerLeft = useCallback((payload: PlayerLeftPayload) => {
+    setPlayerLeft(payload);
   }, []);
 
   const handleMatchCountdown = useCallback((payload: MatchCountdownPayload) => {
@@ -297,6 +377,7 @@ export function useBattleWebSocket(
     boardUpdates,
     garbagePending,
     playerFinished,
+    playerLeft,
     gameResult,
     queuePosition,
     countdown,

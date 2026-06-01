@@ -52,6 +52,77 @@ export async function joinMinesweeperBattle(opts?: {
   return (await res.json()) as MbJoinResponse;
 }
 
+// ── 방 목록 / 직접 생성 / 직접 입장 ─────────────────────────────────────────
+
+export interface MbWaitingRoomInfo {
+  roomId: string;
+  currentPlayers: number;
+  maxPlayers: number;
+  hostNickname: string | null;
+  createdAt: string | null;
+}
+
+/** GET /api/minesweeper-battle/rooms/waiting */
+export async function getMbWaitingRooms(): Promise<MbWaitingRoomInfo[]> {
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/minesweeper-battle/rooms/waiting`);
+    if (!res.ok) return [];
+    return res.json() as Promise<MbWaitingRoomInfo[]>;
+  } catch {
+    return [];
+  }
+}
+
+/** POST /api/minesweeper-battle/create — 신규 방 직접 생성 */
+export async function createMinesweeperBattle(opts?: {
+  guestToken?: string;
+  nickname?: string;
+  accessToken?: string | null;
+}): Promise<MbJoinResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (opts?.accessToken) headers['Authorization'] = `Bearer ${opts.accessToken}`;
+
+  const res = await fetch(`${API_ORIGIN}/api/minesweeper-battle/create`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ guestToken: opts?.guestToken ?? null, nickname: opts?.nickname ?? null }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string };
+    const err = new Error(body.error ?? '방 생성에 실패했습니다') as Error & { status: number; code?: string };
+    err.status = res.status;
+    err.code = body.error;
+    throw err;
+  }
+  return (await res.json()) as MbJoinResponse;
+}
+
+/** POST /api/minesweeper-battle/join/{roomId} — 특정 방 직접 입장 */
+export async function joinMinesweeperBattleRoom(roomId: string, opts?: {
+  guestToken?: string;
+  nickname?: string;
+  accessToken?: string | null;
+}): Promise<MbJoinResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (opts?.accessToken) headers['Authorization'] = `Bearer ${opts.accessToken}`;
+
+  const res = await fetch(`${API_ORIGIN}/api/minesweeper-battle/join/${encodeURIComponent(roomId)}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ guestToken: opts?.guestToken ?? null, nickname: opts?.nickname ?? null }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string };
+    const err = new Error(body.error ?? '방 입장에 실패했습니다') as Error & { status: number; code?: string };
+    err.status = res.status;
+    err.code = body.error;
+    throw err;
+  }
+  return (await res.json()) as MbJoinResponse;
+}
+
 // ── localStorage 헬퍼 ────────────────────────────────────
 
 const MB_JOIN_KEY = 'mbJoinInfo';

@@ -3,6 +3,7 @@ package com.dobakggun.controller;
 import com.dobakggun.dto.yacht.YachtMatchRequest;
 import com.dobakggun.dto.yacht.YachtMatchResponse;
 import com.dobakggun.dto.yacht.YachtRankingResponse;
+import com.dobakggun.dto.yacht.YachtWaitingRoomInfo;
 import com.dobakggun.entity.yacht.YachtDiceType;
 import com.dobakggun.service.YachtGameService;
 import com.dobakggun.service.YachtMatchService;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -141,6 +143,86 @@ public class YachtController {
         }
 
         return ResponseEntity.ok(snapshot);
+    }
+
+    /**
+     * GET /api/yacht/rooms/waiting?diceType=D6
+     * WAITING 상태 대기방 목록 (인증 불필요).
+     * diceType 미제공 또는 잘못된 값 → 400.
+     */
+    @GetMapping("/rooms/waiting")
+    public ResponseEntity<?> getWaitingRooms(
+            @RequestParam(required = false) String diceType) {
+
+        YachtDiceType type = resolveDiceType(diceType);
+        if (type == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "INVALID_DICE_TYPE"));
+        }
+
+        List<YachtWaitingRoomInfo> rooms = yachtMatchService.listWaitingRooms(type);
+        return ResponseEntity.ok(rooms);
+    }
+
+    /**
+     * POST /api/yacht/create — 신규 방 직접 생성 (인증 필수).
+     * 요청 바디: { "diceType": "D6" | "D8" }
+     * - 201: 방 생성 성공
+     * - 400: INVALID_DICE_TYPE
+     * - 401: 비인증
+     * - 409: ALREADY_IN_ROOM
+     */
+    @PostMapping("/create")
+    public ResponseEntity<?> createRoom(@AuthenticationPrincipal Long userId,
+                                        @RequestBody(required = false) YachtMatchRequest request) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "UNAUTHORIZED"));
+        }
+
+        YachtDiceType diceType = resolveDiceType(request == null ? null : request.getDiceType());
+        if (diceType == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "INVALID_DICE_TYPE"));
+        }
+
+        try {
+            YachtMatchResponse response = yachtMatchService.createRoom(userId, diceType);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (YachtMatchService.AlreadyInRoomException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        }
+    }
+
+    /**
+     * POST /api/yacht/join/{roomId} — 특정 방 직접 입장 (인증 필수).
+     * - 200: 입장 성공
+     * - 401: 비인증
+     * - 404: ROOM_NOT_FOUND
+     * - 409: ROOM_FULL_OR_STARTED | ALREADY_IN_ROOM
+     */
+    @PostMapping("/join/{roomId}")
+    public ResponseEntity<?> joinRoom(@AuthenticationPrincipal Long userId,
+                                       @PathVariable String roomId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "UNAUTHORIZED"));
+        }
+
+        try {
+            YachtMatchResponse response = yachtMatchService.joinRoom(userId, roomId);
+            return ResponseEntity.ok(response);
+        } catch (YachtMatchService.AlreadyInRoomException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        } catch (YachtMatchService.RoomNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "ROOM_NOT_FOUND"));
+        } catch (YachtMatchService.RoomFullOrStartedException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "ROOM_FULL_OR_STARTED"));
+        }
     }
 
     // ─── 헬퍼 ────────────────────────────────────────────────────────────────

@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import {
   joinMinesweeperBattle,
+  createMinesweeperBattle,
+  joinMinesweeperBattleRoom,
+  getMbWaitingRooms,
   saveMbJoinInfo,
   getStoredMbJoinInfo,
   getStoredMbGuestToken,
   clearMbJoinInfo,
 } from '../../../api/minesweeperBattle';
+import type { MbWaitingRoomInfo } from '../../../api/minesweeperBattle';
 import { useMinesweeperBattleGame } from './useMinesweeperBattleGame';
 import { useMinesweeperBattleSocket } from './useMinesweeperBattleSocket';
 import type { MatchReadyPayload, ProgressUpdatePayload, StateSnapshotPayload } from './types';
@@ -46,13 +50,19 @@ export default function MinesweeperBattleBoard() {
   // WS 연결 상태
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error'>('connecting');
 
-  // 첫 클릭 타임아웃 기록 (MATCH_READY payload 저장)
-  const firstClickTimeoutMsRef = useRef(30000);
+  const [firstClickTimeoutMs, setFirstClickTimeoutMs] = useState(30000);
 
   const startedRef = useRef(false);
 
+  // ── 방 선택 화면 상태 ────────────────────────────────────
+  const [showSelectScreen, setShowSelectScreen] = useState(true);
+  const [browseMode, setBrowseMode] = useState(false);
+  const [waitingRooms, setWaitingRooms] = useState<MbWaitingRoomInfo[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+
   // ── 매칭 참가 ──────────────────────────────────────────────
   const startJoin = useCallback(async () => {
+    setShowSelectScreen(false);
     const storedToken = getStoredMbGuestToken();
 
     try {
@@ -107,15 +117,75 @@ export default function MinesweeperBattleBoard() {
     }
   }, [accessToken, user, dispatchBattle]);
 
-  // 마운트 시 1회 실행 (로그인 유저만)
-  useEffect(() => {
-    if (!user) return;
-    if (!startedRef.current) {
-      startedRef.current = true;
-      void startJoin();
+  // ── 대기 방 목록 로드 ────────────────────────────────────
+  const loadWaitingRooms = useCallback(async () => {
+    setRoomsLoading(true);
+    const rooms = await getMbWaitingRooms();
+    setWaitingRooms(rooms);
+    setRoomsLoading(false);
+  }, []);
+
+  // ── 방 만들기 ─────────────────────────────────────────────
+  const startCreate = useCallback(async () => {
+    setShowSelectScreen(false);
+    const storedToken = getStoredMbGuestToken();
+    try {
+      const res = await createMinesweeperBattle({
+        accessToken,
+        guestToken: storedToken ?? undefined,
+      });
+      saveMbJoinInfo({
+        roomId: res.roomId,
+        playerId: res.playerId,
+        isGuest: res.isGuest,
+        guestToken: res.guestToken,
+      });
+      const nickname = res.isGuest ? '손님' : (user?.nickname ?? '나');
+      dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
+    } catch (err) {
+      const e = err as Error & { code?: string };
+      if (e.code === 'ALREADY_IN_ROOM') {
+        const stored = getStoredMbJoinInfo();
+        if (stored) {
+          const nickname = user?.nickname ?? '나';
+          dispatchBattle({ type: 'JOIN_REQUESTED', roomId: stored.roomId, playerId: stored.playerId, nickname });
+          return;
+        }
+      }
+      dispatchBattle({ type: 'ERROR', message: e.message ?? '방 생성에 실패했습니다.' });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [accessToken, user, dispatchBattle]);
+
+  // ── 특정 방 입장 ──────────────────────────────────────────
+  const startJoinRoom = useCallback(async (roomId: string) => {
+    setShowSelectScreen(false);
+    const storedToken = getStoredMbGuestToken();
+    try {
+      const res = await joinMinesweeperBattleRoom(roomId, {
+        accessToken,
+        guestToken: storedToken ?? undefined,
+      });
+      saveMbJoinInfo({
+        roomId: res.roomId,
+        playerId: res.playerId,
+        isGuest: res.isGuest,
+        guestToken: res.guestToken,
+      });
+      const nickname = res.isGuest ? '손님' : (user?.nickname ?? '나');
+      dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
+    } catch (err) {
+      const e = err as Error & { code?: string };
+      if (e.code === 'ALREADY_IN_ROOM') {
+        const stored = getStoredMbJoinInfo();
+        if (stored) {
+          const nickname = user?.nickname ?? '나';
+          dispatchBattle({ type: 'JOIN_REQUESTED', roomId: stored.roomId, playerId: stored.playerId, nickname });
+          return;
+        }
+      }
+      dispatchBattle({ type: 'ERROR', message: e.message ?? '방 입장에 실패했습니다.' });
+    }
+  }, [accessToken, user, dispatchBattle]);
 
   // 페이지 타이틀
   useEffect(() => {
@@ -143,7 +213,7 @@ export default function MinesweeperBattleBoard() {
   useEffect(() => { myPlayerIdRef.current = battleState.myPlayerId; }, [battleState.myPlayerId]);
 
   const onMatchReadyStable = useCallback((payload: MatchReadyPayload) => {
-    firstClickTimeoutMsRef.current = payload.firstClickTimeoutMs;
+    setFirstClickTimeoutMs(payload.firstClickTimeoutMs);
     handleMatchReady(payload, myPlayerIdRef.current ?? '');
   }, [handleMatchReady]);
 
@@ -238,8 +308,10 @@ export default function MinesweeperBattleBoard() {
     clearMbJoinInfo();
     resetGame();
     startedRef.current = false;
-    void startJoin();
-  }, [resetGame, startJoin]);
+    setShowSelectScreen(true);
+    setBrowseMode(false);
+    setWaitingRooms([]);
+  }, [resetGame]);
 
   // ── 렌더 ──────────────────────────────────────────────────
 
@@ -266,6 +338,86 @@ export default function MinesweeperBattleBoard() {
                 나가기
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 방 선택 화면
+  if (showSelectScreen) {
+    return (
+      <div className={styles.battlePage}>
+        <NormalHeader currentGame="minesweeper" gameName="지뢰찾기 배틀" accentColor="#3498db" />
+        <div className={styles.battleContent}>
+          <div className={styles.selectScreen}>
+            <h2 className={styles.selectTitle}>지뢰찾기 배틀</h2>
+            <p className={styles.selectSub}>플레이 방식을 선택하세요</p>
+            {!browseMode ? (
+              <div className={styles.selectOptions}>
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => { startedRef.current = false; void startJoin(); }}
+                  type="button"
+                >
+                  자동 매칭
+                </button>
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => { void startCreate(); }}
+                  type="button"
+                >
+                  방 만들기
+                </button>
+                <button
+                  className={styles.btnSecondary}
+                  onClick={() => { setBrowseMode(true); void loadWaitingRooms(); }}
+                  type="button"
+                >
+                  방 입장
+                </button>
+                <button
+                  className={styles.btnSecondary}
+                  onClick={() => navigate('/')}
+                  type="button"
+                >
+                  홈으로
+                </button>
+              </div>
+            ) : (
+              <div className={styles.roomList}>
+                <div className={styles.roomListHeader}>
+                  <button className={styles.btnSecondary} onClick={() => setBrowseMode(false)} type="button">
+                    ← 뒤로
+                  </button>
+                  <button className={styles.btnSecondary} onClick={() => void loadWaitingRooms()} disabled={roomsLoading} type="button">
+                    새로고침
+                  </button>
+                </div>
+                {roomsLoading ? (
+                  <div className={styles.spinner} role="status" aria-label="불러오는 중" />
+                ) : waitingRooms.length === 0 ? (
+                  <p className={styles.roomListEmpty}>현재 대기 중인 방이 없습니다</p>
+                ) : (
+                  <ul className={styles.roomListItems}>
+                    {waitingRooms.map(room => (
+                      <li key={room.roomId} className={styles.roomItem}>
+                        <span className={styles.roomHost}>{room.hostNickname ?? '익명'}</span>
+                        <span className={styles.roomCount}>{room.currentPlayers}/{room.maxPlayers}명</span>
+                        <button
+                          className={styles.btnPrimary}
+                          style={{ padding: '6px 14px', fontSize: 13 }}
+                          onClick={() => { void startJoinRoom(room.roomId); }}
+                          type="button"
+                        >
+                          입장
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -347,7 +499,7 @@ export default function MinesweeperBattleBoard() {
             designatedCell={battleState.designatedCell ?? { r: 4, c: 4 }}
             myFirstClickConfirmed={battleState.myFirstClickConfirmed}
             opponentFirstClickConfirmed={battleState.opponentFirstClickConfirmed}
-            firstClickTimeoutMs={firstClickTimeoutMsRef.current}
+            firstClickTimeoutMs={firstClickTimeoutMs}
             onFirstClick={handleFirstClick}
             onLeave={handleCancel}
           />

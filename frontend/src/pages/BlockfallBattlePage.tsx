@@ -7,7 +7,11 @@ import {
   saveJoinInfo,
   getStoredJoinInfo,
   clearJoinInfo,
+  createBattle,
+  joinBattleRoom,
+  getBattleWaitingRooms,
 } from '../api/blockfallBattleApi';
+import type { BattleWaitingRoomInfo } from '../api/blockfallBattleApi';
 import { useBattleWebSocket } from '../api/blockfallBattleApi';
 import BlockfallBattleBoard from '../games/blockfall/battle/BlockfallBattleBoard';
 import type {
@@ -29,6 +33,8 @@ const BGM_SRC = '/bgm/blockfall/blockfall_battle.mp3';
 export type { PlayerInfo, OpponentBoardData };
 
 type PagePhase =
+  | 'select'    // 방 선택 화면
+  | 'browsing'  // 대기방 목록 탐색
   | 'loading'   // joinBattle 요청 중
   | 'waiting'   // WAITING 방 대기
   | 'countdown' // 카운트다운
@@ -51,11 +57,15 @@ export default function BlockfallBattlePage() {
   const bgm = useBgm(BGM_SRC, { volume: 0.4 });
 
   // ── 상태 ───────────────────────────────────────────────
-  const [phase, setPhase] = useState<PagePhase>('loading');
+  const [phase, setPhase] = useState<PagePhase>('select');
   const [joinInfo, setJoinInfo] = useState<BattleJoinResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // 새로고침/재참가로 인한 ALREADY_IN_ROOM 시 ROOM_STATE 수신까지 연습 화면을 숨김
   const [recoveringFromRefresh, setRecoveringFromRefresh] = useState(false);
+
+  // 방 목록 상태
+  const [waitingRooms, setWaitingRooms] = useState<BattleWaitingRoomInfo[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
 
   // BGM — playing 단계에서만 재생, 그 외 단계 진입/언마운트 시 정지
   useEffect(() => {
@@ -146,13 +156,72 @@ export default function BlockfallBattlePage() {
     }
   }, [accessToken]);
 
-  // 마운트 시 1회만 실행
-  useEffect(() => {
-    if (!startedRef.current) {
-      startedRef.current = true;
-      void startJoin();
+  // ── 방 만들기 ─────────────────────────────────────────
+  const startCreate = useCallback(async () => {
+    setPhase('loading');
+    setErrorMessage(null);
+    try {
+      const existingToken = getStoredGuestToken();
+      const res = await createBattle(accessToken, existingToken);
+      saveJoinInfo(res);
+      setJoinInfo(res);
+      setPhase('waiting');
+    } catch (err) {
+      const e = err as Error & { code?: string; roomId?: string };
+      if (e.code === 'ALREADY_IN_ROOM') {
+        const stored = getStoredJoinInfo();
+        if (stored) {
+          setJoinInfo(stored);
+          setPhase('waiting');
+          setRecoveringFromRefresh(true);
+          return;
+        }
+        setErrorMessage('이미 다른 방에 참가 중입니다. 잠시 후 다시 시도해 주세요.');
+      } else {
+        setErrorMessage(e.message ?? '방 생성에 실패했습니다.');
+      }
+      setPhase('error');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
+
+  // ── 특정 방 입장 ──────────────────────────────────────
+  const startJoinRoom = useCallback(async (roomId: string) => {
+    setPhase('loading');
+    setErrorMessage(null);
+    try {
+      const existingToken = getStoredGuestToken();
+      const res = await joinBattleRoom(roomId, accessToken, existingToken);
+      saveJoinInfo(res);
+      setJoinInfo(res);
+      setPhase('waiting');
+    } catch (err) {
+      const e = err as Error & { code?: string; roomId?: string };
+      if (e.code === 'ALREADY_IN_ROOM') {
+        const stored = getStoredJoinInfo();
+        if (stored) {
+          setJoinInfo(stored);
+          setPhase('waiting');
+          setRecoveringFromRefresh(true);
+          return;
+        }
+        setErrorMessage('이미 다른 방에 참가 중입니다.');
+      } else if (e.message?.includes('ROOM_NOT_FOUND')) {
+        setErrorMessage('해당 방을 찾을 수 없습니다.');
+      } else if (e.message?.includes('ROOM_FULL_OR_STARTED')) {
+        setErrorMessage('방이 가득 찼거나 이미 게임이 시작되었습니다.');
+      } else {
+        setErrorMessage(e.message ?? '방 입장에 실패했습니다.');
+      }
+      setPhase('error');
+    }
+  }, [accessToken]);
+
+  // ── 대기방 목록 로드 ──────────────────────────────────
+  const loadWaitingRooms = useCallback(async () => {
+    setRoomsLoading(true);
+    const rooms = await getBattleWaitingRooms();
+    setWaitingRooms(rooms);
+    setRoomsLoading(false);
   }, []);
 
   // ── WebSocket 이벤트 처리 ─────────────────────────────
@@ -275,7 +344,6 @@ export default function BlockfallBattlePage() {
       setPhase(prev => prev === 'countdown' ? 'waiting' : prev);
       setCountdown(0);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.countdown]);
 
   // 클라이언트 사이드 카운트다운 틱
@@ -305,6 +373,14 @@ export default function BlockfallBattlePage() {
       setPhase('error');
     }
   }, [ws.wsStatus]);
+
+  // PLAYER_LEFT
+  useEffect(() => {
+    if (!ws.playerLeft) return;
+    showPlayerLeftToast(ws.playerLeft.nickname);
+  // showPlayerLeftToast는 안정 ref 기반 콜백이므로 의존성 생략 안전
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws.playerLeft]);
 
   // ── 게임 이벤트 핸들러 ────────────────────────────────
 
@@ -349,15 +425,14 @@ export default function BlockfallBattlePage() {
   const handleRetry = useCallback(() => {
     startedRef.current = false;
     setJoinInfo(null);
-    setPhase('loading');
+    setPhase('select');
     setResults([]);
     setTopRankings([]);
     setMyRank(null);
     setPlayers([]);
     setOpponents(new Map());
     setEliminatedPlayers(new Map());
-    void startJoin();
-  }, [startJoin]);
+  }, []);
 
   // ── 페이지 타이틀 ─────────────────────────────────────
   useEffect(() => {
@@ -365,7 +440,6 @@ export default function BlockfallBattlePage() {
     return () => { document.title = '도박꾼게임즈'; };
   }, []);
 
-  // 플레이어 이탈 토스트 표시 헬퍼 (향후 WS 훅에서 PLAYER_LEFT payload 수신 시 사용)
   const showPlayerLeftToast = useCallback((nickname: string) => {
     const id = ++toastIdRef.current;
     setPlayerLeftToast({ id, nickname });
@@ -373,8 +447,6 @@ export default function BlockfallBattlePage() {
       setPlayerLeftToast(prev => (prev?.id === id ? null : prev));
     }, 2200);
   }, []);
-
-  void showPlayerLeftToast;
 
   // ── 공통 컴포넌트 ─────────────────────────────────────
 
@@ -476,6 +548,95 @@ export default function BlockfallBattlePage() {
   };
 
   // ── 렌더 ──────────────────────────────────────────────
+
+  // 방 선택 / 방 목록 탐색 화면
+  if (phase === 'select' || phase === 'browsing') {
+    return (
+      <div className="battle-page">
+        {renderHeader()}
+        <div className="battle-content">
+          <div className="battle-select-screen">
+            <h2 className="battle-select-title">블록폴 배틀</h2>
+            <p className="battle-select-sub">플레이 방식을 선택하세요</p>
+            {phase === 'select' ? (
+              <div className="battle-select-options">
+                <button
+                  className="battle-btn-primary battle-select-btn"
+                  onClick={() => { startedRef.current = false; void startJoin(); }}
+                  type="button"
+                >
+                  자동 매칭
+                </button>
+                <button
+                  className="battle-btn-primary battle-select-btn"
+                  onClick={() => void startCreate()}
+                  type="button"
+                >
+                  방 만들기
+                </button>
+                <button
+                  className="battle-btn-secondary battle-select-btn"
+                  onClick={() => { setPhase('browsing'); void loadWaitingRooms(); }}
+                  type="button"
+                >
+                  방 입장
+                </button>
+                <button
+                  className="battle-btn-secondary battle-select-btn"
+                  onClick={() => navigate('/')}
+                  type="button"
+                >
+                  홈으로
+                </button>
+              </div>
+            ) : (
+              /* browsing */
+              <div className="battle-room-list">
+                <div className="battle-room-list-header">
+                  <button
+                    className="battle-btn-secondary"
+                    onClick={() => setPhase('select')}
+                    type="button"
+                  >
+                    ← 뒤로
+                  </button>
+                  <button
+                    className="battle-btn-secondary"
+                    onClick={() => void loadWaitingRooms()}
+                    disabled={roomsLoading}
+                    type="button"
+                  >
+                    새로고침
+                  </button>
+                </div>
+                {roomsLoading ? (
+                  <div className="battle-spinner" />
+                ) : waitingRooms.length === 0 ? (
+                  <p className="battle-room-list-empty">현재 대기 중인 방이 없습니다</p>
+                ) : (
+                  <ul className="battle-room-list-items">
+                    {waitingRooms.map(room => (
+                      <li key={room.roomId} className="battle-room-item">
+                        <span className="battle-room-host">{room.hostNickname ?? '익명'}</span>
+                        <span className="battle-room-count">{room.currentPlayers}/5명</span>
+                        <button
+                          className="battle-btn-primary battle-room-join-btn"
+                          onClick={() => void startJoinRoom(room.roomId)}
+                          type="button"
+                        >
+                          입장
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 에러
   if (phase === 'error') {

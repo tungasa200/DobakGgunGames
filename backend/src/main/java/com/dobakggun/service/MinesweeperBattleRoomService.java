@@ -3,6 +3,7 @@ package com.dobakggun.service;
 import com.dobakggun.domain.minesweeper.MinesweeperBattleRoom;
 import com.dobakggun.domain.minesweeper.MinesweeperBattleRoom.PlayerInfo;
 import com.dobakggun.domain.minesweeper.MinesweeperBoardGenerator;
+import com.dobakggun.dto.WaitingRoomInfo;
 import com.dobakggun.dto.minesweeper.*;
 import com.dobakggun.entity.battle.BattleRecord;
 import com.dobakggun.entity.battle.BattleRoom;
@@ -913,6 +914,134 @@ public class MinesweeperBattleRoomService {
         return sb.toString();
     }
 
+    // ─── 방 목록 조회 ────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/minesweeper-battle/rooms/waiting
+     * 인메모리에서 WAITING + 1명인 방 목록 반환 (최대 20개).
+     */
+    public List<WaitingRoomInfo> listWaitingRooms() {
+        return roomManager.getWaitingRooms().stream()
+                .map(room -> {
+                    String hostNickname = room.getPlayers().isEmpty()
+                            ? null
+                            : room.getPlayers().get(0).getNickname();
+                    return WaitingRoomInfo.builder()
+                            .roomId(room.getRoomId())
+                            .currentPlayers(room.getPlayerCount())
+                            .maxPlayers(2)
+                            .hostNickname(hostNickname)
+                            .createdAt(null)
+                            .build();
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    // ─── 방 직접 생성 ────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/minesweeper-battle/create — 신규 방 생성만 (자동 합류 없음).
+     */
+    @Transactional
+    public MinesweeperBattleJoinResponse createRoomOnly(
+            Long userId, String guestToken, String nickname) {
+
+        String playerId = (userId != null) ? String.valueOf(userId) : guestToken;
+        boolean isGuest = (userId == null);
+
+        // 중복 참가 방지
+        if (roomManager.isPlayerInAnyRoom(playerId)) {
+            Optional<String> existingRoomId = roomManager.findRoomIdByPlayer(playerId);
+            if (existingRoomId.isPresent()) {
+                MinesweeperBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
+                if (existing != null && existing.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
+                    roomManager.removePlayer(existingRoomId.get(), playerId);
+                } else {
+                    throw new AlreadyInRoomException(existingRoomId.get());
+                }
+            }
+        }
+
+        PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
+        return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer);
+    }
+
+    // ─── 방 직접 입장 ────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/minesweeper-battle/join/{roomId} — 특정 방에 직접 입장.
+     */
+    @Transactional
+    public MinesweeperBattleJoinResponse joinSpecificRoom(
+            String roomId, Long userId, String guestToken, String nickname) {
+
+        String playerId = (userId != null) ? String.valueOf(userId) : guestToken;
+        boolean isGuest = (userId == null);
+
+        // 중복 참가 방지
+        if (roomManager.isPlayerInAnyRoom(playerId)) {
+            Optional<String> existingRoomId = roomManager.findRoomIdByPlayer(playerId);
+            if (existingRoomId.isPresent()) {
+                MinesweeperBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
+                if (existing != null && existing.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
+                    roomManager.removePlayer(existingRoomId.get(), playerId);
+                } else {
+                    throw new AlreadyInRoomException(existingRoomId.get());
+                }
+            }
+        }
+
+        // 방 조회
+        MinesweeperBattleRoom room = roomManager.getRoom(roomId)
+                .orElseThrow(RoomNotFoundException::new);
+
+        // 방 상태 확인
+        if (room.getStatus() != MinesweeperBattleRoom.Status.WAITING
+                || room.getPlayerCount() >= 2) {
+            throw new RoomFullOrStartedException();
+        }
+
+        PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
+
+        ReentrantLock lock = roomManager.getRoomLock(roomId);
+        lock.lock();
+        try {
+            // lock 획득 후 재확인
+            if (room.getPlayerCount() >= 2 || room.getStatus() != MinesweeperBattleRoom.Status.WAITING) {
+                throw new RoomFullOrStartedException();
+            }
+
+            boolean joined = roomManager.addPlayer(roomId, newPlayer);
+            if (!joined) {
+                throw new RoomFullOrStartedException();
+            }
+
+            room.setStatus(MinesweeperBattleRoom.Status.MATCH_READY);
+            updateBattleRoomDB(roomId, "MATCH_READY", 2);
+            scheduleFirstClickTimeout(room);
+            lock.unlock();
+
+            sendMatchReady(room);
+
+            PlayerInfo firstPlayer = room.getPlayers().get(0);
+            return MinesweeperBattleJoinResponse.builder()
+                    .roomId(roomId)
+                    .playerId(playerId)
+                    .isGuest(isGuest)
+                    .guestToken(isGuest ? guestToken : null)
+                    .status("MATCH_READY")
+                    .playerCount(2)
+                    .maxPlayers(2)
+                    .designatedCell(Map.of("r", SAFE_R, "c", SAFE_C))
+                    .opponentNickname(firstPlayer.getNickname())
+                    .build();
+
+        } catch (Exception e) {
+            if (lock.isHeldByCurrentThread()) lock.unlock();
+            throw e;
+        }
+    }
+
     // ─── 예외 ────────────────────────────────────────────────────────────────
 
     public static class AlreadyInRoomException extends RuntimeException {
@@ -922,5 +1051,17 @@ public class MinesweeperBattleRoomService {
             this.roomId = roomId;
         }
         public String getRoomId() { return roomId; }
+    }
+
+    public static class RoomNotFoundException extends RuntimeException {
+        public RoomNotFoundException() {
+            super("ROOM_NOT_FOUND");
+        }
+    }
+
+    public static class RoomFullOrStartedException extends RuntimeException {
+        public RoomFullOrStartedException() {
+            super("ROOM_FULL_OR_STARTED");
+        }
     }
 }

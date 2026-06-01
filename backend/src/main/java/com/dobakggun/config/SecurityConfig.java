@@ -92,11 +92,17 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/ws-battle/**").permitAll()
                 .requestMatchers("/ws-rps/**").permitAll()
-                // Blockfall Battle REST API — join은 게스트 허용, rankings는 공개
+                // Blockfall Battle REST API — join/create/방목록/rankings는 게스트 포함 공개
                 .requestMatchers("/api/blockfall-battle/join").permitAll()
+                .requestMatchers("/api/blockfall-battle/join/**").permitAll()
+                .requestMatchers("/api/blockfall-battle/create").permitAll()
                 .requestMatchers("/api/blockfall-battle/rankings").permitAll()
-                // Minesweeper Battle REST API — join은 게스트 허용
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/blockfall-battle/rooms/waiting").permitAll()
+                // Minesweeper Battle REST API — join/create/방목록은 게스트 포함 공개
                 .requestMatchers("/api/minesweeper-battle/join").permitAll()
+                .requestMatchers("/api/minesweeper-battle/join/**").permitAll()
+                .requestMatchers("/api/minesweeper-battle/create").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/minesweeper-battle/rooms/waiting").permitAll()
                 // 채팅 API — FRIEND 이상
                 .requestMatchers(HttpMethod.GET,    "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.POST,   "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
@@ -104,8 +110,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/chat/rooms/**").hasAnyRole("FRIEND", "ADMIN")
                 // Online RPS — 비로그인 포함 전체 허용 (게스트 지원)
                 .requestMatchers("/api/rps/**").permitAll()
-                // Yacht 멀티플레이 — 방 현황은 공개, 나머지는 로그인 필수
+                // Yacht 멀티플레이 — 방 현황·대기방 목록은 공개, 나머지는 로그인 필수
                 .requestMatchers(HttpMethod.GET, "/api/yacht/rooms/status").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/yacht/rooms/waiting").permitAll()
                 .requestMatchers("/api/yacht/**").authenticated()
                 // 나머지 허용
                 .anyRequest().permitAll()

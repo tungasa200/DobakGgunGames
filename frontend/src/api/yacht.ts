@@ -138,6 +138,79 @@ export async function getYachtRankings(): Promise<YachtRankingResponse | null> {
   }
 }
 
+// ── 방 목록 / 직접 생성 / 직접 입장 ─────────────────────────────────────────
+
+export interface YachtWaitingRoomInfo {
+  roomId: string;
+  currentPlayers: number;
+  maxPlayers: number;
+  hostNickname: string | null;
+  diceType: DiceType;
+  createdAt: string | null;
+}
+
+/** GET /api/yacht/rooms/waiting?diceType=D6 — WAITING 방 목록 */
+export async function getYachtWaitingRooms(diceType: DiceType): Promise<YachtWaitingRoomInfo[]> {
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/yacht/rooms/waiting?diceType=${diceType}`);
+    if (!res.ok) return [];
+    return res.json() as Promise<YachtWaitingRoomInfo[]>;
+  } catch {
+    return [];
+  }
+}
+
+/** POST /api/yacht/create — 신규 방 직접 생성 (로그인 필수) */
+export async function postYachtCreate(
+  token: string | null,
+  diceType: DiceType,
+): Promise<YachtMatchOutcome> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_ORIGIN}/api/yacht/create`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ diceType }),
+  });
+
+  if (res.ok) {
+    const data = (await res.json()) as YachtMatchResponse;
+    return { ok: true, data };
+  }
+
+  const body = await res.json().catch(() => ({})) as Partial<{ error: string; roomId: string }>;
+  if (res.status === 409 && body.error === 'ALREADY_IN_ROOM' && body.roomId) {
+    return { ok: false, alreadyInRoom: true, roomId: body.roomId };
+  }
+  return { ok: false, alreadyInRoom: false, status: res.status, error: body.error ?? '방 생성에 실패했습니다' };
+}
+
+/** POST /api/yacht/join/{roomId} — 특정 방 직접 입장 (로그인 필수) */
+export async function postYachtJoinRoom(
+  token: string | null,
+  roomId: string,
+): Promise<YachtMatchOutcome> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_ORIGIN}/api/yacht/join/${encodeURIComponent(roomId)}`, {
+    method: 'POST',
+    headers,
+  });
+
+  if (res.ok) {
+    const data = (await res.json()) as YachtMatchResponse;
+    return { ok: true, data };
+  }
+
+  const body = await res.json().catch(() => ({})) as Partial<{ error: string; roomId: string }>;
+  if (res.status === 409 && body.error === 'ALREADY_IN_ROOM' && body.roomId) {
+    return { ok: false, alreadyInRoom: true, roomId: body.roomId };
+  }
+  return { ok: false, alreadyInRoom: false, status: res.status, error: body.error ?? '방 입장에 실패했습니다' };
+}
+
 /**
  * GET /api/yacht/room/{roomId} — 방 스냅샷 조회
  */

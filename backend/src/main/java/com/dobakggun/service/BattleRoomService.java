@@ -1,5 +1,6 @@
 package com.dobakggun.service;
 
+import com.dobakggun.dto.WaitingRoomInfo;
 import com.dobakggun.dto.battle.*;
 import com.dobakggun.entity.battle.BattleRoom;
 import com.dobakggun.repository.BattleRoomRepository;
@@ -819,6 +820,143 @@ public class BattleRoomService {
         );
     }
 
+    // ─── 방 목록 조회 ─────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/blockfall-battle/rooms/waiting
+     * DB에서 WAITING 방 목록 조회 (최대 20개, 생성 순).
+     */
+    @Transactional(readOnly = true)
+    public List<WaitingRoomInfo> listWaitingRooms() {
+        return battleRoomRepository.findByStatusIn(List.of("WAITING")).stream()
+                .limit(20)
+                .sorted(Comparator.comparing(r -> r.getCreatedAt() != null ? r.getCreatedAt() : LocalDateTime.MIN))
+                .map(room -> {
+                    String hostNickname = roomManager.getActivePlayers(room.getRoomId())
+                            .stream()
+                            .findFirst()
+                            .map(BattleRoomManager.PlayerSessionInfo::getNickname)
+                            .orElse(null);
+                    String createdAt = room.getCreatedAt() != null
+                            ? room.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                            : null;
+                    return WaitingRoomInfo.builder()
+                            .roomId(room.getRoomId())
+                            .currentPlayers(room.getCurrentPlayers())
+                            .maxPlayers(MAX_PLAYERS)
+                            .hostNickname(hostNickname)
+                            .createdAt(createdAt)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ─── 방 직접 생성 ─────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/blockfall-battle/create — 신규 방 생성만 (자동 합류 없음).
+     */
+    @Transactional
+    public BattleJoinResponse createRoomOnly(Long userId, String guestId, boolean isGuest, String nickname) {
+        String playerId = isGuest ? guestId : String.valueOf(userId);
+
+        Optional<String> existingRoom = roomManager.findActiveRoomByPlayerId(playerId);
+        if (existingRoom.isPresent()) {
+            String existingRoomId = existingRoom.get();
+            Optional<BattleRoomManager.PlayerSessionInfo> stale =
+                    roomManager.findActivePlayer(existingRoomId, playerId);
+            if (stale.isPresent() && stale.get().getSessionId() == null) {
+                roomManager.removePlayerById(existingRoomId, playerId);
+            } else {
+                throw new AlreadyInRoomException(existingRoomId);
+            }
+        }
+
+        BattleRoomManager.PlayerSessionInfo player = new BattleRoomManager.PlayerSessionInfo(
+                playerId, nickname, isGuest, null, isGuest ? null : userId);
+
+        String newRoomId = generateRoomId();
+        BattleRoom newRoom = BattleRoom.builder()
+                .roomId(newRoomId)
+                .status("WAITING")
+                .maxPlayers(MAX_PLAYERS)
+                .currentPlayers(1)
+                .queueCount(0)
+                .build();
+        battleRoomRepository.save(newRoom);
+
+        roomManager.joinRoom(newRoomId, player);
+        broadcastRoomState(newRoomId);
+
+        log.info("BattleRoomService.createRoomOnly: 신규 방 생성 roomId={} playerId={}", newRoomId, playerId);
+
+        return BattleJoinResponse.builder()
+                .roomId(newRoomId)
+                .status("WAITING")
+                .playerCount(1)
+                .maxPlayers(MAX_PLAYERS)
+                .queuePosition(null)
+                .isGuest(isGuest)
+                .guestToken(isGuest ? guestId : null)
+                .playerId(playerId)
+                .build();
+    }
+
+    // ─── 방 직접 입장 ─────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/blockfall-battle/join/{roomId} — 특정 방에 직접 입장.
+     */
+    @Transactional
+    public BattleJoinResponse joinSpecificRoom(String roomId, Long userId, String guestId, boolean isGuest, String nickname) {
+        String playerId = isGuest ? guestId : String.valueOf(userId);
+
+        Optional<String> existingRoom = roomManager.findActiveRoomByPlayerId(playerId);
+        if (existingRoom.isPresent()) {
+            String existingRoomId = existingRoom.get();
+            Optional<BattleRoomManager.PlayerSessionInfo> stale =
+                    roomManager.findActivePlayer(existingRoomId, playerId);
+            if (stale.isPresent() && stale.get().getSessionId() == null) {
+                roomManager.removePlayerById(existingRoomId, playerId);
+            } else {
+                throw new AlreadyInRoomException(existingRoomId);
+            }
+        }
+
+        BattleRoom room = battleRoomRepository.findByRoomId(roomId)
+                .orElseThrow(RoomNotFoundException::new);
+
+        if (!"WAITING".equals(room.getStatus())) {
+            throw new RoomFullOrStartedException();
+        }
+
+        BattleRoomManager.PlayerSessionInfo player = new BattleRoomManager.PlayerSessionInfo(
+                playerId, nickname, isGuest, null, isGuest ? null : userId);
+
+        boolean joined = roomManager.joinRoom(roomId, player);
+        if (!joined) {
+            throw new RoomFullOrStartedException();
+        }
+
+        int playerCount = roomManager.getActivePlayers(roomId).size();
+        room.setCurrentPlayers(playerCount);
+        battleRoomRepository.save(room);
+
+        broadcastRoomState(roomId);
+        tryStartCountdown(roomId);
+
+        return BattleJoinResponse.builder()
+                .roomId(roomId)
+                .status("WAITING")
+                .playerCount(playerCount)
+                .maxPlayers(MAX_PLAYERS)
+                .queuePosition(null)
+                .isGuest(isGuest)
+                .guestToken(isGuest ? guestId : null)
+                .playerId(playerId)
+                .build();
+    }
+
     // ─── 예외 ────────────────────────────────────────────────────────────────
 
     public static class AlreadyInRoomException extends RuntimeException {
@@ -828,5 +966,17 @@ public class BattleRoomService {
             this.roomId = roomId;
         }
         public String getRoomId() { return roomId; }
+    }
+
+    public static class RoomNotFoundException extends RuntimeException {
+        public RoomNotFoundException() {
+            super("ROOM_NOT_FOUND");
+        }
+    }
+
+    public static class RoomFullOrStartedException extends RuntimeException {
+        public RoomFullOrStartedException() {
+            super("ROOM_FULL_OR_STARTED");
+        }
     }
 }

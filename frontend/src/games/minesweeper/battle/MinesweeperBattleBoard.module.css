@@ -511,3 +511,93 @@
     max-width: 320px;
   }
 }
+
+/* ── 방 선택 화면 ──────────────────────────────────────────── */
+.selectScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.selectTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.selectSub {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin: 0 0 8px;
+}
+
+.selectOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.selectOptions button {
+  width: 100%;
+  padding: 13px 0;
+  font-size: 15px;
+}
+
+.roomList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.roomListHeader {
+  display: flex;
+  gap: 8px;
+}
+
+.roomListEmpty {
+  text-align: center;
+  color: #7f8c8d;
+  padding: 20px 0;
+  font-size: 14px;
+}
+
+.roomListItems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roomItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9fa;
+  border: 1px solid #dfe6e9;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.roomHost {
+  flex: 1;
+  font-size: 14px;
+  color: #2c3e50;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roomCount {
+  font-size: 13px;
+  color: #7f8c8d;
+  white-space: nowrap;
+}

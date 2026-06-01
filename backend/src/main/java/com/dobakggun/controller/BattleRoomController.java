@@ -1,5 +1,6 @@
 package com.dobakggun.controller;
 
+import com.dobakggun.dto.WaitingRoomInfo;
 import com.dobakggun.dto.battle.BattleJoinRequest;
 import com.dobakggun.dto.battle.BattleJoinResponse;
 import com.dobakggun.dto.battle.BattleRankingResponse;
@@ -131,5 +132,130 @@ public class BattleRoomController {
     @GetMapping("/rooms/status")
     public ResponseEntity<Map<String, Integer>> getRoomsStatus() {
         return ResponseEntity.ok(battleRoomService.getRoomStats());
+    }
+
+    /** GET /api/blockfall-battle/rooms/waiting — WAITING 방 목록 (인증 불필요). */
+    @GetMapping("/rooms/waiting")
+    public ResponseEntity<List<WaitingRoomInfo>> getWaitingRooms() {
+        return ResponseEntity.ok(battleRoomService.listWaitingRooms());
+    }
+
+    /** POST /api/blockfall-battle/create — 신규 방 직접 생성 (게스트/로그인 모두 허용). */
+    @PostMapping("/create")
+    public ResponseEntity<?> create(
+            @RequestBody(required = false) BattleJoinRequest req,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        Long userId = null;
+        String nickname = null;
+        boolean isGuest;
+        String guestId = null;
+
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            if (jwtUtil.validateToken(token)) {
+                userId = jwtUtil.getUserIdFromToken(token);
+                nickname = jwtUtil.getNicknameFromToken(token);
+                isGuest = false;
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "UNAUTHORIZED",
+                                "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
+            }
+        } else {
+            isGuest = true;
+        }
+
+        if (isGuest) {
+            String requestToken = (req != null) ? req.getGuestToken() : null;
+            if (StringUtils.hasText(requestToken)) {
+                if (!GUEST_TOKEN_PATTERN.matcher(requestToken).matches()) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Map.of("error", "UNAUTHORIZED_GUEST_TOKEN",
+                                    "message", "guestToken 형식이 올바르지 않습니다."));
+                }
+                guestId = requestToken;
+            } else {
+                guestId = GUEST_PREFIX + UUID.randomUUID();
+            }
+            String uuid = guestId.substring(GUEST_PREFIX.length());
+            String prefix = uuid.replace("-", "").substring(0, Math.min(4, uuid.replace("-", "").length())).toUpperCase();
+            nickname = "손님-" + prefix;
+        }
+
+        try {
+            BattleJoinResponse response = battleRoomService.createRoomOnly(userId, guestId, isGuest, nickname);
+            return ResponseEntity.ok(response);
+        } catch (BattleRoomService.AlreadyInRoomException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        } catch (Exception e) {
+            log.error("BattleRoomController.create: 방 생성 실패", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "MATCH_UNAVAILABLE", "message", "일시적으로 처리할 수 없습니다."));
+        }
+    }
+
+    /** POST /api/blockfall-battle/join/{roomId} — 특정 방 직접 입장 (게스트/로그인 모두 허용). */
+    @PostMapping("/join/{roomId}")
+    public ResponseEntity<?> joinSpecific(
+            @PathVariable String roomId,
+            @RequestBody(required = false) BattleJoinRequest req,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        Long userId = null;
+        String nickname = null;
+        boolean isGuest;
+        String guestId = null;
+
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            if (jwtUtil.validateToken(token)) {
+                userId = jwtUtil.getUserIdFromToken(token);
+                nickname = jwtUtil.getNicknameFromToken(token);
+                isGuest = false;
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "UNAUTHORIZED",
+                                "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
+            }
+        } else {
+            isGuest = true;
+        }
+
+        if (isGuest) {
+            String requestToken = (req != null) ? req.getGuestToken() : null;
+            if (StringUtils.hasText(requestToken)) {
+                if (!GUEST_TOKEN_PATTERN.matcher(requestToken).matches()) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Map.of("error", "UNAUTHORIZED_GUEST_TOKEN",
+                                    "message", "guestToken 형식이 올바르지 않습니다."));
+                }
+                guestId = requestToken;
+            } else {
+                guestId = GUEST_PREFIX + UUID.randomUUID();
+            }
+            String uuid = guestId.substring(GUEST_PREFIX.length());
+            String prefix = uuid.replace("-", "").substring(0, Math.min(4, uuid.replace("-", "").length())).toUpperCase();
+            nickname = "손님-" + prefix;
+        }
+
+        try {
+            BattleJoinResponse response = battleRoomService.joinSpecificRoom(roomId, userId, guestId, isGuest, nickname);
+            return ResponseEntity.ok(response);
+        } catch (BattleRoomService.AlreadyInRoomException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        } catch (BattleRoomService.RoomNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "ROOM_NOT_FOUND"));
+        } catch (BattleRoomService.RoomFullOrStartedException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "ROOM_FULL_OR_STARTED"));
+        } catch (Exception e) {
+            log.error("BattleRoomController.joinSpecific: 입장 실패", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "MATCH_UNAVAILABLE", "message", "일시적으로 처리할 수 없습니다."));
+        }
     }
 }
