@@ -18,4 +18,6 @@ public class WaitingRoomInfo {
     private String hostNickname;
     /** ISO 8601. 인메모리 전용 방이거나 createdAt 미지원 시 null. */
     private String createdAt;
+    /** 게임 난이도 — "BEGINNER" | "INTERMEDIATE". */
+    private String difficulty;
 }

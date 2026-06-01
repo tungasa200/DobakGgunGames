@@ -17,7 +17,7 @@ public class MatchReadyPayload {
 
     private String roomId;
 
-    /** 지정 첫 클릭 셀 좌표 */
+    /** 지정 첫 클릭 셀 좌표 (난이도에 따라 다름) */
     private Map<String, Integer> designatedCell;
 
     /** 방에 있는 모든 플레이어 정보 (공용) */
@@ -28,6 +28,12 @@ public class MatchReadyPayload {
 
     /** FIRST_CLICK 타임아웃 (ms) = 30000 */
     private long firstClickTimeoutMs;
+
+    /** 보드 크기 및 난이도 정보 */
+    private int rows;
+    private int cols;
+    private int totalSafeCells;
+    private String difficulty;
 
     @Getter
     @Builder

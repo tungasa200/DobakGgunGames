@@ -18,7 +18,7 @@ public class GameStartedPayload {
     private String playerId;
 
     /**
-     * adjMines[9][9] — -1=지뢰, 0~8=인접 지뢰 수.
+     * adjMines — -1=지뢰, 0~8=인접 지뢰 수.
      * 지뢰 좌표를 별도 배열로 노출하지 않는다.
      */
     private int[][] adjMines;
@@ -28,4 +28,10 @@ public class GameStartedPayload {
 
     /** 클라이언트 타이머 계산 보조 (ms) */
     private long serverStartAtMillis;
+
+    /** 보드 크기 및 난이도 정보 */
+    private int rows;
+    private int cols;
+    private int totalSafeCells;
+    private String difficulty;
 }

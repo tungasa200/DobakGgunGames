@@ -107,12 +107,15 @@ public class MinesweeperBattleController {
             }
         }
 
+        String difficulty = (req != null && req.getDifficulty() != null)
+                ? req.getDifficulty() : "BEGINNER";
+
         try {
             MinesweeperBattleJoinResponse response =
-                    minesweeperService.joinOrCreate(userId, guestToken, nickname);
+                    minesweeperService.joinOrCreate(userId, guestToken, nickname, difficulty);
 
-            log.info("MinesweeperBattleController.join: playerId={} roomId={} status={}",
-                    response.getPlayerId(), response.getRoomId(), response.getStatus());
+            log.info("MinesweeperBattleController.join: playerId={} roomId={} status={} difficulty={}",
+                    response.getPlayerId(), response.getRoomId(), response.getStatus(), difficulty);
 
             return ResponseEntity.ok(response);
 
@@ -186,8 +189,11 @@ public class MinesweeperBattleController {
             }
         }
 
+        String createDifficulty = (req != null && req.getDifficulty() != null)
+                ? req.getDifficulty() : "BEGINNER";
+
         try {
-            MinesweeperBattleJoinResponse response = minesweeperService.createRoomOnly(userId, guestToken, nickname);
+            MinesweeperBattleJoinResponse response = minesweeperService.createRoomOnly(userId, guestToken, nickname, createDifficulty);
             return ResponseEntity.ok(response);
         } catch (MinesweeperBattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)

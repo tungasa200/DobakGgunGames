@@ -39,12 +39,6 @@ public class MinesweeperBattleRoomService {
 
     // ─── 상수 ─────────────────────────────────────────────────────────────────
 
-    private static final int ROWS = 9;
-    private static final int COLS = 9;
-    private static final int MINES = 10;
-    private static final int TOTAL_SAFE_CELLS = 71; // 81 - 10
-    private static final int SAFE_R = 4;
-    private static final int SAFE_C = 4;
     private static final int FIRST_CLICK_TIMEOUT_MS = 30_000;
     private static final int RECONNECT_GRACE_SECONDS = 15;
     private static final int ROOM_CLOSE_DELAY_SECONDS = 10;
@@ -52,6 +46,22 @@ public class MinesweeperBattleRoomService {
     private static final String USER_QUEUE_STATE = "/queue/minesweeper-battle/state";
     private static final String USER_QUEUE_BOARD = "/queue/minesweeper-battle/board";
     private static final String USER_QUEUE_ERRORS = "/queue/minesweeper-battle/errors";
+
+    // ─── 난이도 설정 ──────────────────────────────────────────────────────────
+
+    private record DifficultyConfig(int rows, int cols, int mines, int safeR, int safeC) {
+        int totalSafe() { return rows * cols - mines; }
+    }
+
+    private static final Map<String, DifficultyConfig> DIFFICULTY_CONFIGS = Map.of(
+            "BEGINNER",     new DifficultyConfig(9,  9,  10, 4, 4),
+            "INTERMEDIATE", new DifficultyConfig(16, 16, 40, 8, 8)
+    );
+
+    private DifficultyConfig cfg(String difficulty) {
+        String key = (difficulty != null) ? difficulty.toUpperCase() : "BEGINNER";
+        return DIFFICULTY_CONFIGS.getOrDefault(key, DIFFICULTY_CONFIGS.get("BEGINNER"));
+    }
 
     // ─── 의존성 ───────────────────────────────────────────────────────────────
 
@@ -87,8 +97,9 @@ public class MinesweeperBattleRoomService {
      */
     @Transactional
     public MinesweeperBattleJoinResponse joinOrCreate(
-            Long userId, String guestToken, String nickname) {
+            Long userId, String guestToken, String nickname, String difficulty) {
 
+        String normDifficulty = (difficulty != null) ? difficulty.toUpperCase() : "BEGINNER";
         String playerId = (userId != null) ? String.valueOf(userId) : guestToken;
         boolean isGuest = (userId == null);
 
@@ -108,8 +119,8 @@ public class MinesweeperBattleRoomService {
 
         PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
 
-        // 1. WAITING 방(1명) 탐색
-        Optional<MinesweeperBattleRoom> waitingRoom = roomManager.findWaitingRoom();
+        // 1. 같은 난이도의 WAITING 방(1명) 탐색
+        Optional<MinesweeperBattleRoom> waitingRoom = roomManager.findWaitingRoom(normDifficulty);
 
         if (waitingRoom.isPresent()) {
             MinesweeperBattleRoom room = waitingRoom.get();
@@ -120,13 +131,13 @@ public class MinesweeperBattleRoomService {
                 if (room.getPlayerCount() >= 2 || room.getStatus() != MinesweeperBattleRoom.Status.WAITING) {
                     // 이 방은 이미 찼음 → 신규 방 생성 (lock 해제 후)
                     lock.unlock();
-                    return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer);
+                    return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer, normDifficulty);
                 }
 
                 boolean joined = roomManager.addPlayer(room.getRoomId(), newPlayer);
                 if (!joined) {
                     lock.unlock();
-                    return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer);
+                    return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer, normDifficulty);
                 }
 
                 // 2명 완성 → MATCH_READY 상태 전이
@@ -143,6 +154,7 @@ public class MinesweeperBattleRoomService {
 
                 sendMatchReady(room);
 
+                DifficultyConfig roomCfg = cfg(room.getDifficulty());
                 PlayerInfo firstPlayer = room.getPlayers().get(0);
                 return MinesweeperBattleJoinResponse.builder()
                         .roomId(room.getRoomId())
@@ -152,8 +164,12 @@ public class MinesweeperBattleRoomService {
                         .status("MATCH_READY")
                         .playerCount(2)
                         .maxPlayers(2)
-                        .designatedCell(Map.of("r", SAFE_R, "c", SAFE_C))
+                        .designatedCell(Map.of("r", roomCfg.safeR(), "c", roomCfg.safeC()))
                         .opponentNickname(firstPlayer.getNickname())
+                        .difficulty(room.getDifficulty())
+                        .rows(roomCfg.rows())
+                        .cols(roomCfg.cols())
+                        .totalSafeCells(roomCfg.totalSafe())
                         .build();
 
             } catch (Exception e) {
@@ -163,18 +179,19 @@ public class MinesweeperBattleRoomService {
         }
 
         // 2. WAITING 방 없음 → 신규 방 생성
-        return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer);
+        return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer, normDifficulty);
     }
 
     @Transactional
     protected MinesweeperBattleJoinResponse createNewRoom(
             String playerId, String guestToken, String nickname,
-            boolean isGuest, PlayerInfo player) {
+            boolean isGuest, PlayerInfo player, String difficulty) {
 
+        String normDifficulty = (difficulty != null) ? difficulty.toUpperCase() : "BEGINNER";
         String newRoomId = generateRoomId();
 
-        // 인메모리 방 생성
-        roomManager.createRoom(newRoomId);
+        // 인메모리 방 생성 (난이도 포함)
+        roomManager.createRoom(newRoomId, normDifficulty);
         roomManager.addPlayer(newRoomId, player);
 
         // DB 방 생성
@@ -187,8 +204,9 @@ public class MinesweeperBattleRoomService {
                 .build();
         minesweeperRoomRepository.save(dbRoom);
 
-        log.info("MinesweeperBattleRoomService.createNewRoom: roomId={} playerId={}", newRoomId, playerId);
+        log.info("MinesweeperBattleRoomService.createNewRoom: roomId={} playerId={} difficulty={}", newRoomId, playerId, normDifficulty);
 
+        DifficultyConfig c = cfg(normDifficulty);
         return MinesweeperBattleJoinResponse.builder()
                 .roomId(newRoomId)
                 .playerId(playerId)
@@ -197,8 +215,12 @@ public class MinesweeperBattleRoomService {
                 .status("WAITING")
                 .playerCount(1)
                 .maxPlayers(2)
-                .designatedCell(Map.of("r", SAFE_R, "c", SAFE_C))
+                .designatedCell(Map.of("r", c.safeR(), "c", c.safeC()))
                 .opponentNickname(null)
+                .difficulty(normDifficulty)
+                .rows(c.rows())
+                .cols(c.cols())
+                .totalSafeCells(c.totalSafe())
                 .build();
     }
 
@@ -220,9 +242,10 @@ public class MinesweeperBattleRoomService {
         }
 
         // 지정 셀 검증
-        if (r != SAFE_R || c != SAFE_C) {
+        DifficultyConfig roomCfg = cfg(room.getDifficulty());
+        if (r != roomCfg.safeR() || c != roomCfg.safeC()) {
             sendError(playerId, "INVALID_FIRST_CLICK",
-                    "지정된 시작 셀(" + SAFE_R + "," + SAFE_C + ")을 클릭해야 합니다.");
+                    "지정된 시작 셀(" + roomCfg.safeR() + "," + roomCfg.safeC() + ")을 클릭해야 합니다.");
             return;
         }
 
@@ -258,14 +281,15 @@ public class MinesweeperBattleRoomService {
         if (player == null) return;
 
         // 진행률 업데이트
-        player.updateProgress(revealedCount, TOTAL_SAFE_CELLS);
+        int totalSafe = cfg(room.getDifficulty()).totalSafe();
+        player.updateProgress(revealedCount, totalSafe);
 
-        int progressPercent = (int) Math.floor((double) revealedCount / TOTAL_SAFE_CELLS * 100);
+        int progressPercent = (int) Math.floor((double) revealedCount / totalSafe * 100);
 
         ProgressUpdatePayload payload = ProgressUpdatePayload.builder()
                 .playerId(playerId)
                 .revealedCount(revealedCount)
-                .totalSafeCells(TOTAL_SAFE_CELLS)
+                .totalSafeCells(totalSafe)
                 .progressPercent(progressPercent)
                 .build();
 
@@ -486,9 +510,13 @@ public class MinesweeperBattleRoomService {
     private void startGame(MinesweeperBattleRoom room) {
         String roomId = room.getRoomId();
 
+        // 난이도 설정
+        DifficultyConfig c = cfg(room.getDifficulty());
+
         // 시드 생성
         long seed = ThreadLocalRandom.current().nextLong() ^ System.nanoTime();
-        int[][] adjMines = MinesweeperBoardGenerator.generate(seed, ROWS, COLS, MINES, SAFE_R, SAFE_C);
+        int[][] adjMines = MinesweeperBoardGenerator.generate(
+                seed, c.rows(), c.cols(), c.mines(), c.safeR(), c.safeC());
 
         room.setAdjMines(adjMines);
         room.setSeed(seed);
@@ -511,13 +539,17 @@ public class MinesweeperBattleRoomService {
                     .adjMines(adjMines)
                     .serverStartAt(serverStartAt)
                     .serverStartAtMillis(now)
+                    .rows(c.rows())
+                    .cols(c.cols())
+                    .totalSafeCells(c.totalSafe())
+                    .difficulty(room.getDifficulty())
                     .build();
             messagingTemplate.convertAndSendToUser(
                     player.getPlayerId(), USER_QUEUE_BOARD,
                     buildEnvelope("GAME_STARTED", payload));
         }
 
-        log.info("startGame: roomId={} seed={} serverStartAt={}", roomId, seed, serverStartAt);
+        log.info("startGame: roomId={} difficulty={} seed={} serverStartAt={}", roomId, room.getDifficulty(), seed, serverStartAt);
     }
 
     // ─── 게임 종료 ────────────────────────────────────────────────────────────
@@ -756,6 +788,7 @@ public class MinesweeperBattleRoomService {
         int[][] adjMines = (room.getStatus() == MinesweeperBattleRoom.Status.PLAYING)
                 ? room.getAdjMines() : null;
 
+        DifficultyConfig c = cfg(room.getDifficulty());
         return StateSnapshotPayload.builder()
                 .roomId(room.getRoomId())
                 .roomStatus(room.getStatus().name())
@@ -766,6 +799,10 @@ public class MinesweeperBattleRoomService {
                 .opponentFirstClickConfirmed(opponentFirstClick)
                 .myProgress(myProgress)
                 .opponentProgress(opponentProgress)
+                .rows(c.rows())
+                .cols(c.cols())
+                .totalSafeCells(c.totalSafe())
+                .difficulty(room.getDifficulty())
                 .build();
     }
 
@@ -862,14 +899,19 @@ public class MinesweeperBattleRoomService {
                         .build())
                 .toList();
 
+        DifficultyConfig c = cfg(room.getDifficulty());
         for (PlayerInfo player : room.getPlayers()) {
             PlayerInfo opp = room.findOpponent(player.getPlayerId());
             MatchReadyPayload payload = MatchReadyPayload.builder()
                     .roomId(room.getRoomId())
-                    .designatedCell(Map.of("r", SAFE_R, "c", SAFE_C))
+                    .designatedCell(Map.of("r", c.safeR(), "c", c.safeC()))
                     .players(playerEntries)
                     .opponentNickname(opp != null ? opp.getNickname() : null)
                     .firstClickTimeoutMs(FIRST_CLICK_TIMEOUT_MS)
+                    .rows(c.rows())
+                    .cols(c.cols())
+                    .totalSafeCells(c.totalSafe())
+                    .difficulty(room.getDifficulty())
                     .build();
             messagingTemplate.convertAndSendToUser(
                     player.getPlayerId(), USER_QUEUE_STATE,
@@ -929,6 +971,7 @@ public class MinesweeperBattleRoomService {
                             .maxPlayers(2)
                             .hostNickname(hostNickname)
                             .createdAt(null)
+                            .difficulty(room.getDifficulty())
                             .build();
                 })
                 .collect(java.util.stream.Collectors.toList());
@@ -941,7 +984,7 @@ public class MinesweeperBattleRoomService {
      */
     @Transactional
     public MinesweeperBattleJoinResponse createRoomOnly(
-            Long userId, String guestToken, String nickname) {
+            Long userId, String guestToken, String nickname, String difficulty) {
 
         String playerId = (userId != null) ? String.valueOf(userId) : guestToken;
         boolean isGuest = (userId == null);
@@ -960,7 +1003,7 @@ public class MinesweeperBattleRoomService {
         }
 
         PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
-        return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer);
+        return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer, difficulty);
     }
 
     // ─── 방 직접 입장 ────────────────────────────────────────────────────────
@@ -1020,6 +1063,7 @@ public class MinesweeperBattleRoomService {
 
             sendMatchReady(room);
 
+            DifficultyConfig joinCfg = cfg(room.getDifficulty());
             PlayerInfo firstPlayer = room.getPlayers().get(0);
             return MinesweeperBattleJoinResponse.builder()
                     .roomId(roomId)
@@ -1029,8 +1073,12 @@ public class MinesweeperBattleRoomService {
                     .status("MATCH_READY")
                     .playerCount(2)
                     .maxPlayers(2)
-                    .designatedCell(Map.of("r", SAFE_R, "c", SAFE_C))
+                    .designatedCell(Map.of("r", joinCfg.safeR(), "c", joinCfg.safeC()))
                     .opponentNickname(firstPlayer.getNickname())
+                    .difficulty(room.getDifficulty())
+                    .rows(joinCfg.rows())
+                    .cols(joinCfg.cols())
+                    .totalSafeCells(joinCfg.totalSafe())
                     .build();
 
         } catch (Exception e) {

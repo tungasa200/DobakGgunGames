@@ -3,11 +3,7 @@ import type { BattleCell } from './types';
 import OpponentProgress from './OpponentProgress';
 import styles from './MinesweeperBattleBoard.module.css';
 
-const ROWS = 9;
-const COLS = 9;
 const CELL_SIZE = 30;
-const TOTAL_MINES = 10;
-const TOTAL_SAFE = 71;
 
 const NUM_COLORS = ['', '#0000ff','#007b00','#ff0000','#00007b','#7b0000','#007b7b','#000000','#7b7b7b'];
 
@@ -28,6 +24,9 @@ function ForfeitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel
 
 interface MinesweeperBattleGameViewProps {
   board: BattleCell[][];
+  rows: number;
+  cols: number;
+  totalSafe: number;
   elapsedMs: number;
   revealedCount: number;
   myNickname: string | null;
@@ -43,6 +42,9 @@ interface MinesweeperBattleGameViewProps {
 
 export default function MinesweeperBattleGameView({
   board,
+  rows,
+  cols,
+  totalSafe,
   elapsedMs,
   revealedCount,
   myNickname,
@@ -153,10 +155,11 @@ export default function MinesweeperBattleGameView({
 
   // ── 렌더 ─────────────────────────────────────────────────
 
+  const totalMines = rows * cols - totalSafe;
   const elapsedSec = (elapsedMs / 1000).toFixed(1);
   const flagCount = board.flat().filter(c => c.mark === 'flag').length;
-  const mineRemaining = TOTAL_MINES - flagCount;
-  const myProgressPct = Math.floor(revealedCount / TOTAL_SAFE * 100);
+  const mineRemaining = totalMines - flagCount;
+  const myProgressPct = Math.floor(revealedCount / totalSafe * 100);
 
   return (
     <>
@@ -180,15 +183,15 @@ export default function MinesweeperBattleGameView({
             <div
               className={styles.board}
               style={{
-                gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
-                gridTemplateRows:    `repeat(${ROWS}, ${CELL_SIZE}px)`,
+                gridTemplateColumns: `repeat(${cols}, ${CELL_SIZE}px)`,
+                gridTemplateRows:    `repeat(${rows}, ${CELL_SIZE}px)`,
               }}
               role="grid"
               aria-label="지뢰찾기 배틀 보드"
               onContextMenu={(e) => e.preventDefault()}
             >
-              {Array.from({ length: ROWS }, (_, r) =>
-                Array.from({ length: COLS }, (_, c) => {
+              {Array.from({ length: rows }, (_, r) =>
+                Array.from({ length: cols }, (_, c) => {
                   const cell = board[r]?.[c];
                   if (!cell) return null;
 

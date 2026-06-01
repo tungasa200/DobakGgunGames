@@ -49,6 +49,15 @@ public class MinesweeperBattleRoomManager {
         return room;
     }
 
+    /** 난이도를 지정해 새 방을 생성한다. */
+    public MinesweeperBattleRoom createRoom(String roomId, String difficulty) {
+        MinesweeperBattleRoom room = new MinesweeperBattleRoom(roomId, difficulty);
+        rooms.put(roomId, room);
+        roomLocks.put(roomId, new ReentrantLock(true));
+        log.debug("MinesweeperRoomManager.createRoom: roomId={} difficulty={}", roomId, difficulty);
+        return room;
+    }
+
     /** roomId 로 방 조회 */
     public Optional<MinesweeperBattleRoom> getRoom(String roomId) {
         return Optional.ofNullable(rooms.get(roomId));
@@ -62,6 +71,19 @@ public class MinesweeperBattleRoomManager {
         return rooms.values().stream()
                 .filter(r -> r.getStatus() == MinesweeperBattleRoom.Status.WAITING
                         && r.getPlayerCount() == 1)
+                .findFirst();
+    }
+
+    /**
+     * 지정 난이도와 일치하는 WAITING 방을 찾는다.
+     * 같은 난이도끼리만 매칭.
+     */
+    public Optional<MinesweeperBattleRoom> findWaitingRoom(String difficulty) {
+        String target = (difficulty != null) ? difficulty.toUpperCase() : "BEGINNER";
+        return rooms.values().stream()
+                .filter(r -> r.getStatus() == MinesweeperBattleRoom.Status.WAITING
+                        && r.getPlayerCount() == 1
+                        && target.equals(r.getDifficulty()))
                 .findFirst();
     }
 

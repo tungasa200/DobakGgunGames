@@ -30,6 +30,9 @@ public class MinesweeperBattleRoom {
     private final String roomId;
     private volatile Status status;
 
+    /** 게임 난이도 — "BEGINNER" | "INTERMEDIATE" */
+    private volatile String difficulty;
+
     /** 참가자 목록 (최대 2명) */
     private final List<PlayerInfo> players = new ArrayList<>(2);
 
@@ -71,6 +74,13 @@ public class MinesweeperBattleRoom {
     public MinesweeperBattleRoom(String roomId) {
         this.roomId = roomId;
         this.status = Status.WAITING;
+        this.difficulty = "BEGINNER";
+    }
+
+    public MinesweeperBattleRoom(String roomId, String difficulty) {
+        this.roomId = roomId;
+        this.status = Status.WAITING;
+        this.difficulty = (difficulty != null) ? difficulty.toUpperCase() : "BEGINNER";
     }
 
     // ─── 편의 메서드 ──────────────────────────────────────────────────────────

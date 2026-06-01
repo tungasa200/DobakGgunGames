@@ -19,4 +19,7 @@ public class MinesweeperBattleJoinRequest {
 
     /** 게스트 닉네임 (누락 시 손님-{4자리} 자동 발급). 로그인 유저는 무시. */
     private String nickname;
+
+    /** 게임 난이도 — "BEGINNER" | "INTERMEDIATE". 누락 시 "BEGINNER". */
+    private String difficulty;
 }

@@ -11,7 +11,7 @@ import {
   getStoredMbGuestToken,
   clearMbJoinInfo,
 } from '../../../api/minesweeperBattle';
-import type { MbWaitingRoomInfo } from '../../../api/minesweeperBattle';
+import type { MbWaitingRoomInfo, MbDifficulty } from '../../../api/minesweeperBattle';
 import { useMinesweeperBattleGame } from './useMinesweeperBattleGame';
 import { useMinesweeperBattleSocket } from './useMinesweeperBattleSocket';
 import type { MatchReadyPayload, ProgressUpdatePayload, StateSnapshotPayload } from './types';
@@ -21,8 +21,6 @@ import MinesweeperBattleGameView from './MinesweeperBattleGameView';
 import MinesweeperBattleResult from './MinesweeperBattleResult';
 import NormalHeader from '../../../components/normal/NormalHeader';
 import styles from './MinesweeperBattleBoard.module.css';
-
-const TOTAL_SAFE = 71;
 
 export default function MinesweeperBattleBoard() {
   const { user, accessToken } = useAuth();
@@ -56,6 +54,7 @@ export default function MinesweeperBattleBoard() {
 
   // ── 방 선택 화면 상태 ────────────────────────────────────
   const [showSelectScreen, setShowSelectScreen] = useState(true);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<MbDifficulty>('BEGINNER');
   const [browseMode, setBrowseMode] = useState(false);
   const [waitingRooms, setWaitingRooms] = useState<MbWaitingRoomInfo[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
@@ -69,6 +68,7 @@ export default function MinesweeperBattleBoard() {
       const res = await joinMinesweeperBattle({
         accessToken,
         guestToken: storedToken ?? undefined,
+        difficulty: selectedDifficulty,
       });
 
       saveMbJoinInfo({
@@ -115,7 +115,7 @@ export default function MinesweeperBattleBoard() {
         message: e.message ?? '배틀 참가에 실패했습니다.',
       });
     }
-  }, [accessToken, user, dispatchBattle]);
+  }, [accessToken, user, dispatchBattle, selectedDifficulty]);
 
   // ── 대기 방 목록 로드 ────────────────────────────────────
   const loadWaitingRooms = useCallback(async () => {
@@ -133,6 +133,7 @@ export default function MinesweeperBattleBoard() {
       const res = await createMinesweeperBattle({
         accessToken,
         guestToken: storedToken ?? undefined,
+        difficulty: selectedDifficulty,
       });
       saveMbJoinInfo({
         roomId: res.roomId,
@@ -154,7 +155,7 @@ export default function MinesweeperBattleBoard() {
       }
       dispatchBattle({ type: 'ERROR', message: e.message ?? '방 생성에 실패했습니다.' });
     }
-  }, [accessToken, user, dispatchBattle]);
+  }, [accessToken, user, dispatchBattle, selectedDifficulty]);
 
   // ── 특정 방 입장 ──────────────────────────────────────────
   const startJoinRoom = useCallback(async (roomId: string) => {
@@ -258,10 +259,10 @@ export default function MinesweeperBattleBoard() {
     ws.sendProgress(result.newCount);
 
     // 클리어 체크
-    if (result.cleared || result.newCount >= TOTAL_SAFE) {
+    if (result.cleared || result.newCount >= battleState.totalSafeCells) {
       ws.sendBoardClear(elapsed);
     }
-  }, [battleState.phase, battleState.myElapsedMs, revealCell, ws]);
+  }, [battleState.phase, battleState.myElapsedMs, battleState.totalSafeCells, revealCell, ws]);
 
   const handleToggleMark = useCallback((r: number, c: number) => {
     if (battleState.phase !== 'playing') return;
@@ -282,15 +283,15 @@ export default function MinesweeperBattleBoard() {
       ws.sendProgress(result.newCount);
     }
 
-    if (result.cleared || result.newCount >= TOTAL_SAFE) {
+    if (result.cleared || result.newCount >= battleState.totalSafeCells) {
       ws.sendBoardClear(elapsed);
     }
-  }, [battleState.phase, battleState.myElapsedMs, chordClick, boardState.revealedCount, ws]);
+  }, [battleState.phase, battleState.myElapsedMs, battleState.totalSafeCells, chordClick, boardState.revealedCount, ws]);
 
   const handleFirstClick = useCallback(() => {
     dispatchBattle({ type: 'FIRST_CLICK_SENT' });
-    ws.sendFirstClick();
-  }, [dispatchBattle, ws]);
+    ws.sendFirstClick(battleState.designatedCell ?? { r: 4, c: 4 });
+  }, [dispatchBattle, ws, battleState.designatedCell]);
 
   const handleForfeit = useCallback(() => {
     ws.sendLeave();
@@ -353,6 +354,22 @@ export default function MinesweeperBattleBoard() {
           <div className={styles.selectScreen}>
             <h2 className={styles.selectTitle}>지뢰찾기 배틀</h2>
             <p className={styles.selectSub}>플레이 방식을 선택하세요</p>
+            <div className={styles.difficultyGroup}>
+              <button
+                className={`${styles.difficultyBtn} ${selectedDifficulty === 'BEGINNER' ? styles.difficultyBtnActive : ''}`}
+                onClick={() => setSelectedDifficulty('BEGINNER')}
+                type="button"
+              >
+                초급<br /><span style={{ fontSize: 11, fontWeight: 'normal' }}>9×9 · 지뢰 10개</span>
+              </button>
+              <button
+                className={`${styles.difficultyBtn} ${selectedDifficulty === 'INTERMEDIATE' ? styles.difficultyBtnActive : ''}`}
+                onClick={() => setSelectedDifficulty('INTERMEDIATE')}
+                type="button"
+              >
+                중급<br /><span style={{ fontSize: 11, fontWeight: 'normal' }}>16×16 · 지뢰 40개</span>
+              </button>
+            </div>
             {!browseMode ? (
               <div className={styles.selectOptions}>
                 <button
@@ -403,6 +420,7 @@ export default function MinesweeperBattleBoard() {
                     {waitingRooms.map(room => (
                       <li key={room.roomId} className={styles.roomItem}>
                         <span className={styles.roomHost}>{room.hostNickname ?? '익명'}</span>
+                        <span className={styles.roomCount}>{room.difficulty === 'INTERMEDIATE' ? '중급' : '초급'}</span>
                         <span className={styles.roomCount}>{room.currentPlayers}/{room.maxPlayers}명</span>
                         <button
                           className={styles.btnPrimary}
@@ -517,6 +535,9 @@ export default function MinesweeperBattleBoard() {
         <div className={styles.battleContent} style={{ justifyContent: 'flex-start', paddingTop: 16 }}>
           <MinesweeperBattleGameView
             board={boardState.board}
+            rows={battleState.rows}
+            cols={battleState.cols}
+            totalSafe={battleState.totalSafeCells}
             elapsedMs={battleState.myElapsedMs}
             revealedCount={boardState.revealedCount}
             myNickname={battleState.myNickname}

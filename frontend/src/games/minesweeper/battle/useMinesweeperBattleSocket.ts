@@ -38,7 +38,7 @@ export interface UseMinesweeperBattleSocketOptions {
 
 export interface UseMinesweeperBattleSocketReturn {
   isConnected: boolean;
-  sendFirstClick: () => void;
+  sendFirstClick: (designatedCell: { r: number; c: number }) => void;
   sendProgress: (revealedCount: number) => void;
   sendBoardClear: (elapsedMs: number) => void;
   sendMineHit: (elapsedMs: number, r: number, c: number) => void;
@@ -294,13 +294,13 @@ export function useMinesweeperBattleSocket(
 
   // ── 발행 메서드 ──────────────────────────────────────────
 
-  const sendFirstClick = useCallback(() => {
+  const sendFirstClick = useCallback((designatedCell: { r: number; c: number }) => {
     const c = clientRef.current;
     const rid = roomIdRef.current;
     if (!c?.connected || !rid) return;
     c.publish({
       destination: `/app/minesweeper-battle/room/${rid}/first-click`,
-      body: JSON.stringify({ r: 4, c: 4 }),
+      body: JSON.stringify({ r: designatedCell.r, c: designatedCell.c }),
     });
   }, []);
 

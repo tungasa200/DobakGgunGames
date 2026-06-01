@@ -11,20 +11,19 @@ import type {
   StateSnapshotPayload,
 } from './types';
 
-// ── 상수 ───────────────────────────────────────────────────
-const ROWS = 9;
-const COLS = 9;
-const TOTAL_MINES = 10;
-const TOTAL_SAFE = ROWS * COLS - TOTAL_MINES; // 71
+// ── 기본 설정 (BEGINNER) ────────────────────────────────────
+const DEFAULT_ROWS = 9;
+const DEFAULT_COLS = 9;
+const DEFAULT_TOTAL_SAFE = 71;
 
 // ── 유틸 ───────────────────────────────────────────────────
-function isValid(r: number, c: number): boolean {
-  return r >= 0 && r < ROWS && c >= 0 && c < COLS;
+function isValid(r: number, c: number, rows: number, cols: number): boolean {
+  return r >= 0 && r < rows && c >= 0 && c < cols;
 }
 
-function emptyBoard(): BattleCell[][] {
-  return Array.from({ length: ROWS }, () =>
-    Array.from({ length: COLS }, () => ({
+function emptyBoard(rows: number, cols: number): BattleCell[][] {
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => ({
       isMine: false,
       isRevealed: false,
       mark: 'none' as BattleCellMark,
@@ -54,11 +53,13 @@ function revealCells(
   startR: number,
   startC: number,
 ): { board: BattleCell[][]; newlyRevealed: number } {
+  const rows = board.length;
+  const cols = board[0]?.length ?? 0;
   const next = board.map((row) => row.map((c) => ({ ...c })));
   let count = 0;
 
   function dfs(r: number, c: number) {
-    if (!isValid(r, c)) return;
+    if (!isValid(r, c, rows, cols)) return;
     const cell = next[r][c];
     if (cell.isRevealed || cell.mark === 'flag') return;
     cell.isRevealed = true;
@@ -90,34 +91,34 @@ interface BoardState {
   board: BattleCell[][];
   revealedCount: number;
   flagCount: number;
+  totalSafe: number;
   /** 'idle': 게임 시작 전, 'playing': 게임 중, 'won': 클리어, 'lost': 지뢰 클릭 */
   boardStatus: 'idle' | 'playing' | 'won' | 'lost';
 }
 
 type BoardAction =
-  | { type: 'INIT_BOARD'; adjMines: number[][]; firstR: number; firstC: number }
+  | { type: 'INIT_BOARD'; adjMines: number[][]; firstR: number; firstC: number; totalSafe: number }
   | { type: 'REVEAL'; r: number; c: number }
   | { type: 'TOGGLE_MARK'; r: number; c: number }
   | { type: 'CHORD'; r: number; c: number }
-  | { type: 'EXPLODE'; r: number; c: number }  // MINE_HIT 후 보드 표시용
+  | { type: 'EXPLODE'; r: number; c: number }
   | { type: 'RESET_BOARD' };
 
 const initialBoardState: BoardState = {
-  board: emptyBoard(),
+  board: emptyBoard(DEFAULT_ROWS, DEFAULT_COLS),
   revealedCount: 0,
   flagCount: 0,
+  totalSafe: DEFAULT_TOTAL_SAFE,
   boardStatus: 'idle',
 };
 
 function boardReducer(state: BoardState, action: BoardAction): BoardState {
   switch (action.type) {
     case 'INIT_BOARD': {
-      const { adjMines, firstR, firstC } = action;
+      const { adjMines, firstR, firstC, totalSafe } = action;
       const newBoard = boardFromAdjMines(adjMines);
-      // (4,4)는 GAME_STARTED 수신 시 즉시 reveal (서버가 safe 보장)
       if (newBoard[firstR]?.[firstC]?.isMine) {
-        // 서버가 안전을 보장하므로 이 분기는 발생하지 않아야 함
-        return { ...initialBoardState, board: revealAllMines(newBoard), boardStatus: 'lost' };
+        return { ...initialBoardState, board: revealAllMines(newBoard), boardStatus: 'lost', totalSafe };
       }
       const { board, newlyRevealed } = revealCells(newBoard, firstR, firstC);
       const total = newlyRevealed;
@@ -125,7 +126,8 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
         board,
         revealedCount: total,
         flagCount: 0,
-        boardStatus: total >= TOTAL_SAFE ? 'won' : 'playing',
+        totalSafe,
+        boardStatus: total >= totalSafe ? 'won' : 'playing',
       };
     }
     case 'REVEAL': {
@@ -133,7 +135,6 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
       const cell = state.board[action.r][action.c];
       if (!cell || cell.isRevealed || cell.mark === 'flag') return state;
       if (cell.isMine) {
-        // MINE_HIT — 보드 표시 (지뢰 모두 오픈)
         return {
           ...state,
           board: revealAllMines(state.board),
@@ -146,7 +147,7 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
         ...state,
         board,
         revealedCount: total,
-        boardStatus: total >= TOTAL_SAFE ? 'won' : 'playing',
+        boardStatus: total >= state.totalSafe ? 'won' : 'playing',
       };
     }
     case 'TOGGLE_MARK': {
@@ -165,11 +166,14 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
       const cell = state.board[action.r][action.c];
       if (!cell || !cell.isRevealed || cell.adjCount === 0) return state;
 
+      const rows = state.board.length;
+      const cols = state.board[0]?.length ?? 0;
+
       // 인접 flag 수 확인
       let adjFlags = 0;
       for (let dr = -1; dr <= 1; dr++)
         for (let dc = -1; dc <= 1; dc++)
-          if ((dr || dc) && isValid(action.r + dr, action.c + dc) &&
+          if ((dr || dc) && isValid(action.r + dr, action.c + dc, rows, cols) &&
               state.board[action.r + dr][action.c + dc].mark === 'flag')
             adjFlags++;
 
@@ -182,7 +186,7 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
 
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
-          if (!(dr || dc) || !isValid(action.r + dr, action.c + dc)) continue;
+          if (!(dr || dc) || !isValid(action.r + dr, action.c + dc, rows, cols)) continue;
           const nb = board[action.r + dr][action.c + dc];
           if (nb.isRevealed || nb.mark === 'flag') continue;
           if (nb.isMine) { hitMine = true; break; }
@@ -201,7 +205,7 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
         ...state,
         board,
         revealedCount: totalRevealed,
-        boardStatus: totalRevealed >= TOTAL_SAFE ? 'won' : 'playing',
+        boardStatus: totalRevealed >= state.totalSafe ? 'won' : 'playing',
       };
     }
     case 'EXPLODE': {
@@ -234,6 +238,10 @@ const initialBattleState: BattleState = {
   result: null,
   errorMessage: null,
   reconnecting: false,
+  difficulty: 'BEGINNER',
+  rows: DEFAULT_ROWS,
+  cols: DEFAULT_COLS,
+  totalSafeCells: DEFAULT_TOTAL_SAFE,
 };
 
 function battleReducer(state: BattleState, action: BattleAction): BattleState {
@@ -258,6 +266,10 @@ function battleReducer(state: BattleState, action: BattleAction): BattleState {
         designatedCell: payload.designatedCell,
         myFirstClickConfirmed: false,
         opponentFirstClickConfirmed: false,
+        difficulty: payload.difficulty,
+        rows: payload.rows,
+        cols: payload.cols,
+        totalSafeCells: payload.totalSafeCells,
       };
     }
     case 'FIRST_CLICK_SENT':
@@ -273,6 +285,10 @@ function battleReducer(state: BattleState, action: BattleAction): BattleState {
         myElapsedMs: 0,
         myProgress: { revealedCount: 0, progressPercent: 0 },
         opponentProgress: { revealedCount: 0, progressPercent: 0 },
+        difficulty: action.payload.difficulty,
+        rows: action.payload.rows,
+        cols: action.payload.cols,
+        totalSafeCells: action.payload.totalSafeCells,
       };
     case 'PROGRESS_UPDATE': {
       // 상대 진행률만 업데이트 (본인 필터는 hook에서 처리)
@@ -310,6 +326,10 @@ function battleReducer(state: BattleState, action: BattleAction): BattleState {
         myProgress: payload.myProgress,
         opponentProgress: payload.opponentProgress,
         reconnecting: false,
+        difficulty: payload.difficulty ?? state.difficulty,
+        rows: payload.rows ?? state.rows,
+        cols: payload.cols ?? state.cols,
+        totalSafeCells: payload.totalSafeCells ?? state.totalSafeCells,
       };
     }
     case 'OPPONENT_DISCONNECTED':
@@ -401,15 +421,14 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
     }
 
     if (cell.isMine) {
-      dispatchBoard({ type: 'REVEAL', r, c }); // triggers boardStatus='lost' via reducer
+      dispatchBoard({ type: 'REVEAL', r, c });
       return { hitMine: true, cleared: false, newCount: boardState.revealedCount };
     }
 
-    // Peek at result to get newCount before dispatching
     const { newlyRevealed } = revealCells(boardState.board, r, c);
     const newCount = boardState.revealedCount + newlyRevealed;
     dispatchBoard({ type: 'REVEAL', r, c });
-    return { hitMine: false, cleared: newCount >= TOTAL_SAFE, newCount };
+    return { hitMine: false, cleared: newCount >= boardState.totalSafe, newCount };
   }, [boardState]);
 
   const toggleMark = useCallback((r: number, c: number) => {
@@ -422,11 +441,14 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
       return { hitMine: false, cleared: false, newCount: boardState.revealedCount };
     }
 
+    const boardRows = boardState.board.length;
+    const boardCols = boardState.board[0]?.length ?? 0;
+
     // 인접 flag 수 확인
     let adjFlags = 0;
     for (let dr = -1; dr <= 1; dr++)
       for (let dc = -1; dc <= 1; dc++)
-        if ((dr || dc) && isValid(r + dr, c + dc) && boardState.board[r + dr][c + dc].mark === 'flag')
+        if ((dr || dc) && isValid(r + dr, c + dc, boardRows, boardCols) && boardState.board[r + dr][c + dc].mark === 'flag')
           adjFlags++;
 
     if (adjFlags !== cell.adjCount) {
@@ -440,7 +462,7 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
 
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
-        if (!(dr || dc) || !isValid(r + dr, c + dc)) continue;
+        if (!(dr || dc) || !isValid(r + dr, c + dc, boardRows, boardCols)) continue;
         const nb = board[r + dr][c + dc];
         if (nb.isRevealed || nb.mark === 'flag') continue;
         if (nb.isMine) { hitMine = true; break; }
@@ -453,7 +475,7 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
 
     const newCount = boardState.revealedCount + totalNew;
     dispatchBoard({ type: 'CHORD', r, c });
-    return { hitMine, cleared: !hitMine && newCount >= TOTAL_SAFE, newCount };
+    return { hitMine, cleared: !hitMine && newCount >= boardState.totalSafe, newCount };
   }, [boardState]);
 
   // ── 이벤트 핸들러 ─────────────────────────────────────────
@@ -465,12 +487,12 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
 
   const handleGameStarted = useCallback((payload: GameStartedPayload) => {
     dispatchBattle({ type: 'GAME_STARTED', payload });
-    // 보드 초기화: adjMines 적용 + (4,4) 즉시 reveal
     dispatchBoard({
       type: 'INIT_BOARD',
       adjMines: payload.adjMines,
-      firstR: 4,
-      firstC: 4,
+      firstR: payload.adjMines[0] ? Math.floor(payload.adjMines.length / 2) : 4,
+      firstC: payload.adjMines[0] ? Math.floor(payload.adjMines[0].length / 2) : 4,
+      totalSafe: payload.totalSafeCells,
     });
   }, []);
 
@@ -495,8 +517,9 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
       dispatchBoard({
         type: 'INIT_BOARD',
         adjMines: payload.adjMines,
-        firstR: 4,
-        firstC: 4,
+        firstR: payload.adjMines[0] ? Math.floor(payload.adjMines.length / 2) : 4,
+        firstC: payload.adjMines[0] ? Math.floor(payload.adjMines[0].length / 2) : 4,
+        totalSafe: payload.totalSafeCells ?? DEFAULT_TOTAL_SAFE,
       });
     }
   }, []);

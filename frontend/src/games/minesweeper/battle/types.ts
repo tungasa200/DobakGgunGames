@@ -1,4 +1,5 @@
 export type BattlePhase = 'idle' | 'waiting' | 'ready' | 'playing' | 'finished' | 'disconnected';
+export type Difficulty = 'BEGINNER' | 'INTERMEDIATE';
 
 export type MbEventType =
   | 'MATCH_READY' | 'GAME_STARTED' | 'PROGRESS_UPDATE'
@@ -14,6 +15,10 @@ export interface MatchReadyPayload {
   players: PlayerInfo[];
   opponentNickname: string;
   firstClickTimeoutMs: number;
+  rows: number;
+  cols: number;
+  totalSafeCells: number;
+  difficulty: Difficulty;
 }
 
 export interface GameStartedPayload {
@@ -22,6 +27,10 @@ export interface GameStartedPayload {
   adjMines: number[][];
   serverStartAt: string;
   serverStartAtMillis: number;
+  rows: number;
+  cols: number;
+  totalSafeCells: number;
+  difficulty: Difficulty;
 }
 
 export interface ProgressUpdatePayload {
@@ -60,6 +69,10 @@ export interface StateSnapshotPayload {
   opponentFirstClickConfirmed: boolean;
   myProgress: ProgressInfo;
   opponentProgress: ProgressInfo;
+  rows: number;
+  cols: number;
+  totalSafeCells: number;
+  difficulty: Difficulty;
 }
 
 export interface BattleState {
@@ -79,6 +92,10 @@ export interface BattleState {
   result: GameResultPayload | null;
   errorMessage: string | null;
   reconnecting: boolean;
+  difficulty: Difficulty;
+  rows: number;
+  cols: number;
+  totalSafeCells: number;
 }
 
 export type BattleAction =

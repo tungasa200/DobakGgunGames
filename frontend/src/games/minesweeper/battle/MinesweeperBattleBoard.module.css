@@ -601,3 +601,37 @@
   color: #7f8c8d;
   white-space: nowrap;
 }
+
+/* ── 난이도 선택 ─────────────────────────────────────────── */
+.difficultyGroup {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.difficultyBtn {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 14px;
+  font-weight: bold;
+  border: 2px solid #bdc3c7;
+  border-radius: 5px;
+  background: #ecf0f1;
+  color: #7f8c8d;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.15s;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.difficultyBtn:hover {
+  border-color: #3498db;
+  color: #2c3e50;
+}
+
+.difficultyBtnActive {
+  border-color: #3498db;
+  background: #ebf5fb;
+  color: #2c3e50;
+}

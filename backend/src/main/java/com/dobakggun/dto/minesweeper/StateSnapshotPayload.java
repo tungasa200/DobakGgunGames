@@ -21,10 +21,7 @@ public class StateSnapshotPayload {
 
     private List<PlayerEntry> players;
 
-    /**
-     * adjMines[9][9] — PLAYING 상태인 경우만 채워짐.
-     * MATCH_READY 상태이면 null.
-     */
+    /** adjMines — PLAYING 상태인 경우만 채워짐. MATCH_READY 상태이면 null. */
     private int[][] adjMines;
 
     /** 게임 시작 시각 ms — PLAYING 상태인 경우만 유효 */
@@ -38,6 +35,12 @@ public class StateSnapshotPayload {
 
     private ProgressEntry myProgress;
     private ProgressEntry opponentProgress;
+
+    /** 보드 크기 및 난이도 정보 */
+    private int rows;
+    private int cols;
+    private int totalSafeCells;
+    private String difficulty;
 
     @Getter
     @Builder

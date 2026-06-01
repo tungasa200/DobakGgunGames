@@ -1,5 +1,7 @@
 const API_ORIGIN = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL ?? '');
 
+export type MbDifficulty = 'BEGINNER' | 'INTERMEDIATE';
+
 export interface MbJoinResponse {
   roomId: string;
   playerId: string;
@@ -10,6 +12,10 @@ export interface MbJoinResponse {
   maxPlayers: number;
   designatedCell: { r: number; c: number };
   opponentNickname: string | null;
+  difficulty: MbDifficulty;
+  rows: number;
+  cols: number;
+  totalSafeCells: number;
 }
 
 /**
@@ -20,6 +26,7 @@ export async function joinMinesweeperBattle(opts?: {
   guestToken?: string;
   nickname?: string;
   accessToken?: string | null;
+  difficulty?: MbDifficulty;
 }): Promise<MbJoinResponse> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -35,6 +42,7 @@ export async function joinMinesweeperBattle(opts?: {
     body: JSON.stringify({
       guestToken: opts?.guestToken ?? null,
       nickname: opts?.nickname ?? null,
+      difficulty: opts?.difficulty ?? 'BEGINNER',
     }),
   });
 
@@ -60,6 +68,7 @@ export interface MbWaitingRoomInfo {
   maxPlayers: number;
   hostNickname: string | null;
   createdAt: string | null;
+  difficulty: MbDifficulty | null;
 }
 
 /** GET /api/minesweeper-battle/rooms/waiting */
@@ -78,6 +87,7 @@ export async function createMinesweeperBattle(opts?: {
   guestToken?: string;
   nickname?: string;
   accessToken?: string | null;
+  difficulty?: MbDifficulty;
 }): Promise<MbJoinResponse> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (opts?.accessToken) headers['Authorization'] = `Bearer ${opts.accessToken}`;
@@ -85,7 +95,7 @@ export async function createMinesweeperBattle(opts?: {
   const res = await fetch(`${API_ORIGIN}/api/minesweeper-battle/create`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ guestToken: opts?.guestToken ?? null, nickname: opts?.nickname ?? null }),
+    body: JSON.stringify({ guestToken: opts?.guestToken ?? null, nickname: opts?.nickname ?? null, difficulty: opts?.difficulty ?? 'BEGINNER' }),
   });
 
   if (!res.ok) {
