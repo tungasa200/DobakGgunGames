@@ -415,7 +415,90 @@ public class MinesweeperBattleRoomService {
             room.setStatus(MinesweeperBattleRoom.Status.FINISHED);
             roomManager.closeRoom(roomId);
             updateBattleRoomDB(roomId, "FINISHED", 0);
+        } else if (room.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
+            // 게임 종료 후 이탈 — 재대결 대기 중인 상대에게 REMATCH_DECLINED 발송
+            PlayerInfo opponent = room.findOpponent(playerId);
+            if (opponent != null && opponent.getPlayerId() != null
+                    && room.getRematchSet().contains(opponent.getPlayerId())) {
+                messagingTemplate.convertAndSendToUser(
+                        opponent.getPlayerId(), USER_QUEUE_STATE,
+                        buildEnvelope("REMATCH_DECLINED", Map.of("reason", "OPPONENT_LEFT")));
+            }
         }
+    }
+
+    /**
+     * REMATCH 수신 — 재대결 요청.
+     * 한 명: 상대에게 REMATCH_REQUESTED 발송.
+     * 둘 다: 방 리셋 후 MATCH_READY 재발송.
+     */
+    public void handleRematch(String roomId, String playerId) {
+        MinesweeperBattleRoom room = getRoom(roomId).orElse(null);
+        if (room == null) return;
+
+        if (room.findPlayer(playerId) == null) return;
+
+        if (room.getStatus() != MinesweeperBattleRoom.Status.FINISHED) return;
+
+        room.getRematchSet().add(playerId);
+        log.info("handleRematch: roomId={} playerId={} rematchCount={}", roomId, playerId, room.getRematchSet().size());
+
+        PlayerInfo opponent = room.findOpponent(playerId);
+
+        if (room.getRematchSet().size() < 2) {
+            // 한 명만 요청 — 상대에게 알림
+            if (opponent != null && opponent.getPlayerId() != null) {
+                messagingTemplate.convertAndSendToUser(
+                        opponent.getPlayerId(), USER_QUEUE_STATE,
+                        buildEnvelope("REMATCH_REQUESTED", Map.of("requesterId", playerId)));
+            }
+            return;
+        }
+
+        // 둘 다 요청 — 방 리셋 후 MATCH_READY 재발송
+        resetRoomForRematch(room);
+    }
+
+    private void resetRoomForRematch(MinesweeperBattleRoom room) {
+        String roomId = room.getRoomId();
+
+        // closeRoomFuture 취소 (아직 방이 닫히지 않도록)
+        ScheduledFuture<?> closeFuture = room.getCloseRoomFuture();
+        if (closeFuture != null && !closeFuture.isDone()) closeFuture.cancel(false);
+        room.setCloseRoomFuture(null);
+
+        // AtomicBoolean 리셋
+        room.getFinished().set(false);
+
+        // 방 상태 리셋
+        room.setStatus(MinesweeperBattleRoom.Status.MATCH_READY);
+        room.getFirstClickSet().clear();
+        room.getRematchSet().clear();
+        room.setAdjMines(null);
+        room.setServerStartAtMillis(0L);
+
+        // 플레이어 진행률 초기화
+        for (PlayerInfo p : room.getPlayers()) {
+            p.setRevealedCount(0);
+            p.setProgressPercent(0);
+            p.setVoluntaryLeft(false);
+            p.setEndReason(null);
+            p.setFinishedAtMillis(0L);
+            p.setReportedElapsedMs(-1L);
+            p.setWinner(false);
+            p.setDisconnected(false);
+        }
+
+        // DB 상태 업데이트
+        updateBattleRoomDB(roomId, "MATCH_READY", 2);
+
+        // FIRST_CLICK 타임아웃 재스케줄
+        scheduleFirstClickTimeout(room);
+
+        // 각 플레이어에게 MATCH_READY 개별 발송 (기존 sendMatchReady 재사용)
+        sendMatchReady(room);
+
+        log.info("resetRoomForRematch: roomId={}", roomId);
     }
 
     /**

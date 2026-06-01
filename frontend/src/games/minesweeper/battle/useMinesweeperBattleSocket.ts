@@ -32,6 +32,8 @@ export interface UseMinesweeperBattleSocketOptions {
   onOpponentFirstClickConfirmed: () => void;
   onOpponentDisconnected: () => void;
   onOpponentReconnected: () => void;
+  onRematchRequested: () => void;
+  onRematchDeclined: () => void;
   onError: (code: string, message: string) => void;
   onStatusChange: (status: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error') => void;
 }
@@ -43,6 +45,7 @@ export interface UseMinesweeperBattleSocketReturn {
   sendBoardClear: (elapsedMs: number) => void;
   sendMineHit: (elapsedMs: number, r: number, c: number) => void;
   sendLeave: () => void;
+  sendRematch: () => void;
   requestState: () => void;
 }
 
@@ -65,6 +68,8 @@ export function useMinesweeperBattleSocket(
     onOpponentFirstClickConfirmed,
     onOpponentDisconnected,
     onOpponentReconnected,
+    onRematchRequested,
+    onRematchDeclined,
     onError,
     onStatusChange,
   } = opts;
@@ -92,6 +97,8 @@ export function useMinesweeperBattleSocket(
     onOpponentFirstClickConfirmed,
     onOpponentDisconnected,
     onOpponentReconnected,
+    onRematchRequested,
+    onRematchDeclined,
     onError,
     onStatusChange,
   });
@@ -105,6 +112,8 @@ export function useMinesweeperBattleSocket(
       onOpponentFirstClickConfirmed,
       onOpponentDisconnected,
       onOpponentReconnected,
+      onRematchRequested,
+      onRematchDeclined,
       onError,
       onStatusChange,
     };
@@ -139,6 +148,12 @@ export function useMinesweeperBattleSocket(
         break;
       case 'OPPONENT_RECONNECTED':
         h.onOpponentReconnected();
+        break;
+      case 'REMATCH_REQUESTED':
+        h.onRematchRequested();
+        break;
+      case 'REMATCH_DECLINED':
+        h.onRematchDeclined();
         break;
       case 'ERROR': {
         const ep = payload as { code?: string; message?: string };
@@ -390,6 +405,16 @@ export function useMinesweeperBattleSocket(
     });
   }, []);
 
+  const sendRematch = useCallback(() => {
+    const c = clientRef.current;
+    const rid = roomIdRef.current;
+    if (!c?.connected || !rid) return;
+    c.publish({
+      destination: `/app/minesweeper-battle/room/${rid}/rematch`,
+      body: '{}',
+    });
+  }, []);
+
   const requestState = useCallback(() => {
     const c = clientRef.current;
     const rid = roomIdRef.current;
@@ -407,6 +432,7 @@ export function useMinesweeperBattleSocket(
     sendBoardClear,
     sendMineHit,
     sendLeave,
+    sendRematch,
     requestState,
   };
 }

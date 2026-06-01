@@ -4,14 +4,18 @@ import styles from './MinesweeperBattleBoard.module.css';
 interface MinesweeperBattleResultProps {
   result: GameResultPayload;
   myPlayerId: string | null;
-  onPlayAgain: () => void;
+  myRematchRequested: boolean;
+  opponentRematchRequested: boolean;
+  onRematch: () => void;
   onLeave: () => void;
 }
 
 export default function MinesweeperBattleResult({
   result,
   myPlayerId,
-  onPlayAgain,
+  myRematchRequested,
+  opponentRematchRequested,
+  onRematch,
   onLeave,
 }: MinesweeperBattleResultProps) {
   const isWin = myPlayerId === result.winnerId;
@@ -40,14 +44,32 @@ export default function MinesweeperBattleResult({
           {isWin ? '승리!' : '패배...'}
         </div>
 
+        {/* 상대방이 재대결 요청한 경우 안내 */}
+        {opponentRematchRequested && !myRematchRequested && (
+          <div className={styles.rematchNotice}>상대방이 다시 대결을 원합니다!</div>
+        )}
+
         {/* 버튼 */}
         <div className={styles.resultBtns}>
-          <button className={styles.btnPrimary} onClick={onPlayAgain} type="button">
-            다시 매칭
-          </button>
-          <button className={styles.btnSecondary} onClick={onLeave} type="button">
-            나가기
-          </button>
+          {myRematchRequested ? (
+            <>
+              <button className={styles.btnPrimary} disabled type="button">
+                상대 수락 대기 중...
+              </button>
+              <button className={styles.btnSecondary} onClick={onLeave} type="button">
+                나가기
+              </button>
+            </>
+          ) : (
+            <>
+              <button className={styles.btnPrimary} onClick={onRematch} type="button">
+                {opponentRematchRequested ? '다시 대결 수락!' : '다시 대결'}
+              </button>
+              <button className={styles.btnSecondary} onClick={onLeave} type="button">
+                나가기
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -409,6 +409,17 @@
 .resultWin  { color: #27ae60; }
 .resultLose { color: #7f8c8d; }
 
+.rematchNotice {
+  font-size: 14px;
+  color: #27ae60;
+  font-weight: bold;
+  text-align: center;
+  padding: 4px 8px;
+  background: #eafaf1;
+  border-radius: 5px;
+  border: 1px solid #a9dfbf;
+}
+
 .resultBtns {
   display: flex;
   gap: 10px;

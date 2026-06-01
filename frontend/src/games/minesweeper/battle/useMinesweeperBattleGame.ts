@@ -247,6 +247,8 @@ const initialBattleState: BattleState = {
   rows: DEFAULT_ROWS,
   cols: DEFAULT_COLS,
   totalSafeCells: DEFAULT_TOTAL_SAFE,
+  myRematchRequested: false,
+  opponentRematchRequested: false,
 };
 
 function battleReducer(state: BattleState, action: BattleAction): BattleState {
@@ -275,6 +277,8 @@ function battleReducer(state: BattleState, action: BattleAction): BattleState {
         rows: payload.rows,
         cols: payload.cols,
         totalSafeCells: payload.totalSafeCells,
+        myRematchRequested: false,
+        opponentRematchRequested: false,
       };
     }
     case 'FIRST_CLICK_SENT':
@@ -346,6 +350,12 @@ function battleReducer(state: BattleState, action: BattleAction): BattleState {
       return { ...state, myElapsedMs: action.elapsedMs };
     case 'ERROR':
       return { ...state, errorMessage: action.message };
+    case 'MY_REMATCH_SENT':
+      return { ...state, myRematchRequested: true };
+    case 'REMATCH_REQUESTED':
+      return { ...state, opponentRematchRequested: true };
+    case 'REMATCH_DECLINED':
+      return { ...state, phase: 'idle', myRematchRequested: false, opponentRematchRequested: false };
     case 'RESET':
       return initialBattleState;
     default:
@@ -370,6 +380,8 @@ export interface UseMinesweeperBattleGameReturn {
   handleOpponentFirstClickConfirmed: () => void;
   handleOpponentDisconnected: () => void;
   handleOpponentReconnected: () => void;
+  handleRematchRequested: () => void;
+  handleRematchDeclined: () => void;
   handleError: (code: string, message: string) => void;
   resetGame: () => void;
 }
@@ -543,6 +555,14 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
     dispatchBattle({ type: 'OPPONENT_RECONNECTED' });
   }, []);
 
+  const handleRematchRequested = useCallback(() => {
+    dispatchBattle({ type: 'REMATCH_REQUESTED' });
+  }, []);
+
+  const handleRematchDeclined = useCallback(() => {
+    dispatchBattle({ type: 'REMATCH_DECLINED' });
+  }, []);
+
   const handleError = useCallback((code: string, message: string) => {
     dispatchBattle({ type: 'ERROR', message: `${code}: ${message}` });
   }, []);
@@ -572,6 +592,8 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
     handleOpponentFirstClickConfirmed,
     handleOpponentDisconnected,
     handleOpponentReconnected,
+    handleRematchRequested,
+    handleRematchDeclined,
     handleError,
     resetGame,
   };

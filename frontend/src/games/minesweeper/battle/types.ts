@@ -4,7 +4,9 @@ export type Difficulty = 'BEGINNER' | 'INTERMEDIATE';
 export type MbEventType =
   | 'MATCH_READY' | 'GAME_STARTED' | 'PROGRESS_UPDATE'
   | 'GAME_RESULT' | 'STATE_SNAPSHOT' | 'FIRST_CLICK_CONFIRMED'
-  | 'OPPONENT_DISCONNECTED' | 'OPPONENT_RECONNECTED' | 'ERROR';
+  | 'OPPONENT_DISCONNECTED' | 'OPPONENT_RECONNECTED'
+  | 'REMATCH_REQUESTED' | 'REMATCH_DECLINED'
+  | 'ERROR';
 
 export interface DesignatedCell { r: number; c: number; }
 export interface PlayerInfo { playerId: string; nickname: string; isGuest: boolean; }
@@ -97,6 +99,8 @@ export interface BattleState {
   rows: number;
   cols: number;
   totalSafeCells: number;
+  myRematchRequested: boolean;
+  opponentRematchRequested: boolean;
 }
 
 export type BattleAction =
@@ -112,6 +116,9 @@ export type BattleAction =
   | { type: 'OPPONENT_RECONNECTED' }
   | { type: 'SET_ELAPSED'; elapsedMs: number }
   | { type: 'ERROR'; message: string }
+  | { type: 'MY_REMATCH_SENT' }
+  | { type: 'REMATCH_REQUESTED' }
+  | { type: 'REMATCH_DECLINED' }
   | { type: 'RESET' };
 
 // 셀 타입 (배틀 전용)

@@ -42,6 +42,8 @@ export default function MinesweeperBattleBoard() {
     handleOpponentFirstClickConfirmed,
     handleOpponentDisconnected,
     handleOpponentReconnected,
+    handleRematchRequested,
+    handleRematchDeclined,
     handleError,
     resetGame,
   } = useMinesweeperBattleGame();
@@ -256,6 +258,18 @@ export default function MinesweeperBattleBoard() {
     handleStateSnapshot(payload, myPlayerIdRef.current ?? '');
   }, [handleStateSnapshot]);
 
+  const handleRematchDeclinedCallback = useCallback(() => {
+    handleRematchDeclined();
+    setTimeout(() => {
+      resetGame();
+      clearMbJoinInfo();
+      startedRef.current = false;
+      setShowSelectScreen(true);
+      setBrowseMode(false);
+      setWaitingRooms([]);
+    }, 50);
+  }, [handleRematchDeclined, resetGame]);
+
   const ws = useMinesweeperBattleSocket({
     roomId: battleState.roomId,
     playerId: battleState.myPlayerId,
@@ -269,6 +283,8 @@ export default function MinesweeperBattleBoard() {
     onOpponentFirstClickConfirmed: handleOpponentFirstClickConfirmed,
     onOpponentDisconnected: handleOpponentDisconnected,
     onOpponentReconnected: handleOpponentReconnected,
+    onRematchRequested: handleRematchRequested,
+    onRematchDeclined: handleRematchDeclinedCallback,
     onError: handleError,
     onStatusChange: setWsStatus,
   });
@@ -345,14 +361,10 @@ export default function MinesweeperBattleBoard() {
     navigate('/');
   }, [ws, navigate, battleState.roomId, accessToken]);
 
-  const handlePlayAgain = useCallback(() => {
-    clearMbJoinInfo();
-    resetGame();
-    startedRef.current = false;
-    setShowSelectScreen(true);
-    setBrowseMode(false);
-    setWaitingRooms([]);
-  }, [resetGame]);
+  const handleRematch = useCallback(() => {
+    dispatchBattle({ type: 'MY_REMATCH_SENT' });
+    ws.sendRematch();
+  }, [dispatchBattle, ws]);
 
   // ── 렌더 ──────────────────────────────────────────────────
 
@@ -601,8 +613,14 @@ export default function MinesweeperBattleBoard() {
           <MinesweeperBattleResult
             result={battleState.result}
             myPlayerId={battleState.myPlayerId}
-            onPlayAgain={handlePlayAgain}
-            onLeave={() => { clearMbJoinInfo(); navigate('/games/minesweeper'); }}
+            myRematchRequested={battleState.myRematchRequested}
+            opponentRematchRequested={battleState.opponentRematchRequested}
+            onRematch={handleRematch}
+            onLeave={() => {
+              ws.sendLeave();
+              clearMbJoinInfo();
+              navigate('/games/minesweeper');
+            }}
           />
         )}
       </div>

@@ -58,6 +58,9 @@ public class MinesweeperBattleRoom {
      */
     private final AtomicBoolean finished = new AtomicBoolean(false);
 
+    /** 재대결 요청한 플레이어 집합 (FINISHED 상태에서만 사용) */
+    private final Set<String> rematchSet = ConcurrentHashMap.newKeySet();
+
     // ─── 타이머 Future ────────────────────────────────────────────────────────
 
     /** MATCH_READY 이후 30초 FIRST_CLICK 타임아웃 Future */

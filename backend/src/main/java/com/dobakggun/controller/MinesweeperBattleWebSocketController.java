@@ -174,6 +174,17 @@ public class MinesweeperBattleWebSocketController {
         minesweeperService.handleLeave(roomId, bp.getPlayerId());
     }
 
+    // ─── REMATCH ──────────────────────────────────────────────────────────────
+
+    @MessageMapping("/minesweeper-battle/room/{roomId}/rematch")
+    public void onRematch(@DestinationVariable String roomId,
+                          StompHeaderAccessor accessor) {
+        BattlePrincipal bp = extractPrincipal(accessor);
+        if (bp == null) return;
+        log.info("MinesweeperBattle REMATCH: roomId={} playerId={}", roomId, bp.getPlayerId());
+        minesweeperService.handleRematch(roomId, bp.getPlayerId());
+    }
+
     // ─── DISCONNECT ───────────────────────────────────────────────────────────
 
     /**
