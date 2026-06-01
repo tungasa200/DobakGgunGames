@@ -160,7 +160,23 @@ export function useMinesweeperBattleSocket(
     leaveSentRef.current = false;
     isReloadingRef.current = false;
 
-    const onBeforeUnload = () => { isReloadingRef.current = true; };
+    const onBeforeUnload = () => {
+      isReloadingRef.current = true;
+      const rid = roomIdRef.current;
+      const currentAuthParam = authParam;
+      // 게스트만 sendBeacon cancel 가능 (sendBeacon은 커스텀 헤더 미지원)
+      if (rid && currentAuthParam?.startsWith('guest_')) {
+        const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? '';
+        const apiUrl = import.meta.env.DEV ? '' : baseUrl;
+        const url = `${apiUrl}/api/minesweeper-battle/room/${rid}/cancel`;
+        try {
+          navigator.sendBeacon(url, new Blob(
+            [JSON.stringify({ guestToken: currentAuthParam })],
+            { type: 'application/json' }
+          ));
+        } catch { /* 무시 */ }
+      }
+    };
     window.addEventListener('beforeunload', onBeforeUnload);
 
     const baseUrl = WS_BATTLE_URL

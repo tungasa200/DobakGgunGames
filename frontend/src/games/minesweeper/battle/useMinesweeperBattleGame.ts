@@ -97,7 +97,7 @@ interface BoardState {
 }
 
 type BoardAction =
-  | { type: 'INIT_BOARD'; adjMines: number[][]; firstR: number; firstC: number; totalSafe: number }
+  | { type: 'INIT_BOARD'; adjMines: number[][]; firstR: number; firstC: number; totalSafe: number; skipIfStarted?: boolean }
   | { type: 'REVEAL'; r: number; c: number }
   | { type: 'TOGGLE_MARK'; r: number; c: number }
   | { type: 'CHORD'; r: number; c: number }
@@ -115,6 +115,7 @@ const initialBoardState: BoardState = {
 function boardReducer(state: BoardState, action: BoardAction): BoardState {
   switch (action.type) {
     case 'INIT_BOARD': {
+      if (action.skipIfStarted && state.boardStatus !== 'idle') return state;
       const { adjMines, firstR, firstC, totalSafe } = action;
       const newBoard = boardFromAdjMines(adjMines);
       if (newBoard[firstR]?.[firstC]?.isMine) {
@@ -330,6 +331,7 @@ function battleReducer(state: BattleState, action: BattleAction): BattleState {
         rows: payload.rows ?? state.rows,
         cols: payload.cols ?? state.cols,
         totalSafeCells: payload.totalSafeCells ?? state.totalSafeCells,
+        designatedCell: payload.designatedCell ?? state.designatedCell,
       };
     }
     case 'OPPONENT_DISCONNECTED':
@@ -520,6 +522,7 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
         firstR: payload.adjMines[0] ? Math.floor(payload.adjMines.length / 2) : 4,
         firstC: payload.adjMines[0] ? Math.floor(payload.adjMines[0].length / 2) : 4,
         totalSafe: payload.totalSafeCells ?? DEFAULT_TOTAL_SAFE,
+        skipIfStarted: true,
       });
     }
   }, []);

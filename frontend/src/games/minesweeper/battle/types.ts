@@ -73,6 +73,7 @@ export interface StateSnapshotPayload {
   cols: number;
   totalSafeCells: number;
   difficulty: Difficulty;
+  designatedCell?: { r: number; c: number } | null;
 }
 
 export interface BattleState {

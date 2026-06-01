@@ -3,6 +3,7 @@ package com.dobakggun.controller;
 import com.dobakggun.dto.WaitingRoomInfo;
 import com.dobakggun.dto.minesweeper.MinesweeperBattleJoinRequest;
 import com.dobakggun.dto.minesweeper.MinesweeperBattleJoinResponse;
+import com.dobakggun.security.BlockfallBattleHandshakeInterceptor;
 import com.dobakggun.service.MinesweeperBattleRoomService;
 import com.dobakggun.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +30,7 @@ import java.util.regex.Pattern;
 public class MinesweeperBattleController {
 
     private static final String GUEST_PREFIX = "guest_";
-    private static final Pattern GUEST_TOKEN_PATTERN = Pattern.compile(
-            "^guest_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-    );
+    private static final Pattern GUEST_TOKEN_PATTERN = BlockfallBattleHandshakeInterceptor.GUEST_TOKEN_PATTERN;
 
     private final MinesweeperBattleRoomService minesweeperService;
     private final JwtUtil jwtUtil;
@@ -121,7 +120,7 @@ public class MinesweeperBattleController {
 
         } catch (MinesweeperBattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId(), "playerId", e.getPlayerId()));
         } catch (Exception e) {
             log.error("MinesweeperBattleController.join: 매칭 실패", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
@@ -135,8 +134,9 @@ public class MinesweeperBattleController {
      * WAITING 상태 대기방 목록 (인증 불필요).
      */
     @GetMapping("/rooms/waiting")
-    public ResponseEntity<List<WaitingRoomInfo>> getWaitingRooms() {
-        return ResponseEntity.ok(minesweeperService.listWaitingRooms());
+    public ResponseEntity<List<WaitingRoomInfo>> getWaitingRooms(
+            @RequestParam(required = false) String difficulty) {
+        return ResponseEntity.ok(minesweeperService.listWaitingRooms(difficulty));
     }
 
     /**
@@ -197,7 +197,7 @@ public class MinesweeperBattleController {
             return ResponseEntity.ok(response);
         } catch (MinesweeperBattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId(), "playerId", e.getPlayerId()));
         } catch (Exception e) {
             log.error("MinesweeperBattleController.create: 방 생성 실패", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
@@ -261,7 +261,7 @@ public class MinesweeperBattleController {
             return ResponseEntity.ok(response);
         } catch (MinesweeperBattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+                    .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId(), "playerId", e.getPlayerId()));
         } catch (MinesweeperBattleRoomService.RoomNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "ROOM_NOT_FOUND"));
@@ -273,5 +273,43 @@ public class MinesweeperBattleController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(Map.of("error", "MATCH_UNAVAILABLE", "message", "일시적으로 처리할 수 없습니다."));
         }
+    }
+
+    /**
+     * POST /api/minesweeper-battle/room/{roomId}/cancel
+     *
+     * <p>WebSocket 연결 전에 취소 버튼을 누른 경우를 위한 REST 폴백.
+     * WAITING 상태의 방만 취소 가능.
+     */
+    @PostMapping("/room/{roomId}/cancel")
+    public ResponseEntity<?> cancel(
+            @PathVariable String roomId,
+            @RequestBody(required = false) MinesweeperBattleJoinRequest req,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        String playerId;
+
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            if (!jwtUtil.validateToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "UNAUTHORIZED", "message", "로그인 정보가 만료되었습니다."));
+            }
+            playerId = String.valueOf(jwtUtil.getUserIdFromToken(token));
+        } else {
+            String guestToken = (req != null) ? req.getGuestToken() : null;
+            if (!StringUtils.hasText(guestToken) || !GUEST_TOKEN_PATTERN.matcher(guestToken).matches()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "UNAUTHORIZED_GUEST_TOKEN", "message", "guestToken이 필요합니다."));
+            }
+            playerId = guestToken;
+        }
+
+        boolean cancelled = minesweeperService.cancelWaiting(roomId, playerId);
+        if (cancelled) {
+            return ResponseEntity.ok(Map.of("result", "CANCELLED"));
+        }
+        // 이미 처리됐거나 방 없음 → 멱등성 보장
+        return ResponseEntity.ok(Map.of("result", "NOT_WAITING"));
     }
 }

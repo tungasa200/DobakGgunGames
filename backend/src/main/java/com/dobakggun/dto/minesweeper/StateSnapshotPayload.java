@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * STATE_SNAPSHOT WebSocket 페이로드.
@@ -23,6 +24,9 @@ public class StateSnapshotPayload {
 
     /** adjMines — PLAYING 상태인 경우만 채워짐. MATCH_READY 상태이면 null. */
     private int[][] adjMines;
+
+    /** MATCH_READY 상태에서의 지정 클릭 셀 — MATCH_READY / PLAYING 상태인 경우만 유효 */
+    private Map<String, Integer> designatedCell;
 
     /** 게임 시작 시각 ms — PLAYING 상태인 경우만 유효 */
     private long serverStartAtMillis;

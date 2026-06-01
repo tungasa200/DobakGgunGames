@@ -10,6 +10,7 @@ import {
   getStoredMbJoinInfo,
   getStoredMbGuestToken,
   clearMbJoinInfo,
+  cancelMinesweeperBattle,
 } from '../../../api/minesweeperBattle';
 import type { MbWaitingRoomInfo, MbDifficulty } from '../../../api/minesweeperBattle';
 import { useMinesweeperBattleGame } from './useMinesweeperBattleGame';
@@ -93,17 +94,26 @@ export default function MinesweeperBattleBoard() {
       // WS 연결 후 서버가 MATCH_READY 이벤트를 발송하므로 별도 처리 불필요
 
     } catch (err) {
-      const e = err as Error & { code?: string };
+      const e = err as Error & { code?: string; roomId?: string; playerId?: string };
 
       if (e.code === 'ALREADY_IN_ROOM') {
-        // 새로고침 등으로 인한 재진입 → 저장된 joinInfo로 WS 재연결
         const stored = getStoredMbJoinInfo();
-        if (stored) {
+        const roomId = stored?.roomId ?? e.roomId;
+        const playerId = stored?.playerId ?? e.playerId;
+        if (roomId && playerId) {
           const nickname = user?.nickname ?? '나';
+          if (!stored && roomId && playerId) {
+            saveMbJoinInfo({
+              roomId,
+              playerId,
+              isGuest: !accessToken,
+              guestToken: null,
+            });
+          }
           dispatchBattle({
             type: 'JOIN_REQUESTED',
-            roomId: stored.roomId,
-            playerId: stored.playerId,
+            roomId,
+            playerId,
             nickname,
           });
           return;
@@ -118,12 +128,12 @@ export default function MinesweeperBattleBoard() {
   }, [accessToken, user, dispatchBattle, selectedDifficulty]);
 
   // ── 대기 방 목록 로드 ────────────────────────────────────
-  const loadWaitingRooms = useCallback(async () => {
+  const loadWaitingRooms = useCallback(async (diff?: typeof selectedDifficulty) => {
     setRoomsLoading(true);
-    const rooms = await getMbWaitingRooms();
+    const rooms = await getMbWaitingRooms(diff ?? selectedDifficulty);
     setWaitingRooms(rooms);
     setRoomsLoading(false);
-  }, []);
+  }, [selectedDifficulty]);
 
   // ── 방 만들기 ─────────────────────────────────────────────
   const startCreate = useCallback(async () => {
@@ -144,12 +154,22 @@ export default function MinesweeperBattleBoard() {
       const nickname = res.isGuest ? '손님' : (user?.nickname ?? '나');
       dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
     } catch (err) {
-      const e = err as Error & { code?: string };
+      const e = err as Error & { code?: string; roomId?: string; playerId?: string };
       if (e.code === 'ALREADY_IN_ROOM') {
         const stored = getStoredMbJoinInfo();
-        if (stored) {
+        const roomId = stored?.roomId ?? e.roomId;
+        const playerId = stored?.playerId ?? e.playerId;
+        if (roomId && playerId) {
           const nickname = user?.nickname ?? '나';
-          dispatchBattle({ type: 'JOIN_REQUESTED', roomId: stored.roomId, playerId: stored.playerId, nickname });
+          if (!stored && roomId && playerId) {
+            saveMbJoinInfo({
+              roomId,
+              playerId,
+              isGuest: !accessToken,
+              guestToken: null,
+            });
+          }
+          dispatchBattle({ type: 'JOIN_REQUESTED', roomId, playerId, nickname });
           return;
         }
       }
@@ -175,12 +195,22 @@ export default function MinesweeperBattleBoard() {
       const nickname = res.isGuest ? '손님' : (user?.nickname ?? '나');
       dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
     } catch (err) {
-      const e = err as Error & { code?: string };
+      const e = err as Error & { code?: string; roomId?: string; playerId?: string };
       if (e.code === 'ALREADY_IN_ROOM') {
         const stored = getStoredMbJoinInfo();
-        if (stored) {
+        const roomId = stored?.roomId ?? e.roomId;
+        const playerId = stored?.playerId ?? e.playerId;
+        if (roomId && playerId) {
           const nickname = user?.nickname ?? '나';
-          dispatchBattle({ type: 'JOIN_REQUESTED', roomId: stored.roomId, playerId: stored.playerId, nickname });
+          if (!stored && roomId && playerId) {
+            saveMbJoinInfo({
+              roomId,
+              playerId,
+              isGuest: !accessToken,
+              guestToken: null,
+            });
+          }
+          dispatchBattle({ type: 'JOIN_REQUESTED', roomId, playerId, nickname });
           return;
         }
       }
@@ -300,10 +330,20 @@ export default function MinesweeperBattleBoard() {
   }, [ws, navigate]);
 
   const handleCancel = useCallback(() => {
+    // WebSocket 연결 전 취소 시 sendLeave가 silent fail하므로
+    // REST API로도 취소를 보내 방이 반드시 정리되도록 한다
+    const roomId = battleState.roomId;
+    if (roomId) {
+      const storedInfo = getStoredMbJoinInfo();
+      cancelMinesweeperBattle(roomId, {
+        guestToken: storedInfo?.guestToken ?? null,
+        accessToken: accessToken ?? null,
+      });
+    }
     ws.sendLeave();
     clearMbJoinInfo();
     navigate('/');
-  }, [ws, navigate]);
+  }, [ws, navigate, battleState.roomId, accessToken]);
 
   const handlePlayAgain = useCallback(() => {
     clearMbJoinInfo();
@@ -357,14 +397,20 @@ export default function MinesweeperBattleBoard() {
             <div className={styles.difficultyGroup}>
               <button
                 className={`${styles.difficultyBtn} ${selectedDifficulty === 'BEGINNER' ? styles.difficultyBtnActive : ''}`}
-                onClick={() => setSelectedDifficulty('BEGINNER')}
+                onClick={() => {
+                  setSelectedDifficulty('BEGINNER');
+                  if (browseMode) void loadWaitingRooms('BEGINNER');
+                }}
                 type="button"
               >
                 초급<br /><span style={{ fontSize: 11, fontWeight: 'normal' }}>9×9 · 지뢰 10개</span>
               </button>
               <button
                 className={`${styles.difficultyBtn} ${selectedDifficulty === 'INTERMEDIATE' ? styles.difficultyBtnActive : ''}`}
-                onClick={() => setSelectedDifficulty('INTERMEDIATE')}
+                onClick={() => {
+                  setSelectedDifficulty('INTERMEDIATE');
+                  if (browseMode) void loadWaitingRooms('INTERMEDIATE');
+                }}
                 type="button"
               >
                 중급<br /><span style={{ fontSize: 11, fontWeight: 'normal' }}>16×16 · 지뢰 40개</span>

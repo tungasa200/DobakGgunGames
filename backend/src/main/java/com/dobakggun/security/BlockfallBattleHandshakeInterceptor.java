@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
 public class BlockfallBattleHandshakeInterceptor implements HandshakeInterceptor {
 
     private static final String GUEST_PREFIX = "guest_";
-    private static final Pattern GUEST_TOKEN_PATTERN = Pattern.compile(
+    public static final Pattern GUEST_TOKEN_PATTERN = Pattern.compile(
         "^guest_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     );
 

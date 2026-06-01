@@ -108,11 +108,13 @@ public class MinesweeperBattleRoomService {
             Optional<String> existingRoomId = roomManager.findRoomIdByPlayer(playerId);
             if (existingRoomId.isPresent()) {
                 MinesweeperBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
-                // FINISHED 방이면 제거 후 재진입 허용
+                // FINISHED 방이면 disconnectFuture 취소 후 제거 → 재진입 허용
                 if (existing != null && existing.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
+                    ScheduledFuture<?> df = existing.getDisconnectFutures().remove(playerId);
+                    if (df != null && !df.isDone()) df.cancel(false);
                     roomManager.removePlayer(existingRoomId.get(), playerId);
                 } else {
-                    throw new AlreadyInRoomException(existingRoomId.get());
+                    throw new AlreadyInRoomException(existingRoomId.get(), playerId);
                 }
             }
         }
@@ -364,6 +366,28 @@ public class MinesweeperBattleRoomService {
     }
 
     /**
+     * REST 취소 — WAITING 상태 방을 정리한다.
+     * WebSocket 연결 전에 취소 버튼을 누른 경우를 처리하기 위한 폴백.
+     *
+     * @return true  방 정리 완료
+     * @return false 방 없음(이미 정리됨) 또는 WAITING 상태 아님
+     */
+    public boolean cancelWaiting(String roomId, String playerId) {
+        MinesweeperBattleRoom room = getRoom(roomId).orElse(null);
+        if (room == null) return false;
+
+        if (room.findPlayer(playerId) == null) return false;
+
+        if (room.getStatus() != MinesweeperBattleRoom.Status.WAITING) return false;
+
+        log.info("cancelWaiting(REST): roomId={} playerId={}", roomId, playerId);
+        room.setStatus(MinesweeperBattleRoom.Status.FINISHED);
+        roomManager.closeRoom(roomId);
+        updateBattleRoomDB(roomId, "FINISHED", 0);
+        return true;
+    }
+
+    /**
      * LEAVE 수신 — 자발적 이탈.
      * 전적 미가산. 상대 부전승.
      */
@@ -565,6 +589,9 @@ public class MinesweeperBattleRoomService {
     public void finishGame(MinesweeperBattleRoom room, String winnerId, String reason) {
         String roomId = room.getRoomId();
         room.setStatus(MinesweeperBattleRoom.Status.FINISHED);
+        // grace period Future 전체 취소 (이미 종료된 게임에서 실행 방지)
+        room.getDisconnectFutures().forEach((pid, f) -> { if (!f.isDone()) f.cancel(false); });
+        room.getDisconnectFutures().clear();
 
         String finishedAtStr = Instant.now().atZone(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ISO_INSTANT);
@@ -677,6 +704,7 @@ public class MinesweeperBattleRoomService {
         for (PlayerInfo player : room.getPlayers()) {
             if (player.isGuest() || player.getUserId() == null) continue;
             if (player.isVoluntaryLeft()) continue; // 자발적 이탈 — 미가산
+            if ("FIRST_CLICK_TIMEOUT".equals(player.getEndReason())) continue; // 타임아웃 미클릭 — 미가산
 
             boolean isWinner = player.getPlayerId().equals(winnerId);
             upsertBattleRecord(player.getUserId(), isWinner);
@@ -727,7 +755,7 @@ public class MinesweeperBattleRoomService {
 
             if (clicked.isEmpty()) {
                 // 양쪽 미클릭 — 양쪽 패배 처리 (전적 미가산)
-                players.forEach(p -> p.setVoluntaryLeft(true));
+                players.forEach(p -> p.setEndReason("FIRST_CLICK_TIMEOUT"));
                 if (r.getFinished().compareAndSet(false, true)) {
                     // 승자 없음 — winnerId 에 임의 지정 후 reason 으로 구분
                     String winnerId = players.isEmpty() ? "none" : players.get(0).getPlayerId();
@@ -739,7 +767,7 @@ public class MinesweeperBattleRoomService {
                 Optional<PlayerInfo> notClicked = players.stream()
                         .filter(p -> !p.getPlayerId().equals(clickedId))
                         .findFirst();
-                notClicked.ifPresent(p -> p.setVoluntaryLeft(true));
+                notClicked.ifPresent(p -> p.setEndReason("FIRST_CLICK_TIMEOUT"));
 
                 if (r.getFinished().compareAndSet(false, true)) {
                     finishGame(r, clickedId, "FIRST_CLICK_TIMEOUT");
@@ -788,12 +816,20 @@ public class MinesweeperBattleRoomService {
         int[][] adjMines = (room.getStatus() == MinesweeperBattleRoom.Status.PLAYING)
                 ? room.getAdjMines() : null;
 
+        // MATCH_READY 이상 상태에서 designatedCell 포함 (재연결 시 ready 화면 복구용)
         DifficultyConfig c = cfg(room.getDifficulty());
+        java.util.Map<String, Integer> designatedCell = null;
+        if (room.getStatus() == MinesweeperBattleRoom.Status.MATCH_READY
+                || room.getStatus() == MinesweeperBattleRoom.Status.PLAYING) {
+            designatedCell = java.util.Map.of("r", c.safeR(), "c", c.safeC());
+        }
+
         return StateSnapshotPayload.builder()
                 .roomId(room.getRoomId())
                 .roomStatus(room.getStatus().name())
                 .players(playerEntries)
                 .adjMines(adjMines)
+                .designatedCell(designatedCell)
                 .serverStartAtMillis(room.getServerStartAtMillis())
                 .myFirstClickConfirmed(myFirstClick)
                 .opponentFirstClickConfirmed(opponentFirstClick)
@@ -959,8 +995,12 @@ public class MinesweeperBattleRoomService {
      * GET /api/minesweeper-battle/rooms/waiting
      * 인메모리에서 WAITING + 1명인 방 목록 반환 (최대 20개).
      */
-    public List<WaitingRoomInfo> listWaitingRooms() {
+    public List<WaitingRoomInfo> listWaitingRooms(String difficulty) {
+        String normDifficulty = (difficulty != null && !difficulty.isBlank())
+                ? difficulty.toUpperCase() : null;
         return roomManager.getWaitingRooms().stream()
+                .filter(room -> normDifficulty == null
+                        || normDifficulty.equals(room.getDifficulty()))
                 .map(room -> {
                     String hostNickname = room.getPlayers().isEmpty()
                             ? null
@@ -995,9 +1035,11 @@ public class MinesweeperBattleRoomService {
             if (existingRoomId.isPresent()) {
                 MinesweeperBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
                 if (existing != null && existing.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
+                    ScheduledFuture<?> df = existing.getDisconnectFutures().remove(playerId);
+                    if (df != null && !df.isDone()) df.cancel(false);
                     roomManager.removePlayer(existingRoomId.get(), playerId);
                 } else {
-                    throw new AlreadyInRoomException(existingRoomId.get());
+                    throw new AlreadyInRoomException(existingRoomId.get(), playerId);
                 }
             }
         }
@@ -1024,9 +1066,11 @@ public class MinesweeperBattleRoomService {
             if (existingRoomId.isPresent()) {
                 MinesweeperBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
                 if (existing != null && existing.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
+                    ScheduledFuture<?> df = existing.getDisconnectFutures().remove(playerId);
+                    if (df != null && !df.isDone()) df.cancel(false);
                     roomManager.removePlayer(existingRoomId.get(), playerId);
                 } else {
-                    throw new AlreadyInRoomException(existingRoomId.get());
+                    throw new AlreadyInRoomException(existingRoomId.get(), playerId);
                 }
             }
         }
@@ -1091,11 +1135,14 @@ public class MinesweeperBattleRoomService {
 
     public static class AlreadyInRoomException extends RuntimeException {
         private final String roomId;
-        public AlreadyInRoomException(String roomId) {
+        private final String playerId;
+        public AlreadyInRoomException(String roomId, String playerId) {
             super("Already in minesweeper room: " + roomId);
             this.roomId = roomId;
+            this.playerId = playerId;
         }
         public String getRoomId() { return roomId; }
+        public String getPlayerId() { return playerId; }
     }
 
     public static class RoomNotFoundException extends RuntimeException {

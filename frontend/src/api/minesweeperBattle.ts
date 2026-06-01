@@ -47,13 +47,17 @@ export async function joinMinesweeperBattle(opts?: {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string; playerId?: string };
     const err = new Error(body.error ?? '배틀 참가에 실패했습니다') as Error & {
       status: number;
       code?: string;
+      roomId?: string;
+      playerId?: string;
     };
     err.status = res.status;
     err.code = body.error;
+    err.roomId = body.roomId;
+    err.playerId = body.playerId;
     throw err;
   }
 
@@ -72,9 +76,12 @@ export interface MbWaitingRoomInfo {
 }
 
 /** GET /api/minesweeper-battle/rooms/waiting */
-export async function getMbWaitingRooms(): Promise<MbWaitingRoomInfo[]> {
+export async function getMbWaitingRooms(difficulty?: MbDifficulty): Promise<MbWaitingRoomInfo[]> {
   try {
-    const res = await fetch(`${API_ORIGIN}/api/minesweeper-battle/rooms/waiting`);
+    const url = difficulty
+      ? `${API_ORIGIN}/api/minesweeper-battle/rooms/waiting?difficulty=${difficulty}`
+      : `${API_ORIGIN}/api/minesweeper-battle/rooms/waiting`;
+    const res = await fetch(url);
     if (!res.ok) return [];
     return res.json() as Promise<MbWaitingRoomInfo[]>;
   } catch {
@@ -99,10 +106,12 @@ export async function createMinesweeperBattle(opts?: {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string };
-    const err = new Error(body.error ?? '방 생성에 실패했습니다') as Error & { status: number; code?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string; playerId?: string };
+    const err = new Error(body.error ?? '방 생성에 실패했습니다') as Error & { status: number; code?: string; roomId?: string; playerId?: string };
     err.status = res.status;
     err.code = body.error;
+    err.roomId = body.roomId;
+    err.playerId = body.playerId;
     throw err;
   }
   return (await res.json()) as MbJoinResponse;
@@ -124,10 +133,12 @@ export async function joinMinesweeperBattleRoom(roomId: string, opts?: {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string };
-    const err = new Error(body.error ?? '방 입장에 실패했습니다') as Error & { status: number; code?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string; playerId?: string };
+    const err = new Error(body.error ?? '방 입장에 실패했습니다') as Error & { status: number; code?: string; roomId?: string; playerId?: string };
     err.status = res.status;
     err.code = body.error;
+    err.roomId = body.roomId;
+    err.playerId = body.playerId;
     throw err;
   }
   return (await res.json()) as MbJoinResponse;
@@ -177,4 +188,23 @@ export function clearMbJoinInfo(): void {
     localStorage.removeItem(MB_JOIN_KEY);
     localStorage.removeItem(MB_GUEST_TOKEN_KEY);
   } catch { /* 무시 */ }
+}
+
+/**
+ * POST /api/minesweeper-battle/room/{roomId}/cancel
+ * WebSocket 연결 전 취소 시 REST 폴백으로 방을 정리한다.
+ * 실패해도 무시 (이미 처리됐거나 게임 중인 경우).
+ */
+export async function cancelMinesweeperBattle(
+  roomId: string,
+  opts?: { guestToken?: string | null; accessToken?: string | null },
+): Promise<void> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (opts?.accessToken) headers['Authorization'] = `Bearer ${opts.accessToken}`;
+
+  await fetch(`${API_ORIGIN}/api/minesweeper-battle/room/${roomId}/cancel`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ guestToken: opts?.guestToken ?? null }),
+  }).catch(() => { /* 네트워크 에러 무시 */ });
 }
