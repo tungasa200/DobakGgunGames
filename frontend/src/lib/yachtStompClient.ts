@@ -83,6 +83,7 @@ export function connectYacht(
 
   let retryCount = 0;
   let disconnectRequested = false;
+  let leaveSent = false;
 
   // 기존 /ws 엔드포인트 공유 (chat, rps와 동일)
   const wsBase = WS_URL ?? (import.meta.env.DEV ? 'http://localhost:8080/ws' : '');
@@ -246,6 +247,7 @@ export function connectYacht(
     },
     leave: () => {
       if (!client.connected) return;
+      leaveSent = true;
       client.publish({
         destination: `/app/yacht/room/${roomId}/leave`,
         body: JSON.stringify({}),
@@ -253,6 +255,13 @@ export function connectYacht(
     },
     disconnect: () => {
       disconnectRequested = true;
+      if (client.connected && !leaveSent) {
+        leaveSent = true;
+        client.publish({
+          destination: `/app/yacht/room/${roomId}/leave`,
+          body: JSON.stringify({}),
+        });
+      }
       client.deactivate().catch(() => {});
     },
     voteKick: (targetUserId: number) => {

@@ -74,6 +74,7 @@ export function useMinesweeperBattleSocket(
   const [isConnected, setIsConnected] = useState(false);
   const retryCountRef = useRef(0);
   const disconnectRequestedRef = useRef(false);
+  const leaveSentRef = useRef(false);
 
   // Progress throttle (200ms)
   const progressThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -155,6 +156,7 @@ export function useMinesweeperBattleSocket(
 
     disconnectRequestedRef.current = false;
     retryCountRef.current = 0;
+    leaveSentRef.current = false;
 
     const baseUrl = WS_BATTLE_URL
       ?? (import.meta.env.DEV ? 'http://localhost:8080/ws-battle' : '');
@@ -266,10 +268,17 @@ export function useMinesweeperBattleSocket(
       disconnectRequestedRef.current = true;
       isConnectedRef.current = false;
       setIsConnected(false);
-      // progress throttle 정리
       if (progressThrottleRef.current) {
         clearTimeout(progressThrottleRef.current);
         progressThrottleRef.current = null;
+      }
+      const rid = roomIdRef.current;
+      if (client.connected && rid && !leaveSentRef.current) {
+        leaveSentRef.current = true;
+        client.publish({
+          destination: `/app/minesweeper-battle/room/${rid}/leave`,
+          body: '{}',
+        });
       }
       client.deactivate().catch(() => {});
       clientRef.current = null;
@@ -352,6 +361,7 @@ export function useMinesweeperBattleSocket(
     const c = clientRef.current;
     const rid = roomIdRef.current;
     if (!c?.connected || !rid) return;
+    leaveSentRef.current = true;
     c.publish({
       destination: `/app/minesweeper-battle/room/${rid}/leave`,
       body: '{}',

@@ -350,6 +350,18 @@ public class BattleRoomService {
 
         // 살아있는 플레이어가 1명 남으면 자동 우승 처리
         checkAutoWin(roomId);
+
+        // WAITING 상태에서 방이 비면 즉시 정리 (listWaitingRooms 유령 방 방지)
+        if (roomManager.getActivePlayers(roomId).isEmpty()) {
+            battleRoomRepository.findByRoomId(roomId).ifPresent(r -> {
+                if ("WAITING".equals(r.getStatus())) {
+                    r.setStatus("FINISHED");
+                    battleRoomRepository.save(r);
+                    roomManager.cleanupRoom(roomId);
+                    log.info("BattleRoomService: roomId={} WAITING 빈 방 정리 완료", roomId);
+                }
+            });
+        }
     }
 
     /**

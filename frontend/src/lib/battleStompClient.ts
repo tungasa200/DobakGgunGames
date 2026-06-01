@@ -77,6 +77,7 @@ export function connectBattle(
 
   let retryCount = 0;
   let disconnectRequested = false;
+  let leaveSent = false;
   let boardStateThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   let lastBoardStateJson = '';
 
@@ -277,6 +278,7 @@ export function connectBattle(
     },
     sendLeave: () => {
       if (!client.connected) return;
+      leaveSent = true;
       client.publish({
         destination: `/app/blockfall-battle/room/${roomId}/leave`,
         body: JSON.stringify({ type: 'LEAVE_BATTLE' }),
@@ -294,6 +296,13 @@ export function connectBattle(
       if (boardStateThrottleTimer !== null) {
         clearTimeout(boardStateThrottleTimer);
         boardStateThrottleTimer = null;
+      }
+      if (client.connected && !leaveSent) {
+        leaveSent = true;
+        client.publish({
+          destination: `/app/blockfall-battle/room/${roomId}/leave`,
+          body: JSON.stringify({ type: 'LEAVE_BATTLE' }),
+        });
       }
       client.deactivate().catch(() => {});
     },
