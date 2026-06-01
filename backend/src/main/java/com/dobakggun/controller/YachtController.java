@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -70,6 +71,13 @@ public class YachtController {
         } catch (YachtMatchService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", e.getReason() != null ? e.getReason() : "ERROR"));
+        } catch (Exception e) {
+            log.error("YachtController.match: 처리 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "MATCH_UNAVAILABLE"));
         }
     }
 
@@ -97,6 +105,13 @@ public class YachtController {
         } catch (YachtMatchService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", e.getReason() != null ? e.getReason() : "ERROR"));
+        } catch (Exception e) {
+            log.error("YachtController.matchBot: 처리 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "MATCH_UNAVAILABLE"));
         }
     }
 
@@ -192,6 +207,13 @@ public class YachtController {
         } catch (YachtMatchService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", e.getReason() != null ? e.getReason() : "ERROR"));
+        } catch (Exception e) {
+            log.error("YachtController.createRoom: 처리 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "MATCH_UNAVAILABLE"));
         }
     }
 

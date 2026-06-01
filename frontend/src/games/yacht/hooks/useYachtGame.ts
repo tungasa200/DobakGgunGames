@@ -387,7 +387,12 @@ export function useYachtGame(initialDiceType: DiceType = 'D6'): UseYachtGameRetu
     setErrorMessage(null);
     hydratedRef.current = false;
 
-    const outcome = await postYachtMatch(accessToken, diceTypeRef.current);
+    const outcome = await postYachtMatch(accessToken, diceTypeRef.current).catch(() => null);
+    if (outcome === null) {
+      setErrorMessage('네트워크 오류가 발생했습니다. 다시 시도해 주세요.');
+      setPhase('error');
+      return;
+    }
 
     if (outcome.ok) {
       const id = outcome.data.roomId;
