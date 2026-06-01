@@ -1,4 +1,4 @@
-package com.dobakggun.entity.battle;
+package com.dobakggun.entity.minesweeper;
 
 import com.dobakggun.entity.User;
 import jakarta.persistence.*;
@@ -10,9 +10,12 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-    name = "battle_record",
+    name = "minesweeper_battle_record",
     indexes = {
-        @Index(name = "idx_battle_record_wins", columnList = "win_count DESC, last_played_at DESC")
+        @Index(name = "idx_ms_battle_record_wins", columnList = "win_count DESC, last_played_at DESC")
+    },
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uq_ms_battle_record_user", columnNames = "user_id")
     }
 )
 @Getter
@@ -20,7 +23,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class BattleRecord {
+public class MinesweeperBattleRecord {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

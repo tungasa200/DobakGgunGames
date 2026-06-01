@@ -5,11 +5,11 @@ import com.dobakggun.domain.minesweeper.MinesweeperBattleRoom.PlayerInfo;
 import com.dobakggun.domain.minesweeper.MinesweeperBoardGenerator;
 import com.dobakggun.dto.WaitingRoomInfo;
 import com.dobakggun.dto.minesweeper.*;
-import com.dobakggun.entity.battle.BattleRecord;
-import com.dobakggun.entity.battle.BattleRoom;
+import com.dobakggun.entity.minesweeper.MinesweeperBattleRecord;
+import com.dobakggun.entity.minesweeper.MinesweeperRoom;
 import com.dobakggun.entity.User;
-import com.dobakggun.repository.BattleRecordRepository;
-import com.dobakggun.repository.BattleRoomRepository;
+import com.dobakggun.repository.MinesweeperBattleRecordRepository;
+import com.dobakggun.repository.MinesweeperRoomRepository;
 import com.dobakggun.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,8 +48,6 @@ public class MinesweeperBattleRoomService {
     private static final int FIRST_CLICK_TIMEOUT_MS = 30_000;
     private static final int RECONNECT_GRACE_SECONDS = 15;
     private static final int ROOM_CLOSE_DELAY_SECONDS = 10;
-    private static final String GAME_KEY = "minesweeper";
-
     private static final String TOPIC_PREFIX = "/topic/minesweeper-battle/room/";
     private static final String USER_QUEUE_STATE = "/queue/minesweeper-battle/state";
     private static final String USER_QUEUE_BOARD = "/queue/minesweeper-battle/board";
@@ -58,8 +56,8 @@ public class MinesweeperBattleRoomService {
     // ─── 의존성 ───────────────────────────────────────────────────────────────
 
     private final MinesweeperBattleRoomManager roomManager;
-    private final BattleRoomRepository battleRoomRepository;
-    private final BattleRecordRepository battleRecordRepository;
+    private final MinesweeperRoomRepository minesweeperRoomRepository;
+    private final MinesweeperBattleRecordRepository minesweeperBattleRecordRepository;
     private final UserRepository userRepository;
     private final ThreadPoolTaskScheduler taskScheduler;
 
@@ -69,13 +67,13 @@ public class MinesweeperBattleRoomService {
 
     public MinesweeperBattleRoomService(
             MinesweeperBattleRoomManager roomManager,
-            BattleRoomRepository battleRoomRepository,
-            BattleRecordRepository battleRecordRepository,
+            MinesweeperRoomRepository minesweeperRoomRepository,
+            MinesweeperBattleRecordRepository minesweeperBattleRecordRepository,
             UserRepository userRepository,
             @Qualifier("battleTaskScheduler") ThreadPoolTaskScheduler taskScheduler) {
         this.roomManager = roomManager;
-        this.battleRoomRepository = battleRoomRepository;
-        this.battleRecordRepository = battleRecordRepository;
+        this.minesweeperRoomRepository = minesweeperRoomRepository;
+        this.minesweeperBattleRecordRepository = minesweeperBattleRecordRepository;
         this.userRepository = userRepository;
         this.taskScheduler = taskScheduler;
     }
@@ -180,14 +178,14 @@ public class MinesweeperBattleRoomService {
         roomManager.addPlayer(newRoomId, player);
 
         // DB 방 생성
-        BattleRoom dbRoom = BattleRoom.builder()
+        MinesweeperRoom dbRoom = MinesweeperRoom.builder()
                 .roomId(newRoomId)
                 .status("WAITING")
                 .maxPlayers(2)
                 .currentPlayers(1)
                 .queueCount(0)
                 .build();
-        battleRoomRepository.save(dbRoom);
+        minesweeperRoomRepository.save(dbRoom);
 
         log.info("MinesweeperBattleRoomService.createNewRoom: roomId={} playerId={}", newRoomId, playerId);
 
@@ -661,11 +659,10 @@ public class MinesweeperBattleRoomService {
             return;
         }
 
-        BattleRecord record = battleRecordRepository
-                .findByGameKeyAndUserId(GAME_KEY, userId)
-                .orElseGet(() -> BattleRecord.builder()
+        MinesweeperBattleRecord record = minesweeperBattleRecordRepository
+                .findByUserId(userId)
+                .orElseGet(() -> MinesweeperBattleRecord.builder()
                         .user(user)
-                        .gameKey(GAME_KEY)
                         .lastPlayedAt(LocalDateTime.now())
                         .build());
 
@@ -677,7 +674,7 @@ public class MinesweeperBattleRoomService {
             record.setLoseCount(record.getLoseCount() + 1);
         }
 
-        battleRecordRepository.save(record);
+        minesweeperBattleRecordRepository.save(record);
         log.debug("upsertBattleRecord: userId={} isWinner={}", userId, isWinner);
     }
 
@@ -804,28 +801,28 @@ public class MinesweeperBattleRoomService {
 
     @Transactional
     protected void updateBattleRoomDB(String roomId, String status, int currentPlayers) {
-        battleRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+        minesweeperRoomRepository.findByRoomId(roomId).ifPresent(room -> {
             room.setStatus(status);
             room.setCurrentPlayers(currentPlayers);
-            battleRoomRepository.save(room);
+            minesweeperRoomRepository.save(room);
         });
     }
 
     @Transactional
     protected void updateBattleRoomStartedAt(String roomId, LocalDateTime startedAt) {
-        battleRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+        minesweeperRoomRepository.findByRoomId(roomId).ifPresent(room -> {
             room.setStartedAt(startedAt);
-            battleRoomRepository.save(room);
+            minesweeperRoomRepository.save(room);
         });
     }
 
     @Transactional
     protected void updateBattleRoomFinished(String roomId) {
-        battleRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+        minesweeperRoomRepository.findByRoomId(roomId).ifPresent(room -> {
             room.setStatus("FINISHED");
             room.setFinishedAt(LocalDateTime.now());
             room.setClosedAt(LocalDateTime.now().plusSeconds(ROOM_CLOSE_DELAY_SECONDS));
-            battleRoomRepository.save(room);
+            minesweeperRoomRepository.save(room);
         });
     }
 

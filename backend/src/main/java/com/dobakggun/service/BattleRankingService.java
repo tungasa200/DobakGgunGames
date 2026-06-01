@@ -23,15 +23,10 @@ public class BattleRankingService {
     private final BattleRecordRepository battleRecordRepository;
     private final UserRepository userRepository;
 
-    /**
-     * 역대 승수 TOP 10 조회.
-     * PRD §9.1 — win_count DESC, last_played_at DESC
-     */
     @Transactional(readOnly = true)
     public List<BattleRankingResponse.RankingEntry> getTopRankings() {
-        // game_key='blockfall' 전용 랭킹 (마이그레이션 이후 다른 게임 레코드와 분리)
         List<BattleRecord> records = battleRecordRepository
-                .findTopRankingsByGameKey("blockfall", PageRequest.of(0, 10));
+                .findTopRankings(PageRequest.of(0, 10));
 
         return IntStream.range(0, records.size())
                 .mapToObj(i -> {
@@ -48,10 +43,6 @@ public class BattleRankingService {
                 .toList();
     }
 
-    /**
-     * 로그인 유저 전적 UPSERT.
-     * PRD §8.4 — 1위(isWinner=true) → win++, 나머지 → lose++, 모두 total++, lastPlayedAt 갱신
-     */
     @Transactional
     public void updateRecord(Long userId, boolean isWinner) {
         User user = userRepository.findById(userId).orElse(null);
@@ -60,12 +51,9 @@ public class BattleRankingService {
             return;
         }
 
-        // game_key='blockfall' 레코드 조회 (마이그레이션 후 game_key 컬럼 존재 시 정확한 조회)
-        // findByUserId 는 game_key 조건 없음 → 복합 unique 환경에서 blockfall 전용 쿼리로 대체
-        BattleRecord record = battleRecordRepository.findByGameKeyAndUserId("blockfall", userId)
+        BattleRecord record = battleRecordRepository.findByUserId(userId)
                 .orElseGet(() -> BattleRecord.builder()
                         .user(user)
-                        .gameKey("blockfall")
                         .lastPlayedAt(LocalDateTime.now())
                         .build());
 
