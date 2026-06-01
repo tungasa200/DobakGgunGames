@@ -1,9 +1,24 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { BattleCell } from './types';
 import OpponentProgress from './OpponentProgress';
 import styles from './MinesweeperBattleBoard.module.css';
 
 const CELL_SIZE = 30;
+
+function useBoardScale(cols: number): number {
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const update = () => {
+      const available = window.innerWidth - 32;
+      const natural = cols * CELL_SIZE;
+      setScale(natural > available ? available / natural : 1);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [cols]);
+  return scale;
+}
 
 const NUM_COLORS = ['', '#0000ff','#007b00','#ff0000','#00007b','#7b0000','#007b7b','#000000','#7b7b7b'];
 
@@ -59,6 +74,7 @@ export default function MinesweeperBattleGameView({
 }: MinesweeperBattleGameViewProps) {
   const [showForfeitModal, setShowForfeitModal] = useState(false);
   const pressedButtonsRef = useRef<Set<number>>(new Set());
+  const scale = useBoardScale(cols);
 
   // ── 마우스 이벤트 (데스크탑) ───────────────────────────────
 
@@ -176,13 +192,21 @@ export default function MinesweeperBattleGameView({
             </div>
           )}
 
-          {/* 보드 래퍼: 솔로와 동일한 스타일 */}
-          <div className={styles.boardWrapper}>
+          {/* 보드 래퍼: 모바일에서 scale로 축소 */}
+          <div
+            className={styles.boardWrapper}
+            style={scale < 1 ? {
+              width: cols * CELL_SIZE * scale,
+              height: rows * CELL_SIZE * scale,
+              overflow: 'hidden',
+            } : undefined}
+          >
             <div
               className={styles.board}
               style={{
                 gridTemplateColumns: `repeat(${cols}, ${CELL_SIZE}px)`,
                 gridTemplateRows:    `repeat(${rows}, ${CELL_SIZE}px)`,
+                ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left' } : {}),
               }}
               role="grid"
               aria-label="지뢰찾기 배틀 보드"

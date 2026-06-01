@@ -4,6 +4,21 @@ import styles from './MinesweeperBattleBoard.module.css';
 
 const CELL_SIZE = 30;
 
+function useBoardScale(cols: number): number {
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const update = () => {
+      const available = window.innerWidth - 32;
+      const natural = cols * CELL_SIZE;
+      setScale(natural > available ? available / natural : 1);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [cols]);
+  return scale;
+}
+
 interface MinesweeperBattleReadyProps {
   opponentNickname: string | null;
   myNickname: string | null;
@@ -30,6 +45,7 @@ export default function MinesweeperBattleReady({
   onLeave,
 }: MinesweeperBattleReadyProps) {
   const [remainSec, setRemainSec] = useState(Math.ceil(firstClickTimeoutMs / 1000));
+  const scale = useBoardScale(cols);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -49,12 +65,21 @@ export default function MinesweeperBattleReady({
         {remainSec}초
       </div>
 
-      {/* 보드 (모든 셀 unrevealed) */}
+      {/* 보드 (모든 셀 unrevealed) — 모바일 scale 적용 */}
+      <div
+        style={scale < 1 ? {
+          width: cols * CELL_SIZE * scale,
+          height: rows * CELL_SIZE * scale,
+          overflow: 'hidden',
+          border: '2px solid #333',
+        } : undefined}
+      >
       <div
         className={styles.boardGrid}
         style={{
           gridTemplateColumns: `repeat(${cols}, ${CELL_SIZE}px)`,
           gridTemplateRows: `repeat(${rows}, ${CELL_SIZE}px)`,
+          ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left', border: 'none' } : {}),
         }}
         role="grid"
         aria-label="준비 보드"
@@ -90,6 +115,7 @@ export default function MinesweeperBattleReady({
             );
           })
         )}
+      </div>
       </div>
 
       {/* 플레이어 카드 (상대 → 나 순서) */}

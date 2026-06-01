@@ -41,7 +41,7 @@ public class MinesweeperBattleRoomService {
 
     private static final int FIRST_CLICK_TIMEOUT_MS = 30_000;
     private static final int RECONNECT_GRACE_SECONDS = 15;
-    private static final int ROOM_CLOSE_DELAY_SECONDS = 10;
+    private static final int ROOM_CLOSE_DELAY_SECONDS = 60;
     private static final String TOPIC_PREFIX = "/topic/minesweeper-battle/room/";
     private static final String USER_QUEUE_STATE = "/queue/minesweeper-battle/state";
     private static final String USER_QUEUE_BOARD = "/queue/minesweeper-battle/board";
@@ -447,12 +447,23 @@ public class MinesweeperBattleRoomService {
 
         if (room.getRematchSet().size() < 2) {
             // 상대가 이미 연결 끊긴 경우 — 즉시 DECLINED 반환
-            if (opponent != null && opponent.isDisconnected()) {
+            if (opponent != null && (opponent.isDisconnected() || opponent.isVoluntaryLeft())) {
                 room.getRematchSet().remove(playerId);
                 messagingTemplate.convertAndSendToUser(
                         playerId, USER_QUEUE_STATE,
                         buildEnvelope("REMATCH_DECLINED", Map.of("reason", "OPPONENT_LEFT")));
                 return;
+            }
+            // 재대결 대기 중 방 close 타이머 연장
+            ScheduledFuture<?> closeFuture = room.getCloseRoomFuture();
+            if (closeFuture != null && !closeFuture.isDone()) {
+                closeFuture.cancel(false);
+                String rid = room.getRoomId();
+                Instant extendedAt = Objects.requireNonNull(Instant.now().plusSeconds(ROOM_CLOSE_DELAY_SECONDS));
+                ScheduledFuture<?> extendedFuture = taskScheduler.schedule(
+                        () -> roomManager.closeRoom(rid),
+                        extendedAt);
+                room.setCloseRoomFuture(extendedFuture);
             }
             // 한 명만 요청 — 상대에게 알림
             if (opponent != null && opponent.getPlayerId() != null) {
