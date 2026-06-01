@@ -75,6 +75,7 @@ export function useMinesweeperBattleSocket(
   const retryCountRef = useRef(0);
   const disconnectRequestedRef = useRef(false);
   const leaveSentRef = useRef(false);
+  const isReloadingRef = useRef(false);
 
   // Progress throttle (200ms)
   const progressThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -157,6 +158,10 @@ export function useMinesweeperBattleSocket(
     disconnectRequestedRef.current = false;
     retryCountRef.current = 0;
     leaveSentRef.current = false;
+    isReloadingRef.current = false;
+
+    const onBeforeUnload = () => { isReloadingRef.current = true; };
+    window.addEventListener('beforeunload', onBeforeUnload);
 
     const baseUrl = WS_BATTLE_URL
       ?? (import.meta.env.DEV ? 'http://localhost:8080/ws-battle' : '');
@@ -265,6 +270,7 @@ export function useMinesweeperBattleSocket(
     clientRef.current = client;
 
     return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
       disconnectRequestedRef.current = true;
       isConnectedRef.current = false;
       setIsConnected(false);
@@ -273,7 +279,7 @@ export function useMinesweeperBattleSocket(
         progressThrottleRef.current = null;
       }
       const rid = roomIdRef.current;
-      if (client.connected && rid && !leaveSentRef.current) {
+      if (client.connected && rid && !leaveSentRef.current && !isReloadingRef.current) {
         leaveSentRef.current = true;
         client.publish({
           destination: `/app/minesweeper-battle/room/${rid}/leave`,

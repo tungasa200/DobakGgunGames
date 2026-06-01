@@ -85,6 +85,10 @@ export function connectYacht(
   let disconnectRequested = false;
   let leaveSent = false;
 
+  let isReloading = false;
+  const onBeforeUnload = () => { isReloading = true; };
+  window.addEventListener('beforeunload', onBeforeUnload);
+
   // 기존 /ws 엔드포인트 공유 (chat, rps와 동일)
   const wsBase = WS_URL ?? (import.meta.env.DEV ? 'http://localhost:8080/ws' : '');
   const wsUrl = token ? `${wsBase}?token=${encodeURIComponent(token)}` : wsBase;
@@ -254,8 +258,9 @@ export function connectYacht(
       });
     },
     disconnect: () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
       disconnectRequested = true;
-      if (client.connected && !leaveSent) {
+      if (client.connected && !leaveSent && !isReloading) {
         leaveSent = true;
         client.publish({
           destination: `/app/yacht/room/${roomId}/leave`,

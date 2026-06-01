@@ -81,6 +81,11 @@ export function connectBattle(
   let boardStateThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   let lastBoardStateJson = '';
 
+  // 새로고침/탭닫기 감지 — SPA 내부 이동과 구분하기 위해 beforeunload 플래그 사용
+  let isReloading = false;
+  const onBeforeUnload = () => { isReloading = true; };
+  window.addEventListener('beforeunload', onBeforeUnload);
+
   // /ws-battle 엔드포인트 (기존 /ws와 분리)
   const baseUrl = WS_BATTLE_URL
     ?? (import.meta.env.DEV ? 'http://localhost:8080/ws-battle' : '');
@@ -292,12 +297,14 @@ export function connectBattle(
       });
     },
     disconnect: () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
       disconnectRequested = true;
       if (boardStateThrottleTimer !== null) {
         clearTimeout(boardStateThrottleTimer);
         boardStateThrottleTimer = null;
       }
-      if (client.connected && !leaveSent) {
+      // 새로고침/탭닫기는 LEAVE 미전송 — 서버가 WS 세션 끊김으로 처리
+      if (client.connected && !leaveSent && !isReloading) {
         leaveSent = true;
         client.publish({
           destination: `/app/blockfall-battle/room/${roomId}/leave`,
