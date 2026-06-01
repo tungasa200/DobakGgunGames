@@ -102,7 +102,7 @@ type BoardAction =
   | { type: 'TOGGLE_MARK'; r: number; c: number }
   | { type: 'CHORD'; r: number; c: number }
   | { type: 'EXPLODE'; r: number; c: number }
-  | { type: 'RESET_BOARD' };
+  | { type: 'RESET_BOARD'; rows?: number; cols?: number };
 
 const initialBoardState: BoardState = {
   board: emptyBoard(DEFAULT_ROWS, DEFAULT_COLS),
@@ -213,8 +213,12 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
       // 서버 결과 수신 후 지뢰 표시
       return { ...state, board: revealAllMines(state.board), boardStatus: 'lost' };
     }
-    case 'RESET_BOARD':
-      return initialBoardState;
+    case 'RESET_BOARD': {
+      const rows = action.rows ?? DEFAULT_ROWS;
+      const cols = action.cols ?? DEFAULT_COLS;
+      if (rows === DEFAULT_ROWS && cols === DEFAULT_COLS) return initialBoardState;
+      return { ...initialBoardState, board: emptyBoard(rows, cols) };
+    }
     default:
       return state;
   }
@@ -484,7 +488,7 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
 
   const handleMatchReady = useCallback((payload: MatchReadyPayload, myPlayerId: string) => {
     dispatchBattle({ type: 'MATCH_READY', payload, myPlayerId });
-    dispatchBoard({ type: 'RESET_BOARD' });
+    dispatchBoard({ type: 'RESET_BOARD', rows: payload.rows, cols: payload.cols });
   }, []);
 
   const handleGameStarted = useCallback((payload: GameStartedPayload) => {
