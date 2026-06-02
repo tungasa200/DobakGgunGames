@@ -509,7 +509,7 @@ export default function AppleBattleBoard() {
         <div className={styles.battleContent}>
           <div className={styles.selectScreen}>
             <h2 className={styles.selectTitle}>사과게임 배틀</h2>
-            <p className={styles.selectSub}>합이 10이 되는 사과를 더 많이 없애세요!</p>
+            <p className={styles.selectSub}>플레이 방식을 선택하세요</p>
             {!browseMode ? (
               <div className={styles.selectOptions}>
                 <button
