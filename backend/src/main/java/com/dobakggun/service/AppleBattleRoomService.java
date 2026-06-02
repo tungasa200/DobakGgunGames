@@ -452,6 +452,8 @@ public class AppleBattleRoomService {
 
     /**
      * REQUEST_STATE 수신 — 재연결 후 상태 복원.
+     * MATCHED 상태에서 양쪽 모두 연결됐고 카운트다운이 없으면 MATCH_READY 재발송.
+     * (SessionConnectedEvent → MATCH_READY 브로드캐스트 사이 타이밍 문제 보완)
      */
     public void handleRequestState(String roomId, String playerId) {
         AppleBattleRoom room = roomManager.getRoom(roomId).orElse(null);
@@ -463,6 +465,18 @@ public class AppleBattleRoomService {
         Map<String, Object> snapshot = buildStateSnapshot(room, playerId);
         messagingTemplate.convertAndSendToUser(
                 playerId, USER_QUEUE_STATE, buildEnvelope("STATE_SNAPSHOT", snapshot));
+
+        // MATCHED + 양쪽 연결 + 카운트다운 미시작 → MATCH_READY 재발송 (재연결/타이밍 보완)
+        if (room.getStatus() == AppleBattleRoom.Status.MATCHED && room.getPlayers().size() == 2) {
+            boolean allConnected = room.getPlayers().stream().allMatch(PlayerInfo::isConnected);
+            if (allConnected) {
+                ScheduledFuture<?> cf = room.getCountdownFuture();
+                if (cf == null || cf.isDone()) {
+                    log.info("handleRequestState: MATCHED + allConnected + 카운트다운 없음 → MATCH_READY 재발송 roomId={}", roomId);
+                    sendMatchReadyAndScheduleStart(room);
+                }
+            }
+        }
 
         log.debug("handleRequestState: roomId={} playerId={}", roomId, playerId);
     }

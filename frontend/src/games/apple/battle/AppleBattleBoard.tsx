@@ -110,7 +110,15 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
         PLAYING: 'playing',
         FINISHED: 'finished',
       };
-      const newPhase = statusMap[payload.roomStatus] ?? state.phase;
+      const phaseOrder: Partial<Record<AbBattleState['phase'], number>> = {
+        idle: 0, waiting: 1, matched: 2, countdown: 3, playing: 4, finished: 5, disconnected: 3,
+      };
+      const snapshotPhase = statusMap[payload.roomStatus] ?? state.phase;
+      // 오래된 STATE_SNAPSHOT이 MATCH_READY 이후에 도착해 phase를 낮추는 것을 방지
+      const newPhase: AbBattleState['phase'] =
+        (phaseOrder[snapshotPhase] ?? 0) >= (phaseOrder[state.phase] ?? 0)
+          ? snapshotPhase
+          : state.phase;
       const newGameStartedAt = payload.elapsedMs != null
         ? Date.now() - payload.elapsedMs
         : state.gameStartedAt;
