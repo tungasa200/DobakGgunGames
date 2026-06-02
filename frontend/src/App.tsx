@@ -31,6 +31,7 @@ const BoardEditPage = lazy(() => import('./pages/BoardEditPage'));
 const OnlineRpsPage = lazy(() => import('./pages/OnlineRpsPage'));
 const BlockfallBattlePage = lazy(() => import('./pages/BlockfallBattlePage'));
 const MinesweeperBattleBoard = lazy(() => import('./games/minesweeper/battle/MinesweeperBattleBoard'));
+const AppleBattleBoard = lazy(() => import('./games/apple/battle/AppleBattleBoard'));
 const YachtPage = lazy(() => import('./games/yacht/YachtPage'));
 const YachtSelectPage = lazy(() => import('./games/yacht/YachtSelectPage'));
 const YachtBotPage = lazy(() => import('./games/yacht-bot/YachtBotPage'));
@@ -122,6 +123,12 @@ export default function App() {
         <Route
           path="/yacht-bot"
           element={<AuthRoute><YachtBotPage /></AuthRoute>}
+        />
+
+        {/* 사과게임 배틀 (로그인/게스트 모두 허용) */}
+        <Route
+          path="/games/apple/battle"
+          element={<AppleBattleBoard />}
         />
 
         {/* 지뢰찾기 배틀 (로그인/게스트 모두 허용) */}

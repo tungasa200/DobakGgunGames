@@ -1,0 +1,520 @@
+/* ================================================================
+   Apple Battle — CSS Module (사과게임 테마 기반)
+   ================================================================ */
+
+/* ── 페이지 레이아웃 ──────────────────────────────────────── */
+.battlePage {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background: #fff8f8;
+  color: #2c3e50;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.battleContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* ── 공통 버튼 ───────────────────────────────────────────── */
+.btnPrimary {
+  background: #f18064;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 22px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s;
+}
+.btnPrimary:hover { background: #c0392b; }
+.btnPrimary:disabled { background: #aaa; cursor: not-allowed; }
+
+.btnSecondary {
+  background: #95a5a6;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 22px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s;
+}
+.btnSecondary:hover { background: #7f8c8d; }
+
+/* ── 로딩/에러/방 선택 화면 (지뢰찾기 배틀 패턴) ─────── */
+.loadingScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loadingText {
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+.errorScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+}
+
+.errorTitle {
+  font-size: 18px;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+.errorMsg {
+  font-size: 14px;
+  color: #555;
+  text-align: center;
+}
+
+.errorBtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ── 방 선택 화면 ──────────────────────────────────────── */
+.selectScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.selectTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.selectSub {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin: 0 0 8px;
+}
+
+.selectOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.selectOptions button {
+  width: 100%;
+  padding: 13px 0;
+  font-size: 15px;
+}
+
+.roomList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.roomListHeader {
+  display: flex;
+  gap: 8px;
+}
+
+.roomListEmpty {
+  text-align: center;
+  color: #7f8c8d;
+  padding: 20px 0;
+  font-size: 14px;
+}
+
+.roomListItems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roomItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9fa;
+  border: 1px solid #dfe6e9;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.roomHost {
+  flex: 1;
+  font-size: 14px;
+  color: #2c3e50;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roomCount {
+  font-size: 13px;
+  color: #7f8c8d;
+  white-space: nowrap;
+}
+
+/* ── 재연결 배너 ─────────────────────────────────────────── */
+.reconnectBanner {
+  background: #fef9e7;
+  color: #e67e22;
+  border-bottom: 1px solid #f0b27a;
+  text-align: center;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* ── 스피너 ─────────────────────────────────────────────── */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ddd;
+  border-top-color: #f18064;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── 대기 화면 ───────────────────────────────────────────── */
+.waitingScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 40px;
+}
+
+.waitingTitle {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.waitingSpinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #fcd9c8;
+  border-top-color: #f18064;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.connectionBadge {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+.connectionBadgeConnected {
+  background: #eafaf1;
+  color: #27ae60;
+  border: 1px solid #a9dfbf;
+}
+
+.connectionBadgeConnecting {
+  background: #fef9e7;
+  color: #e67e22;
+  border: 1px solid #f0b27a;
+}
+
+/* ── 카운트다운 오버레이 ─────────────────────────────────── */
+.countdownOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  gap: 16px;
+}
+
+.countdownNumber {
+  font-size: 100px;
+  font-weight: 900;
+  color: #f18064;
+  line-height: 1;
+  animation: countPop 0.4s ease;
+  text-shadow: 0 0 24px rgba(241, 128, 100, 0.7);
+}
+
+.countdownLabel {
+  font-size: 20px;
+  color: #fff;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+@keyframes countPop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.1); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+/* ── HUD (상단 점수 바) ──────────────────────────────────── */
+.hud {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  max-width: 640px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* 정보 카드 — AppleCanvas.module.css .infoItem 동일 */
+.infoItem {
+  text-align: center;
+  background: white;
+  border-radius: 8px;
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  min-width: 70px;
+}
+
+.infoLabel {
+  font-size: 0.72em;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.infoValue {
+  font-size: 1.4em;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+/* 내 점수 카드 — 파란 강조 */
+.myScore .infoItem {
+  border-color: #3498db;
+}
+
+/* 상대 점수 카드 — 빨간 강조 */
+.opponentScore .infoItem {
+  border-color: #e74c3c;
+}
+
+/* 타이머 블록 */
+.timerBlock {
+  text-align: center;
+  min-width: 80px;
+}
+
+.timerLabel {
+  font-size: 0.72em;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.timerValue {
+  font-size: 1.6em;
+  font-weight: bold;
+  color: #2c3e50;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 시간 경고 — AppleCanvas.module.css .timeWarning 동일 */
+.timeWarning {
+  color: #f18064;
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ── 캔버스 영역 ─────────────────────────────────────────── */
+.canvasWrap {
+  width: 100%;
+  max-width: 640px;
+  position: relative;
+}
+
+.canvas {
+  border: 2px solid #ccc;
+  background: #fff8f8;
+  cursor: crosshair;
+  display: block;
+  border-radius: 6px;
+  touch-action: none;
+  width: 100%;
+  height: auto;
+}
+
+/* ── 재연결 오버레이 (캔버스 위) ─────────────────────────── */
+.reconnectOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  color: #e67e22;
+  border-radius: 6px;
+  z-index: 10;
+}
+
+/* ── 상대 끊김 배너 ─────────────────────────────────────── */
+.oppDisconnectedBanner {
+  width: 100%;
+  max-width: 640px;
+  padding: 8px 12px;
+  background: rgba(231, 76, 60, 0.12);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  border-radius: 6px;
+  color: #e74c3c;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* ── 결과 모달 ───────────────────────────────────────────── */
+.resultModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.resultModal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 280px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.resultTitle {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.resultTitleWin  { color: #27ae60; }
+.resultTitleLose { color: #7f8c8d; }
+.resultTitleDraw { color: #e67e22; }
+
+.resultReason {
+  font-size: 13px;
+  color: #888;
+  margin-top: -8px;
+}
+
+.resultScoreRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.resultScoreItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  background: #fafafa;
+}
+
+.resultScoreItemMe {
+  border-color: #3498db;
+  background: #ebf5fb;
+}
+
+.resultScoreItemOpp {
+  border-color: #e0e0e0;
+}
+
+.resultScoreName {
+  font-size: 14px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.resultScoreValue {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.rematchNotice {
+  font-size: 13px;
+  color: #27ae60;
+  font-weight: bold;
+  text-align: center;
+  padding: 4px 8px;
+  background: #eafaf1;
+  border-radius: 5px;
+  border: 1px solid #a9dfbf;
+  width: 100%;
+}
+
+.resultBtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
