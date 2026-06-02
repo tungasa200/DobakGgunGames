@@ -73,99 +73,77 @@ export default function MinesweeperBattleGameView({
   onForfeit,
 }: MinesweeperBattleGameViewProps) {
   const [showForfeitModal, setShowForfeitModal] = useState(false);
-  const pressedButtonsRef = useRef<Set<number>>(new Set());
   const scale = useBoardScale(cols);
 
-  // ── 마우스 이벤트 (데스크탑) ───────────────────────────────
+  // ── 마우스 이벤트 — 일반 지뢰찾기와 동일한 bitmask 방식 ───────────────
+
+  // Record<cellKey, buttons-bitmask>: 셀별로 눌린 버튼 누적
+  const mouseButtonsRef = useRef<Record<string, number>>({});
 
   const handleMouseDown = useCallback((e: React.MouseEvent, r: number, c: number) => {
-    e.preventDefault();
-    pressedButtonsRef.current.add(e.button);
-    if (e.button === 1) onChord(r, c);
+    const cellKey = `${r}-${c}`;
+    mouseButtonsRef.current[cellKey] = (mouseButtonsRef.current[cellKey] ?? 0) | e.buttons;
+    if ((mouseButtonsRef.current[cellKey] & 3) === 3) onChord(r, c);
   }, [onChord]);
 
-  const handleMouseUp = useCallback((e: React.MouseEvent, r: number, c: number) => {
-    e.preventDefault();
-    const hadBoth = pressedButtonsRef.current.has(0) && pressedButtonsRef.current.has(2);
-    pressedButtonsRef.current.delete(e.button);
+  const handleMouseUp = useCallback((_e: React.MouseEvent, r: number, c: number) => {
+    const cellKey = `${r}-${c}`;
+    mouseButtonsRef.current[cellKey] = 0;
+  }, []);
 
-    if (hadBoth) {
-      onChord(r, c);
-      return;
-    }
-    if (e.button === 0) {
-      const cell = board[r]?.[c];
-      if (!cell?.isRevealed) {
-        onReveal(r, c);
-      }
-    }
-  }, [board, onReveal, onChord]);
-
-  const handleMouseLeave = useCallback(() => {
-    pressedButtonsRef.current.clear();
+  const handleMouseLeave = useCallback((r: number, c: number) => {
+    const cellKey = `${r}-${c}`;
+    mouseButtonsRef.current[cellKey] = 0;
   }, []);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, r: number, c: number) => {
     e.preventDefault();
-    // 모바일 long press가 이미 처리했으면 중복 방지
+    // 롱프레스가 이미 toggleMark를 실행했으면 중복 방지
     if (lpFiredRef.current) return;
+    // 롱프레스 타이머 실행 중이면 타이머 취소 후 여기서 처리
     if (lpRef.current !== null) {
       clearTimeout(lpRef.current);
       lpRef.current = null;
-      const cell = board[r]?.[c];
-      if (!cell?.isRevealed) onToggleMark(r, c);
+      onToggleMark(r, c);
       return;
     }
-    const cell = board[r]?.[c];
-    if (!cell?.isRevealed) onToggleMark(r, c);
-  }, [board, onToggleMark]);
+    // 데스크탑 우클릭
+    onToggleMark(r, c);
+  }, [onToggleMark]);
 
-  // ── 터치 이벤트 (모바일 / 웨일 사이드바) ─────────────────
+  // ── 터치 이벤트 — 일반 지뢰찾기와 동일한 방식 ───────────────────────
+  // 짧은 터치 reveal은 onClick에 위임, handleTouchEnd는 lpFired 처리만 담당
 
   const lpRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lpFiredRef = useRef(false);
-  const lpStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const handleTouchStart = useCallback((r: number, c: number, e: React.TouchEvent) => {
     lpFiredRef.current = false;
-    const touch = e.touches[0];
-    lpStartRef.current = { x: touch.clientX, y: touch.clientY };
+    const startX = e.touches[0].clientX;
+    const startY = e.touches[0].clientY;
     lpRef.current = setTimeout(() => {
       lpFiredRef.current = true;
       navigator.vibrate?.(60);
-      const cell = board[r]?.[c];
-      if (!cell?.isRevealed) onToggleMark(r, c);
+      onToggleMark(r, c);
     }, 500);
-  }, [board, onToggleMark]);
+    (e.currentTarget as HTMLElement).dataset.tx = String(startX);
+    (e.currentTarget as HTMLElement).dataset.ty = String(startY);
+  }, [onToggleMark]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!lpRef.current) return;
-    const touch = e.touches[0];
-    const dx = touch.clientX - lpStartRef.current.x;
-    const dy = touch.clientY - lpStartRef.current.y;
+    const el = e.currentTarget as HTMLElement;
+    const dx = e.touches[0].clientX - Number(el.dataset.tx);
+    const dy = e.touches[0].clientY - Number(el.dataset.ty);
     if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-      clearTimeout(lpRef.current);
-      lpRef.current = null;
+      if (lpRef.current) clearTimeout(lpRef.current);
     }
   }, []);
 
-  const handleTouchEnd = useCallback((r: number, c: number, e: React.TouchEvent) => {
-    if (lpRef.current) {
-      clearTimeout(lpRef.current);
-      lpRef.current = null;
-    }
-    if (lpFiredRef.current) {
-      e.preventDefault();
-      return;
-    }
-    // 짧은 터치 → 셀 열기 또는 chord
-    const cell = board[r]?.[c];
-    if (cell?.isRevealed) {
-      onChord(r, c);
-    } else {
-      onReveal(r, c);
-    }
-  }, [board, onReveal, onChord]);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (lpRef.current) clearTimeout(lpRef.current);
+    // 롱프레스가 실행됐으면 합성 click 이벤트 차단
+    if (lpFiredRef.current) e.preventDefault();
+  }, []);
 
   // ── 렌더 ─────────────────────────────────────────────────
 
@@ -243,13 +221,14 @@ export default function MinesweeperBattleGameView({
                       key={`${r}-${c}`}
                       className={cls}
                       style={{ color: numColor }}
+                      onClick={() => onReveal(r, c)}
+                      onContextMenu={(e) => handleContextMenu(e, r, c)}
                       onMouseDown={(e) => handleMouseDown(e, r, c)}
                       onMouseUp={(e) => handleMouseUp(e, r, c)}
-                      onMouseLeave={handleMouseLeave}
-                      onContextMenu={(e) => handleContextMenu(e, r, c)}
+                      onMouseLeave={() => handleMouseLeave(r, c)}
                       onTouchStart={(e) => handleTouchStart(r, c, e)}
                       onTouchMove={handleTouchMove}
-                      onTouchEnd={(e) => handleTouchEnd(r, c, e)}
+                      onTouchEnd={handleTouchEnd}
                       role="gridcell"
                       aria-label={
                         !cell.isRevealed
