@@ -80,7 +80,7 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
         ...state,
         phase: 'playing',
         board: action.payload.board,
-        gameStartedAt: new Date(action.payload.startedAt).getTime(),
+        gameStartedAt: new Date(action.payload.serverStartAt).getTime(),
         myScore: 0,
         opponentScore: 0,
       };
@@ -106,7 +106,10 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
         PLAYING: 'playing',
         FINISHED: 'finished',
       };
-      const newPhase = statusMap[payload.status] ?? state.phase;
+      const newPhase = statusMap[payload.roomStatus] ?? state.phase;
+      const newGameStartedAt = payload.elapsedMs != null
+        ? Date.now() - payload.elapsedMs
+        : state.gameStartedAt;
       return {
         ...state,
         phase: newPhase,
@@ -115,7 +118,7 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
         board: payload.board ?? state.board,
         myScore,
         opponentScore,
-        gameStartedAt: payload.gameStartedAt ? new Date(payload.gameStartedAt).getTime() : state.gameStartedAt,
+        gameStartedAt: newGameStartedAt,
         reconnecting: false,
       };
     }
@@ -167,6 +170,7 @@ export default function AppleBattleBoard() {
     removeApples,
     removeExternal,
     syncBoard,
+    syncTime,
     end: endGame,
   } = useAppleBattleGame();
 
@@ -282,8 +286,11 @@ export default function AppleBattleBoard() {
     if (payload.board) {
       syncBoard(payload.board);
     }
+    if (payload.remainingMs != null) {
+      syncTime(payload.remainingMs);
+    }
     dispatchBattle({ type: 'STATE_SNAPSHOT', payload, myPlayerId: myId });
-  }, [syncBoard]);
+  }, [syncBoard, syncTime]);
 
   const onOpponentDisconnectedStable = useCallback(() => {
     setOpponentDisconnected(true);

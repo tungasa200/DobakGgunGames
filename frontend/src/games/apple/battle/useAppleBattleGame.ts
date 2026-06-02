@@ -16,6 +16,7 @@ type BattleGameAction =
   | { type: 'REMOVE'; coords: { r: number; c: number }[] }
   | { type: 'REMOVE_EXTERNAL'; coords: { r: number; c: number }[] }
   | { type: 'SYNC_BOARD'; board: (number | null)[][] }
+  | { type: 'SYNC_TIME'; timeLeft: number }
   | { type: 'TICK' }
   | { type: 'END' };
 
@@ -42,7 +43,6 @@ function reducer(state: BattleGameState, action: BattleGameAction): BattleGameSt
       return { ...state, apples: next };
     }
     case 'SYNC_BOARD': {
-      // STATE_SNAPSHOT 보드 동기화
       return {
         ...state,
         apples: action.board as Apple[][],
@@ -50,6 +50,8 @@ function reducer(state: BattleGameState, action: BattleGameAction): BattleGameSt
         cols: action.board[0]?.length ?? 0,
       };
     }
+    case 'SYNC_TIME':
+      return { ...state, timeLeft: action.timeLeft };
     case 'TICK':
       // 배틀 모드: status 체크 없이 항상 감소 (게임 종료는 battleState.phase로 판단)
       return { ...state, timeLeft: Math.max(0, state.timeLeft - 1) };
@@ -110,6 +112,10 @@ export function useAppleBattleGame() {
     dispatch({ type: 'SYNC_BOARD', board });
   }, []);
 
+  const syncTime = useCallback((remainingMs: number) => {
+    dispatch({ type: 'SYNC_TIME', timeLeft: Math.ceil(remainingMs / 1000) });
+  }, []);
+
   const end = useCallback(() => {
     stopTimer();
     dispatch({ type: 'END' });
@@ -123,6 +129,7 @@ export function useAppleBattleGame() {
     removeApples,
     removeExternal,
     syncBoard,
+    syncTime,
     end,
   };
 }

@@ -18,9 +18,13 @@ export interface MatchReadyPayload {
 }
 
 export interface GameStartedPayload {
+  roomId: string;
+  playerId: string;
   board: number[][];
-  startedAt: string; // ISO8601
-  durationMs: number; // 120000
+  rows: number;
+  cols: number;
+  gameDurationSeconds: number;
+  serverStartAt: string; // ISO8601
 }
 
 export interface AppleRemovedPayload {
@@ -32,17 +36,19 @@ export interface AppleRemovedPayload {
 export interface GameResultPayload {
   winnerId: string | null;
   scores: Record<string, number>;
-  draw: boolean;
   reason: 'TIME_UP' | 'BOARD_CLEARED' | 'OPPONENT_LEFT';
 }
 
 export interface StateSnapshotPayload {
-  status: string;
-  board: (number | null)[][];
+  roomId: string;
+  roomStatus: string;
+  board: (number | null)[][] | null;
   scores: Record<string, number>;
   players: AbPlayerInfo[];
-  gameStartedAt: string | null;
-  gameElapsedMs: number | null;
+  elapsedMs?: number;
+  remainingMs?: number;
+  rows?: number;
+  cols?: number;
 }
 
 export interface AbBattleState {

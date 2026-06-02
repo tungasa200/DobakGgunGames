@@ -7,7 +7,9 @@ import com.dobakggun.dto.apple.AppleBattleJoinResponse;
 import com.dobakggun.dto.apple.WsAppleBattleMessage;
 import com.dobakggun.entity.User;
 import com.dobakggun.entity.apple.AppleBattleRecord;
+import com.dobakggun.entity.apple.AppleRoom;
 import com.dobakggun.repository.AppleBattleRecordRepository;
+import com.dobakggun.repository.AppleRoomRepository;
 import com.dobakggun.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,6 +78,7 @@ public class AppleBattleRoomService {
 
     private final AppleBattleRoomManager roomManager;
     private final AppleBattleRecordRepository appleBattleRecordRepository;
+    private final AppleRoomRepository appleRoomRepository;
     private final UserRepository userRepository;
     private final ThreadPoolTaskScheduler taskScheduler;
 
@@ -86,10 +89,12 @@ public class AppleBattleRoomService {
     public AppleBattleRoomService(
             AppleBattleRoomManager roomManager,
             AppleBattleRecordRepository appleBattleRecordRepository,
+            AppleRoomRepository appleRoomRepository,
             UserRepository userRepository,
             @Qualifier("battleTaskScheduler") ThreadPoolTaskScheduler taskScheduler) {
         this.roomManager = roomManager;
         this.appleBattleRecordRepository = appleBattleRecordRepository;
+        this.appleRoomRepository = appleRoomRepository;
         this.userRepository = userRepository;
         this.taskScheduler = taskScheduler;
     }
@@ -144,6 +149,7 @@ public class AppleBattleRoomService {
                 // 2명 완성 → MATCHED 상태 전이
                 room.setStatus(AppleBattleRoom.Status.MATCHED);
                 room.setMatchedAt(Instant.now());
+                updateAppleRoomDB(room.getRoomId(), "MATCHED", 2);
 
                 lock.unlock();
 
@@ -238,6 +244,7 @@ public class AppleBattleRoomService {
 
             room.setStatus(AppleBattleRoom.Status.MATCHED);
             room.setMatchedAt(Instant.now());
+            updateAppleRoomDB(roomId, "MATCHED", 2);
 
             lock.unlock();
 
@@ -268,6 +275,7 @@ public class AppleBattleRoomService {
 
         log.info("cancelWaiting(REST): roomId={} playerId={}", roomId, playerId);
         room.setStatus(AppleBattleRoom.Status.FINISHED);
+        updateAppleRoomDB(roomId, "FINISHED", 0);
         roomManager.closeRoom(roomId);
         return true;
     }
@@ -482,6 +490,7 @@ public class AppleBattleRoomService {
             }
         } else if (room.getStatus() == AppleBattleRoom.Status.WAITING) {
             room.setStatus(AppleBattleRoom.Status.FINISHED);
+            updateAppleRoomDB(roomId, "FINISHED", 0);
             cancelGameTimers(room);
             roomManager.closeRoom(roomId);
         } else if (room.getStatus() == AppleBattleRoom.Status.FINISHED) {
@@ -678,7 +687,7 @@ public class AppleBattleRoomService {
         List<Map<String, Object>> playerList = room.getPlayers().stream()
                 .map(p -> {
                     Map<String, Object> entry = new LinkedHashMap<>();
-                    entry.put("id", p.getPlayerId());
+                    entry.put("playerId", p.getPlayerId());
                     entry.put("nickname", p.getNickname());
                     entry.put("isGuest", p.isGuest());
                     return entry;
@@ -716,6 +725,7 @@ public class AppleBattleRoomService {
         room.setBoard(board);
         room.setGameStartedAt(Instant.now());
         room.setStatus(AppleBattleRoom.Status.PLAYING);
+        updateAppleRoomDB(room.getRoomId(), "PLAYING", 2);
 
         // 각 플레이어에게 개인 채널로 GAME_STARTED 발송 (보드 데이터 포함)
         for (PlayerInfo player : room.getPlayers()) {
@@ -760,6 +770,7 @@ public class AppleBattleRoomService {
     public void finishGame(AppleBattleRoom room, String winnerId, String reason) {
         String roomId = room.getRoomId();
         room.setStatus(AppleBattleRoom.Status.FINISHED);
+        updateAppleRoomDB(roomId, "FINISHED", 0);
 
         // 모든 타이머 취소
         cancelGameTimers(room);
@@ -980,6 +991,15 @@ public class AppleBattleRoomService {
         roomManager.createRoom(newRoomId);
         roomManager.addPlayer(newRoomId, player);
 
+        // DB 방 생성 — 지뢰찾기 배틀과 동일 패턴
+        AppleRoom dbRoom = AppleRoom.builder()
+                .roomId(newRoomId)
+                .status("WAITING")
+                .maxPlayers(2)
+                .currentPlayers(1)
+                .build();
+        appleRoomRepository.save(dbRoom);
+
         log.info("AppleBattleRoomService.createNewRoom: roomId={} playerId={}", newRoomId, playerId);
 
         return AppleBattleJoinResponse.builder()
@@ -992,6 +1012,20 @@ public class AppleBattleRoomService {
                 .maxPlayers(2)
                 .opponentNickname(null)
                 .build();
+    }
+
+    /** DB 방 상태 업데이트 헬퍼 — 지뢰찾기 배틀의 updateBattleRoomDB 와 동일 패턴. */
+    protected void updateAppleRoomDB(String roomId, String status, int currentPlayers) {
+        appleRoomRepository.findByRoomId(roomId).ifPresent(room -> {
+            room.setStatus(status);
+            room.setCurrentPlayers(currentPlayers);
+            if ("PLAYING".equals(status)) {
+                room.setStartedAt(LocalDateTime.now());
+            } else if ("FINISHED".equals(status)) {
+                room.setFinishedAt(LocalDateTime.now());
+            }
+            appleRoomRepository.save(room);
+        });
     }
 
     private String generateRoomId() {

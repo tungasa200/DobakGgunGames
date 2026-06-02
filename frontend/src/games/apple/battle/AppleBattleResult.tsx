@@ -33,14 +33,10 @@ export default function AppleBattleResult({
   const opponentScore = opponent ? (result.scores[opponent.playerId] ?? 0) : 0;
 
   const isWin = result.winnerId === myPlayerId;
-  const isDraw = result.draw;
 
   let titleText: string;
   let titleClass: string;
-  if (isDraw) {
-    titleText = '무승부';
-    titleClass = styles.resultTitleDraw;
-  } else if (isWin) {
+  if (isWin) {
     titleText = '승리!';
     titleClass = styles.resultTitleWin;
   } else {
