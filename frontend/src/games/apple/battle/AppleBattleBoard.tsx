@@ -42,6 +42,7 @@ const initialBattleState: AbBattleState = {
   myScore: 0,
   opponentScore: 0,
   gameStartedAt: null,
+  gameEndAt: null,
   result: null,
   errorMessage: null,
   reconnecting: false,
@@ -75,15 +76,18 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
         opponentRematchRequested: false,
       };
     }
-    case 'GAME_STARTED':
+    case 'GAME_STARTED': {
+      const serverStartMs = new Date(action.payload.serverStartAt).getTime();
       return {
         ...state,
         phase: 'playing',
         board: action.payload.board,
-        gameStartedAt: new Date(action.payload.serverStartAt).getTime(),
+        gameStartedAt: serverStartMs,
+        gameEndAt: serverStartMs + action.payload.gameDurationSeconds * 1000,
         myScore: 0,
         opponentScore: 0,
       };
+    }
     case 'APPLE_REMOVED': {
       const { scores } = action.payload;
       const myId = action.myPlayerId;
@@ -110,6 +114,9 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
       const newGameStartedAt = payload.elapsedMs != null
         ? Date.now() - payload.elapsedMs
         : state.gameStartedAt;
+      const newGameEndAt = payload.remainingMs != null
+        ? Date.now() + payload.remainingMs
+        : state.gameEndAt;
       return {
         ...state,
         phase: newPhase,
@@ -119,6 +126,7 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
         myScore,
         opponentScore,
         gameStartedAt: newGameStartedAt,
+        gameEndAt: newGameEndAt,
         reconnecting: false,
       };
     }
@@ -128,8 +136,6 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
       return { ...state, reconnecting: false };
     case 'COUNTDOWN_TICK':
       return { ...state, countdownSec: Math.max(0, state.countdownSec - 1) };
-    case 'START_PLAYING':
-      return { ...state, phase: 'playing' };
     case 'ERROR':
       return { ...state, errorMessage: action.message };
     case 'MY_REMATCH_SENT':
@@ -160,6 +166,7 @@ export default function AppleBattleBoard() {
 
   // 상대 끊김 추적 (reconnecting은 상대 끊김, 내 재연결과 구분)
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+  const [pollingWarning, setPollingWarning] = useState(false);
 
   // 게임 로직 훅
   const {
@@ -205,20 +212,12 @@ export default function AppleBattleBoard() {
     };
   }, [battleState.phase]);
 
-  // countdownSec가 0이 되면 playing 단계로 전환
+  // gameEndAt이 세팅되면 드리프트-보정 타이머 시작/재시작 (GAME_STARTED, STATE_SNAPSHOT, rematch 모두 처리)
   useEffect(() => {
-    if (battleState.phase === 'matched' && battleState.countdownSec === 0) {
-      dispatchBattle({ type: 'START_PLAYING' });
+    if (battleState.phase === 'playing' && battleState.gameEndAt !== null) {
+      startTimer(battleState.gameEndAt);
     }
-  }, [battleState.phase, battleState.countdownSec]);
-
-  // phase가 playing으로 전환되면 타이머 시작
-  useEffect(() => {
-    if (battleState.phase === 'playing' && battleState.gameStartedAt !== null) {
-      startTimer();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [battleState.phase, battleState.gameStartedAt]);
+  }, [battleState.phase, battleState.gameEndAt, startTimer]);
 
   // timeLeft === 0 → 게임 종료 처리 (서버 결과 대기)
   useEffect(() => {
@@ -321,6 +320,10 @@ export default function AppleBattleBoard() {
     dispatchBattle({ type: 'ERROR', message });
   }, []);
 
+  const onLongPollingFallbackStable = useCallback(() => {
+    setPollingWarning(true);
+  }, []);
+
   const ws = useAppleBattleSocket({
     roomId: battleState.roomId,
     playerId: battleState.myPlayerId,
@@ -337,6 +340,7 @@ export default function AppleBattleBoard() {
     onRematchDeclined: onRematchDeclinedStable,
     onError: onErrorStable,
     onStatusChange: setWsStatus,
+    onLongPollingFallback: onLongPollingFallbackStable,
   });
 
   // ── 매칭 참가 ──────────────────────────────────────────────
@@ -487,6 +491,12 @@ export default function AppleBattleBoard() {
   // ── 재연결 배너 ───────────────────────────────────────────
   const renderReconnectBanner = () => wsStatus === 'reconnecting' ? (
     <div className={styles.reconnectBanner}>재연결 시도 중...</div>
+  ) : null;
+
+  const renderPollingWarning = () => pollingWarning ? (
+    <div className={styles.pollingWarningBanner}>
+      ⚠ WebSocket 연결 불안정 — 실시간 응답이 느릴 수 있습니다
+    </div>
   ) : null;
 
   // ── 렌더 ──────────────────────────────────────────────────
@@ -647,7 +657,7 @@ export default function AppleBattleBoard() {
         <div className={styles.countdownOverlay}>
           <div className={styles.countdownLabel}>게임 시작까지</div>
           <div className={styles.countdownNumber}>
-            {battleState.countdownSec}
+            {battleState.countdownSec > 0 ? battleState.countdownSec : '시작!'}
           </div>
           <div className={styles.countdownLabel}>
             {battleState.myNickname ?? '나'} vs {battleState.opponentInfo?.nickname ?? '상대'}
@@ -660,6 +670,21 @@ export default function AppleBattleBoard() {
   // 게임 진행 + 결과 (playing / finished)
   if (battleState.phase === 'playing' || battleState.phase === 'finished') {
     const board = gameState.apples as (number | null)[][];
+    // GAME_STARTED 네트워크 지연으로 보드가 아직 미도착 시 로딩 표시
+    const resolvedBoard = board.length ? board : (battleState.board ?? []);
+    if (battleState.phase === 'playing' && !resolvedBoard.length) {
+      return (
+        <div className={styles.battlePage}>
+          <NormalHeader currentGame="apple" gameName="사과게임 배틀" accentColor="#f18064" />
+          <div className={styles.battleContent}>
+            <div className={styles.loadingScreen}>
+              <div className={styles.spinner} role="status" />
+              <div className={styles.loadingText}>보드 준비 중...</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
     const myNickname = battleState.myNickname ?? '나';
     const opponentNickname = battleState.opponentInfo?.nickname ?? '상대';
     const players: AbPlayerInfo[] = [
@@ -671,6 +696,7 @@ export default function AppleBattleBoard() {
       <div className={styles.battlePage}>
         <NormalHeader currentGame="apple" gameName="사과게임 배틀" accentColor="#f18064" />
         {renderReconnectBanner()}
+        {renderPollingWarning()}
         <div className={styles.battleContent} style={{ justifyContent: 'flex-start', paddingTop: 12 }}>
           <AppleBattleGameView
             myNickname={myNickname}
@@ -680,7 +706,7 @@ export default function AppleBattleBoard() {
             timeLeft={gameState.timeLeft}
             reconnecting={wsStatus === 'reconnecting'}
             opponentDisconnected={opponentDisconnected}
-            board={board.length ? board : (battleState.board ?? [])}
+            board={resolvedBoard}
             onRemove={handleRemove}
           />
         </div>

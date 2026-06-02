@@ -194,6 +194,16 @@
   font-weight: bold;
 }
 
+.pollingWarningBanner {
+  background: #fdf2f2;
+  color: #c0392b;
+  border-bottom: 1px solid #e8a5a5;
+  text-align: center;
+  padding: 6px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
 /* ── 스피너 ─────────────────────────────────────────────── */
 .spinner {
   width: 40px;

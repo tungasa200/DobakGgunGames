@@ -799,6 +799,7 @@ public class AppleBattleRoomService {
         Map<String, Object> resultPayload = new LinkedHashMap<>();
         resultPayload.put("roomId", roomId);
         resultPayload.put("winnerId", winnerId);
+        resultPayload.put("draw", winnerId == null);
         resultPayload.put("reason", reason);
         resultPayload.put("scores", finalScores);
         resultPayload.put("results", results);
@@ -815,7 +816,7 @@ public class AppleBattleRoomService {
         room.setCloseRoomFuture(closeFuture);
     }
 
-    /** 점수가 높은 플레이어를 승자로 결정. 동점이면 첫 번째 플레이어. */
+    /** 점수가 높은 플레이어를 승자로 결정. 동점이면 null (무승부). */
     private String determineWinner(AppleBattleRoom room) {
         if (room.getPlayers().isEmpty()) return "none";
         if (room.getPlayers().size() == 1) return room.getPlayers().get(0).getPlayerId();
@@ -825,20 +826,22 @@ public class AppleBattleRoomService {
         int s1 = room.getScores().getOrDefault(p1, 0);
         int s2 = room.getScores().getOrDefault(p2, 0);
 
-        if (s2 > s1) return p2;
-        return p1; // 동점이면 p1 (선입장자) 승리
+        if (s1 == s2) return null; // 무승부
+        return s2 > s1 ? p2 : p1;
     }
 
     private List<Map<String, Object>> buildResultEntries(
             AppleBattleRoom room, String winnerId, Map<String, Integer> finalScores) {
+        boolean isDraw = (winnerId == null);
         return room.getPlayers().stream()
                 .map(p -> {
-                    boolean isWinner = p.getPlayerId().equals(winnerId);
+                    String outcome = isDraw ? "DRAW"
+                            : (p.getPlayerId().equals(winnerId) ? "WIN" : "LOSE");
                     Map<String, Object> entry = new LinkedHashMap<>();
                     entry.put("playerId", p.getPlayerId());
                     entry.put("nickname", p.getNickname());
                     entry.put("isGuest", p.isGuest());
-                    entry.put("outcome", isWinner ? "WIN" : "LOSE");
+                    entry.put("outcome", outcome);
                     entry.put("score", finalScores.getOrDefault(p.getPlayerId(), 0));
                     return entry;
                 })

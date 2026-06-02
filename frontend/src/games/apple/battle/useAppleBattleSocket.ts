@@ -34,6 +34,7 @@ export interface UseAppleBattleSocketOptions {
   onRematchDeclined: () => void;
   onError: (code: string, message: string) => void;
   onStatusChange: (status: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error') => void;
+  onLongPollingFallback?: () => void;
 }
 
 export interface UseAppleBattleSocketReturn {
@@ -66,6 +67,7 @@ export function useAppleBattleSocket(
     onRematchDeclined,
     onError,
     onStatusChange,
+    onLongPollingFallback,
   } = opts;
 
   const clientRef = useRef<Client | null>(null);
@@ -89,6 +91,7 @@ export function useAppleBattleSocket(
     onRematchDeclined,
     onError,
     onStatusChange,
+    onLongPollingFallback,
   });
   useEffect(() => {
     handlersRef.current = {
@@ -103,6 +106,7 @@ export function useAppleBattleSocket(
       onRematchDeclined,
       onError,
       onStatusChange,
+      onLongPollingFallback,
     };
   });
 
@@ -191,6 +195,16 @@ export function useAppleBattleSocket(
         isConnectedRef.current = true;
         setIsConnected(true);
         handlersRef.current.onStatusChange('connected');
+
+        // SockJS long-polling 폴백 감지 — 실시간 배틀 불가 경고
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sock = (client as any).webSocket as { _transport?: { transportName?: string } } | undefined;
+          const transport = sock?._transport?.transportName ?? 'websocket';
+          if (transport !== 'websocket' && transport !== 'websocket-raw') {
+            handlersRef.current.onLongPollingFallback?.();
+          }
+        } catch { /* SockJS 내부 API 접근 실패 시 무시 */ }
 
         const rid = roomIdRef.current;
         if (!rid) return;

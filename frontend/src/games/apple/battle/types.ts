@@ -35,6 +35,7 @@ export interface AppleRemovedPayload {
 
 export interface GameResultPayload {
   winnerId: string | null;
+  draw: boolean;
   scores: Record<string, number>;
   reason: 'TIME_UP' | 'BOARD_CLEARED' | 'OPPONENT_LEFT';
 }
@@ -61,6 +62,7 @@ export interface AbBattleState {
   myScore: number;
   opponentScore: number;
   gameStartedAt: number | null; // ms timestamp
+  gameEndAt: number | null;     // ms timestamp — 드리프트 보정 기준
   result: GameResultPayload | null;
   errorMessage: string | null;
   reconnecting: boolean;
@@ -79,7 +81,6 @@ export type AbBattleAction =
   | { type: 'OPPONENT_DISCONNECTED' }
   | { type: 'OPPONENT_RECONNECTED' }
   | { type: 'COUNTDOWN_TICK' }
-  | { type: 'START_PLAYING' }
   | { type: 'ERROR'; message: string }
   | { type: 'MY_REMATCH_SENT' }
   | { type: 'REMATCH_REQUESTED' }
