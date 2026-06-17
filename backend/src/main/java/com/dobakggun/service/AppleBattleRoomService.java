@@ -327,14 +327,9 @@ public class AppleBattleRoomService {
         }
 
         log.debug("handleConnect: roomId={} playerId={} sessionId={}", roomId, playerId, sessionId);
-
-        // MATCHED 상태에서 양쪽 모두 연결됐으면 MATCH_READY 발송
-        if (room.getStatus() == AppleBattleRoom.Status.MATCHED) {
-            boolean allConnected = room.getPlayers().stream().allMatch(PlayerInfo::isConnected);
-            if (allConnected && room.getPlayers().size() == 2) {
-                sendMatchReadyAndScheduleStart(room);
-            }
-        }
+        // MATCH_READY는 handleRequestState에서 발송.
+        // SessionConnectedEvent는 클라이언트가 구독을 완료하기 전에 발생하므로
+        // 여기서 sendMatchReadyAndScheduleStart를 호출하면 MATCH_READY가 구독 전에 브로드캐스트돼 유실된다.
     }
 
     /**
@@ -466,13 +461,15 @@ public class AppleBattleRoomService {
         messagingTemplate.convertAndSendToUser(
                 playerId, USER_QUEUE_STATE, buildEnvelope("STATE_SNAPSHOT", snapshot));
 
-        // MATCHED + 양쪽 연결 + 카운트다운 미시작 → MATCH_READY 재발송 (재연결/타이밍 보완)
+        // MATCHED + 양쪽 연결 + 카운트다운 미시작 → MATCH_READY 발송
+        // (handleConnect 대신 여기서 처리: 클라이언트가 구독을 마친 뒤 SEND 프레임을 보내므로
+        //  이 시점은 반드시 양쪽 모두 토픽 구독이 완료된 상태임)
         if (room.getStatus() == AppleBattleRoom.Status.MATCHED && room.getPlayers().size() == 2) {
             boolean allConnected = room.getPlayers().stream().allMatch(PlayerInfo::isConnected);
             if (allConnected) {
                 ScheduledFuture<?> cf = room.getCountdownFuture();
                 if (cf == null || cf.isDone()) {
-                    log.info("handleRequestState: MATCHED + allConnected + 카운트다운 없음 → MATCH_READY 재발송 roomId={}", roomId);
+                    log.info("handleRequestState: MATCHED + allConnected → MATCH_READY 발송 roomId={}", roomId);
                     sendMatchReadyAndScheduleStart(room);
                 }
             }
