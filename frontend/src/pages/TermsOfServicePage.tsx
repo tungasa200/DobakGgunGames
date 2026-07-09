@@ -6,7 +6,7 @@ import styles from './PolicyPage.module.css';
 export default function TermsOfServicePage() {
   return (
     <div className={styles.wrap}>
-      <NormalHeader currentGame="" gameName="이용약관" accentColor="#2c3e50" />
+      <NormalHeader currentGame="" gameName="이용약관" accentColor="#101f38" />
       <div className={styles.content}>
         <h1 className={styles.title}>이용약관</h1>
         <p className={styles.updated}>최종 수정일: 2025년 4월 13일</p>

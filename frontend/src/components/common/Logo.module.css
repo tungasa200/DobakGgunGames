@@ -1,0 +1,57 @@
+.link {
+  text-decoration: none;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  line-height: 1;
+}
+
+.chip {
+  display: block;
+  flex-shrink: 0;
+}
+
+.padCross {
+  /* D패드 십자 — 원본 로고의 D자 내부 방향키 모티프 */
+}
+
+.wordmark {
+  font-family: var(--dbg-font-display);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* ── 크기 (viewBox 48:32 비율 유지, 높이 기준 스케일) ── */
+.sm .chip { height: 20px; width: auto; }
+.sm .wordmark { font-size: 14px; }
+
+.md .chip { height: 27px; width: auto; }
+.md .wordmark { font-size: 18px; }
+
+.lg .chip { height: 50px; width: auto; }
+.lg .wordmark { font-size: 32px; }
+
+/* ── 다크 배경용 (헤더) — 원본처럼 밝은 뱃지 + 남색 D패드 ── */
+.dark .padBase { fill: var(--dbg-on-navy); }
+.dark .padCross { fill: var(--dbg-navy-900); }
+.dark .padPip { fill: var(--dbg-chip-orange); }
+.dark .padPipMini { fill: var(--dbg-navy-900); opacity: 0.55; }
+.dark .wordmark { color: var(--dbg-on-navy); }
+
+/* ── 라이트 배경용 (히어로/로그인 카드) — 남색 뱃지 + 흰 D패드 ── */
+.light .padBase { fill: var(--dbg-navy-800); }
+.light .padCross { fill: var(--dbg-card); }
+.light .padPip { fill: var(--dbg-chip-orange); }
+.light .padPipMini { fill: var(--dbg-card); opacity: 0.6; }
+.light .wordmark { color: var(--dbg-navy-800); }
+
+.link:hover .wordmark { opacity: 0.82; }
+
+@media (max-width: 380px) {
+  .sm .wordmark { display: none; }
+}

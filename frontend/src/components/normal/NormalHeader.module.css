@@ -1,18 +1,18 @@
-/* 원본 normal-ui.js #normal-header 완전 동일하게 구현 */
 .header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  color: white;
-  font-family: sans-serif;
+  gap: 10px;
+  padding: 9px 18px;
+  color: var(--dbg-on-navy);
+  font-family: var(--dbg-font-body);
   font-size: 14px;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 500;
-  border-bottom: 1px solid rgba(0,0,0,0.15);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset;
   box-sizing: border-box;
   transition: transform 0.28s ease;
   will-change: transform;
@@ -20,87 +20,66 @@
 
 /* 로고 */
 .logo {
-  font-weight: bold;
-  font-size: 15px;
-  white-space: nowrap;
-  color: white;
   flex-shrink: 0;
-  text-decoration: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  line-height: 1;
-}
-.logo:hover {
-  opacity: 0.8;
-}
-.logoImg {
-  height: 20px;
-  width: auto;
-  display: block;
-  background: #fff;
-  padding: 3px 5px;
-  border-radius: 5px;
-  box-sizing: content-box;
-}
-.logoText {
-  line-height: 1;
+  margin-right: 2px;
 }
 
 /* 내비게이션 계열 버튼 통일 (반투명) */
 .menuBtn,
 .boardLink,
 .profileBtn {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
-  padding: 5px 12px;
-  border-radius: 5px;
+  background: rgba(245, 243, 236, 0.12);
+  border: 1px solid rgba(245, 243, 236, 0.28);
+  color: var(--dbg-on-navy);
+  padding: 6px 13px;
+  border-radius: 7px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  font-family: sans-serif;
+  font-family: var(--dbg-font-body);
   text-decoration: none;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   line-height: 1.2;
-  transition: background 0.1s;
+  transition: background 0.15s, border-color 0.15s;
 }
 .menuBtn:hover,
 .boardLink:hover,
 .profileBtn:hover {
-  background: rgba(255,255,255,0.28);
+  background: rgba(245, 243, 236, 0.22);
+  border-color: rgba(245, 243, 236, 0.4);
 }
 
-/* 드롭다운 */
+/* 드롭다운 — 티켓 스텁 카드 */
 .dropdown {
   position: absolute;
   top: 100%;
-  left: 0;
-  background: white;
-  border: 1px solid #ddd;
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+  left: 18px;
+  background: var(--dbg-card);
+  border: 1px solid var(--dbg-paper-line);
+  border-radius: 0 0 12px 12px;
+  box-shadow: var(--dbg-shadow-card-hover);
   z-index: 501;
-  min-width: 290px;
-  color: black;
+  min-width: 300px;
+  color: var(--dbg-ink-900);
+  overflow: hidden;
 }
 
 .dropTitle {
-  color: white;
-  font-weight: bold;
-  padding: 8px 14px;
+  color: var(--dbg-on-navy);
+  font-weight: 700;
+  font-family: var(--dbg-font-display);
+  letter-spacing: 0.02em;
+  padding: 10px 16px;
   font-size: 13px;
 }
 
 .dropItem {
-  padding: 8px 14px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 9px 16px;
+  border-bottom: 1px dashed var(--dbg-paper-line);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -108,34 +87,36 @@
 .dropItem:last-child { border-bottom: none; }
 
 .dropIcon { font-size: 17px; width: 22px; text-align: center; flex-shrink: 0; }
-.dropName { font-size: 14px; font-weight: bold; color: #333; min-width: 60px; }
+.dropName { font-size: 14px; font-weight: 700; color: var(--dbg-ink-900); min-width: 60px; }
 .dropBtns { display: flex; gap: 6px; margin-left: auto; }
 
 .dropBtn {
   padding: 4px 10px;
   font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: white;
-  color: #444;
+  border: 1.5px solid var(--dbg-paper-line);
+  border-radius: 5px;
+  background: var(--dbg-card);
+  color: var(--dbg-ink-600);
   text-decoration: none;
   display: inline-block;
   white-space: nowrap;
-  transition: all 0.1s;
+  transition: all 0.12s;
 }
-.dropBtn:hover { background: #f0f0f0; border-color: #999; color: #111; }
+.dropBtn:hover { background: var(--dbg-surface); border-color: var(--dbg-ink-400); color: var(--dbg-ink-900); }
 
 /* 현재 페이지 버튼 */
 .dropCurrent {
-  color: white !important;
+  color: #fff !important;
   cursor: default;
   pointer-events: none;
+  border-color: transparent !important;
 }
 
 /* 비활성 게임 */
 .dropItemDisabled { opacity: 0.6; }
-.dropNameDisabled { color: #999; }
+.dropNameDisabled { color: var(--dbg-ink-400); }
 .dropBtnDisabled {
   color: #b71c1c !important;
   border-color: #ef9a9a !important;
@@ -158,17 +139,17 @@
   flex: 1;
 }
 
-/* CTA 계열 버튼 통일 (흰 배경) */
+/* CTA 계열 버튼 통일 (칩 오렌지) */
 .excelBtn,
 .loginBtn {
-  background: #fff;
-  color: #2c3e50;
-  border: 1px solid #fff;
-  padding: 5px 12px;
-  border-radius: 5px;
+  background: var(--dbg-chip-orange);
+  color: #fff;
+  border: 1px solid var(--dbg-chip-orange);
+  padding: 6px 14px;
+  border-radius: 7px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   text-decoration: none;
   display: inline-flex;
@@ -176,11 +157,12 @@
   gap: 6px;
   flex-shrink: 0;
   line-height: 1.2;
-  transition: background 0.1s;
+  transition: background 0.15s;
 }
 .excelBtn:hover,
 .loginBtn:hover {
-  background: #f0f0f0;
+  background: var(--dbg-chip-orange-dark);
+  border-color: var(--dbg-chip-orange-dark);
 }
 
 /* 인증 영역 */
@@ -193,29 +175,30 @@
 
 /* 프로필 버튼 (공용 내비 스타일 + 왼쪽 아바타용 padding 덮어쓰기) */
 .profileBtn {
-  padding: 3px 10px 3px 3px;
+  padding: 3px 11px 3px 3px;
   border-radius: 20px;
 }
 
 .avatar {
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(255,255,255,0.55);
+  border: 1px solid rgba(245, 243, 236, 0.55);
 }
 
 .avatarLetter {
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  border: 1px solid rgba(255,255,255,0.55);
+  background: var(--dbg-chip-orange);
+  border: 1px solid rgba(245, 243, 236, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
+  color: #fff;
   text-transform: uppercase;
   flex-shrink: 0;
 }
@@ -238,12 +221,12 @@
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  background: var(--dbg-card);
+  border: 1px solid var(--dbg-paper-line);
+  border-radius: 10px;
+  box-shadow: var(--dbg-shadow-card-hover);
   z-index: 501;
-  min-width: 140px;
+  min-width: 148px;
   overflow: hidden;
 }
 
@@ -254,23 +237,27 @@
   width: 100%;
   padding: 10px 16px;
   font-size: 14px;
-  color: #333;
+  color: var(--dbg-ink-900);
   text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
-  font-family: sans-serif;
+  font-family: var(--dbg-font-body);
   text-align: left;
   transition: background 0.1s;
   box-sizing: border-box;
 }
-.profileDropItem:hover { background: #f5f5f5; }
+.profileDropItem:hover { background: var(--dbg-surface); }
 .profileDropItem + .profileDropItem {
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px dashed var(--dbg-paper-line);
 }
 
-.profileDropLogout { color: #e53935; }
+.profileDropLogout { color: var(--dbg-danger); }
 .profileDropLogout:hover { background: #fff5f5; }
 
-@media (max-width: 480px) { .nickname { display: none; } }
-@media (max-width: 380px) { .logoText { display: none; } }
+@media (max-width: 480px) {
+  .nickname { display: none; }
+  .excelBtn { display: none; }
+  .header { padding: 8px 10px; gap: 6px; }
+  .menuBtn, .boardLink, .profileBtn, .loginBtn { padding: 5px 9px; font-size: 12px; }
+}

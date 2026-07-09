@@ -4,6 +4,7 @@ import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
+import Logo from '../components/common/Logo';
 import s from './auth.module.css';
 
 const BACKEND = import.meta.env.VITE_API_URL ?? '';
@@ -73,13 +74,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, overflow: 'auto', background: '#f0f0f0', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
-      <NormalHeader accentColor="#2c3e50" />
+    <div style={{ position: 'fixed', inset: 0, overflow: 'auto', background: 'var(--dbg-surface)', fontFamily: 'var(--dbg-font-body)', display: 'flex', flexDirection: 'column' }}>
+      <NormalHeader accentColor="#101f38" />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: 'max-content' }}>
         <div className={s.card}>
-          {/* <div className={s.logo}><img src="/common/logo.png" alt="DobakGgun" /></div> */}
-          <h1 className={s.title}>Login</h1>
-          {/* <p className={s.subtitle}>도박꾼게임즈에 오신 걸 환영합니다</p> */}
+          <div className={s.logo}><Logo to={null} size="md" variant="light" showWordmark={false} /></div>
+          <h1 className={s.title}>로그인</h1>
+          <p className={s.subtitle}>도박꾼게임즈에 오신 걸 환영합니다</p>
 
           {error && <div className={s.error}>{error}</div>}
 

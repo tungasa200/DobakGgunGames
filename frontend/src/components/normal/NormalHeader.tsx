@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { fetchGameStatus } from '../../api/games';
+import Logo from '../common/Logo';
 import styles from './NormalHeader.module.css';
 
 const GAMES = [
@@ -130,10 +131,7 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
           transform: visible ? 'translateY(0)' : 'translateY(-100%)',
         }}
       >
-        <Link className={styles.logo} to="/">
-          <img src="/common/logo.png" alt="" className={styles.logoImg} />
-          <span className={styles.logoText}>DobakGgun</span>
-        </Link>
+        <Logo to="/" size="sm" variant="dark" className={styles.logo} />
 
         <button ref={btnRef} className={styles.menuBtn} onClick={() => setOpen(o => !o)}>
           게임 목록 ▾

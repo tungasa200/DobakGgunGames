@@ -8,6 +8,7 @@ import { getYachtRoomStatus } from '../api/yacht';
 import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
+import Logo from '../components/common/Logo';
 import styles from './HomePage.module.css';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -307,17 +308,18 @@ export default function HomePage() {
       position: 'fixed',
       inset: 0,
       overflow: 'auto',
-      background: '#f0f0f0',
-      fontFamily: 'sans-serif',
+      background: 'var(--dbg-surface)',
+      fontFamily: 'var(--dbg-font-body)',
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <NormalHeader currentGame="" gameName="게임즈" accentColor="#2c3e50" />
+      <NormalHeader currentGame="" gameName="게임즈" accentColor="#101f38" />
       <div className={styles.page}>
-        <h1 className={styles.heading}>
-          <img src="/common/logo.png" alt="" className={styles.headingLogo} />
-          DobakGgun
-        </h1>
+        <div className={styles.hero}>
+          <Logo to={null} size="lg" variant="light" showWordmark={false} />
+          <h1 className={styles.heading}>도박꾼게임즈</h1>
+          
+        </div>
         <div className={styles.filterTabs}>
           {(['전체', '솔로', '멀티', '기타'] as const).map((tab) => (
             <button

@@ -18,9 +18,9 @@
   flex-shrink: 0;
   padding: 0 14px;
   background: white;
-  border: 1.5px solid #aa3bff;
+  border: 1.5px solid var(--dbg-navy-700);
   border-radius: 7px;
-  color: #aa3bff;
+  color: var(--dbg-navy-700);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -29,7 +29,7 @@
   font-family: inherit;
 }
 .checkBtn:hover:not(:disabled) {
-  background: rgba(170,59,255,0.08);
+  background: var(--dbg-surface);
 }
 .checkBtn:disabled {
   cursor: not-allowed;
@@ -109,7 +109,7 @@
 .checkbox {
   width: 16px;
   height: 16px;
-  accent-color: #aa3bff;
+  accent-color: var(--dbg-chip-orange);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -117,7 +117,7 @@
 .agreeAll {
   font-size: 14px;
   font-weight: 700;
-  color: #111;
+  color: var(--dbg-ink-900);
 }
 
 .agreeDivider {
@@ -128,15 +128,15 @@
 
 .agreeText {
   font-size: 13px;
-  color: #444;
+  color: var(--dbg-ink-600);
 }
 
 .agreeLink {
-  color: #aa3bff;
+  color: var(--dbg-chip-orange-dark);
   text-decoration: underline;
   font-weight: 500;
 }
-.agreeLink:hover { color: #9428e8; }
+.agreeLink:hover { color: var(--dbg-navy-800); }
 
 .verifiedBanner {
   font-size: 13px;

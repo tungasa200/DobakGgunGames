@@ -5,6 +5,7 @@ import { authApi } from '../api/auth';
 import { validateEmail, validatePassword, getPasswordStrength } from '../utils/validate';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
+import Logo from '../components/common/Logo';
 import s from './auth.module.css';
 import ss from './SignupPage.module.css';
 
@@ -191,8 +192,8 @@ export default function SignupPage() {
   }
 
   const layout = (content: React.ReactNode) => (
-    <div style={{ position: 'fixed', inset: 0, overflow: 'auto', background: '#f0f0f0', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
-      <NormalHeader accentColor="#2c3e50" />
+    <div style={{ position: 'fixed', inset: 0, overflow: 'auto', background: 'var(--dbg-surface)', fontFamily: 'var(--dbg-font-body)', display: 'flex', flexDirection: 'column' }}>
+      <NormalHeader accentColor="#101f38" />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: 'max-content' }}>
         <div className={s.card}>
           {content}
@@ -218,7 +219,7 @@ export default function SignupPage() {
 
   return layout(
     <>
-        <div className={s.logo}><img src="/common/logo.png" alt="DobakGgun" /></div>
+        <div className={s.logo}><Logo to={null} size="md" variant="light" showWordmark={false} /></div>
         <h1 className={s.title}>회원가입</h1>
         <p className={s.subtitle}>무료로 가입하고 기록을 남겨보세요</p>
 

@@ -5,6 +5,7 @@ import type { PatchNote } from '../api/patchnotes';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
 import { GAME_META } from './PatchNotesPage';
+import styles from './PatchNotes.module.css';
 
 export default function PatchNoteDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,73 +28,30 @@ export default function PatchNoteDetailPage() {
   const meta = note ? (GAME_META[note.game] ?? GAME_META.COMMON) : null;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f4f6', display: 'flex', flexDirection: 'column' }}>
-      <NormalHeader accentColor="#2c3e50" />
+    <div className={styles.wrap}>
+      <NormalHeader accentColor="#101f38" />
 
-      <div style={{ flex: 1, maxWidth: 760, width: '100%', margin: '0 auto', padding: '40px 20px' }}>
+      <div className={styles.content}>
+        <Link to="/patch-notes" className={styles.backLink}>← 목록으로</Link>
 
-        <Link
-          to="/patch-notes"
-          style={{
-            fontSize: 13, color: '#6b7280', textDecoration: 'none',
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            marginBottom: 24,
-          }}
-        >
-          ← 목록으로
-        </Link>
-
-        {loading && (
-          <div style={{ textAlign: 'center', color: '#9ca3af', padding: 48 }}>불러오는 중...</div>
-        )}
-        {error && (
-          <div style={{ textAlign: 'center', color: '#ef4444', padding: 24 }}>{error}</div>
-        )}
+        {loading && <div className={styles.stateBox}>불러오는 중...</div>}
+        {error && <div className={`${styles.stateBox} ${styles.stateBoxError}`}>{error}</div>}
 
         {note && meta && (
-          <div style={{
-            background: '#fff', borderRadius: 12,
-            boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
-            overflow: 'hidden',
-          }}>
-            {/* 상단 컬러 바 */}
-            <div style={{ height: 4, background: meta.color }} />
-
-            <div style={{ padding: '28px 32px' }}>
-              {/* 배지 행 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-                <span style={{
-                  fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                  background: '#e0e7ff', color: '#4338ca',
-                }}>
-                  v{note.version}
-                </span>
-                <span style={{
-                  fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 999,
-                  background: meta.bg, color: meta.color,
-                }}>
+          <div className={styles.detailCard} style={{ '--note-color': meta.color } as React.CSSProperties}>
+            <div className={styles.detailBar} />
+            <div className={styles.detailBody}>
+              <div className={styles.badgeRow}>
+                <span className={styles.versionBadge}>v{note.version}</span>
+                <span className={styles.gameBadge} style={{ background: meta.bg, color: meta.color }}>
                   {meta.icon} {meta.label}
                 </span>
-                <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 'auto' }}>
-                  {formatDate(note.createdAt)}
-                </span>
+                <span className={styles.noteDate}>{formatDate(note.createdAt)}</span>
               </div>
 
-              {/* 제목 */}
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: '0 0 24px 0' }}>
-                {note.title}
-              </h1>
-
-              {/* 구분선 */}
-              <div style={{ height: 1, background: '#f3f4f6', marginBottom: 24 }} />
-
-              {/* 본문 */}
-              <div style={{
-                fontSize: 15, color: '#374151', whiteSpace: 'pre-wrap',
-                lineHeight: 1.9, letterSpacing: '-0.1px',
-              }}>
-                {note.content}
-              </div>
+              <h1 className={styles.detailTitle}>{note.title}</h1>
+              <div className={styles.detailRule} />
+              <div className={styles.detailContent}>{note.content}</div>
             </div>
           </div>
         )}

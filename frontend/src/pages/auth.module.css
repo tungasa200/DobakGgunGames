@@ -10,44 +10,47 @@
 }
 
 .card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  padding: 36px 40px;
+  background: var(--dbg-card);
+  border: 1px solid var(--dbg-paper-line);
+  border-radius: 16px;
+  box-shadow: var(--dbg-shadow-card-hover);
+  padding: 34px 38px 38px;
   width: 100%;
   max-width: 420px;
   text-align: left;
+  font-family: var(--dbg-font-body);
 }
 
 @media (max-width: 480px) {
-  .card { padding: 28px 20px; }
+  .card { padding: 26px 20px 30px; }
 }
 
 .logo {
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
   font-size: 28px;
-  margin-bottom: 4px;
 }
 .logo img {
-  height: 56px;
+  height: 48px;
   width: auto;
   vertical-align: middle;
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111;
-  margin: 0 0 4px;
+  font-family: var(--dbg-font-display);
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--dbg-navy-800);
+  margin: 0 0 5px;
   text-align: center;
 }
 
 .subtitle {
   font-size: 13px;
-  color: #888;
+  color: var(--dbg-ink-400);
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 26px;
 }
 
 .form {
@@ -65,55 +68,57 @@
 .label {
   font-size: 13px;
   font-weight: 600;
-  color: #444;
+  color: var(--dbg-ink-600);
 }
 
 .input {
   padding: 10px 12px;
-  border: 1px solid #d0d0d0;
-  border-radius: 7px;
+  border: 1.5px solid var(--dbg-paper-line);
+  border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
-  color: #111;
+  color: var(--dbg-ink-900);
   outline: none;
   transition: border-color 0.15s;
 }
-.input:focus { border-color: #aa3bff; box-shadow: 0 0 0 3px rgba(170,59,255,0.12); }
+.input:focus { border-color: var(--dbg-chip-orange); box-shadow: 0 0 0 3px rgba(239, 106, 60, 0.14); }
 .input::placeholder { color: #bbb; }
 
 .btn {
   padding: 11px;
-  background: #aa3bff;
-  color: white;
+  background: var(--dbg-navy-800);
+  color: #fff;
   border: none;
-  border-radius: 7px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
   margin-top: 4px;
+  font-family: var(--dbg-font-body);
 }
-.btn:hover:not(:disabled) { background: #9428e8; }
+.btn:hover:not(:disabled) { background: var(--dbg-navy-700); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .btnSecondary {
   padding: 11px;
-  background: white;
-  color: #aa3bff;
-  border: 1.5px solid #aa3bff;
-  border-radius: 7px;
+  background: var(--dbg-card);
+  color: var(--dbg-navy-800);
+  border: 1.5px solid var(--dbg-navy-700);
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
+  font-family: var(--dbg-font-body);
 }
-.btnSecondary:hover { background: rgba(170,59,255,0.06); }
+.btnSecondary:hover { background: var(--dbg-surface); }
 
 .divider {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #bbb;
+  color: var(--dbg-ink-400);
   font-size: 12px;
   margin: 4px 0;
 }
@@ -121,7 +126,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: #e0e0e0;
+  background: var(--dbg-paper-line);
 }
 
 .googleBtn {
@@ -130,17 +135,18 @@
   justify-content: center;
   gap: 10px;
   padding: 11px;
-  background: white;
-  border: 1.5px solid #d0d0d0;
-  border-radius: 7px;
+  background: var(--dbg-card);
+  border: 1.5px solid var(--dbg-paper-line);
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--dbg-ink-900);
   cursor: pointer;
   text-decoration: none;
   transition: background 0.15s, border-color 0.15s;
+  font-family: var(--dbg-font-body);
 }
-.googleBtn:hover { background: #f7f7f7; border-color: #aaa; }
+.googleBtn:hover { background: var(--dbg-surface); border-color: var(--dbg-ink-400); }
 
 .googleIcon {
   width: 18px;
@@ -155,44 +161,45 @@
   gap: 16px;
   margin-top: 20px;
   font-size: 13px;
-  color: #888;
+  color: var(--dbg-ink-400);
 }
 
 .link {
-  color: #aa3bff;
+  color: var(--dbg-chip-orange-dark);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
 }
 .link:hover { text-decoration: underline; }
 
 .error {
   background: #fff0f0;
   border: 1px solid #ffcccc;
-  border-radius: 7px;
+  border-radius: 8px;
   padding: 10px 12px;
   font-size: 13px;
   color: #c0392b;
+  margin-bottom: 16px;
 }
 
 .success {
-  background: #f0fff4;
-  border: 1px solid #b2f5c8;
-  border-radius: 7px;
+  background: #f0fbf6;
+  border: 1px solid #b7e8cf;
+  border-radius: 8px;
   padding: 10px 12px;
   font-size: 13px;
-  color: #1a7a3a;
+  color: #1a7a4d;
 }
 
 .hint {
   font-size: 12px;
-  color: #aaa;
+  color: var(--dbg-ink-400);
 }
 
 /* 인앱 브라우저 경고 모달 */
 .inAppOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(16, 31, 56, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -201,23 +208,26 @@
 }
 
 .inAppModal {
-  background: white;
-  border-radius: 12px;
+  background: var(--dbg-card);
+  border-radius: 14px;
   padding: 28px 24px;
   max-width: 320px;
   width: 100%;
   text-align: center;
+  font-family: var(--dbg-font-body);
 }
 
 .inAppTitle {
   margin: 0 0 10px;
   font-size: 17px;
-  color: #111;
+  color: var(--dbg-ink-900);
+  font-family: var(--dbg-font-display);
+  font-weight: 400;
 }
 
 .inAppDesc {
   font-size: 13px;
-  color: #666;
+  color: var(--dbg-ink-600);
   line-height: 1.7;
   margin: 0 0 20px;
 }

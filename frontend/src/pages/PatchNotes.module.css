@@ -1,0 +1,225 @@
+.wrap {
+  min-height: 100vh;
+  background: var(--dbg-surface);
+  font-family: var(--dbg-font-body);
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  max-width: 780px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 40px 20px 56px;
+  text-align: left;
+}
+
+.headBlock {
+  margin-bottom: 26px;
+  text-align: center;
+}
+
+.pageTitle {
+  font-family: var(--dbg-font-display);
+  font-weight: 400;
+  font-size: 26px;
+  color: var(--dbg-navy-800);
+  margin: 0;
+}
+
+.pageDesc {
+  font-size: 13px;
+  color: var(--dbg-ink-400);
+  margin: 6px 0 0;
+}
+
+/* 필터 탭 */
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 12px 14px;
+  background: var(--dbg-card);
+  border-radius: 12px;
+  box-shadow: var(--dbg-shadow-card);
+}
+
+.filterBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: var(--dbg-radius-pill);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--dbg-font-body);
+  background: transparent;
+  color: var(--dbg-ink-600);
+  transition: all 0.15s;
+}
+.filterBtnActive {
+  font-weight: 700;
+}
+
+/* 상태 */
+.stateBox {
+  text-align: center;
+  color: var(--dbg-ink-400);
+  padding: 48px;
+}
+.stateBoxError { color: var(--dbg-danger); padding: 24px; }
+.emptyIcon { font-size: 34px; margin-bottom: 10px; }
+.emptyText { font-size: 14px; }
+
+/* 목록 */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.noteCard {
+  display: block;
+  text-decoration: none;
+  background: var(--dbg-card);
+  border-radius: 12px;
+  padding: 18px 22px;
+  box-shadow: var(--dbg-shadow-card);
+  border-left: 4px solid var(--note-color, var(--dbg-navy-700));
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.noteCard:hover {
+  box-shadow: var(--dbg-shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  flex-wrap: wrap;
+}
+
+.versionBadge {
+  font-family: var(--dbg-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--dbg-radius-pill);
+  background: var(--dbg-navy-800);
+  color: var(--dbg-on-navy);
+}
+
+.gameBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--dbg-radius-pill);
+}
+
+.noteDate {
+  font-family: var(--dbg-font-mono);
+  font-size: 11px;
+  color: var(--dbg-ink-400);
+  margin-left: auto;
+}
+
+.noteTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dbg-ink-900);
+  margin-bottom: 5px;
+}
+
+.notePreview {
+  font-size: 13px;
+  color: var(--dbg-ink-600);
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* 더 보기 */
+.loadMoreWrap {
+  text-align: center;
+  margin-top: 26px;
+}
+
+.loadMoreBtn {
+  padding: 10px 32px;
+  border-radius: var(--dbg-radius-pill);
+  border: 1.5px solid var(--dbg-paper-line);
+  background: var(--dbg-card);
+  color: var(--dbg-ink-600);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--dbg-font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.loadMoreBtn:hover:not(:disabled) { border-color: var(--dbg-navy-700); color: var(--dbg-navy-800); }
+.loadMoreBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* 상세 페이지 */
+.backLink {
+  font-size: 13px;
+  color: var(--dbg-ink-600);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 22px;
+  font-weight: 600;
+}
+.backLink:hover { color: var(--dbg-navy-800); }
+
+.detailCard {
+  background: var(--dbg-card);
+  border-radius: 14px;
+  box-shadow: var(--dbg-shadow-card);
+  overflow: hidden;
+}
+
+.detailBar {
+  height: 5px;
+  background: var(--note-color, var(--dbg-navy-700));
+}
+
+.detailBody {
+  padding: 28px 32px;
+}
+
+.detailTitle {
+  font-family: var(--dbg-font-display);
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--dbg-ink-900);
+  margin: 14px 0 22px;
+}
+
+.detailRule {
+  height: 1px;
+  background-image: radial-gradient(circle, var(--dbg-paper-line) 1.3px, transparent 1.4px);
+  background-size: 8px 100%;
+  background-repeat: repeat-x;
+  margin-bottom: 22px;
+}
+
+.detailContent {
+  font-size: 15px;
+  color: var(--dbg-ink-600);
+  white-space: pre-wrap;
+  line-height: 1.9;
+  letter-spacing: -0.1px;
+}
+
+@media (max-width: 480px) {
+  .detailBody { padding: 22px 20px; }
+}

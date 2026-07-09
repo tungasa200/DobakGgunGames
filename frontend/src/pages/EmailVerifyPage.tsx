@@ -35,8 +35,8 @@ export default function EmailVerifyPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ position: 'fixed', inset: 0, overflow: 'auto', background: '#f0f0f0', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
-      <NormalHeader accentColor="#2c3e50" />
+    <div style={{ position: 'fixed', inset: 0, overflow: 'auto', background: 'var(--dbg-surface)', fontFamily: 'var(--dbg-font-body)', display: 'flex', flexDirection: 'column' }}>
+      <NormalHeader accentColor="#101f38" />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: 'max-content' }}>
         <div className={s.card} style={{ textAlign: 'center' }}>
           {status === 'loading' && (
