@@ -105,10 +105,10 @@ export default function App() {
         <Route path="/board/:id/edit" element={<FriendRoute><BoardEditPage /></FriendRoute>} />
         <Route path="/board/:id" element={<FriendRoute><BoardDetailPage /></FriendRoute>} />
 
-        {/* Online RPS — 로그인/게스트 모두 허용 */}
+        {/* Online RPS — 로그인 필수 (게스트 불가) */}
         <Route
           path="/online-rps"
-          element={<OnlineRpsPage />}
+          element={<AuthRoute><OnlineRpsPage /></AuthRoute>}
         />
 
         {/* Yacht — 로그인 필수 */}
@@ -125,27 +125,27 @@ export default function App() {
           element={<AuthRoute><YachtBotPage /></AuthRoute>}
         />
 
-        {/* 사과게임 배틀 (로그인/게스트 모두 허용) */}
+        {/* 사과게임 배틀 (로그인 필수, 게스트 불가) */}
         <Route
           path="/games/apple/battle"
-          element={<AppleBattleBoard />}
+          element={<AuthRoute><AppleBattleBoard /></AuthRoute>}
         />
 
-        {/* 지뢰찾기 배틀 (로그인/게스트 모두 허용) */}
+        {/* 지뢰찾기 배틀 (로그인 필수, 게스트 불가) */}
         <Route
           path="/games/minesweeper/battle"
-          element={<MinesweeperBattleBoard />}
+          element={<AuthRoute><MinesweeperBattleBoard /></AuthRoute>}
         />
 
-        {/* 블록폴 배틀 (정식, 로그인/게스트 모두 허용) */}
+        {/* 블록폴 배틀 (정식, 로그인 필수, 게스트 불가) */}
         <Route
           path="/blockfall-battle"
-          element={<BlockfallBattlePage />}
+          element={<AuthRoute><BlockfallBattlePage /></AuthRoute>}
         />
         {/* Test Lab URL 하위 호환 유지 */}
         <Route
           path="/test-lab/blockfall-battle"
-          element={<BlockfallBattlePage />}
+          element={<AuthRoute><BlockfallBattlePage /></AuthRoute>}
         />
 
         {/* 벽돌깨기 — 로그인/게스트 모두 허용 */}

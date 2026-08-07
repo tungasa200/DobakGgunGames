@@ -114,6 +114,21 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             return true;
         }
 
+        // /ws-yacht 연결: isYacht 속성이 있으면 FRIEND 제한 없이 ChatPrincipal 설정 후 허용
+        Object isYachtAttr = sessionAttributes.get("isYacht");
+        if (isYachtAttr != null) {
+            Long yachtUserId = (Long) sessionAttributes.get("userId");
+            String yachtNickname = (String) sessionAttributes.getOrDefault("nickname", "");
+            String yachtRole = (String) sessionAttributes.getOrDefault("role", "USER");
+            if (yachtUserId == null) {
+                log.warn("StompChannelInterceptor: Yacht CONNECT - userId null, 연결 차단");
+                return false;
+            }
+            accessor.setUser(new ChatPrincipal(yachtUserId, yachtNickname, yachtRole));
+            log.debug("StompChannelInterceptor: Yacht CONNECT OK userId={}", yachtUserId);
+            return true;
+        }
+
         // /ws-rps 연결: isRpsGuest 속성이 있으면 ChatPrincipal 설정 후 허용
         Object isRpsGuestAttr = sessionAttributes.get("isRpsGuest");
         if (isRpsGuestAttr != null) {

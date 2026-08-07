@@ -92,13 +92,14 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/ws-battle/**").permitAll()
                 .requestMatchers("/ws-rps/**").permitAll()
-                // Blockfall Battle REST API — join/create/방목록/rankings는 게스트 포함 공개
+                .requestMatchers("/ws-yacht/**").permitAll()
+                // Blockfall/Apple/Minesweeper Battle REST API — 실제 인증(로그인 필수, 게스트 불가)은 각 컨트롤러가 JWT를 직접 검증
+                // (방목록/rankings 조회는 인증 불필요)
                 .requestMatchers("/api/blockfall-battle/join").permitAll()
                 .requestMatchers("/api/blockfall-battle/join/**").permitAll()
                 .requestMatchers("/api/blockfall-battle/create").permitAll()
                 .requestMatchers("/api/blockfall-battle/rankings").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/blockfall-battle/rooms/waiting").permitAll()
-                // Minesweeper Battle REST API — join/create/방목록은 게스트 포함 공개
                 .requestMatchers("/api/minesweeper-battle/join").permitAll()
                 .requestMatchers("/api/minesweeper-battle/join/**").permitAll()
                 .requestMatchers("/api/minesweeper-battle/create").permitAll()
@@ -108,7 +109,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,   "/api/chat/rooms").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.GET,    "/api/chat/rooms/*/history").hasAnyRole("FRIEND", "ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/chat/rooms/**").hasAnyRole("FRIEND", "ADMIN")
-                // Online RPS — 비로그인 포함 전체 허용 (게스트 지원)
+                // Online RPS — 실제 인증(로그인 필수, 게스트 불가)은 컨트롤러가 JWT를 직접 검증
                 .requestMatchers("/api/rps/**").permitAll()
                 // Yacht 멀티플레이 — 방 현황·대기방 목록은 공개, 나머지는 로그인 필수
                 .requestMatchers(HttpMethod.GET, "/api/yacht/rooms/status").permitAll()
@@ -153,6 +154,7 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/ws/**", config);
         source.registerCorsConfiguration("/ws-battle/**", config);
         source.registerCorsConfiguration("/ws-rps/**", config);
+        source.registerCorsConfiguration("/ws-yacht/**", config);
         return source;
     }
 }

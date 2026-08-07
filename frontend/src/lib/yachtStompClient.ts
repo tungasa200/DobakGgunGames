@@ -89,8 +89,9 @@ export function connectYacht(
   const onBeforeUnload = () => { isReloading = true; };
   window.addEventListener('beforeunload', onBeforeUnload);
 
-  // 기존 /ws 엔드포인트 공유 (chat, rps와 동일)
-  const wsBase = WS_URL ?? (import.meta.env.DEV ? 'http://localhost:8080/ws' : '');
+  // 전용 /ws-yacht 엔드포인트 (기존 /ws는 채팅용 FRIEND 제한이 있어 분리됨)
+  const wsBase = (WS_URL ?? (import.meta.env.DEV ? 'http://localhost:8080/ws' : ''))
+    .replace(/\/ws$/, '/ws-yacht');
   const wsUrl = token ? `${wsBase}?token=${encodeURIComponent(token)}` : wsBase;
 
   const client = new Client({

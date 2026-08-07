@@ -39,7 +39,7 @@ export async function getRpsRoomStatus(): Promise<RpsRoomStatus | null> {
   }
 }
 
-export async function postMatch(token?: string | null, guestToken?: string | null): Promise<MatchOutcome> {
+export async function postMatch(token?: string | null): Promise<MatchOutcome> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -50,7 +50,7 @@ export async function postMatch(token?: string | null, guestToken?: string | nul
   const res = await fetch(`${API_ORIGIN}/api/rps/match`, {
     method: 'POST',
     headers,
-    body: JSON.stringify(guestToken ? { guestToken } : {}),
+    body: JSON.stringify({}),
   });
 
   if (res.ok) {

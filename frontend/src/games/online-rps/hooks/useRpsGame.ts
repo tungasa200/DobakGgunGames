@@ -171,36 +171,26 @@ export function useRpsGame(): UseRpsGameReturn {
     clientRef.current = handle;
   }, [clearGameTimer, goHome, showToast]);
 
-  const GUEST_TOKEN_KEY = 'rps-guest-token';
-
-  // 매칭 시작
+  // 매칭 시작 — 로그인 필수 (AuthRoute가 비로그인 접근을 이미 차단)
   const startMatch = useCallback(async () => {
     setPhase('matching');
     setErrorMessage(null);
 
-    // 기존 guestToken 조회 (비로그인 재방문 시)
-    const storedGuestToken = sessionStorage.getItem(GUEST_TOKEN_KEY);
-    const outcome = await postMatch(accessToken, storedGuestToken);
+    const outcome = await postMatch(accessToken);
 
     if (outcome.ok) {
       const id = outcome.data.roomId;
-      // guestToken이 응답에 포함된 경우 저장
-      if (outcome.data.guestToken) {
-        sessionStorage.setItem(GUEST_TOKEN_KEY, outcome.data.guestToken);
-      }
-      const wsToken = accessToken ?? outcome.data.guestToken ?? storedGuestToken ?? null;
       setRoomId(id);
       roomIdRef.current = id;
       setPhase('connecting');
-      connectWs(id, wsToken);
+      connectWs(id, accessToken);
     } else if (!outcome.ok && outcome.alreadyInRoom) {
       const id = outcome.roomId;
-      const wsToken = accessToken ?? storedGuestToken ?? null;
       setRoomId(id);
       roomIdRef.current = id;
       showToast('이미 진행 중인 방이 있습니다. 재진입합니다.');
       setPhase('connecting');
-      connectWs(id, wsToken);
+      connectWs(id, accessToken);
     } else {
       setErrorMessage(`매칭 실패: ${outcome.error}`);
       setPhase('error');

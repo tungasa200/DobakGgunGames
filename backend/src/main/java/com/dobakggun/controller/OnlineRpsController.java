@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Online RPS REST 컨트롤러.
  * 단일 엔드포인트: POST /api/rps/match
- * 비로그인 게스트도 허용 — guestToken 기반 식별.
+ * 로그인 필수 — 게스트 불가.
  */
 @Slf4j
 @RestController
@@ -29,22 +29,23 @@ public class OnlineRpsController {
      *
      * - 200: 기존 대기방에 합류.
      * - 201: 신규 방 자동 생성.
+     * - 401: 비로그인 (UNAUTHORIZED).
      * - 409: 이미 활성 방에 참가 중 (ALREADY_IN_ROOM).
      * - 429: Rate limit 초과 (MATCH_RATE_LIMIT).
      * - 503: Redis/DB 락 획득 실패 (MATCH_UNAVAILABLE).
-     *
-     * 비로그인 게스트: userId=null, body.guestToken 으로 식별.
-     * 신규 게스트이면 응답에 guestToken 포함.
      */
     @PostMapping("/match")
     public ResponseEntity<?> match(
             @AuthenticationPrincipal Long userId,
             @RequestBody(required = false) Map<String, String> body) {
 
-        String guestToken = (body != null) ? body.get("guestToken") : null;
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+        }
 
         try {
-            MatchResponseDto response = rpsMatchService.match(userId, guestToken);
+            MatchResponseDto response = rpsMatchService.match(userId, null);
             HttpStatus status = response.isCreated() ? HttpStatus.CREATED : HttpStatus.OK;
             return ResponseEntity.status(status).body(response);
 

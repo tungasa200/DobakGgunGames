@@ -16,30 +16,20 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.regex.Pattern;
 
 /**
  * 블록폴 배틀 REST 컨트롤러.
  *
  * POST /api/blockfall-battle/join     — 자동 매칭 / 큐 진입
  * GET  /api/blockfall-battle/rankings — 역대 승수 TOP 10
+ *
+ * 로그인 필수 — 게스트 불가.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/blockfall-battle")
 @RequiredArgsConstructor
 public class BattleRoomController {
-
-    private static final String GUEST_PREFIX = "guest_";
-
-    /**
-     * BUG-002 / BUG-005 수정: guest_ + UUID v4 완전 일치 검증.
-     * "guest_" 빈 uuid, "guest_abc" 등 비정상 토큰을 401로 차단.
-     */
-    private static final Pattern GUEST_TOKEN_PATTERN = Pattern.compile(
-            "^guest_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-    );
 
     private final BattleRoomService battleRoomService;
     private final BattleRankingService battleRankingService;
@@ -54,54 +44,26 @@ public class BattleRoomController {
             @RequestBody(required = false) BattleJoinRequest req,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        // 인증 정보 파싱
-        Long userId = null;
-        String nickname = null;
-        boolean isGuest;
-        String guestId = null;
+        // 인증 정보 파싱 — 로그인 필수 (게스트 불가)
+        Long userId;
+        String nickname;
 
-        // 1. JWT 검증 (로그인 유저)
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            if (jwtUtil.validateToken(token)) {
-                userId = jwtUtil.getUserIdFromToken(token);
-                nickname = jwtUtil.getNicknameFromToken(token);
-                isGuest = false;
-            } else {
-                // JWT가 있는데 유효하지 않음 → 만료/조작 → 401 반환 (게스트 fallback 금지)
+            if (!jwtUtil.validateToken(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("error", "UNAUTHORIZED",
                                 "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
             }
+            userId = jwtUtil.getUserIdFromToken(token);
+            nickname = jwtUtil.getNicknameFromToken(token);
         } else {
-            isGuest = true;
-        }
-
-        // 2. 게스트 처리
-        if (isGuest) {
-            String requestToken = (req != null) ? req.getGuestToken() : null;
-
-            if (StringUtils.hasText(requestToken)) {
-                // EC-3: 형식 검증 — guest_ + UUID v4 완전 일치 (BUG-002/BUG-005 수정)
-                if (!GUEST_TOKEN_PATTERN.matcher(requestToken).matches()) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(Map.of("error", "UNAUTHORIZED_GUEST_TOKEN",
-                                    "message", "guestToken 형식이 올바르지 않습니다. guest_{UUID v4} 형식이 필요합니다."));
-                }
-                guestId = requestToken;
-            } else {
-                // 신규 게스트 발급
-                guestId = GUEST_PREFIX + UUID.randomUUID();
-            }
-
-            // 닉네임 생성
-            String uuid = guestId.substring(GUEST_PREFIX.length());
-            String prefix = uuid.replace("-", "").substring(0, Math.min(4, uuid.replace("-", "").length())).toUpperCase();
-            nickname = "손님-" + prefix;
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
         }
 
         try {
-            BattleJoinResponse response = battleRoomService.joinBattle(userId, guestId, isGuest, nickname);
+            BattleJoinResponse response = battleRoomService.joinBattle(userId, null, false, nickname);
             log.info("BattleRoomController.join: playerId={} roomId={} status={}",
                     response.getPlayerId(), response.getRoomId(), response.getStatus());
             return ResponseEntity.ok(response);
@@ -140,51 +102,31 @@ public class BattleRoomController {
         return ResponseEntity.ok(battleRoomService.listWaitingRooms());
     }
 
-    /** POST /api/blockfall-battle/create — 신규 방 직접 생성 (게스트/로그인 모두 허용). */
+    /** POST /api/blockfall-battle/create — 신규 방 직접 생성 (로그인 필수). */
     @PostMapping("/create")
     public ResponseEntity<?> create(
             @RequestBody(required = false) BattleJoinRequest req,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        Long userId = null;
-        String nickname = null;
-        boolean isGuest;
-        String guestId = null;
+        Long userId;
+        String nickname;
 
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            if (jwtUtil.validateToken(token)) {
-                userId = jwtUtil.getUserIdFromToken(token);
-                nickname = jwtUtil.getNicknameFromToken(token);
-                isGuest = false;
-            } else {
+            if (!jwtUtil.validateToken(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("error", "UNAUTHORIZED",
                                 "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
             }
+            userId = jwtUtil.getUserIdFromToken(token);
+            nickname = jwtUtil.getNicknameFromToken(token);
         } else {
-            isGuest = true;
-        }
-
-        if (isGuest) {
-            String requestToken = (req != null) ? req.getGuestToken() : null;
-            if (StringUtils.hasText(requestToken)) {
-                if (!GUEST_TOKEN_PATTERN.matcher(requestToken).matches()) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(Map.of("error", "UNAUTHORIZED_GUEST_TOKEN",
-                                    "message", "guestToken 형식이 올바르지 않습니다."));
-                }
-                guestId = requestToken;
-            } else {
-                guestId = GUEST_PREFIX + UUID.randomUUID();
-            }
-            String uuid = guestId.substring(GUEST_PREFIX.length());
-            String prefix = uuid.replace("-", "").substring(0, Math.min(4, uuid.replace("-", "").length())).toUpperCase();
-            nickname = "손님-" + prefix;
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
         }
 
         try {
-            BattleJoinResponse response = battleRoomService.createRoomOnly(userId, guestId, isGuest, nickname);
+            BattleJoinResponse response = battleRoomService.createRoomOnly(userId, null, false, nickname);
             return ResponseEntity.ok(response);
         } catch (BattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -196,52 +138,32 @@ public class BattleRoomController {
         }
     }
 
-    /** POST /api/blockfall-battle/join/{roomId} — 특정 방 직접 입장 (게스트/로그인 모두 허용). */
+    /** POST /api/blockfall-battle/join/{roomId} — 특정 방 직접 입장 (로그인 필수). */
     @PostMapping("/join/{roomId}")
     public ResponseEntity<?> joinSpecific(
             @PathVariable String roomId,
             @RequestBody(required = false) BattleJoinRequest req,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        Long userId = null;
-        String nickname = null;
-        boolean isGuest;
-        String guestId = null;
+        Long userId;
+        String nickname;
 
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            if (jwtUtil.validateToken(token)) {
-                userId = jwtUtil.getUserIdFromToken(token);
-                nickname = jwtUtil.getNicknameFromToken(token);
-                isGuest = false;
-            } else {
+            if (!jwtUtil.validateToken(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("error", "UNAUTHORIZED",
                                 "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
             }
+            userId = jwtUtil.getUserIdFromToken(token);
+            nickname = jwtUtil.getNicknameFromToken(token);
         } else {
-            isGuest = true;
-        }
-
-        if (isGuest) {
-            String requestToken = (req != null) ? req.getGuestToken() : null;
-            if (StringUtils.hasText(requestToken)) {
-                if (!GUEST_TOKEN_PATTERN.matcher(requestToken).matches()) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(Map.of("error", "UNAUTHORIZED_GUEST_TOKEN",
-                                    "message", "guestToken 형식이 올바르지 않습니다."));
-                }
-                guestId = requestToken;
-            } else {
-                guestId = GUEST_PREFIX + UUID.randomUUID();
-            }
-            String uuid = guestId.substring(GUEST_PREFIX.length());
-            String prefix = uuid.replace("-", "").substring(0, Math.min(4, uuid.replace("-", "").length())).toUpperCase();
-            nickname = "손님-" + prefix;
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
         }
 
         try {
-            BattleJoinResponse response = battleRoomService.joinSpecificRoom(roomId, userId, guestId, isGuest, nickname);
+            BattleJoinResponse response = battleRoomService.joinSpecificRoom(roomId, userId, null, false, nickname);
             return ResponseEntity.ok(response);
         } catch (BattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)

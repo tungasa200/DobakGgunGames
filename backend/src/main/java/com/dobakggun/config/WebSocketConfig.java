@@ -4,6 +4,7 @@ import com.dobakggun.security.BlockfallBattleHandshakeInterceptor;
 import com.dobakggun.security.JwtHandshakeInterceptor;
 import com.dobakggun.security.RpsHandshakeInterceptor;
 import com.dobakggun.security.StompChannelInterceptor;
+import com.dobakggun.security.YachtHandshakeInterceptor;
 import com.dobakggun.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,16 +35,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .addInterceptors(new JwtHandshakeInterceptor(jwtUtil))
                 .withSockJS();
 
-        // 신규 /ws-battle 엔드포인트 — JWT 또는 guestToken 허용
+        // /ws-battle 엔드포인트 (Blockfall/Apple/Minesweeper Battle 공유) — 로그인 필수(게스트 불가)
         registry.addEndpoint("/ws-battle")
                 .setAllowedOriginPatterns(allowedOrigins.split(","))
                 .addInterceptors(new BlockfallBattleHandshakeInterceptor(jwtUtil))
                 .withSockJS();
 
-        // /ws-rps 엔드포인트 — JWT(로그인) 또는 guestToken(비로그인) 허용
+        // /ws-rps 엔드포인트 — 로그인 필수(게스트 불가)
         registry.addEndpoint("/ws-rps")
                 .setAllowedOriginPatterns(allowedOrigins.split(","))
                 .addInterceptors(new RpsHandshakeInterceptor(jwtUtil))
+                .withSockJS();
+
+        // /ws-yacht 엔드포인트 — 로그인 필수(게스트 불가), FRIEND 제한 없음 (기존 /ws는 채팅용 FRIEND 제한 상속 문제로 분리)
+        registry.addEndpoint("/ws-yacht")
+                .setAllowedOriginPatterns(allowedOrigins.split(","))
+                .addInterceptors(new YachtHandshakeInterceptor(jwtUtil))
                 .withSockJS();
     }
 
