@@ -83,6 +83,9 @@ public class AppleBattleRoom {
     /** 120초 게임 종료 타이머 Future */
     private volatile ScheduledFuture<?> gameEndFuture;
 
+    /** MATCHED 상태에서 양쪽 WS 연결을 기다리는 타임아웃 Future */
+    private volatile ScheduledFuture<?> matchTimeoutFuture;
+
     /** 연결 끊김 grace period Future (playerId → Future) */
     private final ConcurrentHashMap<String, ScheduledFuture<?>> disconnectFutures = new ConcurrentHashMap<>();
 
@@ -91,6 +94,13 @@ public class AppleBattleRoom {
 
     /** 재대결 요청한 플레이어 집합 */
     private final ConcurrentHashMap<String, Boolean> rematchRequested = new ConcurrentHashMap<>();
+
+    /**
+     * 코드 공유형 개인방 여부.
+     * true 이면 자동매칭 탐색(findWaitingRoom) 및 대기방 목록(getWaitingRooms)에서 제외되고,
+     * roomId(코드)를 알아야만 입장 가능하다.
+     */
+    private volatile boolean privateRoom = false;
 
     // ─── 생성자 ───────────────────────────────────────────────────────────────
 

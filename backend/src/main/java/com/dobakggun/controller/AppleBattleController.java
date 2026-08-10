@@ -54,22 +54,12 @@ public class AppleBattleController {
             @RequestBody(required = false) AppleBattleJoinRequest req,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        Long userId;
-        String nickname;
-
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            if (!jwtUtil.validateToken(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "UNAUTHORIZED",
-                                "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
-            }
-            userId = jwtUtil.getUserIdFromToken(token);
-            nickname = jwtUtil.getNicknameFromToken(token);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+        AuthenticatedUser auth = resolveUserOrUnauthorized(authHeader);
+        if (auth.errorResponse() != null) {
+            return auth.errorResponse();
         }
+        Long userId = auth.userId();
+        String nickname = auth.nickname();
 
         try {
             AppleBattleJoinResponse response = appleService.joinOrCreate(userId, null, nickname);
@@ -98,22 +88,12 @@ public class AppleBattleController {
             @RequestBody(required = false) AppleBattleJoinRequest req,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        Long userId;
-        String nickname;
-
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            if (!jwtUtil.validateToken(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "UNAUTHORIZED",
-                                "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
-            }
-            userId = jwtUtil.getUserIdFromToken(token);
-            nickname = jwtUtil.getNicknameFromToken(token);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+        AuthenticatedUser auth = resolveUserOrUnauthorized(authHeader);
+        if (auth.errorResponse() != null) {
+            return auth.errorResponse();
         }
+        Long userId = auth.userId();
+        String nickname = auth.nickname();
 
         try {
             AppleBattleJoinResponse response = appleService.createRoomOnly(userId, null, nickname);
@@ -139,22 +119,12 @@ public class AppleBattleController {
             @RequestBody(required = false) AppleBattleJoinRequest req,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        Long userId;
-        String nickname;
-
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            if (!jwtUtil.validateToken(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "UNAUTHORIZED",
-                                "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요."));
-            }
-            userId = jwtUtil.getUserIdFromToken(token);
-            nickname = jwtUtil.getNicknameFromToken(token);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+        AuthenticatedUser auth = resolveUserOrUnauthorized(authHeader);
+        if (auth.errorResponse() != null) {
+            return auth.errorResponse();
         }
+        Long userId = auth.userId();
+        String nickname = auth.nickname();
 
         try {
             AppleBattleJoinResponse response = appleService.joinSpecificRoom(roomId, userId, null, nickname);
@@ -218,5 +188,44 @@ public class AppleBattleController {
     @GetMapping("/rooms/waiting")
     public ResponseEntity<List<WaitingRoomInfo>> getWaitingRooms() {
         return ResponseEntity.ok(appleService.listWaitingRooms());
+    }
+
+    // ─── JWT 인증 공통 헬퍼 ───────────────────────────────────────────────────
+
+    /**
+     * Authorization 헤더에서 JWT 를 검증하고 userId/nickname 을 추출한다.
+     * join/create/joinSpecific 3곳에서 동일하게 사용 — 로그인 필수(게스트 불가).
+     *
+     * @return 인증 성공 시 userId/nickname 이 채워지고 errorResponse 는 null.
+     *         인증 실패 시 errorResponse 에 401 응답이 채워짐(userId/nickname 은 무시).
+     */
+    private AuthenticatedUser resolveUserOrUnauthorized(String authHeader) {
+        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
+            return AuthenticatedUser.unauthorized(
+                    ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Map.of("error", "UNAUTHORIZED", "message", "로그인이 필요합니다.")));
+        }
+
+        String token = authHeader.substring(7);
+        if (!jwtUtil.validateToken(token)) {
+            return AuthenticatedUser.unauthorized(
+                    ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Map.of("error", "UNAUTHORIZED",
+                                    "message", "로그인 정보가 만료되었습니다. 다시 로그인해 주세요.")));
+        }
+
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        String nickname = jwtUtil.getNicknameFromToken(token);
+        return AuthenticatedUser.of(userId, nickname);
+    }
+
+    /** resolveUserOrUnauthorized 결과 — errorResponse 가 null 이 아니면 즉시 반환해야 함. */
+    private record AuthenticatedUser(Long userId, String nickname, ResponseEntity<?> errorResponse) {
+        static AuthenticatedUser of(Long userId, String nickname) {
+            return new AuthenticatedUser(userId, nickname, null);
+        }
+        static AuthenticatedUser unauthorized(ResponseEntity<?> errorResponse) {
+            return new AuthenticatedUser(null, null, errorResponse);
+        }
     }
 }

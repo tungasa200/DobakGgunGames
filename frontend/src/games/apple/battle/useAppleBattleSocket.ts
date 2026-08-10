@@ -8,6 +8,7 @@ import type {
   AppleRemovedPayload,
   GameResultPayload,
   StateSnapshotPayload,
+  MatchTimeoutPayload,
 } from './types';
 
 const WS_BATTLE_URL = (import.meta.env.VITE_WS_BATTLE_URL as string | undefined)?.trim();
@@ -30,6 +31,7 @@ export interface UseAppleBattleSocketOptions {
   onStateSnapshot: (p: StateSnapshotPayload) => void;
   onOpponentDisconnected: () => void;
   onOpponentReconnected: () => void;
+  onMatchTimeout: (p: MatchTimeoutPayload) => void;
   onRematchRequested: () => void;
   onRematchDeclined: () => void;
   onError: (code: string, message: string) => void;
@@ -63,6 +65,7 @@ export function useAppleBattleSocket(
     onStateSnapshot,
     onOpponentDisconnected,
     onOpponentReconnected,
+    onMatchTimeout,
     onRematchRequested,
     onRematchDeclined,
     onError,
@@ -87,6 +90,7 @@ export function useAppleBattleSocket(
     onStateSnapshot,
     onOpponentDisconnected,
     onOpponentReconnected,
+    onMatchTimeout,
     onRematchRequested,
     onRematchDeclined,
     onError,
@@ -102,6 +106,7 @@ export function useAppleBattleSocket(
       onStateSnapshot,
       onOpponentDisconnected,
       onOpponentReconnected,
+      onMatchTimeout,
       onRematchRequested,
       onRematchDeclined,
       onError,
@@ -136,6 +141,9 @@ export function useAppleBattleSocket(
         break;
       case 'OPPONENT_RECONNECTED':
         h.onOpponentReconnected();
+        break;
+      case 'MATCH_TIMEOUT':
+        h.onMatchTimeout(payload as MatchTimeoutPayload);
         break;
       case 'REMATCH_REQUESTED':
         h.onRematchRequested();

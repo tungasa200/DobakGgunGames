@@ -14,8 +14,11 @@ import com.dobakggun.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +57,10 @@ public class AppleBattleRoomService {
     private static final int ROOM_CLOSE_DELAY_SECONDS = 60;
     private static final int GAME_DURATION_SECONDS = 120;
     private static final int COUNTDOWN_SECONDS = 3;
+    /** MATCHED 상태에서 양쪽 WS 연결을 기다리는 최대 시간 (초). */
+    private static final int MATCH_TIMEOUT_SECONDS = 20;
+    /** WAITING 방 TTL 스윕 기준 (분). */
+    private static final int ROOM_TTL_MINUTES = 10;
 
     static final String TOPIC_PREFIX = "/topic/apple-battle/room/";
     static final String USER_QUEUE_BOARD = "/queue/apple-battle/board";
@@ -110,20 +117,8 @@ public class AppleBattleRoomService {
         String playerId = (userId != null) ? String.valueOf(userId) : guestToken;
         boolean isGuest = (userId == null);
 
-        // 중복 참가 방지
-        if (roomManager.isPlayerInAnyRoom(playerId)) {
-            Optional<String> existingRoomId = roomManager.findRoomIdByPlayer(playerId);
-            if (existingRoomId.isPresent()) {
-                AppleBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
-                if (existing != null && existing.getStatus() == AppleBattleRoom.Status.FINISHED) {
-                    ScheduledFuture<?> df = existing.getDisconnectFutures().remove(playerId);
-                    if (df != null && !df.isDone()) df.cancel(false);
-                    roomManager.removePlayer(existingRoomId.get(), playerId);
-                } else {
-                    throw new AlreadyInRoomException(existingRoomId.get(), playerId);
-                }
-            }
-        }
+        // 중복 참가 방지 (FINISHED 방이면 정리 후 통과)
+        reclaimOrRejectExistingRoom(playerId);
 
         PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
 
@@ -150,6 +145,7 @@ public class AppleBattleRoomService {
                 room.setStatus(AppleBattleRoom.Status.MATCHED);
                 room.setMatchedAt(Instant.now());
                 updateAppleRoomDB(room.getRoomId(), "MATCHED", 2);
+                scheduleMatchTimeout(room);
 
                 lock.unlock();
 
@@ -183,22 +179,10 @@ public class AppleBattleRoomService {
         String playerId = (userId != null) ? String.valueOf(userId) : guestToken;
         boolean isGuest = (userId == null);
 
-        if (roomManager.isPlayerInAnyRoom(playerId)) {
-            Optional<String> existingRoomId = roomManager.findRoomIdByPlayer(playerId);
-            if (existingRoomId.isPresent()) {
-                AppleBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
-                if (existing != null && existing.getStatus() == AppleBattleRoom.Status.FINISHED) {
-                    ScheduledFuture<?> df = existing.getDisconnectFutures().remove(playerId);
-                    if (df != null && !df.isDone()) df.cancel(false);
-                    roomManager.removePlayer(existingRoomId.get(), playerId);
-                } else {
-                    throw new AlreadyInRoomException(existingRoomId.get(), playerId);
-                }
-            }
-        }
+        reclaimOrRejectExistingRoom(playerId);
 
         PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
-        return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer);
+        return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer, true);
     }
 
     /** POST /api/apple-battle/join/{roomId} — 특정 방에 직접 입장. */
@@ -207,19 +191,7 @@ public class AppleBattleRoomService {
         String playerId = (userId != null) ? String.valueOf(userId) : guestToken;
         boolean isGuest = (userId == null);
 
-        if (roomManager.isPlayerInAnyRoom(playerId)) {
-            Optional<String> existingRoomId = roomManager.findRoomIdByPlayer(playerId);
-            if (existingRoomId.isPresent()) {
-                AppleBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
-                if (existing != null && existing.getStatus() == AppleBattleRoom.Status.FINISHED) {
-                    ScheduledFuture<?> df = existing.getDisconnectFutures().remove(playerId);
-                    if (df != null && !df.isDone()) df.cancel(false);
-                    roomManager.removePlayer(existingRoomId.get(), playerId);
-                } else {
-                    throw new AlreadyInRoomException(existingRoomId.get(), playerId);
-                }
-            }
-        }
+        reclaimOrRejectExistingRoom(playerId);
 
         AppleBattleRoom room = roomManager.getRoom(roomId)
                 .orElseThrow(RoomNotFoundException::new);
@@ -245,6 +217,7 @@ public class AppleBattleRoomService {
             room.setStatus(AppleBattleRoom.Status.MATCHED);
             room.setMatchedAt(Instant.now());
             updateAppleRoomDB(roomId, "MATCHED", 2);
+            scheduleMatchTimeout(room);
 
             lock.unlock();
 
@@ -470,6 +443,9 @@ public class AppleBattleRoomService {
                 ScheduledFuture<?> cf = room.getCountdownFuture();
                 if (cf == null || cf.isDone()) {
                     log.info("handleRequestState: MATCHED + allConnected → MATCH_READY 발송 roomId={}", roomId);
+                    // 카운트다운으로 넘어가므로 더 이상 MATCHED 대기 타임아웃이 필요 없음
+                    ScheduledFuture<?> mtf = room.getMatchTimeoutFuture();
+                    if (mtf != null && !mtf.isDone()) mtf.cancel(false);
                     sendMatchReadyAndScheduleStart(room);
                 }
             }
@@ -972,6 +948,80 @@ public class AppleBattleRoomService {
 
         ScheduledFuture<?> gameEnd = room.getGameEndFuture();
         if (gameEnd != null && !gameEnd.isDone()) gameEnd.cancel(false);
+
+        ScheduledFuture<?> matchTimeout = room.getMatchTimeoutFuture();
+        if (matchTimeout != null && !matchTimeout.isDone()) matchTimeout.cancel(false);
+    }
+
+    // ─── MATCHED 대기 타임아웃 ──────────────────────────────────────────────
+
+    /**
+     * MATCHED 상태 전이 직후 호출 — {@link #MATCH_TIMEOUT_SECONDS}초 안에 양쪽 모두
+     * WS 연결을 완료하지 못하면(handleRequestState 를 통해 MATCH_READY 로 넘어가지 못하면)
+     * 연결되지 않은 플레이어를 방에서 제거하고 남은 플레이어는 WAITING 으로 되돌린다.
+     */
+    private void scheduleMatchTimeout(AppleBattleRoom room) {
+        String roomId = room.getRoomId();
+
+        ScheduledFuture<?> existing = room.getMatchTimeoutFuture();
+        if (existing != null && !existing.isDone()) existing.cancel(false);
+
+        ScheduledFuture<?> future = taskScheduler.schedule(() -> {
+            AppleBattleRoom r = roomManager.getRoom(roomId).orElse(null);
+            if (r == null) return;
+            if (r.getStatus() != AppleBattleRoom.Status.MATCHED) return;
+
+            boolean allConnected = r.getPlayers().stream().allMatch(PlayerInfo::isConnected);
+            if (allConnected) return;
+
+            log.info("scheduleMatchTimeout: MATCHED 대기 타임아웃 roomId={}", roomId);
+
+            List<PlayerInfo> disconnectedPlayers = r.getPlayers().stream()
+                    .filter(p -> !p.isConnected())
+                    .collect(Collectors.toList());
+            for (PlayerInfo disconnectedPlayer : disconnectedPlayers) {
+                roomManager.removePlayer(roomId, disconnectedPlayer.getPlayerId());
+            }
+
+            PlayerInfo remaining = r.getPlayers().stream()
+                    .filter(PlayerInfo::isConnected)
+                    .findFirst()
+                    .orElse(null);
+
+            if (remaining != null) {
+                r.setStatus(AppleBattleRoom.Status.WAITING);
+                updateAppleRoomDB(roomId, "WAITING", 1);
+                messagingTemplate.convertAndSendToUser(
+                        remaining.getPlayerId(), USER_QUEUE_STATE,
+                        buildEnvelope("MATCH_TIMEOUT", Map.of("message", "상대방이 연결되지 않아 계속 대기합니다.")));
+            } else {
+                // 둘 다 연결 안 됨 — 극단적 케이스, 방 자체를 정리
+                roomManager.closeRoom(roomId);
+            }
+        }, Instant.now().plusSeconds(MATCH_TIMEOUT_SECONDS));
+
+        room.setMatchTimeoutFuture(future);
+    }
+
+    /**
+     * 중복 참가 방지 공통 헬퍼.
+     * 플레이어가 이미 다른 방에 참가 중이면: 그 방이 FINISHED 상태일 경우 좀비 매핑을 정리하고
+     * 통과시키고, 그 외에는 {@link AlreadyInRoomException} 을 던진다.
+     */
+    private void reclaimOrRejectExistingRoom(String playerId) {
+        if (!roomManager.isPlayerInAnyRoom(playerId)) return;
+
+        Optional<String> existingRoomId = roomManager.findRoomIdByPlayer(playerId);
+        if (existingRoomId.isEmpty()) return;
+
+        AppleBattleRoom existing = roomManager.getRoom(existingRoomId.get()).orElse(null);
+        if (existing != null && existing.getStatus() == AppleBattleRoom.Status.FINISHED) {
+            ScheduledFuture<?> df = existing.getDisconnectFutures().remove(playerId);
+            if (df != null && !df.isDone()) df.cancel(false);
+            roomManager.removePlayer(existingRoomId.get(), playerId);
+        } else {
+            throw new AlreadyInRoomException(existingRoomId.get(), playerId);
+        }
     }
 
     // ─── 브로드캐스트 헬퍼 ───────────────────────────────────────────────────
@@ -1000,9 +1050,20 @@ public class AppleBattleRoomService {
     private AppleBattleJoinResponse createNewRoom(
             String playerId, String guestToken, String nickname,
             boolean isGuest, PlayerInfo player) {
+        return createNewRoom(playerId, guestToken, nickname, isGuest, player, false);
+    }
+
+    /**
+     * @param privateRoom true 이면 코드 공유형 개인방 — 자동매칭 탐색/대기방 목록에서 제외되고
+     *                     roomId(코드)를 알아야만 입장 가능하다.
+     */
+    private AppleBattleJoinResponse createNewRoom(
+            String playerId, String guestToken, String nickname,
+            boolean isGuest, PlayerInfo player, boolean privateRoom) {
 
         String newRoomId = generateRoomId();
-        roomManager.createRoom(newRoomId);
+        AppleBattleRoom room = roomManager.createRoom(newRoomId);
+        room.setPrivateRoom(privateRoom);
         roomManager.addPlayer(newRoomId, player);
 
         // DB 방 생성 — 지뢰찾기 배틀과 동일 패턴
@@ -1037,9 +1098,52 @@ public class AppleBattleRoomService {
                 room.setStartedAt(LocalDateTime.now());
             } else if ("FINISHED".equals(status)) {
                 room.setFinishedAt(LocalDateTime.now());
+                room.setClosedAt(LocalDateTime.now());
             }
             appleRoomRepository.save(room);
         });
+    }
+
+    // ─── 초기화 / 좀비 방 정리 ───────────────────────────────────────────────
+
+    /**
+     * 서버 재시작 시 DB의 WAITING/MATCHED/PLAYING 방을 모두 FINISHED 처리.
+     * 인메모리 맵은 이미 비어있으므로 DB만 정리.
+     * ApplicationReadyEvent 사용: @PostConstruct + @Transactional 조합의 AOP 프록시 우회 문제 방지.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void closeStaleRoomsOnStartup() {
+        List<String> active = List.of("WAITING", "MATCHED", "PLAYING");
+        int closed = appleRoomRepository.closeAllActiveRooms(
+                "FINISHED", LocalDateTime.now(), active);
+        if (closed > 0) {
+            log.info("AppleBattleRoomService: 서버 재시작 — 좀비 방 {}개 FINISHED 처리", closed);
+        }
+    }
+
+    /**
+     * WAITING 상태로 {@link #ROOM_TTL_MINUTES}분 이상 방치된 방을 자동 close.
+     */
+    @Scheduled(fixedDelay = 60_000)
+    @Transactional
+    public void sweepStaleRooms() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(ROOM_TTL_MINUTES);
+        List<AppleRoom> stale = appleRoomRepository.findStaleWaitingRooms("WAITING", cutoff);
+        for (AppleRoom dbRoom : stale) {
+            String roomId = dbRoom.getRoomId();
+
+            roomManager.getRoom(roomId).ifPresent(room -> {
+                cancelGameTimers(room);
+                roomManager.closeRoom(roomId);
+            });
+
+            dbRoom.setStatus("FINISHED");
+            dbRoom.setFinishedAt(LocalDateTime.now());
+            dbRoom.setClosedAt(LocalDateTime.now());
+            appleRoomRepository.save(dbRoom);
+            log.info("sweepStaleRooms: roomId={} TTL 만료로 FINISHED", roomId);
+        }
     }
 
     private String generateRoomId() {

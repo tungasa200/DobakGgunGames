@@ -5,6 +5,7 @@ export type AbEventType =
   | 'GAME_RESULT' | 'STATE_SNAPSHOT'
   | 'OPPONENT_DISCONNECTED' | 'OPPONENT_RECONNECTED'
   | 'REMATCH_REQUESTED' | 'REMATCH_DECLINED'
+  | 'MATCH_TIMEOUT'
   | 'ERROR';
 
 export interface AbPlayerInfo {
@@ -40,6 +41,10 @@ export interface GameResultPayload {
   reason: 'TIME_UP' | 'BOARD_CLEARED' | 'OPPONENT_LEFT';
 }
 
+export interface MatchTimeoutPayload {
+  message: string;
+}
+
 export interface StateSnapshotPayload {
   roomId: string;
   roomStatus: string;
@@ -69,6 +74,7 @@ export interface AbBattleState {
   myRematchRequested: boolean;
   opponentRematchRequested: boolean;
   countdownSec: number; // 3, 2, 1, 0
+  timeoutMessage: string | null; // MATCH_TIMEOUT 안내 문구 (waiting 화면용)
 }
 
 export type AbBattleAction =
@@ -80,6 +86,7 @@ export type AbBattleAction =
   | { type: 'STATE_SNAPSHOT'; payload: StateSnapshotPayload; myPlayerId: string }
   | { type: 'OPPONENT_DISCONNECTED' }
   | { type: 'OPPONENT_RECONNECTED' }
+  | { type: 'MATCH_TIMEOUT'; payload: MatchTimeoutPayload }
   | { type: 'COUNTDOWN_TICK' }
   | { type: 'ERROR'; message: string }
   | { type: 'MY_REMATCH_SENT' }

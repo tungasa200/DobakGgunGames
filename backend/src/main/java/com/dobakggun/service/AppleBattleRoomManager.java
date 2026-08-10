@@ -56,7 +56,8 @@ public class AppleBattleRoomManager {
     public Optional<AppleBattleRoom> findWaitingRoom() {
         return rooms.values().stream()
                 .filter(r -> r.getStatus() == AppleBattleRoom.Status.WAITING
-                        && r.getPlayerCount() == 1)
+                        && r.getPlayerCount() == 1
+                        && !r.isPrivateRoom())
                 .findFirst();
     }
 
@@ -166,7 +167,8 @@ public class AppleBattleRoomManager {
         List<AppleBattleRoom> result = new ArrayList<>();
         for (AppleBattleRoom room : rooms.values()) {
             if (room.getStatus() == AppleBattleRoom.Status.WAITING
-                    && room.getPlayerCount() < 2) {
+                    && room.getPlayerCount() < 2
+                    && !room.isPrivateRoom()) {
                 result.add(room);
                 if (result.size() >= 20) break;
             }

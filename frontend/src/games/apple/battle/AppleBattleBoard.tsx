@@ -12,7 +12,7 @@ import {
   clearAbJoinInfo,
   cancelAppleBattle,
 } from '../../../api/appleBattle';
-import type { AbWaitingRoomInfo } from '../../../api/appleBattle';
+import type { AbWaitingRoomInfo, AbJoinResponse } from '../../../api/appleBattle';
 import { useAppleBattleGame } from './useAppleBattleGame';
 import { useAppleBattleSocket } from './useAppleBattleSocket';
 import type {
@@ -24,6 +24,7 @@ import type {
   GameResultPayload,
   StateSnapshotPayload,
   AbPlayerInfo,
+  MatchTimeoutPayload,
 } from './types';
 import AppleBattleWaiting from './AppleBattleWaiting';
 import AppleBattleGameView from './AppleBattleGameView';
@@ -49,6 +50,7 @@ const initialBattleState: AbBattleState = {
   myRematchRequested: false,
   opponentRematchRequested: false,
   countdownSec: 3,
+  timeoutMessage: null,
 };
 
 // ── Reducer ────────────────────────────────────────────────
@@ -74,6 +76,7 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
         countdownSec: 3,
         myRematchRequested: false,
         opponentRematchRequested: false,
+        timeoutMessage: null,
       };
     }
     case 'GAME_STARTED': {
@@ -142,6 +145,14 @@ function battleReducer(state: AbBattleState, action: AbBattleAction): AbBattleSt
       return { ...state, reconnecting: true };
     case 'OPPONENT_RECONNECTED':
       return { ...state, reconnecting: false };
+    case 'MATCH_TIMEOUT':
+      // 상대방 WS 연결 타임아웃 — 방은 다시 WAITING, 남은 나는 계속 대기
+      return {
+        ...state,
+        phase: 'waiting',
+        opponentInfo: null,
+        timeoutMessage: action.payload.message,
+      };
     case 'COUNTDOWN_TICK':
       return { ...state, countdownSec: Math.max(0, state.countdownSec - 1) };
     case 'ERROR':
@@ -171,6 +182,10 @@ export default function AppleBattleBoard() {
   const [browseMode, setBrowseMode] = useState(false);
   const [waitingRooms, setWaitingRooms] = useState<AbWaitingRoomInfo[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
+  const [joinCodeInput, setJoinCodeInput] = useState('');
+
+  // 방만들기(코드 공유형 개인방)로 참가했는지 — waiting 화면에 코드 노출 여부 결정
+  const [isPrivateRoom, setIsPrivateRoom] = useState(false);
 
   // 상대 끊김 추적 (reconnecting은 상대 끊김, 내 재연결과 구분)
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
@@ -309,6 +324,10 @@ export default function AppleBattleBoard() {
     dispatchBattle({ type: 'OPPONENT_RECONNECTED' });
   }, []);
 
+  const onMatchTimeoutStable = useCallback((payload: MatchTimeoutPayload) => {
+    dispatchBattle({ type: 'MATCH_TIMEOUT', payload });
+  }, []);
+
   const onRematchRequestedStable = useCallback(() => {
     dispatchBattle({ type: 'REMATCH_REQUESTED' });
   }, []);
@@ -321,6 +340,8 @@ export default function AppleBattleBoard() {
       setBrowseMode(false);
       setWaitingRooms([]);
       setOpponentDisconnected(false);
+      setIsPrivateRoom(false);
+      setJoinCodeInput('');
     }, 50);
   }, []);
 
@@ -344,6 +365,7 @@ export default function AppleBattleBoard() {
     onStateSnapshot: onStateSnapshotStable,
     onOpponentDisconnected: onOpponentDisconnectedStable,
     onOpponentReconnected: onOpponentReconnectedStable,
+    onMatchTimeout: onMatchTimeoutStable,
     onRematchRequested: onRematchRequestedStable,
     onRematchDeclined: onRematchDeclinedStable,
     onError: onErrorStable,
@@ -351,15 +373,14 @@ export default function AppleBattleBoard() {
     onLongPollingFallback: onLongPollingFallbackStable,
   });
 
-  // ── 매칭 참가 ──────────────────────────────────────────────
-  const startJoin = useCallback(async () => {
+  // ── 참가 플로우 공통 헬퍼 (startJoin/startCreate/startJoinRoom 공용) ──
+  const runJoinFlow = useCallback(async (
+    apiCall: () => Promise<AbJoinResponse>,
+    errorFallbackMessage: string,
+  ) => {
     setShowSelectScreen(false);
-    const storedToken = getStoredAbGuestToken();
     try {
-      const res = await joinAppleBattle({
-        accessToken,
-        guestToken: storedToken ?? undefined,
-      });
+      const res = await apiCall();
       saveAbJoinInfo({
         roomId: res.roomId,
         playerId: res.playerId,
@@ -376,52 +397,36 @@ export default function AppleBattleBoard() {
         const playerId = storedInfo?.playerId ?? e.playerId;
         if (roomId && playerId) {
           const nickname = user?.nickname ?? '나';
-          if (!storedInfo && roomId && playerId) {
+          if (!storedInfo) {
             saveAbJoinInfo({ roomId, playerId, isGuest: !accessToken, guestToken: null });
           }
           dispatchBattle({ type: 'JOIN_REQUESTED', roomId, playerId, nickname });
           return;
         }
       }
-      dispatchBattle({ type: 'ERROR', message: e.message ?? '배틀 참가에 실패했습니다.' });
+      dispatchBattle({ type: 'ERROR', message: e.message ?? errorFallbackMessage });
     }
   }, [accessToken, user]);
 
-  // ── 방 만들기 ─────────────────────────────────────────────
-  const startCreate = useCallback(async () => {
-    setShowSelectScreen(false);
+  // ── 매칭 참가 (자동 매칭) ──────────────────────────────────
+  const startJoin = useCallback(() => {
+    setIsPrivateRoom(false);
     const storedToken = getStoredAbGuestToken();
-    try {
-      const res = await createAppleBattle({
-        accessToken,
-        guestToken: storedToken ?? undefined,
-      });
-      saveAbJoinInfo({
-        roomId: res.roomId,
-        playerId: res.playerId,
-        isGuest: res.isGuest,
-        guestToken: res.guestToken,
-      });
-      const nickname = res.isGuest ? '손님' : (user?.nickname ?? '나');
-      dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
-    } catch (err) {
-      const e = err as Error & { code?: string; roomId?: string; playerId?: string };
-      if (e.code === 'ALREADY_IN_ROOM') {
-        const storedInfo = getStoredAbJoinInfo();
-        const roomId = storedInfo?.roomId ?? e.roomId;
-        const playerId = storedInfo?.playerId ?? e.playerId;
-        if (roomId && playerId) {
-          const nickname = user?.nickname ?? '나';
-          if (!storedInfo && roomId && playerId) {
-            saveAbJoinInfo({ roomId, playerId, isGuest: !accessToken, guestToken: null });
-          }
-          dispatchBattle({ type: 'JOIN_REQUESTED', roomId, playerId, nickname });
-          return;
-        }
-      }
-      dispatchBattle({ type: 'ERROR', message: e.message ?? '방 생성에 실패했습니다.' });
-    }
-  }, [accessToken, user]);
+    return runJoinFlow(
+      () => joinAppleBattle({ accessToken, guestToken: storedToken ?? undefined }),
+      '배틀 참가에 실패했습니다.',
+    );
+  }, [runJoinFlow, accessToken]);
+
+  // ── 방 만들기 (코드 공유형 개인방) ──────────────────────────
+  const startCreate = useCallback(() => {
+    setIsPrivateRoom(true);
+    const storedToken = getStoredAbGuestToken();
+    return runJoinFlow(
+      () => createAppleBattle({ accessToken, guestToken: storedToken ?? undefined }),
+      '방 생성에 실패했습니다.',
+    );
+  }, [runJoinFlow, accessToken]);
 
   // ── 대기 방 목록 로드 ─────────────────────────────────────
   const loadWaitingRooms = useCallback(async () => {
@@ -431,41 +436,15 @@ export default function AppleBattleBoard() {
     setRoomsLoading(false);
   }, []);
 
-  // ── 특정 방 입장 ──────────────────────────────────────────
-  const startJoinRoom = useCallback(async (roomId: string) => {
-    setShowSelectScreen(false);
+  // ── 특정 방 입장 (공개 목록 또는 코드로 입장) ────────────────
+  const startJoinRoom = useCallback((roomId: string) => {
+    setIsPrivateRoom(false);
     const storedToken = getStoredAbGuestToken();
-    try {
-      const res = await joinAppleBattleRoom(roomId, {
-        accessToken,
-        guestToken: storedToken ?? undefined,
-      });
-      saveAbJoinInfo({
-        roomId: res.roomId,
-        playerId: res.playerId,
-        isGuest: res.isGuest,
-        guestToken: res.guestToken,
-      });
-      const nickname = res.isGuest ? '손님' : (user?.nickname ?? '나');
-      dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
-    } catch (err) {
-      const e = err as Error & { code?: string; roomId?: string; playerId?: string };
-      if (e.code === 'ALREADY_IN_ROOM') {
-        const storedInfo = getStoredAbJoinInfo();
-        const rId = storedInfo?.roomId ?? e.roomId;
-        const pId = storedInfo?.playerId ?? e.playerId;
-        if (rId && pId) {
-          const nickname = user?.nickname ?? '나';
-          if (!storedInfo && rId && pId) {
-            saveAbJoinInfo({ roomId: rId, playerId: pId, isGuest: !accessToken, guestToken: null });
-          }
-          dispatchBattle({ type: 'JOIN_REQUESTED', roomId: rId, playerId: pId, nickname });
-          return;
-        }
-      }
-      dispatchBattle({ type: 'ERROR', message: e.message ?? '방 입장에 실패했습니다.' });
-    }
-  }, [accessToken, user]);
+    return runJoinFlow(
+      () => joinAppleBattleRoom(roomId, { accessToken, guestToken: storedToken ?? undefined }),
+      '방 입장에 실패했습니다.',
+    );
+  }, [runJoinFlow, accessToken]);
 
   // ── 취소 ─────────────────────────────────────────────────
   const handleCancel = useCallback(() => {
@@ -499,6 +478,31 @@ export default function AppleBattleBoard() {
   // ── 재연결 배너 ───────────────────────────────────────────
   const renderReconnectBanner = () => wsStatus === 'reconnecting' ? (
     <div className={styles.reconnectBanner}>재연결 시도 중...</div>
+  ) : null;
+
+  // ── 연결 실패 배너 (재연결 3회 소진) ─────────────────────
+  const renderConnectionErrorBanner = () => wsStatus === 'error' ? (
+    <div className={styles.connectionErrorBanner}>
+      <span>연결에 실패했습니다. 다시 시도해주세요.</span>
+      <div className={styles.connectionErrorBtns}>
+        <button
+          className={styles.btnPrimary}
+          style={{ padding: '5px 14px', fontSize: 12 }}
+          onClick={() => window.location.reload()}
+          type="button"
+        >
+          새로고침
+        </button>
+        <button
+          className={styles.btnSecondary}
+          style={{ padding: '5px 14px', fontSize: 12 }}
+          onClick={handleCancel}
+          type="button"
+        >
+          나가기
+        </button>
+      </div>
+    </div>
   ) : null;
 
   const renderPollingWarning = () => pollingWarning ? (
@@ -539,8 +543,33 @@ export default function AppleBattleBoard() {
                   onClick={() => { setBrowseMode(true); void loadWaitingRooms(); }}
                   type="button"
                 >
-                  방 입장
+                  방 입장 (공개 목록)
                 </button>
+
+                <div className={styles.codeJoinDivider}>또는 코드로 입장</div>
+                <div className={styles.codeJoinRow}>
+                  <input
+                    className={styles.codeInput}
+                    type="text"
+                    inputMode="text"
+                    maxLength={8}
+                    placeholder="8자리 코드"
+                    value={joinCodeInput}
+                    onChange={e => setJoinCodeInput(e.target.value.toLowerCase())}
+                  />
+                  <button
+                    className={styles.btnPrimary}
+                    onClick={() => {
+                      const code = joinCodeInput.trim();
+                      if (code.length === 8) void startJoinRoom(code);
+                    }}
+                    disabled={joinCodeInput.trim().length !== 8}
+                    type="button"
+                  >
+                    입장
+                  </button>
+                </div>
+
                 <button
                   className={styles.btnSecondary}
                   onClick={() => navigate('/')}
@@ -641,11 +670,14 @@ export default function AppleBattleBoard() {
       <div className={styles.battlePage}>
         <NormalHeader currentGame="apple" gameName="사과게임 배틀" accentColor="#f18064" />
         {renderReconnectBanner()}
+        {renderConnectionErrorBanner()}
         <div className={styles.battleContent}>
           <AppleBattleWaiting
             opponentNickname={null}
             onCancel={handleCancel}
             connectionStatus={wsStatus}
+            roomCode={isPrivateRoom ? (battleState.roomId ?? undefined) : undefined}
+            timeoutMessage={battleState.timeoutMessage}
           />
         </div>
       </div>
@@ -704,6 +736,7 @@ export default function AppleBattleBoard() {
       <div className={styles.battlePage}>
         <NormalHeader currentGame="apple" gameName="사과게임 배틀" accentColor="#f18064" />
         {renderReconnectBanner()}
+        {renderConnectionErrorBanner()}
         {renderPollingWarning()}
         <div className={styles.battleContent} style={{ justifyContent: 'flex-start', paddingTop: 12 }}>
           <AppleBattleGameView
@@ -727,7 +760,13 @@ export default function AppleBattleBoard() {
             onExit={() => {
               ws.sendLeave();
               clearAbJoinInfo();
-              navigate('/apple');
+              dispatchBattle({ type: 'RESET' });
+              setBrowseMode(false);
+              setWaitingRooms([]);
+              setOpponentDisconnected(false);
+              setIsPrivateRoom(false);
+              setJoinCodeInput('');
+              setShowSelectScreen(true);
             }}
             myRematchRequested={battleState.myRematchRequested}
             opponentRematchRequested={battleState.opponentRematchRequested}

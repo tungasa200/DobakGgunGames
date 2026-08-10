@@ -130,6 +130,47 @@
   font-size: 15px;
 }
 
+.codeJoinDivider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  color: #b2bec3;
+  font-size: 12px;
+  gap: 8px;
+  margin: 2px 0;
+}
+
+.codeJoinDivider::before,
+.codeJoinDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #eee;
+}
+
+.codeJoinRow {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.codeInput {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #dfe6e9;
+  border-radius: 5px;
+  padding: 10px 12px;
+  font-size: 15px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #2c3e50;
+}
+
+.codeInput:focus {
+  outline: none;
+  border-color: #f18064;
+}
+
 .roomList {
   width: 100%;
   display: flex;
@@ -194,6 +235,25 @@
   font-weight: bold;
 }
 
+.connectionErrorBanner {
+  background: #fdecea;
+  color: #c0392b;
+  border-bottom: 1px solid #f5b7b1;
+  text-align: center;
+  padding: 10px 8px;
+  font-size: 13px;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.connectionErrorBtns {
+  display: flex;
+  gap: 8px;
+}
+
 .pollingWarningBanner {
   background: #fdf2f2;
   color: #c0392b;
@@ -240,6 +300,36 @@
   border-top-color: #f18064;
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
+}
+
+.roomCodeBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff3ee;
+  border: 1px solid #fcd9c8;
+  border-radius: 8px;
+  padding: 8px 14px;
+}
+
+.roomCodeLabel {
+  font-size: 12px;
+  color: #7f8c8d;
+  font-weight: bold;
+}
+
+.roomCodeValue {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #f18064;
+}
+
+.waitingTimeoutMsg {
+  font-size: 12px;
+  color: #e67e22;
+  text-align: center;
+  margin-top: -12px;
 }
 
 .connectionBadge {
