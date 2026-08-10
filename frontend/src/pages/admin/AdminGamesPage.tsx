@@ -13,6 +13,8 @@ const GAME_LABELS: Record<string, { name: string; icon: string }> = {
   sudoku:           { name: '스도쿠',           icon: '🔢' },
   'online-rps':     { name: '온라인 가위바위보', icon: '✌️' },
   'blockfall-battle': { name: '블록폴 배틀',    icon: '⚔️' },
+  'apple-battle':      { name: '사과게임 배틀',   icon: '🍎' },
+  'minesweeper-battle': { name: '지뢰찾기 배틀',  icon: '💣' },
   yacht:            { name: '야추 (Yacht)',      icon: '🎲' },
   brickbreaker:     { name: '벽돌깨기',         icon: '🧱' },
 };
