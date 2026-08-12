@@ -527,3 +527,164 @@
 .xrbActive { background: #c8e6c9 !important; border-color: #4caf50 !important; }
 
 .sessionFailBanner { width: 100%; padding: 8px 12px; margin-bottom: 8px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 6px; color: #f1948a; font-size: 0.85em; text-align: center; }
+
+/* ===== 클래식(윈도우95) 테마 — 순수 리스킨, 보드 크기/좌표/로직 변경 없음 ===== */
+.classicTheme {
+  font-family: 'Tahoma', 'MS Sans Serif', sans-serif;
+  background: #c0c0c0;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+/* 입체(outset) 버튼 베벨 — 눌림(inset) 상태는 active 클래스에서 반전 */
+.classicTheme .diffBtn,
+.classicTheme .themeBtn,
+.classicTheme .applyBtn,
+.classicTheme .rankTab,
+.classicTheme .primaryBtn,
+.classicTheme .secondaryBtn {
+  background: #c0c0c0;
+  color: #000;
+  border: none;
+  border-radius: 0;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+}
+.classicTheme .diffBtn:hover,
+.classicTheme .themeBtn:hover,
+.classicTheme .applyBtn:hover,
+.classicTheme .rankTab:hover,
+.classicTheme .primaryBtn:hover,
+.classicTheme .secondaryBtn:hover { background: #c0c0c0; color: #000; }
+
+.classicTheme .diffActive,
+.classicTheme .themeBtnActive,
+.classicTheme .rankTabActive {
+  background: #000080;
+  color: #fff;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+}
+
+/* 커스텀 패널 */
+.classicTheme .customPanel {
+  background: #c0c0c0;
+  border-radius: 0;
+  border: none;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a;
+}
+.classicTheme .customPanel label { color: #000; }
+.classicTheme .customPanel input {
+  border-radius: 0;
+  border: none;
+  background: #fff;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
+}
+.classicTheme .customHint { color: #b00000; }
+
+/* 상태 바 — LCD 디지털 표시 */
+.classicTheme .infoBar {
+  background: #c0c0c0;
+  padding: 6px 10px;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a;
+}
+.classicTheme .mineCount,
+.classicTheme .timer {
+  background: #000;
+  color: #ff0000;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 2px;
+  padding: 2px 8px;
+  box-shadow: inset -1px -1px #808080, inset 1px 1px #0a0a0a;
+}
+
+.classicTheme .status { color: #000080; font-family: 'Courier New', monospace; }
+.classicTheme .win  { color: #006400; }
+.classicTheme .lose { color: #b00000; }
+
+/* 보드 */
+.classicTheme .boardWrapper {
+  border: none;
+  background: #c0c0c0;
+  padding: 6px;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+}
+.classicTheme .board { background: #c0c0c0; }
+
+.classicTheme .cell {
+  background: #c0c0c0;
+  border: none;
+  border-radius: 0;
+  font-family: 'Courier New', monospace;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+}
+.classicTheme .revealed {
+  background: #c0c0c0;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
+}
+.classicTheme .flag { background: #c0c0c0; }
+.classicTheme .question { background: #c0c0c0; color: #000; }
+.classicTheme .mine {
+  background: #ff0000;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
+}
+.classicTheme .wrongFlag {
+  background: #c0c0c0;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
+}
+
+/* 리셋 버튼 — 스마일 얼굴 */
+.classicTheme .resetBtn {
+  background: #c0c0c0;
+  color: #000;
+  border: none;
+  border-radius: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 1.4em;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+}
+.classicTheme .resetBtn:hover { background: #c0c0c0; }
+.classicTheme .resetBtn:active {
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+}
+
+/* 세션 실패 배너 */
+.classicTheme .sessionFailBanner { background: #ffe0e0; border: 1px solid #b00000; border-radius: 0; color: #b00000; }
+
+/* 랭킹 */
+.classicTheme .rankTitle { color: #000080; }
+.classicTheme .table { background: #fff; }
+.classicTheme .table th { background: #000080; color: #fff; }
+.classicTheme .table tr:nth-child(even) td { background: #dfdfdf; }
+.classicTheme .table tr:first-child td { color: #b00000; }
+.classicTheme .placeholder { color: #808080; }
+.classicTheme .alltimeBanner { background: #ffffe1; border: 1px solid #808080; border-radius: 0; }
+.classicTheme .atLabel { color: #806000; }
+.classicTheme .atContent { color: #000; }
+
+.classicTheme .rulesPanel {
+  background: #fff;
+  border-radius: 0;
+  border: none;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
+}
+.classicTheme .rulesPanel h4 { color: #000080; border-color: #c0c0c0; }
+
+/* 모달 */
+.classicTheme .modal {
+  background: #c0c0c0;
+  border-radius: 0;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+}
+.classicTheme .modal h2 { color: #000080; }
+.classicTheme .nameInput {
+  border-radius: 0;
+  border: none;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
+}
+.classicTheme .nameInput:focus { border-color: transparent; outline: 1px dotted #000; }

@@ -46,6 +46,16 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   const [level, setLevel] = useState<Level>('beginner');
   const { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark } = useMinesweeperGame('beginner');
 
+  // 클래식(윈도우95) 테마 토글 — 순수 리스킨, 보드/로직 변경 없음
+  const [classicTheme, setClassicTheme] = useState(() =>
+    localStorage.getItem('dobakggun-minesweeper-theme') === 'classic'
+  );
+  const toggleClassicTheme = () => setClassicTheme(prev => {
+    const next = !prev;
+    localStorage.setItem('dobakggun-minesweeper-theme', next ? 'classic' : 'default');
+    return next;
+  });
+
   // 커스텀 패널
   const [showCustom, setShowCustom] = useState(false);
   const [customRows, setCustomRows]   = useState('10');
@@ -339,7 +349,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   ];
 
   return (
-    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''}`}>
+    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && classicTheme ? styles.classicTheme : ''}`}>
 
       {/* ── 일반 모드: 난이도 버튼 ── */}
       {!excel && (
@@ -359,6 +369,12 @@ export default function MinesweeperBoard({ excel = false }: Props) {
               onClick={() => { setShowCustom(v => !v); }}
             >
               커스텀
+            </button>
+            <button
+              className={`${styles.themeBtn} ${classicTheme ? styles.themeBtnActive : ''}`}
+              onClick={toggleClassicTheme}
+            >
+              {classicTheme ? '🎨 기본' : '🖥️ 클래식'}
             </button>
           </div>
 
@@ -468,7 +484,9 @@ export default function MinesweeperBoard({ excel = false }: Props) {
       {/* ── 일반 모드: 리셋 버튼 (보드 하단) ── */}
       {!excel && (
         <button className={styles.resetBtn} onClick={() => { reset(level); }}>
-          RESET
+          {classicTheme
+            ? (state.status === 'won' ? '😎' : state.status === 'lost' ? '😵' : '🙂')
+            : 'RESET'}
         </button>
       )}
 
