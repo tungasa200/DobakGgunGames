@@ -478,23 +478,28 @@
 .sizeBtnActive { background: #f18064; color: white; }
 .sizeBtn:disabled { opacity: 0.45; cursor: default; }
 
-/* 감자 테마 토글 버튼 */
+/* 테마 순환 토글 버튼 (사과 → 감자 → 풍선) */
 .themeBtn {
   padding: 6px 12px;
   font-size: 0.85em;
   cursor: pointer;
-  border: 2px solid #C4A35A;
+  border: 2px solid #f18064;
   border-radius: 5px;
   background: white;
-  color: #8B6914;
+  color: #f18064;
   font-weight: bold;
   touch-action: manipulation;
   transition: all 0.15s;
   white-space: nowrap;
 }
-.themeBtn:hover { background: #f5e6c8; }
-.themeBtnActive { background: #C4A35A; color: white; border-color: #8B6914; }
-.themeBtnActive:hover { background: #b08a3e; }
+.themeBtn:hover { background: #fde8e3; }
+.themeBtnActive { color: white; }
+
+.potatoTheme .themeBtnActive { background: #C4A35A; border-color: #8B6914; }
+.potatoTheme .themeBtnActive:hover { background: #b08a3e; }
+
+.balloonTheme .themeBtnActive { background: #E8779A; border-color: #A62C55; }
+.balloonTheme .themeBtnActive:hover { background: #D45D80; }
 
 /* ===== 감자 테마 전체 화면 오버라이드 ===== */
 .potatoTheme {
@@ -548,3 +553,56 @@
 .potatoTheme .nameInput:focus { border-color: #C4A35A; }
 .potatoTheme .submitBtn { background: #C4A35A; }
 .potatoTheme .submitBtn:hover { background: #8B6914; }
+
+/* ===== 풍선 테마 전체 화면 오버라이드 ===== */
+.balloonTheme {
+  background: #FDEEF3;
+}
+.balloonTheme .infoItem {
+  background: #FCE3EC;
+  border-color: #EFA0BE;
+}
+.balloonTheme .infoLabel { color: #C05C82; }
+.balloonTheme .infoValue { color: #7A1F42; }
+.balloonTheme .timeWarning { color: #C05C82; }
+.balloonTheme .statusMsg { color: #7A1F42; }
+
+/* 캔버스 테두리 */
+.balloonTheme .canvas { border-color: #E8779A; background: #FFF6FA; }
+
+/* 시작 버튼 */
+.balloonTheme .startBtn { background: #E8779A; }
+.balloonTheme .startBtn:hover { background: #A62C55; }
+
+/* 보드 크기 버튼 */
+.balloonTheme .sizeBtn { border-color: #E8779A; color: #A62C55; }
+.balloonTheme .sizeBtn:hover:not(:disabled) { background: #E8779A; color: white; }
+.balloonTheme .sizeBtnActive { background: #E8779A; color: white; }
+
+/* 역대 1위 배너 */
+.balloonTheme .alltimeBanner {
+  background: linear-gradient(135deg, #FDEEF3, #F8C4D9);
+  border-color: #E8779A;
+}
+
+/* 랭킹 탭 */
+.balloonTheme .rankTab { border-color: #E8779A; color: #E8779A; }
+.balloonTheme .rankTab:hover { background: #E8779A; color: white; }
+.balloonTheme .rankTabActive { background: #E8779A; color: white; }
+
+/* 랭킹 테이블 */
+.balloonTheme .rankTable th { background: #E8779A; }
+.balloonTheme .rankTable tr:first-child td { color: #A62C55; }
+
+/* 랭킹 섹션 제목 */
+.balloonTheme .rankTitle { color: #7A1F42; }
+
+/* 룰 패널 */
+.balloonTheme .rulesPanel { background: #FFF6FA; border-color: #EFA0BE; }
+.balloonTheme .rulesPanel h4 { color: #7A1F42; border-color: #EFA0BE; }
+
+/* 모달 */
+.balloonTheme .modal h2 { color: #E8779A; }
+.balloonTheme .nameInput:focus { border-color: #E8779A; }
+.balloonTheme .submitBtn { background: #E8779A; }
+.balloonTheme .submitBtn:hover { background: #A62C55; }

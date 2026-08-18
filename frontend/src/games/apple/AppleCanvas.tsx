@@ -27,6 +27,15 @@ const XL_CLR = {
   over:   { bg: '#E0E0E0', bd: '#B0B0B0', tx: '#666666' },
 };
 
+// 테마 (사과 → 감자 → 풍선 순환)
+type AppleTheme = 'apple' | 'potato' | 'balloon';
+const THEME_ORDER: AppleTheme[] = ['apple', 'potato', 'balloon'];
+const THEME_META: Record<AppleTheme, { emoji: string; label: string }> = {
+  apple:   { emoji: '🍎', label: '사과' },
+  potato:  { emoji: '🥔', label: '감자' },
+  balloon: { emoji: '🎈', label: '풍선' },
+};
+
 // 열 라벨 (A, B, ..., AA, ...)
 function colLabel(i: number): string {
   let label = '';
@@ -140,6 +149,70 @@ function drawPotatoShape(
   ctx.restore();
 }
 
+function drawBalloonShape(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  fillColor: string, strokeColor: string | null
+) {
+  // 위가 둥글고 아래로 갈수록 좁아지는 몸통 + 매듭 + 리본 끈
+  const scale = 0.22;
+  ctx.save();
+  ctx.translate(cx - 50 * scale, cy - 46 * scale);
+  ctx.scale(scale, scale);
+
+  ctx.beginPath();
+  ctx.moveTo(50, 4);
+  ctx.bezierCurveTo(78, 4, 92, 28, 89, 50);
+  ctx.bezierCurveTo(86, 72, 68, 86, 54, 89);
+  ctx.bezierCurveTo(51, 90, 49, 90, 46, 89);
+  ctx.bezierCurveTo(32, 86, 14, 72, 11, 50);
+  ctx.bezierCurveTo(8, 28, 22, 4, 50, 4);
+  ctx.closePath();
+
+  if (fillColor === '#F5809A') {
+    const grad = ctx.createRadialGradient(35, 26, 6, 50, 46, 55);
+    grad.addColorStop(0, '#FBD7DE');
+    grad.addColorStop(1, '#F0708A');
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = fillColor;
+  }
+  ctx.fill();
+
+  ctx.strokeStyle = strokeColor ?? '#4A2432';
+  ctx.lineWidth = strokeColor ? 9 : 6;
+  ctx.setLineDash([]);
+  ctx.stroke();
+
+  // 하이라이트
+  ctx.beginPath();
+  ctx.ellipse(33, 27, 8, 16, -Math.PI / 6, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fill();
+
+  // 매듭
+  ctx.beginPath();
+  ctx.moveTo(45, 88);
+  ctx.lineTo(55, 88);
+  ctx.lineTo(51, 98);
+  ctx.lineTo(49, 98);
+  ctx.closePath();
+  ctx.fillStyle = strokeColor ?? '#4A2432';
+  ctx.fill();
+
+  // 리본 끈
+  ctx.beginPath();
+  ctx.moveTo(50, 98);
+  ctx.bezierCurveTo(50, 104, 39, 106, 42, 113);
+  ctx.bezierCurveTo(45, 120, 58, 118, 55, 126);
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = strokeColor ?? '#4A2432';
+  ctx.lineWidth = 3.5;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function calcSelection(
   sx: number, sy: number, ex: number, ey: number,
   rows: number, cols: number, apples: (number | null)[][],
@@ -209,13 +282,14 @@ export default function AppleCanvas({ excel = false }: Props) {
   // 세로 모드로 보드를 전치했는지 여부 (순위 등록 시 좌표 역전치에 사용)
   const boardTransposedRef = useRef(false);
 
-  // 감자 테마
-  const [potatoTheme, setPotatoTheme] = useState(() =>
-    localStorage.getItem('dobakggun-apple-theme') === 'potato'
-  );
-  const togglePotatoTheme = () => setPotatoTheme(prev => {
-    const next = !prev;
-    localStorage.setItem('dobakggun-apple-theme', next ? 'potato' : 'apple');
+  // 테마 (사과 → 감자 → 풍선 순환)
+  const [theme, setTheme] = useState<AppleTheme>(() => {
+    const saved = localStorage.getItem('dobakggun-apple-theme');
+    return saved === 'potato' || saved === 'balloon' ? saved : 'apple';
+  });
+  const cycleTheme = () => setTheme(prev => {
+    const next = THEME_ORDER[(THEME_ORDER.indexOf(prev) + 1) % THEME_ORDER.length];
+    localStorage.setItem('dobakggun-apple-theme', next);
     return next;
   });
 
@@ -458,15 +532,17 @@ export default function AppleCanvas({ excel = false }: Props) {
           ctx.fillText(String(apples[r][c]), x + size / 2, y + size / 2);
         } else {
           if (!apples[r] || apples[r][c] === null) continue;
-          let bodyColor = potatoTheme ? '#C4A35A' : '#e03a27';
+          let bodyColor = theme === 'potato' ? '#C4A35A' : theme === 'balloon' ? '#F5809A' : '#e03a27';
           let borderColor: string | null = null;
           if (isSelected) {
             if (selSum === 10)     { bodyColor = '#27ae60'; borderColor = '#1a8a4a'; }
             else if (selSum > 10) { bodyColor = '#e67e22'; borderColor = '#b05a00'; }
             else                  { bodyColor = '#3498db'; borderColor = '#1a6aa0'; }
           }
-          if (potatoTheme) {
+          if (theme === 'potato') {
             drawPotatoShape(ctx, cx, cy, bodyColor, borderColor);
+          } else if (theme === 'balloon') {
+            drawBalloonShape(ctx, cx, cy, bodyColor, borderColor);
           } else {
             drawAppleShape(ctx, cx, cy, bodyColor, borderColor);
           }
@@ -505,7 +581,7 @@ export default function AppleCanvas({ excel = false }: Props) {
       ctx.fillStyle = `rgba(${rgb},0.07)`;
       ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
     }
-  }, [state, layout, excel, potatoTheme]);
+  }, [state, layout, excel, theme]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -775,6 +851,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     }
   }
 
+  const nextTheme = THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length];
   const timeWarning = state.status === 'playing' && state.timeLeft <= 30;
   const showGameArea    = !excel || activeSheet === 'game';
   const showRankingArea = !excel || activeSheet === 'ranking';
@@ -796,7 +873,10 @@ export default function AppleCanvas({ excel = false }: Props) {
   const RULES_CELL_W = EXCEL_SIZE; // 배경 격자(30px)와 일치
 
   return (
-    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && potatoTheme ? styles.potatoTheme : ''}`} ref={wrapRef}>
+    <div
+      className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && theme === 'potato' ? styles.potatoTheme : ''} ${!excel && theme === 'balloon' ? styles.balloonTheme : ''}`}
+      ref={wrapRef}
+    >
 
       {/* 정보 바 — 일반 모드 */}
       {!excel && (
@@ -835,10 +915,11 @@ export default function AppleCanvas({ excel = false }: Props) {
             disabled={state.status === 'playing'}
           >큰 판</button>
           <button
-            className={`${styles.themeBtn} ${potatoTheme ? styles.themeBtnActive : ''}`}
-            onClick={togglePotatoTheme}
+            className={`${styles.themeBtn} ${theme !== 'apple' ? styles.themeBtnActive : ''}`}
+            onClick={cycleTheme}
+            title={`${THEME_META[theme].label} 테마 (클릭 시 ${THEME_META[nextTheme].label}로 전환)`}
           >
-            {potatoTheme ? '🍎 사과' : '🥔 감자'}
+            {THEME_META[nextTheme].emoji} {THEME_META[nextTheme].label}
           </button>
         </div>
       )}
