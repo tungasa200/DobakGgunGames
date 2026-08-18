@@ -501,6 +501,9 @@
 .balloonTheme .themeBtnActive { background: #E8779A; border-color: #A62C55; }
 .balloonTheme .themeBtnActive:hover { background: #D45D80; }
 
+.watermelonTheme .themeBtnActive { background: #3FA65C; border-color: #256B3A; }
+.watermelonTheme .themeBtnActive:hover { background: #2E8B49; }
+
 /* ===== 감자 테마 전체 화면 오버라이드 ===== */
 .potatoTheme {
   background: #FDF3E3;
@@ -606,3 +609,56 @@
 .balloonTheme .nameInput:focus { border-color: #E8779A; }
 .balloonTheme .submitBtn { background: #E8779A; }
 .balloonTheme .submitBtn:hover { background: #A62C55; }
+
+/* ===== 수박 테마 전체 화면 오버라이드 (초록색 베이스) ===== */
+.watermelonTheme {
+  background: #DCF2E1;
+}
+.watermelonTheme .infoItem {
+  background: #E8F8EA;
+  border-color: #8FD79F;
+}
+.watermelonTheme .infoLabel { color: #2E7D46; }
+.watermelonTheme .infoValue { color: #1B4D2B; }
+.watermelonTheme .timeWarning { color: #2E7D46; }
+.watermelonTheme .statusMsg { color: #1B4D2B; }
+
+/* 캔버스 테두리 */
+.watermelonTheme .canvas { border-color: #3FA65C; background: #F3FCF4; }
+
+/* 시작 버튼 */
+.watermelonTheme .startBtn { background: #3FA65C; }
+.watermelonTheme .startBtn:hover { background: #256B3A; }
+
+/* 보드 크기 버튼 */
+.watermelonTheme .sizeBtn { border-color: #3FA65C; color: #256B3A; }
+.watermelonTheme .sizeBtn:hover:not(:disabled) { background: #3FA65C; color: white; }
+.watermelonTheme .sizeBtnActive { background: #3FA65C; color: white; }
+
+/* 역대 1위 배너 */
+.watermelonTheme .alltimeBanner {
+  background: linear-gradient(135deg, #DCF2E1, #A8E0B4);
+  border-color: #3FA65C;
+}
+
+/* 랭킹 탭 */
+.watermelonTheme .rankTab { border-color: #3FA65C; color: #3FA65C; }
+.watermelonTheme .rankTab:hover { background: #3FA65C; color: white; }
+.watermelonTheme .rankTabActive { background: #3FA65C; color: white; }
+
+/* 랭킹 테이블 */
+.watermelonTheme .rankTable th { background: #3FA65C; }
+.watermelonTheme .rankTable tr:first-child td { color: #256B3A; }
+
+/* 랭킹 섹션 제목 */
+.watermelonTheme .rankTitle { color: #1B4D2B; }
+
+/* 룰 패널 */
+.watermelonTheme .rulesPanel { background: #F3FCF4; border-color: #8FD79F; }
+.watermelonTheme .rulesPanel h4 { color: #1B4D2B; border-color: #8FD79F; }
+
+/* 모달 */
+.watermelonTheme .modal h2 { color: #3FA65C; }
+.watermelonTheme .nameInput:focus { border-color: #3FA65C; }
+.watermelonTheme .submitBtn { background: #3FA65C; }
+.watermelonTheme .submitBtn:hover { background: #256B3A; }

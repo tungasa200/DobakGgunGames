@@ -27,13 +27,14 @@ const XL_CLR = {
   over:   { bg: '#E0E0E0', bd: '#B0B0B0', tx: '#666666' },
 };
 
-// 테마 (사과 → 감자 → 풍선 순환)
-type AppleTheme = 'apple' | 'potato' | 'balloon';
-const THEME_ORDER: AppleTheme[] = ['apple', 'potato', 'balloon'];
+// 테마 (사과 → 감자 → 풍선 → 수박 순환)
+type AppleTheme = 'apple' | 'potato' | 'balloon' | 'watermelon';
+const THEME_ORDER: AppleTheme[] = ['apple', 'potato', 'balloon', 'watermelon'];
 const THEME_META: Record<AppleTheme, { emoji: string; label: string }> = {
-  apple:   { emoji: '🍎', label: '사과' },
-  potato:  { emoji: '🥔', label: '감자' },
-  balloon: { emoji: '🎈', label: '풍선' },
+  apple:      { emoji: '🍎', label: '사과' },
+  potato:     { emoji: '🥔', label: '감자' },
+  balloon:    { emoji: '🎈', label: '풍선' },
+  watermelon: { emoji: '🍉', label: '수박' },
 };
 
 // 열 라벨 (A, B, ..., AA, ...)
@@ -208,6 +209,72 @@ function drawBalloonShape(
   ctx.lineCap = 'round';
   ctx.strokeStyle = strokeColor ?? '#4A2432';
   ctx.lineWidth = 3.5;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawWatermelonShape(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  fillColor: string, strokeColor: string | null
+) {
+  // 꼭짓점(apex)을 기준으로 한 쐐기(웨지) 실루엣 — r을 줄이면 꼭짓점 중심으로 축소되어
+  // 겉껍질(진초록)·속껍질(연두)·과육(빨강)이 자연스럽게 동심 밴드를 이룸
+  const scale = 0.26;
+  ctx.save();
+  ctx.translate(cx, cy + 46 * scale);
+  ctx.scale(scale, scale);
+
+  function wedgePath(r: number) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-35 * r, -77 * r);
+    ctx.bezierCurveTo(-15 * r, -92 * r, 15 * r, -92 * r, 35 * r, -77 * r);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+  }
+
+  // 겉껍질 (진한 초록)
+  wedgePath(1);
+  ctx.fillStyle = '#2F9E44';
+  ctx.fill();
+
+  // 속껍질 (연한 초록)
+  wedgePath(0.84);
+  ctx.fillStyle = '#8FE398';
+  ctx.fill();
+
+  // 과육
+  wedgePath(0.64);
+  if (fillColor === '#E63950') {
+    const grad = ctx.createRadialGradient(0, -35, 6, 0, -40, 45);
+    grad.addColorStop(0, '#FF7A83');
+    grad.addColorStop(1, '#E63950');
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = fillColor;
+  }
+  ctx.fill();
+
+  // 씨앗
+  ctx.fillStyle = '#2b2b2b';
+  ([[8, -24, -0.3], [-7, -32, 0.25], [14, -42, -0.4], [-13, -46, 0.35], [1, -53, 0]] as [number, number, number][])
+    .forEach(([sx, sy, rot]) => {
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(rot);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 2.6, 4.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+  // 외곽선
+  wedgePath(1);
+  ctx.strokeStyle = strokeColor ?? '#1a1a1a';
+  ctx.lineWidth = strokeColor ? 9 : 7;
+  ctx.setLineDash([]);
   ctx.stroke();
 
   ctx.restore();
@@ -532,7 +599,10 @@ export default function AppleCanvas({ excel = false }: Props) {
           ctx.fillText(String(apples[r][c]), x + size / 2, y + size / 2);
         } else {
           if (!apples[r] || apples[r][c] === null) continue;
-          let bodyColor = theme === 'potato' ? '#C4A35A' : theme === 'balloon' ? '#F5809A' : '#e03a27';
+          let bodyColor = theme === 'potato' ? '#C4A35A'
+            : theme === 'balloon' ? '#F5809A'
+            : theme === 'watermelon' ? '#E63950'
+            : '#e03a27';
           let borderColor: string | null = null;
           if (isSelected) {
             if (selSum === 10)     { bodyColor = '#27ae60'; borderColor = '#1a8a4a'; }
@@ -543,13 +613,23 @@ export default function AppleCanvas({ excel = false }: Props) {
             drawPotatoShape(ctx, cx, cy, bodyColor, borderColor);
           } else if (theme === 'balloon') {
             drawBalloonShape(ctx, cx, cy, bodyColor, borderColor);
+          } else if (theme === 'watermelon') {
+            drawWatermelonShape(ctx, cx, cy, bodyColor, borderColor);
           } else {
             drawAppleShape(ctx, cx, cy, bodyColor, borderColor);
           }
-          ctx.fillStyle = 'white';
           ctx.font = 'bold 12px Arial';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(String(apples[r][c]), cx, cy + 3);
+          const label = String(apples[r][c]);
+          if (theme === 'balloon') {
+            // 밝은 풍선 배경 위에서 흰 숫자가 묻히지 않도록 테두리와 같은 색으로 외곽선 처리
+            ctx.strokeStyle = borderColor ?? '#4A2432';
+            ctx.lineWidth = 2.5;
+            ctx.lineJoin = 'round';
+            ctx.strokeText(label, cx, cy + 3);
+          }
+          ctx.fillStyle = 'white';
+          ctx.fillText(label, cx, cy + 3);
         }
       }
     }
@@ -874,7 +954,7 @@ export default function AppleCanvas({ excel = false }: Props) {
 
   return (
     <div
-      className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && theme === 'potato' ? styles.potatoTheme : ''} ${!excel && theme === 'balloon' ? styles.balloonTheme : ''}`}
+      className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && theme === 'potato' ? styles.potatoTheme : ''} ${!excel && theme === 'balloon' ? styles.balloonTheme : ''} ${!excel && theme === 'watermelon' ? styles.watermelonTheme : ''}`}
       ref={wrapRef}
     >
 
