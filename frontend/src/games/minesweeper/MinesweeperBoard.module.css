@@ -590,14 +590,15 @@
 .classicTheme .timer {
   background: #000;
   color: #ff0000;
-  font-family: 'Courier New', monospace;
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 1.6em;
   font-weight: bold;
-  letter-spacing: 2px;
-  padding: 2px 8px;
+  letter-spacing: 3px;
+  padding: 2px 10px;
   box-shadow: inset -1px -1px #808080, inset 1px 1px #0a0a0a;
 }
 
-.classicTheme .status { color: #000080; font-family: 'Courier New', monospace; }
+.classicTheme .status { color: #000080; font-family: 'VT323', 'Courier New', monospace; font-size: 1.3em; }
 .classicTheme .win  { color: #006400; }
 .classicTheme .lose { color: #b00000; }
 
@@ -614,7 +615,10 @@
   background: #c0c0c0;
   border: none;
   border-radius: 0;
-  font-family: 'Courier New', monospace;
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
   box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
 }
 .classicTheme .revealed {
@@ -624,7 +628,7 @@
 .classicTheme .flag { background: #c0c0c0; }
 .classicTheme .question { background: #c0c0c0; color: #000; }
 .classicTheme .mine {
-  background: #ff0000;
+  background: #b33939;
   box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
 }
 .classicTheme .wrongFlag {
