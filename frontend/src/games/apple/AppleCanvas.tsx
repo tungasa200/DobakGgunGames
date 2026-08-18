@@ -214,68 +214,54 @@ function drawBalloonShape(
   ctx.restore();
 }
 
+// 사용자 제공 SVG(48×48 viewBox) 경로를 그대로 사용하는 반달(half-moon) 수박 조각
+const WATERMELON_PATHS = {
+  base:  'M5.716,35.772L5.716,35.772c8.297,8.3,21.75,8.3,30.046,0.001c8.297-8.301,8.297-21.758,0-30.059h-0.001L5.716,35.772z',
+  flesh: 'M32.899,32.91c6.717-6.72,6.717-17.613,0-24.332L8.577,32.91C15.294,39.63,26.184,39.63,32.899,32.91z',
+  seeds: [
+    'M29.681,27.456c0.592,0.593,0.592,1.554,0,2.146c-0.593,0.593-1.554,0.593-2.146,0c-0.593-0.593-1.074-3.221-1.074-3.221S29.088,26.862,29.681,27.456z',
+    'M31.654,22.052c0.825,0.146,1.377,0.935,1.23,1.759c-0.146,0.825-0.934,1.376-1.759,1.229c-0.825-0.145-3.098-2.088-3.098-2.088S30.83,21.905,31.654,22.052z',
+    'M31.238,16.356c0.825-0.135,1.605,0.429,1.738,1.257c0.135,0.828-0.429,1.607-1.257,1.739c-0.827,0.133-3.55-0.965-3.55-0.965S30.411,16.488,31.238,16.356z',
+    'M22.151,31.559c0.146,0.825,0.933,1.378,1.758,1.232c0.825-0.146,1.376-0.935,1.229-1.761c-0.146-0.825-2.088-3.098-2.088-3.098S22.005,30.734,22.151,31.559z',
+    'M16.37,31.143c-0.134,0.825,0.43,1.606,1.257,1.739c0.827,0.135,1.607-0.429,1.739-1.257c0.133-0.826-0.965-3.552-0.965-3.552S16.503,30.315,16.37,31.143z',
+  ],
+  rind:  'M20.739,43C15.039,43,9.34,40.829,5,36.487l1.431-1.43c7.89,7.891,20.725,7.892,28.616,0.001c3.824-3.827,5.932-8.911,5.931-14.313c0-5.405-2.106-10.488-5.932-14.314L36.476,5C40.684,9.208,43,14.799,43,20.745c0.002,5.943-2.316,11.536-6.523,15.744C32.139,40.829,26.438,43,20.739,43z',
+};
+
 function drawWatermelonShape(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
   fillColor: string, strokeColor: string | null
 ) {
-  // 꼭짓점(apex)을 기준으로 한 쐐기(웨지) 실루엣 — r을 줄이면 꼭짓점 중심으로 축소되어
-  // 겉껍질(진초록)·속껍질(연두)·과육(빨강)이 자연스럽게 동심 밴드를 이룸
-  const scale = 0.26;
+  const scale = 0.58;
   ctx.save();
-  ctx.translate(cx, cy + 46 * scale);
+  ctx.translate(cx - 24 * scale, cy - 24 * scale);
   ctx.scale(scale, scale);
 
-  function wedgePath(r: number) {
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-35 * r, -77 * r);
-    ctx.bezierCurveTo(-15 * r, -92 * r, 15 * r, -92 * r, 35 * r, -77 * r);
-    ctx.lineTo(0, 0);
-    ctx.closePath();
-  }
+  // 반달 베이스 (연노랑빛 초록)
+  const basePath = new Path2D(WATERMELON_PATHS.base);
+  ctx.fillStyle = '#E6EE9C';
+  ctx.fill(basePath);
 
-  // 겉껍질 (진한 초록)
-  wedgePath(1);
-  ctx.fillStyle = '#2F9E44';
-  ctx.fill();
-
-  // 속껍질 (연한 초록)
-  wedgePath(0.84);
-  ctx.fillStyle = '#8FE398';
-  ctx.fill();
-
-  // 과육
-  wedgePath(0.64);
-  if (fillColor === '#E63950') {
-    const grad = ctx.createRadialGradient(0, -35, 6, 0, -40, 45);
-    grad.addColorStop(0, '#FF7A83');
-    grad.addColorStop(1, '#E63950');
-    ctx.fillStyle = grad;
-  } else {
-    ctx.fillStyle = fillColor;
-  }
-  ctx.fill();
+  // 과육 (빨강 — 선택 상태일 땐 파랑/초록/주황으로 교체됨)
+  ctx.fillStyle = fillColor;
+  ctx.fill(new Path2D(WATERMELON_PATHS.flesh));
 
   // 씨앗
-  ctx.fillStyle = '#2b2b2b';
-  ([[8, -24, -0.3], [-7, -32, 0.25], [14, -42, -0.4], [-13, -46, 0.35], [1, -53, 0]] as [number, number, number][])
-    .forEach(([sx, sy, rot]) => {
-      ctx.save();
-      ctx.translate(sx, sy);
-      ctx.rotate(rot);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 2.6, 4.4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    });
+  ctx.fillStyle = '#5D4037';
+  WATERMELON_PATHS.seeds.forEach(d => ctx.fill(new Path2D(d)));
 
-  // 외곽선
-  wedgePath(1);
-  ctx.strokeStyle = strokeColor ?? '#1a1a1a';
-  ctx.lineWidth = strokeColor ? 9 : 7;
-  ctx.setLineDash([]);
-  ctx.stroke();
+  // 겉껍질 띠 (진초록)
+  ctx.fillStyle = '#558B2F';
+  ctx.fill(new Path2D(WATERMELON_PATHS.rind));
+
+  // 선택 상태 강조 테두리 (원본 SVG엔 외곽선이 없어 선택 시에만 표시)
+  if (strokeColor) {
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([]);
+    ctx.stroke(basePath);
+  }
 
   ctx.restore();
 }
@@ -601,7 +587,7 @@ export default function AppleCanvas({ excel = false }: Props) {
           if (!apples[r] || apples[r][c] === null) continue;
           let bodyColor = theme === 'potato' ? '#C4A35A'
             : theme === 'balloon' ? '#F5809A'
-            : theme === 'watermelon' ? '#E63950'
+            : theme === 'watermelon' ? '#FF1744'
             : '#e03a27';
           let borderColor: string | null = null;
           if (isSelected) {
@@ -621,14 +607,8 @@ export default function AppleCanvas({ excel = false }: Props) {
           ctx.font = 'bold 12px Arial';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           const label = String(apples[r][c]);
-          if (theme === 'balloon') {
-            // 밝은 풍선 배경 위에서 흰 숫자가 묻히지 않도록 테두리와 같은 색으로 외곽선 처리
-            ctx.strokeStyle = borderColor ?? '#4A2432';
-            ctx.lineWidth = 2.5;
-            ctx.lineJoin = 'round';
-            ctx.strokeText(label, cx, cy + 3);
-          }
-          ctx.fillStyle = 'white';
+          // 밝은 풍선 배경 위에서 흰 숫자가 묻히지 않도록 검정에 가까운 브라운으로 채움
+          ctx.fillStyle = theme === 'balloon' ? '#2B1A12' : 'white';
           ctx.fillText(label, cx, cy + 3);
         }
       }
