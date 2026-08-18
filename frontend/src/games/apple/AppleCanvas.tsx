@@ -233,9 +233,10 @@ function drawWatermelonShape(
   cx: number, cy: number,
   fillColor: string, strokeColor: string | null
 ) {
-  const scale = 0.58;
+  const scale = 0.64;
   ctx.save();
-  ctx.translate(cx - 24 * scale, cy - 24 * scale);
+  // 과육(빨강) 영역의 실제 중심(20.74,20.74)에 숫자가 오도록 정렬 — viewBox 중심(24,24)과는 다름
+  ctx.translate(cx - 20.74 * scale, cy - 20.74 * scale);
   ctx.scale(scale, scale);
 
   // 반달 베이스 (연노랑빛 초록)
@@ -607,8 +608,8 @@ export default function AppleCanvas({ excel = false }: Props) {
           ctx.font = 'bold 12px Arial';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           const label = String(apples[r][c]);
-          // 밝은 배경(풍선/수박)에서 흰 숫자가 묻히지 않도록 어두운 색으로 채움
-          ctx.fillStyle = theme === 'balloon' ? '#2B1A12' : theme === 'watermelon' ? '#000000' : 'white';
+          // 밝은 풍선 배경 위에서 흰 숫자가 묻히지 않도록 검정에 가까운 브라운으로 채움
+          ctx.fillStyle = theme === 'balloon' ? '#2B1A12' : 'white';
           ctx.fillText(label, cx, cy + 3);
         }
       }
