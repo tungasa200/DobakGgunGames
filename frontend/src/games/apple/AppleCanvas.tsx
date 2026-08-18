@@ -235,8 +235,9 @@ function drawWatermelonShape(
 ) {
   const scale = 0.64;
   ctx.save();
-  // 과육(빨강) 영역의 실제 중심(20.74,20.74)에 숫자가 오도록 정렬 — viewBox 중심(24,24)과는 다름
-  ctx.translate(cx - 20.74 * scale, cy - 20.74 * scale);
+  // 과육(빨강) 영역에서 가장 넓게 내접하는 지점(26.6,25.6, 반지름 10.6)을 픽셀 단위로
+  // 계산해 숫자가 잘리지 않고 완전히 들어오도록 정렬 — viewBox 중심(24,24)과는 다름
+  ctx.translate(cx - 26.6 * scale, cy - 25.6 * scale);
   ctx.scale(scale, scale);
 
   // 반달 베이스 (연노랑빛 초록)
