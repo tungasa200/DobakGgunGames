@@ -607,8 +607,8 @@ export default function AppleCanvas({ excel = false }: Props) {
           ctx.font = 'bold 12px Arial';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           const label = String(apples[r][c]);
-          // 밝은 풍선 배경 위에서 흰 숫자가 묻히지 않도록 검정에 가까운 브라운으로 채움
-          ctx.fillStyle = theme === 'balloon' ? '#2B1A12' : 'white';
+          // 밝은 배경(풍선/수박)에서 흰 숫자가 묻히지 않도록 어두운 색으로 채움
+          ctx.fillStyle = theme === 'balloon' ? '#2B1A12' : theme === 'watermelon' ? '#000000' : 'white';
           ctx.fillText(label, cx, cy + 3);
         }
       }
