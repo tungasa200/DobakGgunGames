@@ -180,7 +180,7 @@
 
 /* 원본: #ranking-table */
 .table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-.table th { background: #3498db; color: white; padding: 7px 8px; }
+.table th { background: #3498db; color: white; padding: 7px 8px; white-space: nowrap; }
 .table td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: center; white-space: nowrap; }
 .table tr:nth-child(even) td { background: #f9f9f9; }
 .table tr:first-child td { color: #e67e22; font-weight: bold; }
