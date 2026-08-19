@@ -39,6 +39,14 @@ const PRESET_LEVELS: { value: Exclude<Level, 'custom'>; label: string; shortLabe
 
 const NUM_COLORS = ['', '#0000ff','#007b00','#ff0000','#00007b','#7b0000','#007b7b','#000000','#7b7b7b'];
 
+type ThemeName = 'default' | 'classic' | 'frog';
+const THEME_ORDER: ThemeName[] = ['default', 'classic', 'frog'];
+const THEME_LABELS: Record<ThemeName, string> = {
+  default: '🎨 기본',
+  classic: '🖥️ 클래식',
+  frog: '🐸 개구리',
+};
+
 interface Props { excel?: boolean }
 
 export default function MinesweeperBoard({ excel = false }: Props) {
@@ -47,13 +55,17 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   const { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark } = useMinesweeperGame('beginner');
 
   // 테마 선택 — 순수 리스킨, 보드/로직 변경 없음
-  const [theme, setThemeState] = useState<'default' | 'classic' | 'frog'>(() => {
+  const [theme, setThemeState] = useState<ThemeName>(() => {
     const saved = localStorage.getItem('dobakggun-minesweeper-theme');
     return saved === 'classic' || saved === 'frog' ? saved : 'default';
   });
-  const setTheme = (next: 'default' | 'classic' | 'frog') => {
+  const setTheme = (next: ThemeName) => {
     setThemeState(next);
     localStorage.setItem('dobakggun-minesweeper-theme', next);
+  };
+  const cycleTheme = () => {
+    const idx = THEME_ORDER.indexOf(theme);
+    setTheme(THEME_ORDER[(idx + 1) % THEME_ORDER.length]);
   };
 
   // 커스텀 패널
@@ -371,16 +383,10 @@ export default function MinesweeperBoard({ excel = false }: Props) {
               커스텀
             </button>
             <button
-              className={`${styles.themeBtn} ${theme === 'classic' ? styles.themeBtnActive : ''}`}
-              onClick={() => setTheme(theme === 'classic' ? 'default' : 'classic')}
+              className={`${styles.themeBtn} ${theme !== 'default' ? styles.themeBtnActive : ''}`}
+              onClick={cycleTheme}
             >
-              🖥️ 클래식
-            </button>
-            <button
-              className={`${styles.themeBtn} ${theme === 'frog' ? styles.themeBtnActive : ''}`}
-              onClick={() => setTheme(theme === 'frog' ? 'default' : 'frog')}
-            >
-              🐸 개구리 연못
+              {THEME_LABELS[theme]}
             </button>
           </div>
 

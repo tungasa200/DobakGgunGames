@@ -762,7 +762,7 @@
   color: #1f4d34;
 }
 .frogTheme .revealed { background: #f2fbf3; }
-.frogTheme .flag { background: #6fae7c; }
+.frogTheme .flag { background: #5fb3cc; border-color: #2f7d91; }
 .frogTheme .question { background: #6fae7c; color: #1f4d34; }
 .frogTheme .mine { background: #c1694f; }
 .frogTheme .wrongFlag { background: #f2fbf3; }
