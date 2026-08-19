@@ -625,14 +625,16 @@
   background: #c0c0c0;
   box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
 }
-.classicTheme .flag { background: #c0c0c0; }
-.classicTheme .question { background: #c0c0c0; color: #000; }
+.classicTheme .flag { background: #c0c0c0; font-size: 15px; }
+.classicTheme .question { background: #c0c0c0; color: #000; font-size: 15px; }
 .classicTheme .mine {
   background: #b33939;
+  font-size: 15px;
   box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
 }
 .classicTheme .wrongFlag {
   background: #c0c0c0;
+  font-size: 15px;
   box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
 }
 
