@@ -694,3 +694,116 @@
   box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
 }
 .classicTheme .nameInput:focus { border-color: transparent; outline: 1px dotted #000; }
+
+/* ===== 개구리 연못 테마 — 순수 리스킨, 보드 크기/좌표/로직 변경 없음 ===== */
+.frogTheme {
+  background: #eaf6ec;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.frogTheme .diffBtn,
+.frogTheme .themeBtn,
+.frogTheme .applyBtn,
+.frogTheme .rankTab,
+.frogTheme .primaryBtn,
+.frogTheme .secondaryBtn {
+  border-color: #4a8a5c;
+  color: #2f6b4f;
+  border-radius: 16px;
+}
+.frogTheme .diffBtn:hover,
+.frogTheme .themeBtn:hover,
+.frogTheme .applyBtn:hover,
+.frogTheme .rankTab:hover,
+.frogTheme .primaryBtn:hover,
+.frogTheme .secondaryBtn:hover { background: #4a8a5c; color: #fff; }
+
+.frogTheme .diffActive,
+.frogTheme .themeBtnActive,
+.frogTheme .rankTabActive {
+  background: #2f6b4f;
+  color: #fff;
+  border-color: #2f6b4f;
+}
+
+.frogTheme .applyBtn { background: #4a8a5c; color: #fff; border: none; }
+.frogTheme .applyBtn:hover { background: #2f6b4f; }
+
+/* 커스텀 패널 */
+.frogTheme .customPanel { background: #f2fbf3; border-color: #9ccba6; border-radius: 12px; }
+.frogTheme .customPanel label { color: #2f6b4f; }
+.frogTheme .customPanel input { border-color: #9ccba6; }
+.frogTheme .customHint { color: #b3543a; }
+
+/* 상태 바 */
+.frogTheme .infoBar { background: #d9f0dd; padding: 6px 14px; border-radius: 20px; }
+.frogTheme .mineCount { color: #2f6b4f; }
+.frogTheme .timer { color: #1f4d34; }
+
+.frogTheme .status { color: #2f6b4f; }
+.frogTheme .win  { color: #1f7a4c; }
+.frogTheme .lose { color: #a8402a; }
+
+/* 보드 */
+.frogTheme .boardWrapper {
+  border: 3px solid #4a8a5c;
+  border-radius: 10px;
+  background: #d9f0dd;
+  overflow: hidden;
+  padding: 4px;
+}
+.frogTheme .board { background: #d9f0dd; }
+
+.frogTheme .cell {
+  background: #6fae7c;
+  border: 1px solid #4a8a5c;
+  border-radius: 4px;
+  color: #1f4d34;
+}
+.frogTheme .revealed { background: #f2fbf3; }
+.frogTheme .flag { background: #6fae7c; }
+.frogTheme .question { background: #6fae7c; color: #1f4d34; }
+.frogTheme .mine { background: #c1694f; }
+.frogTheme .wrongFlag { background: #f2fbf3; }
+
+/* 리셋 버튼 */
+.frogTheme .resetBtn {
+  background: #6fae7c;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  font-size: 1.5em;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.frogTheme .resetBtn:hover { background: #4a8a5c; }
+
+.frogTheme .sessionFailBanner { background: #fbe4dc; border-color: #c1694f; border-radius: 12px; color: #a8402a; }
+
+/* 랭킹 */
+.frogTheme .rankTitle { color: #2f6b4f; }
+.frogTheme .table th { background: #4a8a5c; }
+.frogTheme .table tr:nth-child(even) td { background: #eef7ee; }
+.frogTheme .table tr:first-child td { color: #b3782a; }
+.frogTheme .alltimeBanner { background: linear-gradient(135deg, #eafbf0, #d3f0d9); border-color: #9ccba6; }
+.frogTheme .atLabel { color: #2f6b4f; }
+.frogTheme .atContent { color: #1f4d34; }
+
+.frogTheme .rulesPanel { background: #f2fbf3; border-color: #cdeacd; border-radius: 12px; }
+.frogTheme .rulesPanel h4 { color: #2f6b4f; border-color: #cdeacd; }
+
+/* 모달 */
+.frogTheme .modal { background: #f2fbf3; border-radius: 16px; }
+.frogTheme .modal h2 { color: #2f6b4f; }
+.frogTheme .nameInput { border-color: #9ccba6; }
+.frogTheme .nameInput:focus { border-color: #4a8a5c; }
+.frogTheme .primaryBtn { background: #4a8a5c; color: #fff; border: none; }
+.frogTheme .primaryBtn:hover { background: #2f6b4f; }
+.frogTheme .secondaryBtn { background: #9ccba6; color: #fff; border: none; }
+.frogTheme .secondaryBtn:hover { background: #6fae7c; }

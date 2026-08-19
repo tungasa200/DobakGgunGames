@@ -46,15 +46,15 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   const [level, setLevel] = useState<Level>('beginner');
   const { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark } = useMinesweeperGame('beginner');
 
-  // 클래식(윈도우95) 테마 토글 — 순수 리스킨, 보드/로직 변경 없음
-  const [classicTheme, setClassicTheme] = useState(() =>
-    localStorage.getItem('dobakggun-minesweeper-theme') === 'classic'
-  );
-  const toggleClassicTheme = () => setClassicTheme(prev => {
-    const next = !prev;
-    localStorage.setItem('dobakggun-minesweeper-theme', next ? 'classic' : 'default');
-    return next;
+  // 테마 선택 — 순수 리스킨, 보드/로직 변경 없음
+  const [theme, setThemeState] = useState<'default' | 'classic' | 'frog'>(() => {
+    const saved = localStorage.getItem('dobakggun-minesweeper-theme');
+    return saved === 'classic' || saved === 'frog' ? saved : 'default';
   });
+  const setTheme = (next: 'default' | 'classic' | 'frog') => {
+    setThemeState(next);
+    localStorage.setItem('dobakggun-minesweeper-theme', next);
+  };
 
   // 커스텀 패널
   const [showCustom, setShowCustom] = useState(false);
@@ -349,7 +349,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   ];
 
   return (
-    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && classicTheme ? styles.classicTheme : ''}`}>
+    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && theme === 'classic' ? styles.classicTheme : ''} ${!excel && theme === 'frog' ? styles.frogTheme : ''}`}>
 
       {/* ── 일반 모드: 난이도 버튼 ── */}
       {!excel && (
@@ -371,10 +371,16 @@ export default function MinesweeperBoard({ excel = false }: Props) {
               커스텀
             </button>
             <button
-              className={`${styles.themeBtn} ${classicTheme ? styles.themeBtnActive : ''}`}
-              onClick={toggleClassicTheme}
+              className={`${styles.themeBtn} ${theme === 'classic' ? styles.themeBtnActive : ''}`}
+              onClick={() => setTheme(theme === 'classic' ? 'default' : 'classic')}
             >
-              {classicTheme ? '🎨 기본' : '🖥️ 클래식'}
+              🖥️ 클래식
+            </button>
+            <button
+              className={`${styles.themeBtn} ${theme === 'frog' ? styles.themeBtnActive : ''}`}
+              onClick={() => setTheme(theme === 'frog' ? 'default' : 'frog')}
+            >
+              🐸 개구리 연못
             </button>
           </div>
 
@@ -425,15 +431,18 @@ export default function MinesweeperBoard({ excel = false }: Props) {
                 let content = '';
                 let cls = styles.cell;
 
+                const mineIcon = theme === 'frog' ? '🐍' : '💣';
+                const flagIcon = theme === 'frog' ? '🍀' : '🚩';
+
                 if (cell.isRevealed) {
                   cls += ' ' + styles.revealed;
-                  if (cell.isMine) { content = '💣'; cls += ' ' + styles.mine; }
+                  if (cell.isMine) { content = mineIcon; cls += ' ' + styles.mine; }
                   else if (cell.adjMines > 0) content = String(cell.adjMines);
                 } else if (cell.mark === 'flag') {
                   if (state.status === 'lost' && !cell.isMine) {
                     content = '❌'; cls += ' ' + styles.wrongFlag;
                   } else {
-                    content = '🚩'; cls += ' ' + styles.flag;
+                    content = flagIcon; cls += ' ' + styles.flag;
                   }
                 } else if (cell.mark === 'question')   { content = '?';  cls += ' ' + styles.question; }
 
@@ -484,7 +493,9 @@ export default function MinesweeperBoard({ excel = false }: Props) {
       {/* ── 일반 모드: 리셋 버튼 (보드 하단) ── */}
       {!excel && (
         <button className={styles.resetBtn} onClick={() => { reset(level); }}>
-          {classicTheme
+          {theme === 'frog'
+            ? (state.status === 'won' ? '🪷' : state.status === 'lost' ? '💀' : '🐸')
+            : theme === 'classic'
             ? (state.status === 'won' ? '😎' : state.status === 'lost' ? '😵' : '🙂')
             : 'RESET'}
         </button>
