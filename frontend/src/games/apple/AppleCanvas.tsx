@@ -337,6 +337,13 @@ export default function AppleCanvas({ excel = false }: Props) {
   // 세로 모드로 보드를 전치했는지 여부 (순위 등록 시 좌표 역전치에 사용)
   const boardTransposedRef = useRef(false);
 
+  // 연습모드 — 제한시간 없음 / 랭킹 기록 없음. 시작 전에만 토글 가능.
+  const [practiceMode, setPracticeMode] = useState(false);
+  const handlePracticeToggle = () => {
+    if (state.status === 'playing') return;
+    setPracticeMode(prev => !prev);
+  };
+
   // 테마 (사과 → 감자 → 풍선 순환)
   const [theme, setTheme] = useState<AppleTheme>(() => {
     const saved = localStorage.getItem('dobakggun-apple-theme');
@@ -453,12 +460,12 @@ export default function AppleCanvas({ excel = false }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [excel, boardSizeMode, excelBoardSizeMode]);
 
-  // timeLeft === 0 → end
+  // timeLeft === 0 → end (연습모드는 제한시간이 없으므로 제외)
   useEffect(() => {
-    if (state.status === 'playing' && state.timeLeft <= 0) {
+    if (state.status === 'playing' && !state.isPractice && state.timeLeft <= 0) {
       end();
     }
-  }, [state.timeLeft, state.status, end]);
+  }, [state.timeLeft, state.status, state.isPractice, end]);
 
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
@@ -488,13 +495,13 @@ export default function AppleCanvas({ excel = false }: Props) {
     ]);
   }, [excel, state.score, state.timeLeft, dragSum, setFormula, setStatusItems]);
 
-  // 게임 종료 → 모달
+  // 게임 종료 → 모달 (연습모드는 기록을 저장하지 않으므로 랭킹 모달을 띄우지 않음)
   useEffect(() => {
     if (state.status === 'ended') {
-      setMsg('GAME OVER');
+      setMsg(state.isPractice ? '연습 종료! (기록은 저장되지 않았어요)' : 'GAME OVER');
       draw();
       setRankTab(currentLevelRef.current as 'normal' | 'large');
-      if (!sessionFailed) setTimeout(() => setModalOpen(true), 300);
+      if (!sessionFailed && !state.isPractice) setTimeout(() => setModalOpen(true), 300);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
@@ -745,7 +752,7 @@ export default function AppleCanvas({ excel = false }: Props) {
   }, [layout, state.apples, state.status, draw, removeApples]);
 
   async function handleStart() {
-    setMsg('사과를 드래그하세요!');
+    setMsg(practiceMode ? '연습모드! 시간 제한 없이 자유롭게 연습하세요.' : '사과를 드래그하세요!');
     setModalOpen(false);
     setPlayerName('');
     setSubmitState('idle');
@@ -753,6 +760,16 @@ export default function AppleCanvas({ excel = false }: Props) {
     // 현재 선택된 크기 모드 확정 (엑셀 모드는 별도 ref 사용)
     const level = excel ? excelBoardSizeModeRef.current : boardSizeMode;
     currentLevelRef.current = level;
+
+    // 연습모드: 랭킹에 기록하지 않으므로 서버 세션 없이 클라이언트에서 바로 시작
+    if (practiceMode) {
+      sessionIdRef.current = '';
+      setSessionFailed(false);
+      boardTransposedRef.current = false;
+      const l = (excel ? layout : calcLayout()) ?? layout;
+      start(l.rows, l.cols, true);
+      return;
+    }
 
     // 세션 생성 최대 3회 재시도
     let res = null;
@@ -948,9 +965,9 @@ export default function AppleCanvas({ excel = false }: Props) {
             <div className={styles.infoValue}>{state.score}</div>
           </div>
           <div className={styles.infoItem}>
-            <div className={styles.infoLabel}>남은 시간</div>
+            <div className={styles.infoLabel}>{state.isPractice ? '경과 시간' : '남은 시간'}</div>
             <div className={`${styles.infoValue} ${timeWarning ? styles.timeWarning : ''}`}>
-              {formatTime(state.timeLeft)}
+              {state.isPractice ? formatTime(state.elapsed) : formatTime(state.timeLeft)}
             </div>
           </div>
           <div className={styles.infoItem}>
@@ -983,11 +1000,24 @@ export default function AppleCanvas({ excel = false }: Props) {
           >
             {THEME_META[nextTheme].emoji} {THEME_META[nextTheme].label}
           </button>
+          <button
+            className={`${styles.sizeBtn} ${practiceMode ? styles.sizeBtnActive : ''}`}
+            onClick={handlePracticeToggle}
+            disabled={state.status === 'playing'}
+            title="제한시간 없이 자유롭게 연습 — 랭킹에는 기록되지 않아요"
+          >🧪 연습모드</button>
+        </div>
+      )}
+
+      {/* 연습모드 안내 배너 */}
+      {!excel && state.isPractice && state.status === 'playing' && (
+        <div className={styles.practiceBanner}>
+          연습모드: 시간 제한 없음 · 기록은 저장되지 않아요
         </div>
       )}
 
       {/* 세션 생성 실패 경고 배너 */}
-      {!excel && sessionFailed && state.status === 'playing' && (
+      {!excel && sessionFailed && state.status === 'playing' && !state.isPractice && (
         <div className={styles.sessionFailBanner}>
           네트워크 오류로 이 게임은 랭킹에 등록되지 않습니다
         </div>
@@ -1008,8 +1038,13 @@ export default function AppleCanvas({ excel = false }: Props) {
       {!excel && (
         <div className={styles.controls}>
           <button className={styles.startBtn} onClick={handleStart}>
-            {state.status === 'idle' ? '▶ 시작' : '↺ 다시하기'}
+            {state.status === 'idle'
+              ? (practiceMode ? '▶ 연습 시작' : '▶ 시작')
+              : '↺ 다시하기'}
           </button>
+          {state.isPractice && state.status === 'playing' && (
+            <button className={styles.endBtn} onClick={end}>■ 연습 종료</button>
+          )}
         </div>
       )}
 

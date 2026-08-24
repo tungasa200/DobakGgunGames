@@ -454,6 +454,23 @@
 
 .sessionFailBanner { width: 100%; padding: 8px 12px; margin-bottom: 8px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 6px; color: #f1948a; font-size: 0.85em; text-align: center; }
 
+/* 연습모드 안내 배너 */
+.practiceBanner { width: 100%; padding: 8px 12px; margin-bottom: 8px; background: rgba(52, 152, 219, 0.12); border: 1px solid rgba(52, 152, 219, 0.4); border-radius: 6px; color: #2e6da4; font-size: 0.85em; text-align: center; font-weight: bold; }
+
+/* 연습 종료 버튼 */
+.endBtn {
+  padding: 10px 20px;
+  font-size: 1em;
+  cursor: pointer;
+  border: 2px solid #95a5a6;
+  border-radius: 5px;
+  font-weight: bold;
+  touch-action: manipulation;
+  background: white;
+  color: #7f8c8d;
+}
+.endBtn:hover { background: #ecf0f1; }
+
 /* 보드 크기 선택 — 일반 모드 */
 .sizePicker {
   display: flex;

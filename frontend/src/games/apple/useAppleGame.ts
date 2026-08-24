@@ -27,6 +27,10 @@ interface State {
   cols: number;
   score: number;
   timeLeft: number;
+  /** 연습모드 경과 시간(초) — 카운트다운 대신 카운트업 표시용 */
+  elapsed: number;
+  /** 연습모드: 제한시간 없음 + 기록 미저장 */
+  isPractice: boolean;
   status: 'idle' | 'playing' | 'ended';
 }
 
@@ -34,9 +38,9 @@ type Action =
   | { type: 'INIT'; rows: number; cols: number }
   /** Phase 3: 서버가 생성한 보드로 초기화 (클라이언트 randomApple 제거) */
   | { type: 'INIT_WITH_BOARD'; board: number[][] }
-  | { type: 'START'; rows: number; cols: number }
+  | { type: 'START'; rows: number; cols: number; practice?: boolean }
   /** Phase 3: 서버 보드로 게임 시작 */
-  | { type: 'START_WITH_BOARD'; board: number[][] }
+  | { type: 'START_WITH_BOARD'; board: number[][]; practice?: boolean }
   | { type: 'TICK' }
   | { type: 'REMOVE'; coords: { r: number; c: number }[] }
   | { type: 'END' };
@@ -56,6 +60,8 @@ function reducer(state: State, action: Action): State {
         cols: action.cols,
         score: 0,
         timeLeft: TIME_LIMIT,
+        elapsed: 0,
+        isPractice: false,
         status: 'idle',
       };
     case 'INIT_WITH_BOARD':
@@ -65,6 +71,8 @@ function reducer(state: State, action: Action): State {
         cols: action.board[0]?.length ?? 0,
         score: 0,
         timeLeft: TIME_LIMIT,
+        elapsed: 0,
+        isPractice: false,
         status: 'idle',
       };
     case 'START':
@@ -74,6 +82,8 @@ function reducer(state: State, action: Action): State {
         cols: action.cols,
         score: 0,
         timeLeft: TIME_LIMIT,
+        elapsed: 0,
+        isPractice: !!action.practice,
         status: 'playing',
       };
     case 'START_WITH_BOARD':
@@ -83,10 +93,13 @@ function reducer(state: State, action: Action): State {
         cols: action.board[0]?.length ?? 0,
         score: 0,
         timeLeft: TIME_LIMIT,
+        elapsed: 0,
+        isPractice: !!action.practice,
         status: 'playing',
       };
     case 'TICK':
       if (state.status !== 'playing') return state;
+      if (state.isPractice) return { ...state, elapsed: state.elapsed + 1 };
       return { ...state, timeLeft: state.timeLeft - 1 };
     case 'REMOVE': {
       const next = state.apples.map((row) => [...row]);
@@ -107,6 +120,8 @@ export function useAppleGame() {
     cols: 17,
     score: 0,
     timeLeft: TIME_LIMIT,
+    elapsed: 0,
+    isPractice: false,
     status: 'idle',
   });
 
@@ -121,11 +136,11 @@ export function useAppleGame() {
     dispatch({ type: 'INIT', rows, cols });
   }, []);
 
-  const start = useCallback((rows: number, cols: number) => {
+  const start = useCallback((rows: number, cols: number, practice = false) => {
     if (timerRef.current) clearInterval(timerRef.current);
     gameStartTimeRef.current = Date.now();
     eventsRef.current = [];
-    dispatch({ type: 'START', rows, cols });
+    dispatch({ type: 'START', rows, cols, practice });
     timerRef.current = setInterval(() => {
       dispatch({ type: 'TICK' });
     }, 1000);
