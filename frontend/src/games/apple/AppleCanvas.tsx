@@ -498,7 +498,7 @@ export default function AppleCanvas({ excel = false }: Props) {
   // 게임 종료 → 모달 (연습모드는 기록을 저장하지 않으므로 랭킹 모달을 띄우지 않음)
   useEffect(() => {
     if (state.status === 'ended') {
-      setMsg(state.isPractice ? '연습 종료! (기록은 저장되지 않았어요)' : 'GAME OVER');
+      setMsg(state.isPractice ? '연습 종료!' : 'GAME OVER');
       draw();
       setRankTab(currentLevelRef.current as 'normal' | 'large');
       if (!sessionFailed && !state.isPractice) setTimeout(() => setModalOpen(true), 300);
@@ -1004,7 +1004,7 @@ export default function AppleCanvas({ excel = false }: Props) {
             className={`${styles.sizeBtn} ${practiceMode ? styles.sizeBtnActive : ''}`}
             onClick={handlePracticeToggle}
             disabled={state.status === 'playing'}
-            title="제한시간 없이 자유롭게 연습 — 랭킹에는 기록되지 않아요"
+            title="제한시간 없이 자유롭게 연습"
           >🧪 연습모드</button>
         </div>
       )}
@@ -1012,7 +1012,7 @@ export default function AppleCanvas({ excel = false }: Props) {
       {/* 연습모드 안내 배너 */}
       {!excel && state.isPractice && state.status === 'playing' && (
         <div className={styles.practiceBanner}>
-          연습모드: 시간 제한 없음 · 기록은 저장되지 않아요
+          연습모드: 시간 제한 없음
         </div>
       )}
 
