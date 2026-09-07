@@ -39,13 +39,18 @@ const PRESET_LEVELS: { value: Exclude<Level, 'custom'>; label: string; shortLabe
 
 const NUM_COLORS = ['', '#0000ff','#007b00','#ff0000','#00007b','#7b0000','#007b7b','#000000','#7b7b7b'];
 
-type ThemeName = 'default' | 'classic' | 'frog';
-const THEME_ORDER: ThemeName[] = ['default', 'classic', 'frog'];
+type ThemeName = 'default' | 'classic' | 'frog' | 'autumn';
+const THEME_ORDER: ThemeName[] = ['default', 'classic', 'frog', 'autumn'];
 const THEME_LABELS: Record<ThemeName, string> = {
   default: '🎨 기본',
   classic: '🖥️ 클래식',
   frog: '🐸 개구리',
+  autumn: '🍂 가을',
 };
+
+// 가을(은행) 테마 아이콘 — 깃발/리셋버튼(기본 상태)은 은행잎, 지뢰는 은행알
+const AUTUMN_LEAF_ICON = '/games/minesweeper/autumn-leaf.webp';
+const AUTUMN_NUT_ICON = '/games/minesweeper/autumn-nut.webp';
 
 interface Props { excel?: boolean }
 
@@ -57,7 +62,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   // 테마 선택 — 순수 리스킨, 보드/로직 변경 없음
   const [theme, setThemeState] = useState<ThemeName>(() => {
     const saved = localStorage.getItem('dobakggun-minesweeper-theme');
-    return saved === 'classic' || saved === 'frog' ? saved : 'default';
+    return saved === 'classic' || saved === 'frog' || saved === 'autumn' ? saved : 'default';
   });
   const setTheme = (next: ThemeName) => {
     setThemeState(next);
@@ -361,7 +366,7 @@ export default function MinesweeperBoard({ excel = false }: Props) {
   ];
 
   return (
-    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && theme === 'classic' ? styles.classicTheme : ''} ${!excel && theme === 'frog' ? styles.frogTheme : ''}`}>
+    <div className={`${styles.wrap} ${excel ? styles.excelMode : ''} ${!excel && theme === 'classic' ? styles.classicTheme : ''} ${!excel && theme === 'frog' ? styles.frogTheme : ''} ${!excel && theme === 'autumn' ? styles.autumnTheme : ''}`}>
 
       {/* ── 일반 모드: 난이도 버튼 ── */}
       {!excel && (
@@ -434,11 +439,19 @@ export default function MinesweeperBoard({ excel = false }: Props) {
           >
             {state.board.map((row, r) =>
               row.map((cell, c) => {
-                let content = '';
+                let content: React.ReactNode = '';
                 let cls = styles.cell;
 
-                const mineIcon = theme === 'frog' ? '🐍' : '💣';
-                const flagIcon = theme === 'frog' ? '🍀' : '🚩';
+                const mineIcon = theme === 'frog'
+                  ? '🐍'
+                  : theme === 'autumn'
+                  ? <img src={AUTUMN_NUT_ICON} alt="" className={styles.autumnIcon} />
+                  : '💣';
+                const flagIcon = theme === 'frog'
+                  ? '🍀'
+                  : theme === 'autumn'
+                  ? <img src={AUTUMN_LEAF_ICON} alt="" className={styles.autumnIcon} />
+                  : '🚩';
 
                 if (cell.isRevealed) {
                   cls += ' ' + styles.revealed;
@@ -498,11 +511,16 @@ export default function MinesweeperBoard({ excel = false }: Props) {
 
       {/* ── 일반 모드: 리셋 버튼 (보드 하단) ── */}
       {!excel && (
-        <button className={styles.resetBtn} onClick={() => { reset(level); }}>
+        <button
+          className={`${styles.resetBtn} ${theme === 'autumn' && state.status === 'won' ? styles.autumnResetWon : ''}`}
+          onClick={() => { reset(level); }}
+        >
           {theme === 'frog'
             ? (state.status === 'won' ? '🪷' : state.status === 'lost' ? '💀' : '🐸')
             : theme === 'classic'
             ? (state.status === 'won' ? '😎' : state.status === 'lost' ? '😵' : '🙂')
+            : theme === 'autumn'
+            ? (state.status === 'won' ? '🌕' : state.status === 'lost' ? '💩' : <img src={AUTUMN_LEAF_ICON} alt="" className={styles.autumnResetIcon} />)
             : 'RESET'}
         </button>
       )}

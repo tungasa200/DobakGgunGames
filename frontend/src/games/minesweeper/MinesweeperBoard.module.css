@@ -142,6 +142,12 @@
 /* 잘못 놓인 깃발(게임오버) — 지뢰가 아닌 곳에 깃발을 놓은 경우 */
 .wrongFlag { background-color: #fff; }
 
+/* 가을 테마 셀 아이콘(깃발/지뢰) */
+.autumnIcon { width: 20px; height: 20px; object-fit: contain; display: block; }
+
+/* 가을 테마 리셋버튼 아이콘(기본 상태) */
+.autumnResetIcon { width: 24px; height: 24px; object-fit: contain; display: block; }
+
 /* 리셋 버튼 — 원본: #reset-btn { margin-top: 15px; } */
 .resetBtn {
   margin-top: 15px;
@@ -807,3 +813,124 @@
 .frogTheme .primaryBtn:hover { background: #2f6b4f; }
 .frogTheme .secondaryBtn { background: #9ccba6; color: #fff; border: none; }
 .frogTheme .secondaryBtn:hover { background: #6fae7c; }
+
+/* ===== 가을(은행) 테마 — 순수 리스킨, 보드 크기/좌표/로직 변경 없음 ===== */
+/* 개구리 테마 구조를 참고한 파스텔 톤, 은행잎 옐로우 강조. 게임판(보드/셀)만 밝은 회색 보도블럭 톤 */
+.autumnTheme {
+  background: #fdf3d9;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.autumnTheme .diffBtn,
+.autumnTheme .themeBtn,
+.autumnTheme .applyBtn,
+.autumnTheme .rankTab,
+.autumnTheme .primaryBtn,
+.autumnTheme .secondaryBtn {
+  border-color: #c9973a;
+  color: #a97830;
+  border-radius: 16px;
+}
+.autumnTheme .diffBtn:hover,
+.autumnTheme .themeBtn:hover,
+.autumnTheme .applyBtn:hover,
+.autumnTheme .rankTab:hover,
+.autumnTheme .primaryBtn:hover,
+.autumnTheme .secondaryBtn:hover { background: #c9973a; color: #fff; }
+
+.autumnTheme .diffActive,
+.autumnTheme .themeBtnActive,
+.autumnTheme .rankTabActive {
+  background: #a97830;
+  color: #fff;
+  border-color: #a97830;
+}
+
+.autumnTheme .applyBtn { background: #c9973a; color: #fff; border: none; }
+.autumnTheme .applyBtn:hover { background: #a97830; }
+
+/* 커스텀 패널 */
+.autumnTheme .customPanel { background: #fdf6e3; border-color: #ecd18f; border-radius: 12px; }
+.autumnTheme .customPanel label { color: #a97830; }
+.autumnTheme .customPanel input { border-color: #ecd18f; }
+.autumnTheme .customHint { color: #c1543a; }
+
+/* 상태 바 */
+.autumnTheme .infoBar { background: #fbe8bd; padding: 6px 14px; border-radius: 20px; }
+.autumnTheme .mineCount { color: #a97830; }
+.autumnTheme .timer { color: #6b4a26; }
+
+.autumnTheme .status { color: #a97830; }
+.autumnTheme .win  { color: #c9962a; }
+.autumnTheme .lose { color: #c1543a; }
+
+/* 보드 — 게임판만 밝은 회색 보도블럭 톤 */
+.autumnTheme .boardWrapper {
+  border: 3px solid #8f8a78;
+  border-radius: 10px;
+  background: #e6e3da;
+  overflow: hidden;
+  padding: 4px;
+}
+.autumnTheme .board { background: #e6e3da; }
+
+.autumnTheme .cell {
+  background: #d6d2c5;
+  border: 1px solid #a39d8a;
+  border-radius: 4px;
+  color: #4a473e;
+}
+.autumnTheme .revealed { background: #f7f5f0; }
+.autumnTheme .flag { background: #f0e2ae; border-color: #cda233; }
+.autumnTheme .question { background: #d6d2c5; color: #4a473e; }
+.autumnTheme .mine { background: #c96b4a; }
+.autumnTheme .wrongFlag { background: #f7f5f0; }
+
+/* 리셋 버튼 — 노란 잎/달 아이콘이 잘 보이도록 게임판과 같은 회색 톤 */
+.autumnTheme .resetBtn {
+  background: #e6e3da;
+  color: #fff;
+  border: 2px solid #8f8a78;
+  border-radius: 50%;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  font-size: 1.5em;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.autumnTheme .resetBtn:hover { background: #d6d2c5; }
+
+/* 승리(보름달) 상태 — 밤하늘 느낌의 인디고 배경 */
+.autumnTheme .autumnResetWon {
+  background: #232a4d;
+  border-color: #3a4570;
+}
+.autumnTheme .autumnResetWon:hover { background: #2e365e; }
+
+.autumnTheme .sessionFailBanner { background: #fbe3d6; border-color: #d98a68; border-radius: 12px; color: #c1543a; }
+
+/* 랭킹 */
+.autumnTheme .rankTitle { color: #a97830; }
+.autumnTheme .table th { background: #c9973a; }
+.autumnTheme .table tr:nth-child(even) td { background: #fbf3e0; }
+.autumnTheme .table tr:first-child td { color: #c9962a; }
+.autumnTheme .alltimeBanner { background: linear-gradient(135deg, #fdf6e3, #fbe8bd); border-color: #ecd18f; }
+.autumnTheme .atLabel { color: #a97830; }
+.autumnTheme .atContent { color: #6b4a26; }
+
+.autumnTheme .rulesPanel { background: #fdf6e3; border-color: #f3e2b8; border-radius: 12px; }
+.autumnTheme .rulesPanel h4 { color: #a97830; border-color: #f3e2b8; }
+
+/* 모달 */
+.autumnTheme .modal { background: #fdf6e3; border-radius: 16px; }
+.autumnTheme .modal h2 { color: #a97830; }
+.autumnTheme .nameInput { border-color: #ecd18f; }
+.autumnTheme .nameInput:focus { border-color: #c9973a; }
+.autumnTheme .primaryBtn { background: #c9973a; color: #fff; border: none; }
+.autumnTheme .primaryBtn:hover { background: #a97830; }
+.autumnTheme .secondaryBtn { background: #ecd18f; color: #fff; border: none; }
+.autumnTheme .secondaryBtn:hover { background: #d9b45c; }
