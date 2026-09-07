@@ -39,7 +39,7 @@ const PRESET_LEVELS: { value: Exclude<Level, 'custom'>; label: string; shortLabe
 
 const NUM_COLORS = ['', '#0000ff','#007b00','#ff0000','#00007b','#7b0000','#007b7b','#000000','#7b7b7b'];
 
-type ThemeName = 'default' | 'classic' | 'frog' | 'autumn';
+export type ThemeName = 'default' | 'classic' | 'frog' | 'autumn';
 const THEME_ORDER: ThemeName[] = ['default', 'classic', 'frog', 'autumn'];
 const THEME_LABELS: Record<ThemeName, string> = {
   default: '🎨 기본',
@@ -52,25 +52,21 @@ const THEME_LABELS: Record<ThemeName, string> = {
 const AUTUMN_LEAF_ICON = '/games/minesweeper/autumn-leaf.webp';
 const AUTUMN_NUT_ICON = '/games/minesweeper/autumn-nut.webp';
 
-interface Props { excel?: boolean }
+interface Props {
+  excel?: boolean;
+  theme?: ThemeName;
+  onThemeChange?: (theme: ThemeName) => void;
+}
 
-export default function MinesweeperBoard({ excel = false }: Props) {
+export default function MinesweeperBoard({ excel = false, theme = 'default', onThemeChange }: Props) {
   const { user } = useAuth();
   const [level, setLevel] = useState<Level>('beginner');
   const { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark } = useMinesweeperGame('beginner');
 
-  // 테마 선택 — 순수 리스킨, 보드/로직 변경 없음
-  const [theme, setThemeState] = useState<ThemeName>(() => {
-    const saved = localStorage.getItem('dobakggun-minesweeper-theme');
-    return saved === 'classic' || saved === 'frog' || saved === 'autumn' ? saved : 'default';
-  });
-  const setTheme = (next: ThemeName) => {
-    setThemeState(next);
-    localStorage.setItem('dobakggun-minesweeper-theme', next);
-  };
+  // 테마 선택 — 순수 리스킨, 보드/로직 변경 없음. 상태는 GamePage가 소유(전체 배경색과 동기화하기 위함)
   const cycleTheme = () => {
     const idx = THEME_ORDER.indexOf(theme);
-    setTheme(THEME_ORDER[(idx + 1) % THEME_ORDER.length]);
+    onThemeChange?.(THEME_ORDER[(idx + 1) % THEME_ORDER.length]);
   };
 
   // 커스텀 패널

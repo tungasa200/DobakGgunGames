@@ -5,6 +5,7 @@ import NormalHeader from '../components/normal/NormalHeader';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
 import { fetchGameStatus } from '../api/games';
+import type { ThemeName as MinesweeperThemeName } from '../games/minesweeper/MinesweeperBoard';
 
 const BaseballBoard    = lazy(() => import('../games/baseball/BaseballBoard'));
 const MinesweeperBoard = lazy(() => import('../games/minesweeper/MinesweeperBoard'));
@@ -66,6 +67,18 @@ const BG_COLORS: Record<string, string> = {
 const SOLITAIRE_BG_KEY = 'dobakggun-solitaire-bg';
 const SOLITAIRE_BG_ALLOWED = new Set(['#0b5e20', '#f5ead6', '#ffffff', '#c0c0c0']);
 
+// 지뢰찾기 테마 — 전체화면 배경도 테마에 맞춰 바뀌도록 GamePage가 상태를 소유
+const MINESWEEPER_THEME_KEY = 'dobakggun-minesweeper-theme';
+const MINESWEEPER_THEME_BG: Record<MinesweeperThemeName, string> = {
+  default: '#f0f0f0',
+  classic: '#c0c0c0',
+  frog:    '#eaf6ec',
+  autumn:  '#fdf3d9',
+};
+function isMinesweeperTheme(v: string): v is MinesweeperThemeName {
+  return Object.prototype.hasOwnProperty.call(MINESWEEPER_THEME_BG, v);
+}
+
 // 게임별 강조색 — 원본 NORMAL_GAME_CONFIG.accentColor 와 동일
 const ACCENT_COLORS: Record<string, string> = {
   minesweeper:       '#3498db',
@@ -101,6 +114,17 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
     if (!SOLITAIRE_BG_ALLOWED.has(color)) return;
     setSolitaireBg(color);
     try { window.localStorage.setItem(SOLITAIRE_BG_KEY, color); } catch { /* ignore */ }
+  }, []);
+
+  // 지뢰찾기 테마 (사용자 선택, localStorage 영속) — 전체화면 배경도 함께 바뀜
+  const [minesweeperTheme, setMinesweeperTheme] = useState<MinesweeperThemeName>(() => {
+    if (typeof window === 'undefined') return 'default';
+    const saved = window.localStorage.getItem(MINESWEEPER_THEME_KEY);
+    return saved && isMinesweeperTheme(saved) ? saved : 'default';
+  });
+  const handleMinesweeperThemeChange = useCallback((next: MinesweeperThemeName) => {
+    setMinesweeperTheme(next);
+    try { window.localStorage.setItem(MINESWEEPER_THEME_KEY, next); } catch { /* ignore */ }
   }, []);
   // 테마 전환 시 깜빡임 오버라이드 (null이면 insaneBgColor 사용)
   const [flickerBg, setFlickerBg] = useState<string | null>(null);
@@ -158,7 +182,7 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
 
   const board =
     game === 'baseball'         ? <BaseballBoard       excel={excel} /> :
-    game === 'minesweeper'      ? <MinesweeperBoard    excel={excel} /> :
+    game === 'minesweeper'      ? <MinesweeperBoard    excel={excel} theme={minesweeperTheme} onThemeChange={handleMinesweeperThemeChange} /> :
     game === 'apple'            ? <AppleCanvas         excel={excel} /> :
     game === 'solitaire'        ? <CardBoard           excel={excel} bgColor={solitaireBg} onBgColorChange={handleSolitaireBgChange} /> :
     game === 'blockfall'        ? <BlockfallBoard      excel={excel} /> :
@@ -192,7 +216,7 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
           position: 'fixed',
           inset: 0,
           overflow: 'auto',
-          background: game === 'blockfall-insane' ? (flickerBg ?? insaneBgColor) : (game === 'solitaire' ? solitaireBg : (BG_COLORS[game] ?? '#f0f0f0')),
+          background: game === 'blockfall-insane' ? (flickerBg ?? insaneBgColor) : (game === 'solitaire' ? solitaireBg : (game === 'minesweeper' ? MINESWEEPER_THEME_BG[minesweeperTheme] : (BG_COLORS[game] ?? '#f0f0f0'))),
           fontFamily: 'sans-serif',
           display: 'flex',
           flexDirection: 'column',
