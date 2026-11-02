@@ -289,11 +289,10 @@ export default function AppleBattleGameView({
       </div>
 
       {/* 선택 합계 표시 */}
-      {dragSum !== null && (
-        <div style={{ fontSize: 13, color: '#888' }}>
-          선택 합계: <strong style={{ color: dragSum === 10 ? '#27ae60' : dragSum > 10 ? '#e67e22' : '#3498db' }}>{dragSum}</strong>
-        </div>
-      )}
+      {/* 드래그를 시작해도 캔버스가 밀리지 않도록 자리는 항상 차지한다 */}
+      <div style={{ fontSize: 13, color: '#888', visibility: dragSum === null ? 'hidden' : 'visible' }}>
+        선택 합계: <strong style={{ color: dragSum === 10 ? '#27ae60' : (dragSum ?? 0) > 10 ? '#e67e22' : '#3498db' }}>{dragSum ?? 0}</strong>
+      </div>
 
       {/* 상대 끊김 배너 */}
       {opponentDisconnected && (
