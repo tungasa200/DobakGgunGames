@@ -28,5 +28,17 @@ public interface BrickBreakerRankingRepository extends RankingRepository<BrickBr
     """)
     BrickBreakerRanking findAlltimeBest(@Param("level") String level);
 
+    @Query("""
+        SELECT r FROM BrickBreakerRanking r
+        WHERE r.level = :level AND r.createdAt >= :weekStart AND r.createdAt < :weekEnd
+        ORDER BY r.gameLevel DESC, r.score DESC, r.createdAt ASC
+        LIMIT 3
+    """)
+    List<BrickBreakerRanking> findPreviousWeekTop3(
+            @Param("level") String level,
+            @Param("weekStart") LocalDateTime weekStart,
+            @Param("weekEnd") LocalDateTime weekEnd
+    );
+
     long countByIpHashAndLevelAndCreatedAtAfter(String ipHash, String level, LocalDateTime after);
 }

@@ -36,6 +36,9 @@ public class AdminStatsService {
     private final BaseballRankingRepository baseballRankingRepository;
     private final BlockfallRankingRepository blockfallRankingRepository;
     private final SudokuRankingRepository sudokuRankingRepository;
+    private final BrickBreakerRankingRepository brickBreakerRankingRepository;
+    private final BlockCrushRankingRepository blockCrushRankingRepository;
+    private final BlockfallInsaneRankingRepository blockfallInsaneRankingRepository;
 
     public Map<String, Object> getSummary() {
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -106,6 +109,9 @@ public class AdminStatsService {
         result.add(Map.of("game", "baseball",     "count", baseballRankingRepository.count()));
         result.add(Map.of("game", "blockfall",    "count", blockfallRankingRepository.count()));
         result.add(Map.of("game", "sudoku",       "count", sudokuRankingRepository.count()));
+        result.add(Map.of("game", "brickbreaker", "count", brickBreakerRankingRepository.count()));
+        result.add(Map.of("game", "block-crush",  "count", blockCrushRankingRepository.count()));
+        result.add(Map.of("game", "blockfall-insane", "count", blockfallInsaneRankingRepository.count()));
         return result;
     }
 
@@ -126,6 +132,9 @@ public class AdminStatsService {
         mergeRankingDayCounts(countMap, baseballRankingRepository.countByDayInWeek(weekStart, weekEnd));
         mergeRankingDayCounts(countMap, blockfallRankingRepository.countByDayInWeek(weekStart, weekEnd));
         mergeRankingDayCounts(countMap, sudokuRankingRepository.countByDayInWeek(weekStart, weekEnd));
+        mergeRankingDayCounts(countMap, brickBreakerRankingRepository.countByDayInWeek(weekStart, weekEnd));
+        mergeRankingDayCounts(countMap, blockCrushRankingRepository.countByDayInWeek(weekStart, weekEnd));
+        mergeRankingDayCounts(countMap, blockfallInsaneRankingRepository.countByDayInWeek(weekStart, weekEnd));
 
         return countMap.entrySet().stream().map(e -> {
             Map<String, Object> m = new LinkedHashMap<>();
