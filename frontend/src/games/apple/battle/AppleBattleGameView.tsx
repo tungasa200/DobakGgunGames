@@ -126,7 +126,7 @@ export default function AppleBattleGameView({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const drag = dragRef.current;
-    let selSet = new Set<string>();
+    const selSet = new Set<string>();
     let selSum = 0;
     if (drag.active) {
       const { selected, sum } = calcSelection(drag.sx, drag.sy, drag.cx, drag.cy, rows, cols, board, pad, size);
