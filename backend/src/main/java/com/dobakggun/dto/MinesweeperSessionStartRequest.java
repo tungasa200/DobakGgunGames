@@ -17,4 +17,7 @@ public class MinesweeperSessionStartRequest {
 
     /** 첫 클릭 열 */
     private Integer firstClickC;
+
+    /** 2면 서버 판정 경로. 없으면 구경로(adjMines 응답) */
+    private Integer protocol;
 }

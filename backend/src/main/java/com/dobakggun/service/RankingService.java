@@ -17,6 +17,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -24,6 +25,8 @@ import java.util.Set;
 public class RankingService {
 
     private static final Set<String> VALID_GAMES = Set.of("minesweeper", "baseball", "blockfall", "blockfall-insane", "solitaire", "apple", "sudoku", "brickbreaker", "block-crush");
+    // 서버 판정 게임별 최소 클리어 시간. 기존 클라이언트 시간 하한(0.4초, 5초)과 같다
+    private static final Map<String, Long> SERVER_MIN_CLEAR_MS = Map.of("minesweeper", 400L, "sudoku", 5_000L);
     private static final int RATE_LIMIT_PER_MINUTE = 3;
 
     private final MinesweeperRankingRepository minesweeperRepo;
@@ -36,6 +39,7 @@ public class RankingService {
     private final BrickBreakerRankingRepository brickBreakerRankingRepository;
     private final BlockCrushRankingRepository blockCrushRankingRepository;
     private final SessionService sessionService;
+    private final PlaySessionSupport playSessionSupport;
     private final BaseballSessionService baseballSessionService;
     private final SolitaireMoveService solitaireMoveService;
     private final AppleValidationService appleValidationService;
@@ -75,6 +79,19 @@ public class RankingService {
         if (req.getSessionId() == null || req.getSessionId().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 요청입니다.");
         }
+        // 서버 판정 세션은 소모 전에 클리어를 확인하고, 기록은 서버 시간을 쓴다
+        Long minClearMs = SERVER_MIN_CLEAR_MS.get(game);
+        Long serverClearTimeMs = minClearMs == null
+            ? null
+            : playSessionSupport.serverClearTimeMs(req.getSessionId(), req.getLevel());
+        boolean serverTimed = serverClearTimeMs != null;
+        if (serverTimed) {
+            if (serverClearTimeMs < minClearMs) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 점수입니다.");
+            }
+            req.setTime(serverClearTimeMs / 1000.0);
+        }
+
         GameSession session = "baseball".equals(game)
             ? baseballSessionService.validateWinAndConsume(req.getSessionId(), httpReq)
             : sessionService.validateAndConsume(req.getSessionId(), game, httpReq);
@@ -88,8 +105,8 @@ public class RankingService {
             case "block-crush"      -> blockCrushValidationService.validate(session, req);
         }
 
-        // 점수 범위 검증 (스도쿠는 서버 계산이므로 제외)
-        if (!"sudoku".equals(game)) {
+        // 점수 범위 검증 (스도쿠와 서버 판정 세션은 서버 계산이므로 제외)
+        if (!"sudoku".equals(game) && !serverTimed) {
             validateScoreBounds(game, req);
         }
 

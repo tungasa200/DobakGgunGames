@@ -29,7 +29,7 @@ import java.util.*;
 public class MinesweeperSessionService {
 
     /** 난이도 → [rows, cols, mines] */
-    private static final Map<String, int[]> PRESETS = Map.of(
+    static final Map<String, int[]> PRESETS = Map.of(
         "beginner",     new int[]{9,  9,  10},
         "intermediate", new int[]{16, 16, 40},
         "expert",       new int[]{16, 30, 99}
@@ -98,8 +98,8 @@ public class MinesweeperSessionService {
 
     // ── 내부 유틸 ──────────────────────────────────────────────────────
 
-    private boolean[][] generateMines(int rows, int cols, int mines,
-                                       Integer firstR, Integer firstC) {
+    static boolean[][] generateMines(int rows, int cols, int mines,
+                                     Integer firstR, Integer firstC) {
         boolean[][] grid = new boolean[rows][cols];
         Random rng = new Random();
         int planted = 0;
@@ -115,7 +115,7 @@ public class MinesweeperSessionService {
         return grid;
     }
 
-    private int[][] computeAdjMines(boolean[][] grid, int rows, int cols) {
+    static int[][] computeAdjMines(boolean[][] grid, int rows, int cols) {
         int[][] adj = new int[rows][cols];
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
@@ -138,7 +138,7 @@ public class MinesweeperSessionService {
     }
 
     /** (r1,c1)이 (r2,c2)와 같거나 인접(8방향 포함 자기 자신)한지 확인 */
-    private boolean isAdjacent(int r1, int c1, int r2, int c2) {
+    private static boolean isAdjacent(int r1, int c1, int r2, int c2) {
         return Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1;
     }
 

@@ -25,6 +25,8 @@ public class SolitaireMoveService {
 
     // 서버-클라이언트 이동 수 허용 오차 (auto-complete 등으로 인한 차이 감안)
     private static final int MOVES_TOLERANCE = 30;
+    // 클라이언트 타이머는 세션 시작 뒤에 돌므로 세션 경과 시간을 넘을 수 없다 (네트워크 오차 허용)
+    private static final int TIME_TOLERANCE_SECONDS = 10;
 
     private final GameSessionRepository sessionRepo;
     private final ObjectMapper objectMapper;
@@ -61,6 +63,11 @@ public class SolitaireMoveService {
 
     // ── 랭킹 제출 시 이동 수 검증 ────────────────────────────────────
     public void validateMoves(GameSession session, RankingRequest req) {
+        double sessionSeconds = (Instant.now().toEpochMilli() - session.getStartedAt().toEpochMilli()) / 1000.0;
+        if (req.getTime() != null && req.getTime() > sessionSeconds + TIME_TOLERANCE_SECONDS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 시간입니다.");
+        }
+
         if (session.getExtra() == null || req.getMoves() == null) return;
 
         Map<String, Object> extra = parseExtra(session.getExtra());
