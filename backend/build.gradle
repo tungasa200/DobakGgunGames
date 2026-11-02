@@ -65,13 +65,21 @@ processResources {
 
 tasks.named('test') {
 	useJUnitPlatform()
-	// 테스트 실행기를 Java 21 Adoptium으로 고정 — JDK 17이 한글 경로에서 클래스 로드 실패
-	javaLauncher = javaToolchains.launcherFor {
-		languageVersion = JavaLanguageVersion.of(21)
-		vendor = JvmVendorSpec.ADOPTIUM
+	// CI(환경변수 CI=true)는 프로젝트 toolchain(Java 17)으로 전체 테스트를 돌린다
+	if (System.getenv('CI') == 'true') {
+		// 단언 없는 측정 도구이고 D8 사전 계산이 최대 3시간 걸린다 — 필요할 때 로컬에서 --tests로 실행
+		exclude '**/YachtBotSimulator*'
+		// CI 실패는 콘솔 로그로 진단하므로 예외 전문을 남긴다
+		testLogging.exceptionFormat = 'full'
+	} else {
+		// 테스트 실행기를 Java 21 Adoptium으로 고정 — JDK 17이 한글 경로에서 클래스 로드 실패
+		javaLauncher = javaToolchains.launcherFor {
+			languageVersion = JavaLanguageVersion.of(21)
+			vendor = JvmVendorSpec.ADOPTIUM
+		}
+		// Spring 통합 테스트는 로컬에서 제외 — CI에서만 수행
+		exclude '**/DobakGgunGamesApplicationTests*'
+		exclude '**/controller/**SecurityTest*'
+		exclude '**/service/RpsGameServiceTest*'
 	}
-	// Spring 통합 테스트는 DB/Redis 인프라가 필요해 로컬 실행 불가 — CI에서만 수행
-	exclude '**/DobakGgunGamesApplicationTests*'
-	exclude '**/controller/**SecurityTest*'
-	exclude '**/service/RpsGameServiceTest*'
 }
