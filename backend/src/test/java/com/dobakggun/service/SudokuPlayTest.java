@@ -89,6 +89,50 @@ class SudokuPlayTest {
     }
 
     @Test
+    void 같은_칸을_다시_요청하면_차감_없이_같은_값을_준다() {
+        SudokuHintResponse first = service.hint("s", hintAt(0, 8), http);
+        SudokuHintResponse retry = service.hint("s", hintAt(0, 8), http);
+
+        assertThat(retry).isEqualTo(first);
+        assertThat(service.hint("s", hintAt(1, 0), http).hintsLeft()).isEqualTo(1);
+    }
+
+    @Test
+    void 힌트를_다_써도_받았던_칸은_다시_받을_수_있다() {
+        service.hint("s", hintAt(0, 0), http);
+        service.hint("s", hintAt(1, 0), http);
+        service.hint("s", hintAt(2, 0), http);
+
+        SudokuHintResponse retry = service.hint("s", hintAt(0, 0), http);
+
+        assertThat(retry.value()).isEqualTo(1);
+        assertThat(retry.hintsLeft()).isZero();
+    }
+
+    @Test
+    void 주어진_칸은_차감하지_않는다() throws Exception {
+        int[][] puzzle = new int[9][9];
+        puzzle[4][4] = SOLUTION[4][4];
+        stored.setExtra(mapper.writeValueAsString(Map.of("solution", SOLUTION, "puzzle", puzzle)));
+
+        SudokuHintResponse given = service.hint("s", hintAt(4, 4), http);
+
+        assertThat(given.value()).isEqualTo(SOLUTION[4][4]);
+        assertThat(given.hintsLeft()).isEqualTo(3);
+        assertThat(service.hint("s", hintAt(0, 0), http).hintsLeft()).isEqualTo(2);
+    }
+
+    @Test
+    void 시작_세션은_주어진_칸_판별을_위해_퍼즐을_저장한다() throws Exception {
+        when(repo.save(any())).thenAnswer(inv -> stored = inv.getArgument(0));
+
+        var started = service.createSession("easy", http);
+
+        assertThat(mapper.readTree(stored.getExtra()).get("puzzle").toString())
+            .isEqualTo(mapper.writeValueAsString(started.getPuzzle()));
+    }
+
+    @Test
     void 정답_판이면_서버_시간으로_클리어하고_재호출은_처음_값을_준다() {
         SudokuCompleteResponse first = service.complete("s", board(SOLUTION), http);
         assertThat(first.cleared()).isTrue();

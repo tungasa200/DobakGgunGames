@@ -4,6 +4,7 @@ import com.dobakggun.dto.MinesweeperPlayStartResponse;
 import com.dobakggun.dto.MinesweeperRevealRequest;
 import com.dobakggun.dto.MinesweeperRevealResponse;
 import com.dobakggun.dto.MinesweeperSessionStartRequest;
+import com.dobakggun.dto.MinesweeperStateResponse;
 import com.dobakggun.entity.GameSession;
 import com.dobakggun.exception.GamePlayErrorCode;
 import com.dobakggun.exception.GamePlayException;
@@ -41,6 +42,7 @@ class MinesweeperPlayServiceTest {
             return stored;
         });
         when(repo.findByIdForUpdate(anyString())).thenAnswer(inv -> Optional.ofNullable(stored));
+        when(repo.findById(anyString())).thenAnswer(inv -> Optional.ofNullable(stored));
         service = new MinesweeperPlayService(ipHashUtil, new PlaySessionSupport(repo, ipHashUtil, mapper));
     }
 
@@ -188,6 +190,91 @@ class MinesweeperPlayServiceTest {
         assertThatThrownBy(() -> service.reveal("s", reveal(new int[][]{{1, 1}}, null), http))
             .extracting(e -> ((GamePlayException) e).getErrorCode())
             .isEqualTo(GamePlayErrorCode.SESSION_INVALID);
+    }
+
+    @Test
+    void 진행_중_상태는_열린_칸만_주고_지뢰를_주지_않는다() throws Exception {
+        useBoard(new int[][]{{0, 0}, {2, 2}}, 3, 3, "");
+        service.reveal("s", reveal(new int[][]{{0, 1}}, null), http);
+        service.reveal("s", reveal(new int[][]{{1, 1}}, null), http);
+
+        MinesweeperStateResponse state = service.state("s");
+
+        assertThat(state.status()).isEqualTo("PLAYING");
+        assertThat(state.mineCount()).isEqualTo(2);
+        assertThat(state.mines()).isNull();
+        assertThat(state.clearTimeMs()).isNull();
+        assertThat(state.revealed()).containsExactly(
+            new MinesweeperRevealResponse.RevealedCell(0, 1, 1),
+            new MinesweeperRevealResponse.RevealedCell(1, 1, 2));
+    }
+
+    @Test
+    void 패배_뒤_상태는_세션이_만료돼도_지뢰를_준다() throws Exception {
+        useBoard(new int[][]{{0, 0}}, 3, 3, "");
+        service.reveal("s", reveal(new int[][]{{0, 0}}, null), http);
+        stored.setState(GameSession.SessionState.EXPIRED);
+
+        MinesweeperStateResponse state = service.state("s");
+
+        assertThat(state.status()).isEqualTo("LOST");
+        assertThat(state.mines()).isDeepEqualTo(new int[][]{{0, 0}});
+    }
+
+    @Test
+    void 승리는_제출_뒤에도_같은_클리어_시간을_준다() throws Exception {
+        useBoard(new int[][]{{0, 0}}, 2, 2, "");
+        MinesweeperRevealResponse won = service.reveal("s", reveal(new int[][]{{0, 1}, {1, 0}, {1, 1}}, null), http);
+        stored.setState(GameSession.SessionState.SUBMITTED);
+
+        MinesweeperStateResponse state = service.state("s");
+
+        assertThat(state.status()).isEqualTo("WON");
+        assertThat(state.clearTimeMs()).isEqualTo(won.clearTimeMs());
+        assertThat(state.mines()).isNull();
+        assertThat(state.revealed()).hasSize(3);
+    }
+
+    @Test
+    void 만료된_진행_중_판의_상태는_410이다() throws Exception {
+        useBoard(new int[][]{{0, 0}}, 3, 3, "");
+        stored.setStartedAt(Instant.now().minusSeconds(8000));
+
+        assertThatThrownBy(() -> service.state("s"))
+            .extracting(e -> ((GamePlayException) e).getErrorCode())
+            .isEqualTo(GamePlayErrorCode.SESSION_EXPIRED);
+    }
+
+    @Test
+    void 없는_세션_다른_게임_구경로_세션의_상태는_400이다() throws Exception {
+        useBoard(new int[][]{{0, 0}}, 3, 3, "");
+        stored.setGame("sudoku");
+        assertThatThrownBy(() -> service.state("s"))
+            .extracting(e -> ((GamePlayException) e).getErrorCode())
+            .isEqualTo(GamePlayErrorCode.SESSION_INVALID);
+
+        stored.setGame("minesweeper");
+        stored.setExtra("{\"rows\":3}");
+        assertThatThrownBy(() -> service.state("s"))
+            .extracting(e -> ((GamePlayException) e).getErrorCode())
+            .isEqualTo(GamePlayErrorCode.SESSION_INVALID);
+
+        stored = null;
+        assertThatThrownBy(() -> service.state("s"))
+            .extracting(e -> ((GamePlayException) e).getErrorCode())
+            .isEqualTo(GamePlayErrorCode.SESSION_INVALID);
+    }
+
+    @Test
+    void 상태_조회는_판과_IP_기록을_바꾸지_않는다() throws Exception {
+        useBoard(new int[][]{{0, 0}}, 3, 3, "");
+        when(ipHashUtil.hash(any())).thenReturn("other");
+        String before = stored.getExtra();
+
+        service.state("s");
+
+        assertThat(stored.getExtra()).isEqualTo(before);
+        assertThat(stored.isIpMismatch()).isFalse();
     }
 
     @Test

@@ -79,7 +79,8 @@ public class SessionService {
     @Transactional
     public GameSession validateAndConsume(String sessionId, String game,
                                           HttpServletRequest httpReq) {
-        GameSession session = sessionRepo.findById(sessionId)
+        // 동시 제출을 직렬화한다. 잠금 없이 읽으면 모두 ACTIVE를 보고 통과한다
+        GameSession session = sessionRepo.findByIdForUpdate(sessionId)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.BAD_REQUEST, "유효하지 않은 세션입니다."));
 

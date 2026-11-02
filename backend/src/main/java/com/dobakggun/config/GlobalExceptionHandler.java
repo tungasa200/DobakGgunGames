@@ -2,10 +2,13 @@ package com.dobakggun.config;
 
 import com.dobakggun.exception.BoardException;
 import com.dobakggun.exception.GameDisabledException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -53,6 +56,22 @@ public class GlobalExceptionHandler {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid enum value in request body"));
         }
         return ResponseEntity.badRequest().body(Map.of("error", "요청 형식이 올바르지 않습니다"));
+    }
+
+    /**
+     * 배열 자리에 문자열이 오면 Jackson이 InvalidDefinitionException을 던지고,
+     * Spring은 이를 HttpMessageNotReadableException이 아닌 상위 타입으로 감싼다.
+     * 응답 직렬화 실패와 요청 DTO 정의 결함도 같은 타입이므로
+     * 요청을 읽던 중 배열에서 실패했을 때만 400으로 돌린다.
+     */
+    @ExceptionHandler(HttpMessageConversionException.class)
+    public ResponseEntity<Map<String, String>> handleMessageConversion(HttpMessageConversionException e) {
+        if (e.getCause() instanceof InvalidDefinitionException cause && cause.getProcessor() instanceof JsonParser
+                && cause.getType() != null && cause.getType().isArrayType()) {
+            log.warn("[MessageConversion] {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", "요청 형식이 올바르지 않습니다"));
+        }
+        return handleRuntime(e);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

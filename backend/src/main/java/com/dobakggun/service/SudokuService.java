@@ -45,7 +45,7 @@ public class SudokuService {
 
         String extra;
         try {
-            extra = objectMapper.writeValueAsString(Map.of("solution", solution));
+            extra = objectMapper.writeValueAsString(Map.of("solution", solution, "puzzle", puzzle));
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "세션 생성 오류");
         }
@@ -87,15 +87,29 @@ public class SudokuService {
             throw new GamePlayException(GamePlayErrorCode.INVALID_CELL);
         }
         int hintsUsed = extra.get("hintsUsed") instanceof Number used ? used.intValue() : 0;
-        if (hintsUsed >= MAX_HINTS) {
-            throw new GamePlayException(GamePlayErrorCode.HINT_EXHAUSTED);
-        }
+        int cell = row * 9 + col;
+        List<Object> hintedCells = extra.get("hintedCells") instanceof List<?> cells
+            ? new ArrayList<>(cells) : new ArrayList<>();
 
-        extra.put("hintsUsed", ++hintsUsed);
-        playSupport.saveExtra(session, extra);
+        // 주어진 칸과 이미 받은 칸은 새로 알려 주는 것이 없으므로 차감하지 않는다 (응답 유실 재시도 포함)
+        if (!hintedCells.contains(cell) && !isGiven(extra, row, col)) {
+            if (hintsUsed >= MAX_HINTS) {
+                throw new GamePlayException(GamePlayErrorCode.HINT_EXHAUSTED);
+            }
+            extra.put("hintsUsed", ++hintsUsed);
+            hintedCells.add(cell);
+            extra.put("hintedCells", hintedCells);
+            playSupport.saveExtra(session, extra);
+        }
 
         int[][] solution = playSupport.convert(extra.get("solution"), int[][].class);
         return new SudokuHintResponse(row, col, solution[row][col], MAX_HINTS - hintsUsed);
+    }
+
+    /** puzzle 저장 전에 시작한 세션은 주어진 칸을 알 수 없어 false다. */
+    private boolean isGiven(Map<String, Object> extra, int row, int col) {
+        Object puzzle = extra.get("puzzle");
+        return puzzle != null && playSupport.convert(puzzle, int[][].class)[row][col] != 0;
     }
 
     /* ── 클리어 판정: 이 시점의 서버 경과 시간이 기록이 된다 ── */

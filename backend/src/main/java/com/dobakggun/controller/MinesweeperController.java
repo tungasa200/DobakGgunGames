@@ -3,6 +3,7 @@ package com.dobakggun.controller;
 import com.dobakggun.dto.MinesweeperRevealRequest;
 import com.dobakggun.dto.MinesweeperRevealResponse;
 import com.dobakggun.dto.MinesweeperSessionStartRequest;
+import com.dobakggun.dto.MinesweeperStateResponse;
 import com.dobakggun.service.MinesweeperPlayService;
 import com.dobakggun.service.MinesweeperSessionService;
 import com.dobakggun.service.PlaySessionSupport;
@@ -40,5 +41,10 @@ public class MinesweeperController {
             @RequestBody MinesweeperRevealRequest req,
             HttpServletRequest httpReq) {
         return minesweeperPlayService.reveal(sessionId, req, httpReq);
+    }
+
+    @GetMapping("/api/minesweeper/session/{sessionId}/state")
+    public MinesweeperStateResponse state(@PathVariable String sessionId) {
+        return minesweeperPlayService.state(sessionId);
     }
 }
