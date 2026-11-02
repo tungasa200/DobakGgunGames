@@ -1,7 +1,13 @@
 package com.dobakggun.service;
 
+import com.dobakggun.dto.SudokuCompleteRequest;
+import com.dobakggun.dto.SudokuCompleteResponse;
+import com.dobakggun.dto.SudokuHintRequest;
+import com.dobakggun.dto.SudokuHintResponse;
 import com.dobakggun.dto.SudokuSessionStartResponse;
 import com.dobakggun.entity.GameSession;
+import com.dobakggun.exception.GamePlayErrorCode;
+import com.dobakggun.exception.GamePlayException;
 import com.dobakggun.repository.GameSessionRepository;
 import com.dobakggun.util.IpHashUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,12 +27,13 @@ import java.util.*;
 @RequiredArgsConstructor
 public class SudokuService {
 
-    private static final long EXPIRE_SECONDS  = 7200L;
     private static final Set<String> VALID_LEVELS = Set.of("easy", "normal", "hard");
+    private static final int MAX_HINTS = 3;
 
     private final GameSessionRepository sessionRepo;
     private final IpHashUtil            ipHashUtil;
     private final ObjectMapper          objectMapper;
+    private final PlaySessionSupport    playSupport;
 
     /* ── 세션 생성 (퍼즐 생성 + 정답 서버 저장) ── */
     @Transactional
@@ -45,7 +52,7 @@ public class SudokuService {
 
         Instant now       = Instant.now();
         String  sessionId = UUID.randomUUID().toString();
-        String  ipHash    = ipHashUtil.hash(getClientIp(httpReq));
+        String  ipHash    = ipHashUtil.hash(PlaySessionSupport.getClientIp(httpReq));
 
         sessionRepo.save(GameSession.builder()
                 .sessionId(sessionId)
@@ -59,10 +66,64 @@ public class SudokuService {
         return SudokuSessionStartResponse.builder()
                 .sessionId(sessionId)
                 .startedAt(now.toEpochMilli())
-                .expiresAt(now.plusSeconds(EXPIRE_SECONDS).toEpochMilli())
+                .expiresAt(now.plusSeconds(PlaySessionSupport.EXPIRE_SECONDS).toEpochMilli())
                 .puzzle(puzzle)
                 .solution(solution)
                 .build();
+    }
+
+    /* ── 힌트: 값은 서버가 주고, 셀 선택은 클라이언트가 한다 ── */
+    @Transactional(noRollbackFor = GamePlayException.class)  // 실패 요청의 IP 불일치 기록을 남긴다
+    public SudokuHintResponse hint(String sessionId, SudokuHintRequest req, HttpServletRequest httpReq) {
+        GameSession session = playSupport.lockSession(sessionId, "sudoku", httpReq);
+        playSupport.requireActive(session);
+
+        Map<String, Object> extra = playSupport.readExtra(session);
+        if (extra.containsKey(PlaySessionSupport.CLEAR_TIME_MS)) {
+            throw new GamePlayException(GamePlayErrorCode.GAME_ENDED);
+        }
+        Integer row = req.getRow(), col = req.getCol();
+        if (row == null || col == null || row < 0 || row > 8 || col < 0 || col > 8) {
+            throw new GamePlayException(GamePlayErrorCode.INVALID_CELL);
+        }
+        int hintsUsed = extra.get("hintsUsed") instanceof Number used ? used.intValue() : 0;
+        if (hintsUsed >= MAX_HINTS) {
+            throw new GamePlayException(GamePlayErrorCode.HINT_EXHAUSTED);
+        }
+
+        extra.put("hintsUsed", ++hintsUsed);
+        playSupport.saveExtra(session, extra);
+
+        int[][] solution = playSupport.convert(extra.get("solution"), int[][].class);
+        return new SudokuHintResponse(row, col, solution[row][col], MAX_HINTS - hintsUsed);
+    }
+
+    /* ── 클리어 판정: 이 시점의 서버 경과 시간이 기록이 된다 ── */
+    @Transactional(noRollbackFor = GamePlayException.class)  // 실패 요청의 IP 불일치 기록을 남긴다
+    public SudokuCompleteResponse complete(String sessionId, SudokuCompleteRequest req, HttpServletRequest httpReq) {
+        GameSession session = playSupport.lockSession(sessionId, "sudoku", httpReq);
+
+        Map<String, Object> extra = playSupport.readExtra(session);
+        if (extra.get(PlaySessionSupport.CLEAR_TIME_MS) instanceof Number clearTimeMs) {
+            return new SudokuCompleteResponse(true, clearTimeMs.longValue());
+        }
+        playSupport.requireActive(session);
+
+        int[][] board = req.getBoard();
+        if (board == null || board.length != 9
+                || Arrays.stream(board).anyMatch(row -> row == null || row.length != 9)) {
+            throw new GamePlayException(GamePlayErrorCode.INVALID_CELL);
+        }
+        // 유일해가 보장되므로 solution과 같으면 충분하다
+        int[][] solution = playSupport.convert(extra.get("solution"), int[][].class);
+        if (!Arrays.deepEquals(solution, board)) {
+            throw new GamePlayException(GamePlayErrorCode.BOARD_INCORRECT);
+        }
+
+        long clearTimeMs = playSupport.elapsedMs(session);
+        extra.put(PlaySessionSupport.CLEAR_TIME_MS, clearTimeMs);
+        playSupport.saveExtra(session, extra);
+        return new SudokuCompleteResponse(true, clearTimeMs);
     }
 
     public static void validateLevel(String level) {
@@ -167,11 +228,5 @@ public class SudokuService {
         int[][] copy = new int[9][9];
         for (int i = 0; i < 9; i++) copy[i] = grid[i].clone();
         return copy;
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
-        return request.getRemoteAddr();
     }
 }

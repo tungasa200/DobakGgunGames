@@ -1,8 +1,11 @@
 package com.dobakggun.controller;
 
+import com.dobakggun.dto.MinesweeperRevealRequest;
+import com.dobakggun.dto.MinesweeperRevealResponse;
 import com.dobakggun.dto.MinesweeperSessionStartRequest;
-import com.dobakggun.dto.MinesweeperSessionStartResponse;
+import com.dobakggun.service.MinesweeperPlayService;
 import com.dobakggun.service.MinesweeperSessionService;
+import com.dobakggun.service.PlaySessionSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +21,24 @@ import org.springframework.web.bind.annotation.*;
 public class MinesweeperController {
 
     private final MinesweeperSessionService minesweeperSessionService;
+    private final MinesweeperPlayService    minesweeperPlayService;
 
+    /** protocol 2는 서버 판정, 없으면 구경로(MinesweeperSessionStartResponse) */
     @PostMapping("/api/minesweeper/session/start")
-    public MinesweeperSessionStartResponse startSession(
+    public Object startSession(
             @Valid @RequestBody MinesweeperSessionStartRequest req,
             HttpServletRequest httpReq) {
+        if (Integer.valueOf(PlaySessionSupport.PROTOCOL).equals(req.getProtocol())) {
+            return minesweeperPlayService.createSession(req, httpReq);
+        }
         return minesweeperSessionService.createSession(req, httpReq);
+    }
+
+    @PostMapping("/api/minesweeper/session/{sessionId}/reveal")
+    public MinesweeperRevealResponse reveal(
+            @PathVariable String sessionId,
+            @RequestBody MinesweeperRevealRequest req,
+            HttpServletRequest httpReq) {
+        return minesweeperPlayService.reveal(sessionId, req, httpReq);
     }
 }
