@@ -24,5 +24,8 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Build (skip tests — no DB in CI)
-        run: ./gradlew build -x test
+      # gradlew가 git에 실행 권한 없이(100644) 들어가 있다
+      - name: Build and test
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon
