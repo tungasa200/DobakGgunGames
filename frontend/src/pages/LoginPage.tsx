@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
@@ -23,9 +23,6 @@ function isInAppBrowser(): boolean {
 
 export default function LoginPage() {
   const { login, user } = useAuth();
-  const navigate = useNavigate();
-
-  if (user) return <Navigate to="/profile" replace />;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,15 +30,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showInAppWarning, setShowInAppWarning] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loginSubmitted, setLoginSubmitted] = useState(false);
+
+  // 이 페이지에서 방금 로그인했으면 홈으로, 이미 로그인한 채 들어왔으면 프로필로 보낸다
+  if (user) return <Navigate to={loginSubmitted ? '/' : '/profile'} replace />;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setLoginSubmitted(true);
     try {
       await login(email, password);
-      navigate('/', { replace: true });
     } catch (err: unknown) {
+      setLoginSubmitted(false);
       setError(err instanceof Error ? err.message : '로그인에 실패했습니다');
     } finally {
       setLoading(false);

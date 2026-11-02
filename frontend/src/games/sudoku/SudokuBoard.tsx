@@ -80,7 +80,7 @@ interface Props { excel?: boolean }
 
 export default function SudokuBoard({ excel = false }: Props) {
   const { user } = useAuth();
-  const { state, startGame, selectCell, inputNumber, deleteCell, toggleNote, useHint, reset } =
+  const { state, startGame, selectCell, inputNumber, deleteCell, toggleNote, applyHint, reset } =
     useSudokuGame();
 
   const solutionRef  = useRef<number[][] | null>(null);
@@ -241,14 +241,14 @@ export default function SudokuBoard({ excel = false }: Props) {
     if (state.selected) {
       const [r, c] = state.selected;
       if (!state.fixed[r][c] && state.board[r][c] === 0) {
-        useHint(r, c, solutionRef.current[r][c]);
+        applyHint(r, c, solutionRef.current[r][c]);
         return;
       }
     }
     for (let r = 0; r < 9; r++)
       for (let c = 0; c < 9; c++)
         if (!state.fixed[r][c] && state.board[r][c] === 0) {
-          useHint(r, c, solutionRef.current![r][c]);
+          applyHint(r, c, solutionRef.current![r][c]);
           return;
         }
   }

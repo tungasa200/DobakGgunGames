@@ -103,7 +103,8 @@ function reducer(state: SudokuState, action: Action): SudokuState {
         if (state.board[r][c] !== 0) return state;
         const notes = state.notes.map(row => row.map(s => new Set(s)));
         const cell = notes[r][c];
-        cell.has(action.num) ? cell.delete(action.num) : cell.add(action.num);
+        if (cell.has(action.num)) cell.delete(action.num);
+        else cell.add(action.num);
         return { ...state, notes };
       }
 
@@ -196,7 +197,7 @@ export function useSudokuGame(initialDifficulty: Difficulty = 'easy') {
     dispatch({ type: 'TOGGLE_NOTE' });
   }, []);
 
-  const useHint = useCallback((row: number, col: number, answer: number) => {
+  const applyHint = useCallback((row: number, col: number, answer: number) => {
     dispatch({ type: 'USE_HINT', row, col, answer });
   }, []);
 
@@ -204,5 +205,5 @@ export function useSudokuGame(initialDifficulty: Difficulty = 'easy') {
     dispatch({ type: 'RESET', difficulty: difficulty ?? state.difficulty });
   }, [state.difficulty]);
 
-  return { state, startGame, selectCell, inputNumber, deleteCell, toggleNote, useHint, reset };
+  return { state, startGame, selectCell, inputNumber, deleteCell, toggleNote, applyHint, reset };
 }

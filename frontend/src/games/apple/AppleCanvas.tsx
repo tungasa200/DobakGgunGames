@@ -538,7 +538,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const drag = dragRef.current;
-    let selSet = new Set<string>();
+    const selSet = new Set<string>();
     let selSum = 0;
     if (drag.active) {
       const { selected, sum } = calcSelection(drag.sx, drag.sy, drag.cx, drag.cy, rows, cols, apples, pad, size);
@@ -640,7 +640,7 @@ export default function AppleCanvas({ excel = false }: Props) {
     if (drag.active) {
       const x1 = Math.min(drag.sx, drag.cx), x2 = Math.max(drag.sx, drag.cx);
       const y1 = Math.min(drag.sy, drag.cy), y2 = Math.max(drag.sy, drag.cy);
-      let rgb = excel ? '120,120,120' :
+      const rgb = excel ? '120,120,120' :
         selSum === 10 ? '39,174,96' : selSum > 10 ? '230,126,34' : '52,152,219';
       ctx.strokeStyle = `rgba(${rgb},0.8)`;
       ctx.lineWidth = 2;

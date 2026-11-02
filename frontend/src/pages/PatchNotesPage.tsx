@@ -34,7 +34,8 @@ export default function PatchNotesPage() {
   const [error, setError] = useState('');
 
   const load = useCallback(async (game: FilterTab, nextPage: number, append: boolean) => {
-    append ? setLoadingMore(true) : setLoading(true);
+    if (append) setLoadingMore(true);
+    else setLoading(true);
     setError('');
     try {
       const apiGame = game === 'TOTAL' ? undefined : game;
@@ -45,7 +46,8 @@ export default function PatchNotesPage() {
     } catch {
       setError('패치노트를 불러오지 못했습니다');
     } finally {
-      append ? setLoadingMore(false) : setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
   }, []);
 
