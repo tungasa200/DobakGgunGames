@@ -93,6 +93,12 @@ public class MinesweeperBattleRoom {
         return players.size();
     }
 
+    /** 대기 중이고 자리가 있으며 방장이 끊기지 않아 상대가 들어올 수 있는 방인지. */
+    public boolean isJoinable() {
+        return status == Status.WAITING && players.size() < 2
+                && players.stream().noneMatch(PlayerInfo::isDisconnected);
+    }
+
     /** playerId 로 플레이어 조회 */
     public PlayerInfo findPlayer(String playerId) {
         return players.stream()

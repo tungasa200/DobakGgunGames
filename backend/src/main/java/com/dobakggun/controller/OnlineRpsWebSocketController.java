@@ -61,9 +61,12 @@ public class OnlineRpsWebSocketController {
             return;
         }
 
-        boolean ok = rpsRoomService.joinRoom(roomId, cp.getUserId(), cp.getNickname());
-        if (!ok) {
-            sendError(cp, "ROOM_NOT_AVAILABLE", "방에 입장할 수 없습니다.");
+        String error = rpsRoomService.joinRoom(roomId, cp.getUserId(), cp.getNickname());
+        if (error != null) {
+            String message = GameDisabledException.CODE.equals(error)
+                    ? GameDisabledException.USER_MESSAGE
+                    : "방에 입장할 수 없습니다.";
+            sendError(cp, error, message);
             return;
         }
 

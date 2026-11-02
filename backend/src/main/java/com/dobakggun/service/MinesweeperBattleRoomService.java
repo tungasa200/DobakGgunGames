@@ -139,7 +139,7 @@ public class MinesweeperBattleRoomService {
             lock.lock();
             try {
                 // 재확인: lock 획득 사이에 다른 스레드가 이미 채웠을 수 있음
-                if (room.getPlayerCount() >= 2 || room.getStatus() != MinesweeperBattleRoom.Status.WAITING) {
+                if (!room.isJoinable()) {
                     // 이 방은 이미 찼음 → 신규 방 생성 (lock 해제 후)
                     lock.unlock();
                     return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer, normDifficulty);
@@ -558,7 +558,7 @@ public class MinesweeperBattleRoomService {
 
     /**
      * SessionDisconnectEvent 에서 호출.
-     * 15초 grace period — 재연결 안 하면 finishGame.
+     * 15초 grace period — 재연결 안 하면 finishGame. 상대가 오기 전이면 전적 없이 방을 닫는다.
      */
     public void handleDisconnect(String sessionId) {
         String roomId = roomManager.findRoomIdBySession(sessionId).orElse(null);
@@ -602,7 +602,7 @@ public class MinesweeperBattleRoomService {
                     buildEnvelope("OPPONENT_DISCONNECTED", disconnPayload));
         }
 
-        // 15초 후 grace period 만료 → 상대 승리
+        // 15초 후 grace period 만료 → 대기 방은 닫고, 그 외에는 상대 승리
         final String capturedPlayerId = playerId;
         ScheduledFuture<?> graceFuture = taskScheduler.schedule(() -> {
             MinesweeperBattleRoom r = getRoom(roomId).orElse(null);
@@ -615,6 +615,8 @@ public class MinesweeperBattleRoomService {
                 return;
             }
 
+            if (closeIfWaiting(r, capturedPlayerId)) return;
+
             log.info("grace period 만료 → 상대 승리: roomId={} playerId={}", roomId, capturedPlayerId);
             p.setEndReason("DISCONNECT");
 
@@ -626,6 +628,19 @@ public class MinesweeperBattleRoomService {
         }, Instant.now().plusSeconds(RECONNECT_GRACE_SECONDS));
 
         room.getDisconnectFutures().put(playerId, graceFuture);
+    }
+
+    /** 상대가 오기 전이면 승부가 아니므로 전적 없이 방을 닫는다. */
+    private boolean closeIfWaiting(MinesweeperBattleRoom room, String playerId) {
+        ReentrantLock lock = roomManager.getRoomLock(room.getRoomId());
+        lock.lock();
+        try {
+            if (room.getStatus() != MinesweeperBattleRoom.Status.WAITING) return false;
+            handleLeave(room.getRoomId(), playerId);
+            return true;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
@@ -975,7 +990,7 @@ public class MinesweeperBattleRoomService {
     // ─── 세션 연결 이벤트 ────────────────────────────────────────────────────
 
     /**
-     * SessionConnectedEvent 에서 호출.
+     * SessionConnectEvent 에서 호출.
      * 방에 플레이어가 이미 배정된 경우 sessionId 등록.
      * 재연결이면 handleReconnect 로 이어짐.
      */
@@ -1225,7 +1240,7 @@ public class MinesweeperBattleRoomService {
         lock.lock();
         try {
             // lock 획득 후 재확인
-            if (room.getPlayerCount() >= 2 || room.getStatus() != MinesweeperBattleRoom.Status.WAITING) {
+            if (!room.isJoinable()) {
                 throw new RoomFullOrStartedException();
             }
 

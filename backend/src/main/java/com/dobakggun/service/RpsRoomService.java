@@ -140,11 +140,15 @@ public class RpsRoomService {
      * 방 WebSocket 세션 등록.
      * HTTP 매칭 후 클라이언트가 /app/rps/room/{roomId}/join 발행 시 호출.
      *
-     * @return true=정상 처리, false=방 없음/상태 오류
+     * 꺼진 게임은 새 입장을 막는다. WAITING 방에 이미 있는 사용자의 재발행은 그대로 통과한다.
+     *
+     * @return null=정상 처리, 그 외=오류 코드
      */
-    public boolean joinRoom(String roomId, Long userId, String nickname) {
+    public String joinRoom(String roomId, Long userId, String nickname) {
+        boolean disabled = gameStatusService.isDisabled(GAME_KEY);
         RpsRoomState state = rooms.get(roomId);
         if (state == null) {
+            if (disabled) return GameDisabledException.CODE;
             // 인메모리 상태 없음 → DB에서 방 정보 조회 후 초기화
             RpsRoom dbRoom = rpsRoomRepository.findByRoomId(roomId).orElse(null);
             String roomName = dbRoom != null ? dbRoom.getName() : roomId;
@@ -156,7 +160,7 @@ public class RpsRoomService {
         synchronized (state) {
             if (state.status != RoomStatus.WAITING) {
                 log.warn("joinRoom: 방 {} 가 WAITING 상태 아님 ({})", roomId, state.status);
-                return false;
+                return "ROOM_NOT_AVAILABLE";
             }
 
             // 이미 참가 중인지 확인
@@ -165,8 +169,10 @@ public class RpsRoomService {
             if (alreadyIn) {
                 log.info("joinRoom: userId={} 이미 방 {} 에 참가 중", userId, roomId);
                 broadcastRoomState(state);
-                return true;
+                return null;
             }
+
+            if (disabled) return GameDisabledException.CODE;
 
             // 방장이 아직 미설정이면 이 참가자가 방장
             if (state.hostUserId == null) {
@@ -179,7 +185,7 @@ public class RpsRoomService {
 
         broadcastRoomState(state);
         checkAndStartCountdown(state);
-        return true;
+        return null;
     }
 
     // ─── 방 퇴장 ──────────────────────────────────────────────────────────────
