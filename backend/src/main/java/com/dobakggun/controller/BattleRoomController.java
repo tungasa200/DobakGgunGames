@@ -4,6 +4,7 @@ import com.dobakggun.dto.WaitingRoomInfo;
 import com.dobakggun.dto.battle.BattleJoinRequest;
 import com.dobakggun.dto.battle.BattleJoinResponse;
 import com.dobakggun.dto.battle.BattleRankingResponse;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.service.BattleRankingService;
 import com.dobakggun.service.BattleRoomService;
 import com.dobakggun.util.JwtUtil;
@@ -71,6 +72,8 @@ public class BattleRoomController {
         } catch (BattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("BattleRoomController.join: 매칭 실패", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
@@ -131,6 +134,8 @@ public class BattleRoomController {
         } catch (BattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId()));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("BattleRoomController.create: 방 생성 실패", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
@@ -174,6 +179,8 @@ public class BattleRoomController {
         } catch (BattleRoomService.RoomFullOrStartedException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ROOM_FULL_OR_STARTED"));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("BattleRoomController.joinSpecific: 입장 실패", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)

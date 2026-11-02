@@ -3,6 +3,7 @@ package com.dobakggun.controller;
 import com.dobakggun.dto.WaitingRoomInfo;
 import com.dobakggun.dto.apple.AppleBattleJoinRequest;
 import com.dobakggun.dto.apple.AppleBattleJoinResponse;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.service.AppleBattleRoomService;
 import com.dobakggun.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -70,6 +71,8 @@ public class AppleBattleController {
         } catch (AppleBattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId(), "playerId", e.getPlayerId()));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("AppleBattleController.join: 매칭 실패", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
@@ -101,6 +104,8 @@ public class AppleBattleController {
         } catch (AppleBattleRoomService.AlreadyInRoomException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ALREADY_IN_ROOM", "roomId", e.getRoomId(), "playerId", e.getPlayerId()));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("AppleBattleController.create: 방 생성 실패", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
@@ -138,6 +143,8 @@ public class AppleBattleController {
         } catch (AppleBattleRoomService.RoomFullOrStartedException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "ROOM_FULL_OR_STARTED"));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("AppleBattleController.joinSpecific: 입장 실패", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)

@@ -1,6 +1,7 @@
 package com.dobakggun.config;
 
 import com.dobakggun.exception.BoardException;
+import com.dobakggun.exception.GameDisabledException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleBoardException(BoardException e) {
         return ResponseEntity.status(e.getErrorCode().getStatus())
                 .body(Map.of("error", e.getErrorCode().name(), "message", e.getMessage()));
+    }
+
+    @ExceptionHandler(GameDisabledException.class)
+    public ResponseEntity<Map<String, String>> handleGameDisabled(GameDisabledException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", GameDisabledException.USER_MESSAGE, "code", GameDisabledException.CODE));
     }
 
     @ExceptionHandler(ResponseStatusException.class)

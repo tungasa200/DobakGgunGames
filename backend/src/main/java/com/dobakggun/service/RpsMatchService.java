@@ -54,6 +54,7 @@ public class RpsMatchService {
     private final UserRepository userRepository;
     private final RpsRoomService rpsRoomService;
     private final StringRedisTemplate redisTemplate;
+    private final GameStatusService gameStatusService;
 
     /**
      * 자동 매칭 요청 처리.
@@ -103,6 +104,8 @@ public class RpsMatchService {
                 throw new AlreadyInRoomException(activeRooms.get(0).getRoomId());
             }
         }
+
+        gameStatusService.requireEnabled(RpsRoomService.GAME_KEY);
 
         // 4. Redis 분산락 획득
         String lockValue = UUID.randomUUID().toString();

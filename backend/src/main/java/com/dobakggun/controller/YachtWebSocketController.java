@@ -8,6 +8,7 @@ import com.dobakggun.dto.yacht.YachtRollRequest;
 import com.dobakggun.dto.yacht.YachtScoreRequest;
 import com.dobakggun.dto.yacht.YachtVoteKickRequest;
 import com.dobakggun.entity.User;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.security.ChatPrincipal;
 import com.dobakggun.repository.UserRepository;
 import com.dobakggun.service.YachtGameService;
@@ -344,6 +345,7 @@ public class YachtWebSocketController {
             case "ALREADY_SCORED"      -> "이미 기록된 족보입니다.";
             case "TARGET_NOT_RECONNECTING" -> "해당 플레이어는 재접속 대기 중이 아닙니다.";
             case "NOT_ACTIVE_PLAYER"       -> "활성 플레이어만 투표할 수 있습니다.";
+            case GameDisabledException.CODE -> GameDisabledException.USER_MESSAGE;
             default                    -> "처리할 수 없는 요청입니다.";
         };
     }

@@ -8,6 +8,7 @@ import com.dobakggun.dto.apple.WsAppleBattleMessage;
 import com.dobakggun.entity.User;
 import com.dobakggun.entity.apple.AppleBattleRecord;
 import com.dobakggun.entity.apple.AppleRoom;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.repository.AppleBattleRecordRepository;
 import com.dobakggun.repository.AppleRoomRepository;
 import com.dobakggun.repository.UserRepository;
@@ -93,12 +94,18 @@ public class AppleBattleRoomService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    private static final String GAME_KEY = "apple-battle";
+
+    private final GameStatusService gameStatusService;
+
     public AppleBattleRoomService(
             AppleBattleRoomManager roomManager,
             AppleBattleRecordRepository appleBattleRecordRepository,
             AppleRoomRepository appleRoomRepository,
             UserRepository userRepository,
+            GameStatusService gameStatusService,
             @Qualifier("battleTaskScheduler") ThreadPoolTaskScheduler taskScheduler) {
+        this.gameStatusService = gameStatusService;
         this.roomManager = roomManager;
         this.appleBattleRecordRepository = appleBattleRecordRepository;
         this.appleRoomRepository = appleRoomRepository;
@@ -119,6 +126,7 @@ public class AppleBattleRoomService {
 
         // 중복 참가 방지 (FINISHED 방이면 정리 후 통과)
         reclaimOrRejectExistingRoom(playerId);
+        gameStatusService.requireEnabled(GAME_KEY);
 
         PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
 
@@ -180,6 +188,7 @@ public class AppleBattleRoomService {
         boolean isGuest = (userId == null);
 
         reclaimOrRejectExistingRoom(playerId);
+        gameStatusService.requireEnabled(GAME_KEY);
 
         PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
         return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer, true);
@@ -192,6 +201,7 @@ public class AppleBattleRoomService {
         boolean isGuest = (userId == null);
 
         reclaimOrRejectExistingRoom(playerId);
+        gameStatusService.requireEnabled(GAME_KEY);
 
         AppleBattleRoom room = roomManager.getRoom(roomId)
                 .orElseThrow(RoomNotFoundException::new);
@@ -597,6 +607,16 @@ public class AppleBattleRoomService {
 
         room.getRematchRequested().put(playerId, Boolean.TRUE);
         log.info("handleRematch: roomId={} playerId={} rematchCount={}", roomId, playerId, room.getRematchRequested().size());
+
+        if (gameStatusService.isDisabled(GAME_KEY)) {
+            // 먼저 요청하고 기다리는 상대도 대기가 풀리도록 요청자 전원에게 거절을 보낸다.
+            room.getRematchRequested().keySet().forEach(id -> messagingTemplate.convertAndSendToUser(
+                    id, USER_QUEUE_STATE,
+                    buildEnvelope("REMATCH_DECLINED", Map.of("reason", GameDisabledException.CODE))));
+            room.getRematchRequested().clear();
+            sendError(playerId, GameDisabledException.CODE, GameDisabledException.USER_MESSAGE);
+            return;
+        }
 
         PlayerInfo opponent = room.findOpponent(playerId);
 

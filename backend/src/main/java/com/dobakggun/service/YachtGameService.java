@@ -2,6 +2,7 @@ package com.dobakggun.service;
 
 import com.dobakggun.dto.yacht.*;
 import com.dobakggun.entity.yacht.*;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.repository.*;
 import com.dobakggun.service.yacht.YachtScoreRules;
 import com.dobakggun.service.yacht.YachtScoreRulesFactory;
@@ -137,12 +138,18 @@ public class YachtGameService {
     @Autowired
     private YachtBotService yachtBotService;
 
+    static final String GAME_KEY = "yacht";
+
+    private final GameStatusService gameStatusService;
+
     public YachtGameService(
             YachtRoomRepository yachtRoomRepository,
             YachtParticipantRepository yachtParticipantRepository,
             YachtScoreRepository yachtScoreRepository,
             YachtRankingService yachtRankingService,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            GameStatusService gameStatusService) {
+        this.gameStatusService          = gameStatusService;
         this.yachtRoomRepository        = yachtRoomRepository;
         this.yachtParticipantRepository = yachtParticipantRepository;
         this.yachtScoreRepository       = yachtScoreRepository;
@@ -305,6 +312,9 @@ public class YachtGameService {
     public String startGame(String roomId, Long userId) {
         YachtRoomState state = rooms.get(roomId);
         if (state == null) return "ROOM_NOT_FOUND";
+
+        // DB 조회라 방 잠금 밖에서 확인한다.
+        if (gameStatusService.isDisabled(GAME_KEY)) return GameDisabledException.CODE;
 
         List<YachtPlayer> snapshot;
         synchronized (state) {

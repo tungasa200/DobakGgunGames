@@ -3,6 +3,7 @@ package com.dobakggun.service;
 import com.dobakggun.dto.WaitingRoomInfo;
 import com.dobakggun.dto.battle.*;
 import com.dobakggun.entity.battle.BattleRoom;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.repository.BattleRoomRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,11 +53,17 @@ public class BattleRoomService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    private static final String GAME_KEY = "blockfall-battle";
+
+    private final GameStatusService gameStatusService;
+
     public BattleRoomService(
             BattleRoomManager roomManager,
             BattleRoomRepository battleRoomRepository,
             BattleRankingService rankingService,
+            GameStatusService gameStatusService,
             @Qualifier("battleTaskScheduler") ThreadPoolTaskScheduler taskScheduler) {
+        this.gameStatusService = gameStatusService;
         this.roomManager = roomManager;
         this.battleRoomRepository = battleRoomRepository;
         this.rankingService = rankingService;
@@ -89,6 +96,8 @@ public class BattleRoomService {
                 throw new AlreadyInRoomException(existingRoomId);
             }
         }
+
+        gameStatusService.requireEnabled(GAME_KEY);
 
         BattleRoomManager.PlayerSessionInfo player = new BattleRoomManager.PlayerSessionInfo(
                 playerId, nickname, isGuest, null, isGuest ? null : userId);
@@ -607,6 +616,19 @@ public class BattleRoomService {
             return;
         }
 
+        // 꺼진 게임은 다음 라운드를 열지 않는다. 이미 준비한 사람의 표시도 되돌린다.
+        if (gameStatusService.isDisabled(GAME_KEY)) {
+            List<BattleRoomManager.PlayerSessionInfo> members = roomManager.getActivePlayers(roomId);
+            if (members.stream().noneMatch(p -> p.getPlayerId().equals(playerId))) return;
+            roomManager.clearReadySet(roomId);
+            broadcast(roomId, "READY_STATE", ReadyStatePayload.builder()
+                    .readyCount(0)
+                    .totalCount(members.size())
+                    .build());
+            sendError(playerId, GameDisabledException.CODE, GameDisabledException.USER_MESSAGE);
+            return;
+        }
+
         boolean allReady = roomManager.markPlayerReady(roomId, playerId);
         int readyCount = roomManager.getReadyCount(roomId);
         int totalCount = roomManager.getActivePlayers(roomId).size();
@@ -884,6 +906,8 @@ public class BattleRoomService {
             }
         }
 
+        gameStatusService.requireEnabled(GAME_KEY);
+
         BattleRoomManager.PlayerSessionInfo player = new BattleRoomManager.PlayerSessionInfo(
                 playerId, nickname, isGuest, null, isGuest ? null : userId);
 
@@ -934,6 +958,8 @@ public class BattleRoomService {
                 throw new AlreadyInRoomException(existingRoomId);
             }
         }
+
+        gameStatusService.requireEnabled(GAME_KEY);
 
         BattleRoom room = battleRoomRepository.findByRoomId(roomId)
                 .orElseThrow(RoomNotFoundException::new);

@@ -3,6 +3,7 @@ package com.dobakggun.controller;
 import com.dobakggun.config.SecurityConfig;
 import com.dobakggun.dto.rps.MatchResponseDto;
 import com.dobakggun.handler.OAuth2SuccessHandler;
+import com.dobakggun.service.GameStatusService;
 import com.dobakggun.service.IpBanService;
 import com.dobakggun.service.RpsMatchService;
 import com.dobakggun.util.JwtUtil;
@@ -37,6 +38,10 @@ class OnlineRpsControllerSecurityTest {
 
     @MockBean
     private RpsMatchService rpsMatchService;
+
+    // GameStartInterceptor 의존성
+    @MockBean
+    private GameStatusService gameStatusService;
 
     // SecurityConfig 의존성
     @MockBean
