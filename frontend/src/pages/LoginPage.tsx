@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +31,11 @@ export default function LoginPage() {
   const [showInAppWarning, setShowInAppWarning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loginSubmitted, setLoginSubmitted] = useState(false);
+
+  // 로그인 직후 <Navigate>만 남은 빈 화면이 홈 청크를 받는 동안 보이지 않도록 미리 받아 둔다
+  useEffect(() => {
+    void import('./HomePage');
+  }, []);
 
   // 이 페이지에서 방금 로그인했으면 홈으로, 이미 로그인한 채 들어왔으면 프로필로 보낸다
   if (user) return <Navigate to={loginSubmitted ? '/' : '/profile'} replace />;
