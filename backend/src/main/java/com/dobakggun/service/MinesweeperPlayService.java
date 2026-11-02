@@ -5,6 +5,7 @@ import com.dobakggun.dto.MinesweeperRevealRequest;
 import com.dobakggun.dto.MinesweeperRevealResponse;
 import com.dobakggun.dto.MinesweeperRevealResponse.RevealedCell;
 import com.dobakggun.dto.MinesweeperSessionStartRequest;
+import com.dobakggun.dto.MinesweeperStateResponse;
 import com.dobakggun.entity.GameSession;
 import com.dobakggun.exception.GamePlayErrorCode;
 import com.dobakggun.exception.GamePlayException;
@@ -110,8 +111,7 @@ public class MinesweeperPlayService {
         requireCells(cells, rows, cols);
 
         int[][] mines = support.convert(extra.get("minePositions"), int[][].class);
-        boolean[][] grid = new boolean[rows][cols];
-        for (int[] m : mines) grid[m[0]][m[1]] = true;
+        boolean[][] grid = mineGrid(mines, rows, cols);
         int[][] adj = MinesweeperSessionService.computeAdjMines(grid, rows, cols);
 
         BitSet revealed = decode((String) extra.get("revealed"));
@@ -139,6 +139,43 @@ public class MinesweeperPlayService {
         support.saveExtra(session, extra);
 
         return new MinesweeperRevealResponse(status, opened, LOST.equals(status) ? mines : null, clearTimeMs);
+    }
+
+    /** 응답을 잃은 프론트가 현재 판을 복구한다. 종료된 판은 제출 뒤에도 세션이 삭제될 때까지 읽을 수 있다. */
+    @Transactional(readOnly = true)
+    public MinesweeperStateResponse state(String sessionId) {
+        GameSession session = support.readSession(sessionId, "minesweeper");
+        Map<String, Object> extra = support.readExtra(session);
+        if (!PlaySessionSupport.isServerJudged(extra)) {
+            throw new GamePlayException(GamePlayErrorCode.SESSION_INVALID);
+        }
+        String status = (String) extra.get("status");
+        if (PLAYING.equals(status)) {
+            support.requireActive(session);
+        }
+
+        int rows = (Integer) extra.get("rows");
+        int cols = (Integer) extra.get("cols");
+        int[][] mines = support.convert(extra.get("minePositions"), int[][].class);
+        int[][] adj = MinesweeperSessionService.computeAdjMines(mineGrid(mines, rows, cols), rows, cols);
+
+        BitSet revealed = decode((String) extra.get("revealed"));
+        List<RevealedCell> cells = revealed.stream()
+            .mapToObj(i -> new RevealedCell(i / cols, i % cols, adj[i / cols][i % cols]))
+            .toList();
+
+        Instant startedAt = session.getStartedAt();
+        return new MinesweeperStateResponse(
+            status, rows, cols, mines.length, startedAt.toEpochMilli(),
+            startedAt.plusSeconds(PlaySessionSupport.EXPIRE_SECONDS).toEpochMilli(), cells,
+            LOST.equals(status) ? mines : null,
+            extra.get(PlaySessionSupport.CLEAR_TIME_MS) instanceof Number ms ? ms.longValue() : null);
+    }
+
+    private boolean[][] mineGrid(int[][] mines, int rows, int cols) {
+        boolean[][] grid = new boolean[rows][cols];
+        for (int[] m : mines) grid[m[0]][m[1]] = true;
+        return grid;
     }
 
     /** 지뢰가 아닌 칸을 연다. 0인 칸은 주변으로 번지고, 깃발 칸에서 멈춘다. */

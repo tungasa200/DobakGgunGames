@@ -5,6 +5,7 @@ import com.dobakggun.config.GlobalExceptionHandler;
 import com.dobakggun.dto.MinesweeperPlayStartResponse;
 import com.dobakggun.dto.MinesweeperRevealResponse;
 import com.dobakggun.dto.MinesweeperSessionStartResponse;
+import com.dobakggun.dto.MinesweeperStateResponse;
 import com.dobakggun.exception.GamePlayErrorCode;
 import com.dobakggun.exception.GamePlayException;
 import com.dobakggun.service.MinesweeperPlayService;
@@ -20,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -67,6 +69,21 @@ class MinesweeperControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.revealed[0].n").value(3))
             .andExpect(jsonPath("$.mines").isEmpty())
+            .andExpect(jsonPath("$.clearTimeMs").isEmpty());
+    }
+
+    @Test
+    void state_응답은_계약_형식이다() throws Exception {
+        when(play.state("s")).thenReturn(new MinesweeperStateResponse(
+            "LOST", 9, 9, 10, 1L, 2L, List.of(new MinesweeperRevealResponse.RevealedCell(1, 2, 3)),
+            new int[][]{{0, 0}}, null));
+
+        mvc.perform(get("/api/minesweeper/session/s/state"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("LOST"))
+            .andExpect(jsonPath("$.mineCount").value(10))
+            .andExpect(jsonPath("$.revealed[0].n").value(3))
+            .andExpect(jsonPath("$.mines[0][1]").value(0))
             .andExpect(jsonPath("$.clearTimeMs").isEmpty());
     }
 

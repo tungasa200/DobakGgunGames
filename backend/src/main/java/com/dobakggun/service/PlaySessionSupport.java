@@ -51,6 +51,13 @@ public class PlaySessionSupport {
         return session;
     }
 
+    /** 판을 바꾸지 않는 조회용. 잠그지 않고 IP 불일치도 기록하지 않는다. */
+    GameSession readSession(String sessionId, String game) {
+        return sessionRepo.findById(sessionId)
+            .filter(session -> game.equals(session.getGame()))
+            .orElseThrow(() -> new GamePlayException(GamePlayErrorCode.SESSION_INVALID));
+    }
+
     void requireActive(GameSession session) {
         boolean timedOut = Instant.now().isAfter(session.getStartedAt().plusSeconds(EXPIRE_SECONDS));
         if (session.getState() == SessionState.EXPIRED || timedOut) {

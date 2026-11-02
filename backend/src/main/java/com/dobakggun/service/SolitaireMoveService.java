@@ -35,7 +35,8 @@ public class SolitaireMoveService {
     @Transactional
     public SolitaireMovesBatchResponse processBatch(SolitaireMovesBatchRequest req) {
         String sessionId = Objects.requireNonNull(req.getSessionId());
-        GameSession session = sessionRepo.findById(sessionId)
+        // 전체 컬럼을 다시 쓰므로 잠금 없이 저장하면 제출로 바뀐 상태까지 ACTIVE로 되돌린다
+        GameSession session = sessionRepo.findByIdForUpdate(sessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 세션입니다."));
 
         if (!session.getGame().equals("solitaire")) {

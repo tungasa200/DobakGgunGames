@@ -84,7 +84,8 @@ public class BaseballSessionService {
     // ── 추측 처리 ────────────────────────────────────────────────────────
     @Transactional
     public GuessResponse processGuess(GuessRequest req, HttpServletRequest httpReq) {
-        GameSession session = sessionRepo.findById(req.getSessionId())
+        // 전체 컬럼을 다시 쓰므로 잠금 없이 저장하면 제출로 바뀐 상태까지 ACTIVE로 되돌린다
+        GameSession session = sessionRepo.findByIdForUpdate(req.getSessionId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 세션입니다."));
 
         if (!session.getGame().equals("baseball")) {
@@ -164,7 +165,7 @@ public class BaseballSessionService {
     // ── 랭킹 제출 시 검증 (승리 세션만 허용) ────────────────────────────
     @Transactional
     public GameSession validateWinAndConsume(String sessionId, HttpServletRequest httpReq) {
-        GameSession session = sessionRepo.findById(sessionId)
+        GameSession session = sessionRepo.findByIdForUpdate(sessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 세션입니다."));
 
         if (!session.getGame().equals("baseball")) {
