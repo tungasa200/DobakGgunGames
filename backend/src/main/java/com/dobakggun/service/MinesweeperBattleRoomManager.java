@@ -81,7 +81,7 @@ public class MinesweeperBattleRoomManager {
     public Optional<MinesweeperBattleRoom> findWaitingRoom(String difficulty) {
         String target = (difficulty != null) ? difficulty.toUpperCase() : "BEGINNER";
         return rooms.values().stream()
-                .filter(r -> r.getStatus() == MinesweeperBattleRoom.Status.WAITING
+                .filter(r -> r.isJoinable()
                         && r.getPlayerCount() == 1
                         && target.equals(r.getDifficulty()))
                 .findFirst();

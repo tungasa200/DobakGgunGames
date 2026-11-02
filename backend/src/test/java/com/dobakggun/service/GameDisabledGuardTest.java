@@ -225,6 +225,28 @@ class GameDisabledGuardTest {
             verify(messagingTemplate).convertAndSendToUser(
                     eq("p1"), eq("/queue/blockfall-battle/errors"), any(Object.class));
         }
+
+        @Test
+        @DisplayName("켜진 게임에서 방 밖의 사용자는 준비할 수 없고 NOT_IN_ROOM 을 받는다")
+        void outsiderReadyRejected() {
+            when(gameStatusService.isDisabled("blockfall-battle")).thenReturn(false);
+            BattleRoom room = mock(BattleRoom.class);
+            when(room.getStatus()).thenReturn("FINISHED");
+            when(repository.findByRoomId("r1")).thenReturn(Optional.of(room));
+            when(roomManager.getActivePlayers("r1")).thenReturn(List.of(
+                    new BattleRoomManager.PlayerSessionInfo("p1", "n", false, null, 1L)));
+            ReflectionTestUtils.setField(service, "messagingTemplate", messagingTemplate);
+
+            service.handlePlayerReady("r1", "outsider");
+
+            verify(roomManager, never()).markPlayerReady(anyString(), anyString());
+            verify(messagingTemplate).convertAndSendToUser(
+                    eq("outsider"), eq("/queue/blockfall-battle/errors"), any(Object.class));
+
+            service.handlePlayerReady("r1", "p1");
+
+            verify(roomManager).markPlayerReady("r1", "p1");
+        }
     }
 
     @Nested
@@ -325,6 +347,49 @@ class GameDisabledGuardTest {
 
             assertThat(roomService.rematch("r1", 1L)).isEqualTo(GameDisabledException.CODE);
             verify(taskScheduler, never()).schedule(any(Runnable.class), any(Instant.class));
+        }
+
+        @Test
+        @DisplayName("대기 방의 새 입장은 GAME_DISABLED 로 거절되고 카운트다운이 시작되지 않는다")
+        void lateJoinRejected() {
+            RpsRoomService.RpsRoomState state = new RpsRoomService.RpsRoomState("r1", 1L);
+            state.participants.add(new RpsRoomService.RpsParticipant(1L, "a"));
+            roomsOf(roomService).put("r1", state);
+
+            assertThat(roomService.joinRoom("r1", 2L, "b")).isEqualTo(GameDisabledException.CODE);
+
+            assertThat(state.participants).hasSize(1);
+            verify(taskScheduler, never()).schedule(any(Runnable.class), any(Instant.class));
+        }
+
+        @Test
+        @DisplayName("꺼진 동안 없는 방 ID로 들어와도 방이 만들어지지 않는다")
+        void joinDoesNotCreateRoom() {
+            assertThat(roomService.joinRoom("ghost", 1L, "a")).isEqualTo(GameDisabledException.CODE);
+
+            assertThat(roomsOf(roomService)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("이미 방에 있는 사용자의 join 재발행은 꺼져도 통과한다")
+        void rejoinSurvives() {
+            roomsOf(roomService).put("r1", twoPlayerRoom());
+
+            assertThat(roomService.joinRoom("r1", 1L, "a")).isNull();
+            verify(taskScheduler, never()).schedule(any(Runnable.class), any(Instant.class));
+        }
+
+        @Test
+        @DisplayName("켜진 게임은 두 번째 입장에서 카운트다운을 연다")
+        void joinStartsCountdownWhenEnabled() {
+            when(gameStatusService.isDisabled("online-rps")).thenReturn(false);
+            RpsRoomService.RpsRoomState state = new RpsRoomService.RpsRoomState("r1", 1L);
+            state.participants.add(new RpsRoomService.RpsParticipant(1L, "a"));
+            roomsOf(roomService).put("r1", state);
+
+            assertThat(roomService.joinRoom("r1", 2L, "b")).isNull();
+
+            verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
         }
 
         @Test

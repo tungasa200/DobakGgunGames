@@ -55,7 +55,7 @@ public class AppleBattleRoomManager {
      */
     public Optional<AppleBattleRoom> findWaitingRoom() {
         return rooms.values().stream()
-                .filter(r -> r.getStatus() == AppleBattleRoom.Status.WAITING
+                .filter(r -> r.isJoinable()
                         && r.getPlayerCount() == 1
                         && !r.isPrivateRoom())
                 .findFirst();

@@ -616,10 +616,15 @@ public class BattleRoomService {
             return;
         }
 
+        // 방 밖의 사용자가 준비 수를 채워 다음 라운드를 열 수 없게 한다.
+        List<BattleRoomManager.PlayerSessionInfo> members = roomManager.getActivePlayers(roomId);
+        if (members.stream().noneMatch(p -> p.getPlayerId().equals(playerId))) {
+            sendError(playerId, "NOT_IN_ROOM", "해당 방에 참가하지 않았습니다.");
+            return;
+        }
+
         // 꺼진 게임은 다음 라운드를 열지 않는다. 이미 준비한 사람의 표시도 되돌린다.
         if (gameStatusService.isDisabled(GAME_KEY)) {
-            List<BattleRoomManager.PlayerSessionInfo> members = roomManager.getActivePlayers(roomId);
-            if (members.stream().noneMatch(p -> p.getPlayerId().equals(playerId))) return;
             roomManager.clearReadySet(roomId);
             broadcast(roomId, "READY_STATE", ReadyStatePayload.builder()
                     .readyCount(0)
@@ -631,7 +636,7 @@ public class BattleRoomService {
 
         boolean allReady = roomManager.markPlayerReady(roomId, playerId);
         int readyCount = roomManager.getReadyCount(roomId);
-        int totalCount = roomManager.getActivePlayers(roomId).size();
+        int totalCount = members.size();
 
         // READY_STATE 브로드캐스트
         broadcast(roomId, "READY_STATE", ReadyStatePayload.builder()

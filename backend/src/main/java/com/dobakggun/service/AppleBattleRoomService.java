@@ -138,7 +138,7 @@ public class AppleBattleRoomService {
             ReentrantLock lock = roomManager.getRoomLock(room.getRoomId());
             lock.lock();
             try {
-                if (room.getPlayerCount() >= 2 || room.getStatus() != AppleBattleRoom.Status.WAITING) {
+                if (!room.isJoinable()) {
                     lock.unlock();
                     return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer);
                 }
@@ -215,7 +215,7 @@ public class AppleBattleRoomService {
         ReentrantLock lock = roomManager.getRoomLock(roomId);
         lock.lock();
         try {
-            if (room.getPlayerCount() >= 2 || room.getStatus() != AppleBattleRoom.Status.WAITING) {
+            if (!room.isJoinable()) {
                 throw new RoomFullOrStartedException();
             }
 
@@ -285,7 +285,7 @@ public class AppleBattleRoomService {
     // ─── WebSocket 핸들러 ──────────────────────────────────────────────────────
 
     /**
-     * SessionConnectedEvent 에서 호출.
+     * SessionConnectEvent 에서 호출.
      * 방에 플레이어가 배정된 경우 sessionId 등록.
      * 2명 모두 WS 연결됐을 때 MATCH_READY → 3초 후 GAME_STARTED.
      */
@@ -311,7 +311,7 @@ public class AppleBattleRoomService {
 
         log.debug("handleConnect: roomId={} playerId={} sessionId={}", roomId, playerId, sessionId);
         // MATCH_READY는 handleRequestState에서 발송.
-        // SessionConnectedEvent는 클라이언트가 구독을 완료하기 전에 발생하므로
+        // SessionConnectEvent는 클라이언트가 구독을 완료하기 전에 발생하므로
         // 여기서 sendMatchReadyAndScheduleStart를 호출하면 MATCH_READY가 구독 전에 브로드캐스트돼 유실된다.
     }
 
@@ -431,7 +431,7 @@ public class AppleBattleRoomService {
     /**
      * REQUEST_STATE 수신 — 재연결 후 상태 복원.
      * MATCHED 상태에서 양쪽 모두 연결됐고 카운트다운이 없으면 MATCH_READY 재발송.
-     * (SessionConnectedEvent → MATCH_READY 브로드캐스트 사이 타이밍 문제 보완)
+     * (SessionConnectEvent → MATCH_READY 브로드캐스트 사이 타이밍 문제 보완)
      */
     public void handleRequestState(String roomId, String playerId) {
         AppleBattleRoom room = roomManager.getRoom(roomId).orElse(null);
@@ -504,7 +504,7 @@ public class AppleBattleRoomService {
 
     /**
      * SessionDisconnectEvent 에서 호출.
-     * 30초 grace period — 재연결 안 하면 상대 승리.
+     * 30초 grace period — 재연결 안 하면 상대 승리. 상대가 오기 전이면 전적 없이 방을 닫는다.
      */
     public void handleDisconnect(String sessionId) {
         String roomId = roomManager.findRoomIdBySession(sessionId).orElse(null);
@@ -548,7 +548,7 @@ public class AppleBattleRoomService {
                     buildEnvelope("OPPONENT_DISCONNECTED", disconnPayload));
         }
 
-        // grace period 만료 → 상대 승리
+        // grace period 만료 → 대기 방은 닫고, 그 외에는 상대 승리
         final String capturedPlayerId = playerId;
         ScheduledFuture<?> graceFuture = taskScheduler.schedule(() -> {
             AppleBattleRoom r = roomManager.getRoom(roomId).orElse(null);
@@ -560,6 +560,8 @@ public class AppleBattleRoomService {
                 return;
             }
 
+            if (closeIfWaiting(r, capturedPlayerId)) return;
+
             log.info("grace period 만료 → 상대 승리: roomId={} playerId={}", roomId, capturedPlayerId);
 
             if (r.getFinished().compareAndSet(false, true)) {
@@ -570,6 +572,19 @@ public class AppleBattleRoomService {
         }, Instant.now().plusSeconds(RECONNECT_GRACE_SECONDS));
 
         room.getDisconnectFutures().put(playerId, graceFuture);
+    }
+
+    /** 상대가 오기 전이면 승부가 아니므로 전적 없이 방을 닫는다. */
+    private boolean closeIfWaiting(AppleBattleRoom room, String playerId) {
+        ReentrantLock lock = roomManager.getRoomLock(room.getRoomId());
+        lock.lock();
+        try {
+            if (room.getStatus() != AppleBattleRoom.Status.WAITING) return false;
+            handleLeave(room.getRoomId(), playerId);
+            return true;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**

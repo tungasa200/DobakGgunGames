@@ -14,7 +14,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.socket.messaging.SessionConnectedEvent;
+import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.security.Principal;
@@ -64,7 +64,7 @@ public class AppleBattleWebSocketController {
      * /ws-battle 엔드포인트를 공유하므로 wsGameType == "apple-battle" 인 경우만 처리.
      */
     @EventListener
-    public void handleConnect(SessionConnectedEvent event) {
+    public void handleConnect(SessionConnectEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         Map<String, Object> attrs = accessor.getSessionAttributes();
         if (attrs == null) return;
