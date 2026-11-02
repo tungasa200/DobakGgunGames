@@ -27,6 +27,9 @@ public class AdminRankingService {
     private final SolitaireRankingRepository solitaireRepo;
     private final BlockfallRankingRepository blockfallRepo;
     private final SudokuRankingRepository sudokuRepo;
+    private final BrickBreakerRankingRepository brickBreakerRepo;
+    private final BlockCrushRankingRepository blockCrushRepo;
+    private final BlockfallInsaneRankingRepository blockfallInsaneRepo;
 
     public Page<? extends Ranking> getList(String game, String level, LocalDate from, LocalDate to, Pageable pageable) {
         LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
@@ -38,6 +41,9 @@ public class AdminRankingService {
             case "solitaire"   -> solitaireRepo.findFiltered(level, fromDt, toDt, pageable);
             case "blockfall"   -> blockfallRepo.findFiltered(level, fromDt, toDt, pageable);
             case "sudoku"      -> sudokuRepo.findFiltered(level, fromDt, toDt, pageable);
+            case "brickbreaker"     -> brickBreakerRepo.findFiltered(level, fromDt, toDt, pageable);
+            case "block-crush"      -> blockCrushRepo.findFiltered(level, fromDt, toDt, pageable);
+            case "blockfall-insane" -> blockfallInsaneRepo.findFiltered(level, fromDt, toDt, pageable);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         };
     }
@@ -51,6 +57,9 @@ public class AdminRankingService {
             case "solitaire"   -> deleteOrThrow(solitaireRepo, id);
             case "blockfall"   -> deleteOrThrow(blockfallRepo, id);
             case "sudoku"      -> deleteOrThrow(sudokuRepo, id);
+            case "brickbreaker"     -> deleteOrThrow(brickBreakerRepo, id);
+            case "block-crush"      -> deleteOrThrow(blockCrushRepo, id);
+            case "blockfall-insane" -> deleteOrThrow(blockfallInsaneRepo, id);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         }
     }
@@ -64,6 +73,9 @@ public class AdminRankingService {
             case "solitaire"   -> solitaireRepo.deleteAll();
             case "blockfall"   -> blockfallRepo.deleteAll();
             case "sudoku"      -> sudokuRepo.deleteAll();
+            case "brickbreaker"     -> brickBreakerRepo.deleteAll();
+            case "block-crush"      -> blockCrushRepo.deleteAll();
+            case "blockfall-insane" -> blockfallInsaneRepo.deleteAll();
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         }
     }
@@ -97,6 +109,9 @@ public class AdminRankingService {
             case "apple"       -> List.of("normal");
             case "blockfall"   -> List.of("normal");
             case "sudoku"      -> List.of("easy", "normal", "hard");
+            case "brickbreaker"     -> List.of("normal");
+            case "block-crush"      -> List.of("classic");
+            case "blockfall-insane" -> List.of("hard");
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         };
     }
@@ -110,6 +125,9 @@ public class AdminRankingService {
             case "solitaire"   -> solitaireRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
             case "blockfall"   -> blockfallRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
             case "sudoku"      -> sudokuRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
+            case "brickbreaker"     -> brickBreakerRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
+            case "block-crush"      -> blockCrushRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
+            case "blockfall-insane" -> blockfallInsaneRepo.findPreviousWeekTop3(level, weekStart, weekEnd);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         };
     }
@@ -122,6 +140,9 @@ public class AdminRankingService {
             case "solitaire"   -> solitaireRepo.findAlltimeBest(level);
             case "blockfall"   -> blockfallRepo.findAlltimeBest(level);
             case "sudoku"      -> sudokuRepo.findAlltimeBest(level);
+            case "brickbreaker"     -> brickBreakerRepo.findAlltimeBest(level);
+            case "block-crush"      -> blockCrushRepo.findAlltimeBest(level);
+            case "blockfall-insane" -> blockfallInsaneRepo.findAlltimeBest(level);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 게임: " + game);
         };
     }
@@ -133,7 +154,10 @@ public class AdminRankingService {
                 "minesweeper", minesweeperRepo.count(),
                 "solitaire",   solitaireRepo.count(),
                 "blockfall",   blockfallRepo.count(),
-                "sudoku",      sudokuRepo.count()
+                "sudoku",      sudokuRepo.count(),
+                "brickbreaker",     brickBreakerRepo.count(),
+                "block-crush",      blockCrushRepo.count(),
+                "blockfall-insane", blockfallInsaneRepo.count()
         );
     }
 

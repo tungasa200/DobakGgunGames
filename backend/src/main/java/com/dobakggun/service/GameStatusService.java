@@ -16,7 +16,7 @@ public class GameStatusService {
     private static final List<String> DEFAULT_GAMES = List.of(
             "minesweeper", "baseball", "blockfall", "apple", "solitaire", "sudoku",
             "online-rps", "blockfall-battle", "apple-battle", "minesweeper-battle",
-            "yacht", "brickbreaker"
+            "yacht", "brickbreaker", "block-crush", "blockfall-insane"
     );
 
     private final GameStatusRepository repo;

@@ -27,4 +27,16 @@ public interface BlockCrushRankingRepository extends RankingRepository<BlockCrus
         LIMIT 1
     """)
     BlockCrushRanking findAlltimeBest(@Param("level") String level);
+
+    @Query("""
+        SELECT r FROM BlockCrushRanking r
+        WHERE r.level = :level AND r.createdAt >= :weekStart AND r.createdAt < :weekEnd
+        ORDER BY r.score DESC, r.createdAt ASC
+        LIMIT 3
+    """)
+    List<BlockCrushRanking> findPreviousWeekTop3(
+            @Param("level") String level,
+            @Param("weekStart") LocalDateTime weekStart,
+            @Param("weekEnd") LocalDateTime weekEnd
+    );
 }
