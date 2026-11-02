@@ -55,6 +55,7 @@ public class YachtMatchService {
     private final YachtGameService           yachtGameService;
     private final YachtBotService            yachtBotService;
     private final StringRedisTemplate        redisTemplate;
+    private final GameStatusService          gameStatusService;
 
     /**
      * 자동 매칭 요청 처리.
@@ -79,6 +80,8 @@ public class YachtMatchService {
         if (!active.isEmpty()) {
             throw new AlreadyInRoomException(active.get(0).getRoomId());
         }
+
+        gameStatusService.requireEnabled(YachtGameService.GAME_KEY);
 
         // 4. Redis 분산락 (diceType별 분리 락)
         String lockKey   = LOCK_PREFIX + diceType.name();
@@ -193,6 +196,8 @@ public class YachtMatchService {
         List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
                 userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
         if (!active.isEmpty()) throw new AlreadyInRoomException(active.get(0).getRoomId());
+
+        gameStatusService.requireEnabled(YachtGameService.GAME_KEY);
 
         long botId = yachtBotService.getBotUserId();
 
@@ -352,6 +357,8 @@ public class YachtMatchService {
             throw new AlreadyInRoomException(active.get(0).getRoomId());
         }
 
+        gameStatusService.requireEnabled(YachtGameService.GAME_KEY);
+
         userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED"));
 
@@ -405,6 +412,8 @@ public class YachtMatchService {
         if (!active.isEmpty()) {
             throw new AlreadyInRoomException(active.get(0).getRoomId());
         }
+
+        gameStatusService.requireEnabled(YachtGameService.GAME_KEY);
 
         // 방 조회
         YachtRoom room = yachtRoomRepository.findByRoomId(roomId)

@@ -2,6 +2,7 @@ package com.dobakggun.service;
 
 import com.dobakggun.dto.rps.*;
 import com.dobakggun.entity.rps.*;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.repository.RpsPlayerStatRepository;
 import com.dobakggun.repository.RpsRoomRepository;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -96,11 +97,17 @@ public class RpsRoomService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    static final String GAME_KEY = "online-rps";
+
+    private final GameStatusService gameStatusService;
+
     public RpsRoomService(
             RpsRoomRepository rpsRoomRepository,
             RpsPlayerStatRepository rpsPlayerStatRepository,
             @Qualifier("rpsTaskScheduler") ThreadPoolTaskScheduler taskScheduler,
-            RpsGameService rpsGameService) {
+            RpsGameService rpsGameService,
+            GameStatusService gameStatusService) {
+        this.gameStatusService = gameStatusService;
         this.rpsRoomRepository = rpsRoomRepository;
         this.rpsPlayerStatRepository = rpsPlayerStatRepository;
         this.taskScheduler = taskScheduler;
@@ -304,6 +311,8 @@ public class RpsRoomService {
             if (state.status != RoomStatus.WAITING) return "INVALID_ACTION";
             if (state.participants.size() < 2) return "NOT_ENOUGH_PLAYERS";
         }
+
+        if (gameStatusService.isDisabled(GAME_KEY)) return GameDisabledException.CODE;
 
         checkAndStartCountdown(state);
         return null;
@@ -526,8 +535,10 @@ public class RpsRoomService {
         broadcastRoomState(state);
         updateDbStatus(roomId, RoomStatus.WAITING);
 
-        // 잔존 인원 >= 2이면 자동 카운트다운 재시작
-        checkAndStartCountdown(state);
+        // 잔존 인원 >= 2이면 자동 카운트다운 재시작 (꺼진 게임은 다음 라운드를 열지 않는다)
+        if (!gameStatusService.isDisabled(GAME_KEY)) {
+            checkAndStartCountdown(state);
+        }
         log.info("processRoundResult: roomId={} round={} complete", roomId, roundNum);
     }
 

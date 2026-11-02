@@ -2,7 +2,9 @@ package com.dobakggun.controller;
 
 import com.dobakggun.config.SecurityConfig;
 import com.dobakggun.dto.yacht.YachtMatchResponse;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.handler.OAuth2SuccessHandler;
+import com.dobakggun.service.GameStatusService;
 import com.dobakggun.service.IpBanService;
 import com.dobakggun.service.YachtGameService;
 import com.dobakggun.service.YachtMatchService;
@@ -52,6 +54,10 @@ class YachtControllerSecurityTest {
 
     @MockBean
     private YachtRankingService yachtRankingService;
+
+    // GameStartInterceptor 의존성
+    @MockBean
+    private GameStatusService gameStatusService;
 
     // SecurityConfig 의존성
     @MockBean
@@ -142,6 +148,23 @@ class YachtControllerSecurityTest {
                         .content("{\"diceType\":\"D10\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("INVALID_DICE_TYPE"));
+    }
+
+    // ─── 킬스위치 503 ────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("서비스의 차단 예외는 범용 catch에 먹히지 않고 503 GAME_DISABLED로 나간다")
+    void gameDisabled_returns503() throws Exception {
+        when(yachtMatchService.match(any(), any()))
+                .thenThrow(new GameDisabledException("yacht"));
+
+        mockMvc.perform(post("/api/yacht/match")
+                        .with(csrf())
+                        .with(userPrincipal(42L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"diceType\":\"D6\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("GAME_DISABLED"));
     }
 
     // ─── ALREADY_IN_ROOM 409 ─────────────────────────────────────────────────

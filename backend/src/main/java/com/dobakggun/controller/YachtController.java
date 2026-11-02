@@ -5,6 +5,7 @@ import com.dobakggun.dto.yacht.YachtMatchResponse;
 import com.dobakggun.dto.yacht.YachtRankingResponse;
 import com.dobakggun.dto.yacht.YachtWaitingRoomInfo;
 import com.dobakggun.entity.yacht.YachtDiceType;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.service.YachtGameService;
 import com.dobakggun.service.YachtMatchService;
 import com.dobakggun.service.YachtRankingService;
@@ -74,6 +75,8 @@ public class YachtController {
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode())
                     .body(Map.of("error", e.getReason() != null ? e.getReason() : "ERROR"));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("YachtController.match: 처리 실패", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -108,6 +111,8 @@ public class YachtController {
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode())
                     .body(Map.of("error", e.getReason() != null ? e.getReason() : "ERROR"));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("YachtController.matchBot: 처리 실패", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -210,6 +215,8 @@ public class YachtController {
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode())
                     .body(Map.of("error", e.getReason() != null ? e.getReason() : "ERROR"));
+        } catch (GameDisabledException e) {
+            throw e;
         } catch (Exception e) {
             log.error("YachtController.createRoom: 처리 실패", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

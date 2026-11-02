@@ -8,6 +8,7 @@ import com.dobakggun.dto.minesweeper.*;
 import com.dobakggun.entity.minesweeper.MinesweeperBattleRecord;
 import com.dobakggun.entity.minesweeper.MinesweeperRoom;
 import com.dobakggun.entity.User;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.repository.MinesweeperBattleRecordRepository;
 import com.dobakggun.repository.MinesweeperRoomRepository;
 import com.dobakggun.repository.UserRepository;
@@ -75,12 +76,18 @@ public class MinesweeperBattleRoomService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    private static final String GAME_KEY = "minesweeper-battle";
+
+    private final GameStatusService gameStatusService;
+
     public MinesweeperBattleRoomService(
             MinesweeperBattleRoomManager roomManager,
             MinesweeperRoomRepository minesweeperRoomRepository,
             MinesweeperBattleRecordRepository minesweeperBattleRecordRepository,
             UserRepository userRepository,
+            GameStatusService gameStatusService,
             @Qualifier("battleTaskScheduler") ThreadPoolTaskScheduler taskScheduler) {
+        this.gameStatusService = gameStatusService;
         this.roomManager = roomManager;
         this.minesweeperRoomRepository = minesweeperRoomRepository;
         this.minesweeperBattleRecordRepository = minesweeperBattleRecordRepository;
@@ -118,6 +125,8 @@ public class MinesweeperBattleRoomService {
                 }
             }
         }
+
+        gameStatusService.requireEnabled(GAME_KEY);
 
         PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
 
@@ -442,6 +451,16 @@ public class MinesweeperBattleRoomService {
 
         room.getRematchSet().add(playerId);
         log.info("handleRematch: roomId={} playerId={} rematchCount={}", roomId, playerId, room.getRematchSet().size());
+
+        if (gameStatusService.isDisabled(GAME_KEY)) {
+            // 먼저 요청하고 기다리는 상대도 대기가 풀리도록 요청자 전원에게 거절을 보낸다.
+            room.getRematchSet().forEach(id -> messagingTemplate.convertAndSendToUser(
+                    id, USER_QUEUE_STATE,
+                    buildEnvelope("REMATCH_DECLINED", Map.of("reason", GameDisabledException.CODE))));
+            room.getRematchSet().clear();
+            sendError(playerId, GameDisabledException.CODE, GameDisabledException.USER_MESSAGE);
+            return;
+        }
 
         PlayerInfo opponent = room.findOpponent(playerId);
 
@@ -1155,6 +1174,8 @@ public class MinesweeperBattleRoomService {
             }
         }
 
+        gameStatusService.requireEnabled(GAME_KEY);
+
         PlayerInfo newPlayer = new PlayerInfo(playerId, nickname, isGuest, userId);
         return createNewRoom(playerId, guestToken, nickname, isGuest, newPlayer, difficulty);
     }
@@ -1185,6 +1206,8 @@ public class MinesweeperBattleRoomService {
                 }
             }
         }
+
+        gameStatusService.requireEnabled(GAME_KEY);
 
         // 방 조회
         MinesweeperBattleRoom room = roomManager.getRoom(roomId)

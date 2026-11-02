@@ -1,6 +1,7 @@
 package com.dobakggun.controller;
 
 import com.dobakggun.dto.rps.RpsChooseRequest;
+import com.dobakggun.exception.GameDisabledException;
 import com.dobakggun.security.ChatPrincipal;
 import com.dobakggun.service.RpsRoomService;
 import lombok.extern.slf4j.Slf4j;
@@ -131,6 +132,7 @@ public class OnlineRpsWebSocketController {
                 case "ROOM_NOT_FOUND"     -> "방을 찾을 수 없습니다.";
                 case "INVALID_ACTION"     -> "현재 재도전을 요청할 수 없습니다.";
                 case "NOT_ENOUGH_PLAYERS" -> "재도전을 위해 2명 이상이 필요합니다.";
+                case GameDisabledException.CODE -> GameDisabledException.USER_MESSAGE;
                 default                   -> "처리할 수 없는 요청입니다.";
             };
             sendError(cp, error, message);
