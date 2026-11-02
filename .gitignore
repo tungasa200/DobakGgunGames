@@ -25,3 +25,8 @@ Thumbs.db
 .claude/settings.local.json
 .claude/logs/
 .claude/cache/
+
+# WY Ops
+.claude/wy-ops.local.json
+.claude/*.bak-*
+.claude/worktrees/
