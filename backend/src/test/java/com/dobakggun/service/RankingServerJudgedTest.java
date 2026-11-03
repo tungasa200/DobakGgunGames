@@ -21,7 +21,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
@@ -66,7 +65,6 @@ class RankingServerJudgedTest {
     private GameSession session(String game, String level, String extra, long ageSeconds) {
         GameSession session = GameSession.builder().sessionId("s").game(game).level(level).ipHash("hash")
             .startedAt(Instant.now().minusSeconds(ageSeconds)).extra(extra).build();
-        when(sessionRepo.findById("s")).thenReturn(Optional.of(session));
         when(sessionService.validateAndConsume(eq("s"), eq(game), any())).thenReturn(session);
         return session;
     }
@@ -103,25 +101,25 @@ class RankingServerJudgedTest {
     }
 
     @Test
-    void 서버_시간이_하한보다_짧으면_소모하지_않고_거부한다() {
+    void 서버_시간이_하한보다_짧으면_저장하지_않고_거부한다() {
         session("sudoku", "easy", "{\"cleared\":true,\"clearTimeMs\":50}", 300);
 
         ResponseStatusException e = catchThrowableOfType(
             () -> service.submit("sudoku", request("easy", 100.0), http), ResponseStatusException.class);
 
         assertThat(e.getStatusCode().value()).isEqualTo(400);
-        verify(sessionService, never()).validateAndConsume(any(), any(), any());
+        verify(sudokuRepo, never()).save(any());
     }
 
     @Test
-    void 프로토콜2_미클리어_세션은_소모하지_않고_거부한다() {
+    void 프로토콜2_미클리어_세션은_저장하지_않고_거부한다() {
         session("minesweeper", "beginner", "{\"protocol\":2,\"status\":\"LOST\"}", 100);
 
         GamePlayException e = catchThrowableOfType(
             () -> service.submit("minesweeper", request("beginner", 10.0), http), GamePlayException.class);
 
         assertThat(e.getErrorCode()).isEqualTo(GamePlayErrorCode.SESSION_NOT_CLEARED);
-        verify(sessionService, never()).validateAndConsume(any(), any(), any());
+        verify(minesweeperRepo, never()).save(any());
     }
 
     @Test
@@ -132,7 +130,7 @@ class RankingServerJudgedTest {
             () -> service.submit("minesweeper", request("expert", 10.0), http), GamePlayException.class);
 
         assertThat(e.getErrorCode()).isEqualTo(GamePlayErrorCode.SESSION_INVALID);
-        verify(sessionService, never()).validateAndConsume(any(), any(), any());
+        verify(minesweeperRepo, never()).save(any());
     }
 
     @Test

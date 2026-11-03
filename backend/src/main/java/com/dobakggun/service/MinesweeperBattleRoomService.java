@@ -405,10 +405,12 @@ public class MinesweeperBattleRoomService {
         if (room == null) return;
 
         PlayerInfo player = room.findPlayer(playerId);
-        if (player != null) {
-            player.setVoluntaryLeft(true);
-            player.setEndReason("LEAVE");
+        if (player == null) {
+            // 늦은 LEAVE일 수 있다. 오류를 보내면 같은 계정의 다른 탭 게임 화면이 오류로 바뀐다
+            return;
         }
+        player.setVoluntaryLeft(true);
+        player.setEndReason("LEAVE");
 
         log.info("handleLeave: roomId={} playerId={}", roomId, playerId);
 
