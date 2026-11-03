@@ -254,13 +254,21 @@ public class AppleBattleRoomService {
         AppleBattleRoom room = roomManager.getRoom(roomId).orElse(null);
         if (room == null) return false;
         if (room.findPlayer(playerId) == null) return false;
-        if (room.getStatus() != AppleBattleRoom.Status.WAITING) return false;
 
-        log.info("cancelWaiting(REST): roomId={} playerId={}", roomId, playerId);
-        room.setStatus(AppleBattleRoom.Status.FINISHED);
-        updateAppleRoomDB(roomId, "FINISHED", 0);
-        roomManager.closeRoom(roomId);
-        return true;
+        // 입장(join)과 같은 방 잠금 — 닫히는 대기 방에 누가 들어오는 경합을 막는다
+        ReentrantLock lock = roomManager.getRoomLock(roomId);
+        lock.lock();
+        try {
+            if (room.getStatus() != AppleBattleRoom.Status.WAITING) return false;
+
+            log.info("cancelWaiting(REST): roomId={} playerId={}", roomId, playerId);
+            room.setStatus(AppleBattleRoom.Status.FINISHED);
+            updateAppleRoomDB(roomId, "FINISHED", 0);
+            roomManager.closeRoom(roomId);
+            return true;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /** WAITING 방 목록 반환. */
@@ -361,8 +369,9 @@ public class AppleBattleRoomService {
 
             // 1. 셀 유효성 검증 — 모두 보드에 존재하는지 (null 이 아닌지)
             List<int[]> validCells = new ArrayList<>();
+            boolean[][] seen = new boolean[ROWS][COLS];
             for (List<Integer> cell : cells) {
-                if (cell == null || cell.size() < 2) {
+                if (cell == null || cell.size() < 2 || cell.get(0) == null || cell.get(1) == null) {
                     sendError(playerId, "INVALID_CELLS", "셀 좌표 형식이 올바르지 않습니다.");
                     return;
                 }
@@ -373,6 +382,12 @@ public class AppleBattleRoomService {
                     sendError(playerId, "INVALID_CELLS", "셀 좌표가 범위를 벗어났습니다.");
                     return;
                 }
+                if (seen[r][c]) {
+                    // 같은 셀을 두 번 넣어 합과 점수를 부풀리지 못하게 한다
+                    sendError(playerId, "INVALID_CELLS", "같은 셀이 중복되어 있습니다.");
+                    return;
+                }
+                seen[r][c] = true;
 
                 if (board[r][c] == null) {
                     // 이미 제거된 셀 포함 — CELLS_ALREADY_REMOVED 에러
@@ -439,6 +454,11 @@ public class AppleBattleRoomService {
             sendError(playerId, "ROOM_NOT_FOUND", "방을 찾을 수 없습니다.");
             return;
         }
+        if (room.findPlayer(playerId) == null) {
+            // 방 밖의 사용자에게 상태를 주지 않고 MATCH_READY도 당기지 못하게 한다.
+            // 오류를 보내면 같은 계정의 다른 탭 게임 화면이 오류로 바뀌므로 조용히 무시한다
+            return;
+        }
 
         Map<String, Object> snapshot = buildStateSnapshot(room, playerId);
         messagingTemplate.convertAndSendToUser(
@@ -471,36 +491,43 @@ public class AppleBattleRoomService {
         AppleBattleRoom room = roomManager.getRoom(roomId).orElse(null);
         if (room == null) return;
 
-        PlayerInfo player = room.findPlayer(playerId);
-        if (player == null) {
-            // 늦은 LEAVE일 수 있다. 오류를 보내면 같은 계정의 다른 탭 게임 화면이 오류로 바뀐다
-            return;
-        }
-        player.setVoluntaryLeft(true);
+        // 입장(join)·유예 만료와 같은 방 잠금 — 닫히는 대기 방에 누가 들어오는 경합을 막는다
+        ReentrantLock lock = roomManager.getRoomLock(roomId);
+        lock.lock();
+        try {
+            PlayerInfo player = room.findPlayer(playerId);
+            if (player == null) {
+                // 늦은 LEAVE일 수 있다. 오류를 보내면 같은 계정의 다른 탭 게임 화면이 오류로 바뀐다
+                return;
+            }
+            player.setVoluntaryLeft(true);
 
-        log.info("handleLeave: roomId={} playerId={}", roomId, playerId);
+            log.info("handleLeave: roomId={} playerId={}", roomId, playerId);
 
-        if (room.getStatus() == AppleBattleRoom.Status.PLAYING
-                || room.getStatus() == AppleBattleRoom.Status.MATCHED) {
-            if (room.getFinished().compareAndSet(false, true)) {
+            if (room.getStatus() == AppleBattleRoom.Status.PLAYING
+                    || room.getStatus() == AppleBattleRoom.Status.MATCHED) {
+                if (room.getFinished().compareAndSet(false, true)) {
+                    PlayerInfo opponent = room.findOpponent(playerId);
+                    String winnerId = (opponent != null) ? opponent.getPlayerId() : playerId;
+                    finishGame(room, winnerId, "OPPONENT_LEFT");
+                }
+            } else if (room.getStatus() == AppleBattleRoom.Status.WAITING) {
+                room.setStatus(AppleBattleRoom.Status.FINISHED);
+                updateAppleRoomDB(roomId, "FINISHED", 0);
+                cancelGameTimers(room);
+                roomManager.closeRoom(roomId);
+            } else if (room.getStatus() == AppleBattleRoom.Status.FINISHED) {
+                // 게임 종료 후 이탈 — 재대결 대기 중인 상대에게 REMATCH_DECLINED
                 PlayerInfo opponent = room.findOpponent(playerId);
-                String winnerId = (opponent != null) ? opponent.getPlayerId() : playerId;
-                finishGame(room, winnerId, "OPPONENT_LEFT");
+                if (opponent != null && opponent.getPlayerId() != null
+                        && room.getRematchRequested().containsKey(opponent.getPlayerId())) {
+                    messagingTemplate.convertAndSendToUser(
+                            opponent.getPlayerId(), USER_QUEUE_STATE,
+                            buildEnvelope("REMATCH_DECLINED", Map.of("reason", "OPPONENT_LEFT")));
+                }
             }
-        } else if (room.getStatus() == AppleBattleRoom.Status.WAITING) {
-            room.setStatus(AppleBattleRoom.Status.FINISHED);
-            updateAppleRoomDB(roomId, "FINISHED", 0);
-            cancelGameTimers(room);
-            roomManager.closeRoom(roomId);
-        } else if (room.getStatus() == AppleBattleRoom.Status.FINISHED) {
-            // 게임 종료 후 이탈 — 재대결 대기 중인 상대에게 REMATCH_DECLINED
-            PlayerInfo opponent = room.findOpponent(playerId);
-            if (opponent != null && opponent.getPlayerId() != null
-                    && room.getRematchRequested().containsKey(opponent.getPlayerId())) {
-                messagingTemplate.convertAndSendToUser(
-                        opponent.getPlayerId(), USER_QUEUE_STATE,
-                        buildEnvelope("REMATCH_DECLINED", Map.of("reason", "OPPONENT_LEFT")));
-            }
+        } finally {
+            lock.unlock();
         }
     }
 

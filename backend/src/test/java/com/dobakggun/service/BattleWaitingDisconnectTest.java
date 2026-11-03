@@ -109,4 +109,83 @@ class BattleWaitingDisconnectTest {
         assertThat(minesweeperManager.getRoom("r1")).isEmpty();
         verify(userRepository, never()).findById(anyLong());
     }
+
+    @Test
+    @DisplayName("사과 배틀: 방장이 끊긴 동안 대기 방 목록에서 빠지고, 다시 연결하면 돌아온다")
+    void appleWaitingListHidesDisconnectedHost() {
+        assertThat(appleManager.getWaitingRooms()).hasSize(1);
+
+        appleService.handleDisconnect("s1");
+        assertThat(appleManager.getWaitingRooms()).isEmpty();
+
+        appleService.handleConnect("1", "s1b");
+        assertThat(appleManager.getWaitingRooms()).extracting(AppleBattleRoom::getRoomId).containsExactly("r1");
+    }
+
+    @Test
+    @DisplayName("지뢰찾기 배틀: 방장이 끊긴 동안 대기 방 목록에서 빠지고, 다시 연결하면 돌아온다")
+    void minesweeperWaitingListHidesDisconnectedHost() {
+        assertThat(minesweeperManager.getWaitingRooms()).hasSize(1);
+
+        minesweeperService.handleDisconnect("s1");
+        assertThat(minesweeperManager.getWaitingRooms()).isEmpty();
+
+        minesweeperService.handleConnect("1", "s1b");
+        assertThat(minesweeperManager.getWaitingRooms()).extracting(MinesweeperBattleRoom::getRoomId).containsExactly("r1");
+    }
+
+    /** 2명이 매칭된 지뢰찾기 방에서 1번이 끊기고 유예가 끝난다. */
+    private MinesweeperBattleRoom minesweeperMatchedAndHostGraceExpired(boolean started) {
+        MinesweeperBattleRoom room = minesweeperManager.getRoom("r1").orElseThrow();
+        minesweeperManager.addPlayer("r1", new MinesweeperBattleRoom.PlayerInfo("2", "b", false, 2L));
+        minesweeperManager.registerSession("r1", "2", "s2");
+        if (started) {
+            room.setStatus(MinesweeperBattleRoom.Status.PLAYING);
+            room.setServerStartAtMillis(System.currentTimeMillis());
+        } else {
+            room.setStatus(MinesweeperBattleRoom.Status.MATCH_READY);
+            room.getFirstClickSet().add("2"); // 한쪽만 클릭한 상태도 시작 전이다
+        }
+
+        minesweeperService.handleDisconnect("s1");
+        capturedGraceTask().run();
+        return room;
+    }
+
+    @Test
+    @DisplayName("지뢰찾기 배틀: 양쪽 첫 클릭 전에 끊겨 유예가 끝나면 판은 끝나지만 전적은 0건이다 (D-36)")
+    void minesweeperDisconnectBeforeStartRecordsNothing() {
+        MinesweeperBattleRoom room = minesweeperMatchedAndHostGraceExpired(false);
+
+        assertThat(room.getStatus()).isEqualTo(MinesweeperBattleRoom.Status.FINISHED);
+        verify(userRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("지뢰찾기 배틀: 혼자 클릭한 쪽이 끊긴 채 첫 클릭 타임아웃이 먼저 끝나도 전적은 0건이다 (D-36)")
+    void minesweeperFirstClickTimeoutWhileDisconnectedRecordsNothing() {
+        MinesweeperBattleRoom room = minesweeperManager.getRoom("r1").orElseThrow();
+        minesweeperManager.addPlayer("r1", new MinesweeperBattleRoom.PlayerInfo("2", "b", false, 2L));
+        minesweeperManager.registerSession("r1", "2", "s2");
+        room.setStatus(MinesweeperBattleRoom.Status.MATCH_READY);
+        room.getFirstClickSet().add("2");
+        minesweeperService.handleDisconnect("s2");
+        room.findPlayer("1").setEndReason("FIRST_CLICK_TIMEOUT");
+
+        minesweeperService.recordWinLoss(room, "2", "FIRST_CLICK_TIMEOUT");
+
+        verify(userRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("지뢰찾기 배틀: 게임 시작 뒤 끊겨 유예가 끝나면 상대 승리로 전적을 남긴다")
+    void minesweeperDisconnectAfterStartGivesOpponentWin() {
+        MinesweeperBattleRoom room = minesweeperMatchedAndHostGraceExpired(true);
+
+        assertThat(room.getStatus()).isEqualTo(MinesweeperBattleRoom.Status.FINISHED);
+        assertThat(room.findPlayer("2").getEndReason()).isEqualTo("OPPONENT_FORFEIT");
+        assertThat(room.findPlayer("1").getEndReason()).isEqualTo("DISCONNECT");
+        verify(userRepository).findById(1L);
+        verify(userRepository).findById(2L);
+    }
 }

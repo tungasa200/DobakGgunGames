@@ -171,18 +171,20 @@ public class RpsRoomService {
         }
 
         synchronized (state) {
-            if (state.status != RoomStatus.WAITING) {
-                log.warn("joinRoom: 방 {} 가 WAITING 상태 아님 ({})", roomId, state.status);
-                return "ROOM_NOT_AVAILABLE";
-            }
+            if (state.status == RoomStatus.FINISHED) return "ROOM_NOT_AVAILABLE"; // 닫히는 중인 방
 
-            // 이미 참가 중인지 확인
+            // 이미 참가 중인지 먼저 확인 — 게임 중인 참가자의 재연결 join을 상태 검사로 거부하지 않는다(D-27)
             boolean alreadyIn = state.participants.stream()
                     .anyMatch(p -> p.userId.equals(userId));
             if (alreadyIn) {
                 log.info("joinRoom: userId={} 이미 방 {} 에 참가 중", userId, roomId);
                 broadcastRoomState(state);
                 return null;
+            }
+
+            if (state.status != RoomStatus.WAITING) {
+                log.warn("joinRoom: 방 {} 가 WAITING 상태 아님 ({})", roomId, state.status);
+                return "ROOM_NOT_AVAILABLE";
             }
 
             if (disabled) return GameDisabledException.CODE;

@@ -175,6 +175,30 @@ class RpsRoomReservationTest {
         assertThat(service.findActiveRoomId(2L)).isEmpty();
     }
 
+    private void setStatus(RoomStatus status) {
+        ((RpsRoomService.RpsRoomState) rooms().get("r1")).status = status;
+    }
+
+    @Test
+    void 게임_중인_참가자는_다시_입장해도_거부되지_않고_밖의_사용자는_거부된다() {
+        dbRoom(RoomStatus.WAITING);
+        service.joinRoom("r1", 1L, "a");
+        service.joinRoom("r1", 2L, "b");
+        setStatus(RoomStatus.PLAYING);
+
+        assertThat(service.joinRoom("r1", 1L, "a")).isNull();
+        assertThat(service.joinRoom("r1", 3L, "c")).isEqualTo("ROOM_NOT_AVAILABLE");
+    }
+
+    @Test
+    void 닫힌_방에는_참가자였어도_다시_입장할_수_없다() {
+        dbRoom(RoomStatus.WAITING);
+        service.joinRoom("r1", 1L, "a");
+        setStatus(RoomStatus.FINISHED);
+
+        assertThat(service.joinRoom("r1", 1L, "a")).isEqualTo("ROOM_NOT_AVAILABLE");
+    }
+
     @Test
     void 입장_전에_나가면_예약을_푼다() {
         dbRoom(RoomStatus.WAITING);
