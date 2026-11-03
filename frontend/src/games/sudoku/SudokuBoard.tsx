@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSudokuGame, type Difficulty } from './useSudokuGame';
-import { startSudokuSession } from '../../api/sudoku';
+import { GamePlayError, completeSudoku, requestSudokuHint, startSudokuSession } from '../../api/sudoku';
 import { rankingsApi, type RankingEntry } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
@@ -18,6 +18,16 @@ const DIFF_ICONS: Record<Difficulty, string> = {
   normal: '📊',
   hard: '📉',
 };
+/** 이 코드를 받으면 세션을 더 쓸 수 없어 판을 끝낸다. */
+const SESSION_LOST_NOTICES: Record<string, string> = {
+  SESSION_EXPIRED: '세션이 만료되었습니다. 새 게임을 시작해 주세요.',
+  SESSION_INVALID: '세션을 확인할 수 없습니다. 새 게임을 시작해 주세요.',
+  GAME_ENDED: '이미 종료된 게임입니다. 새 게임을 시작해 주세요.',
+};
+
+function errorCode(err: unknown): string {
+  return (err instanceof GamePlayError && err.code) || '';
+}
 
 function colLabel(i: number): string {
   let label = '';
@@ -80,17 +90,23 @@ interface Props { excel?: boolean }
 
 export default function SudokuBoard({ excel = false }: Props) {
   const { user } = useAuth();
-  const { state, startGame, selectCell, inputNumber, deleteCell, toggleNote, applyHint, reset } =
-    useSudokuGame();
+  const {
+    state, startGame, selectCell, inputNumber, deleteCell, toggleNote, applyHint,
+    setHintsLeft, markCleared, rejectBoard, loseSession, reset,
+  } = useSudokuGame();
 
-  const solutionRef  = useRef<number[][] | null>(null);
   const sessionIdRef = useRef<string>('');
+  const gameSessionRef = useRef<string | null>(null);  // 응답이 지금 판의 것인지 가린다
+  const statusRef = useRef(state.status);              // 늦은 힌트 응답이 지금 상태를 보게 한다
+  const hintBusyRef = useRef<string | null>(null);     // 힌트 요청 중인 세션
+  const startSeqRef = useRef(0);                       // 가장 나중 시작 요청만 반영한다
   const handleStartRef = useRef<(diff: Difficulty) => void>(() => {});
   const clearTimeRef = useRef<number>(0);
 
   const [difficulty, setDifficulty]     = useState<Difficulty>('easy');
   const [isLoading, setIsLoading]       = useState(false);
-  const [sessionFailed, setSessionFailed] = useState(false);
+  const [notice, setNotice]             = useState<string | null>(null);
+  const [verifyFailed, setVerifyFailed] = useState(false);
 
   const [modalOpen, setModalOpen]       = useState(false);
   const [playerName, setPlayerName]     = useState('');
@@ -107,6 +123,13 @@ export default function SudokuBoard({ excel = false }: Props) {
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } =
     useExcelShell();
 
+  // 이전 판의 등록 오류가 다음 모달에 남지 않게 한다
+  function openClearModal() {
+    setSubmitState('idle');
+    setNameBanned(false);
+    setModalOpen(true);
+  }
+
   /* ── 자동완성 ── */
   useEffect(() => {
     if (modalOpen) setPlayerName(user?.nickname ?? '');
@@ -114,9 +137,22 @@ export default function SudokuBoard({ excel = false }: Props) {
   }, [modalOpen]);
 
   useEffect(() => {
+    gameSessionRef.current = state.sessionId;
+  }, [state.sessionId]);
+
+  useEffect(() => {
+    statusRef.current = state.status;
+  }, [state.status]);
+
+  // 판을 고치면 이전 안내는 더 맞지 않는다
+  useEffect(() => {
+    setNotice(null);
+  }, [state.board]);
+
+  useEffect(() => {
     if (state.status === 'won') {
       clearTimeRef.current = state.elapsed;
-      setModalOpen(true);
+      openClearModal();
     }
   }, [state.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -128,7 +164,7 @@ export default function SudokuBoard({ excel = false }: Props) {
       const res = await startSudokuSession(difficulty);
       sessionIdRef.current = res.sessionId;
     } catch { /* ignore */ }
-    setModalOpen(true);
+    openClearModal();
   };
   useEffect(() => {
     register(() => forceClearRef.current());
@@ -217,63 +253,154 @@ export default function SudokuBoard({ excel = false }: Props) {
   }, [state.status, state.selected, inputNumber, deleteCell, toggleNote, selectCell]);
 
   /* ── 게임 시작 ── */
+  const verifying = state.status === 'checking' && !verifyFailed;  // 판정 응답을 기다리는 중
+
   async function handleStart(diff: Difficulty) {
+    // 판정 중이거나 등록 모달이 떠 있으면 클리어한 판을 지킨다
+    if (verifying || modalOpen) return;
     setDifficulty(diff);
     setIsLoading(true);
-    setSessionFailed(false);
-    solutionRef.current = null;
+    setNotice(null);
+    const seq = ++startSeqRef.current;
     try {
       const res = await startSudokuSession(diff);
-      solutionRef.current = res.solution;
+      if (seq !== startSeqRef.current) return;
       sessionIdRef.current = res.sessionId;
+      gameSessionRef.current = res.sessionId;  // 이전 판 응답이 렌더 전에 도착해도 걸러지게 바로 바꾼다
+      setVerifyFailed(false);  // 시작이 실패하면 지금 판의 '다시 확인'을 남겨 둔다
       startGame(res.puzzle, res.sessionId, diff);
     } catch {
-      setSessionFailed(true);
+      if (seq !== startSeqRef.current) return;
+      setDifficulty(state.difficulty);
+      setNotice('새 게임을 시작하지 못했습니다. 다시 시도해 주세요.');
     } finally {
-      setIsLoading(false);
+      if (seq === startSeqRef.current) setIsLoading(false);
     }
   }
   handleStartRef.current = handleStart;
 
   /* ── 힌트 ── */
-  function handleHint() {
-    if (!solutionRef.current || state.hintsLeft <= 0 || state.status !== 'playing') return;
+  function findHintCell(): [number, number] | null {
     if (state.selected) {
       const [r, c] = state.selected;
-      if (!state.fixed[r][c] && state.board[r][c] === 0) {
-        applyHint(r, c, solutionRef.current[r][c]);
-        return;
-      }
+      if (!state.fixed[r][c] && state.board[r][c] === 0) return [r, c];
     }
     for (let r = 0; r < 9; r++)
       for (let c = 0; c < 9; c++)
-        if (!state.fixed[r][c] && state.board[r][c] === 0) {
-          applyHint(r, c, solutionRef.current![r][c]);
-          return;
-        }
+        if (!state.fixed[r][c] && state.board[r][c] === 0) return [r, c];
+    return null;
+  }
+
+  function endIfSessionLost(code: ReturnType<typeof errorCode>): boolean {
+    const lostNotice = SESSION_LOST_NOTICES[code];
+    if (!lostNotice) return false;
+    loseSession();
+    setNotice(lostNotice);
+    return true;
+  }
+
+  async function handleHint() {
+    const sessionId = state.sessionId;
+    if (!sessionId || hintBusyRef.current === sessionId || state.hintsLeft <= 0 || state.status !== 'playing') return;
+    const cell = findHintCell();
+    if (!cell) {
+      setNotice('빈 칸이 없습니다. 틀린 칸을 지운 뒤 다시 눌러 주세요.');
+      return;
+    }
+
+    selectCell(cell[0], cell[1]);  // 응답을 기다리는 사이 다른 칸을 고르면 그 선택을 유지한다
+    hintBusyRef.current = sessionId;
+    setNotice(null);
+    try {
+      const hint = await requestSudokuHint(sessionId, cell[0], cell[1]);
+      if (sessionId !== gameSessionRef.current) return;
+      applyHint(hint.row, hint.col, hint.value, hint.hintsLeft);
+    } catch (err) {
+      // 판정이 시작됐으면 결과는 complete 응답이 정한다
+      if (sessionId !== gameSessionRef.current || statusRef.current !== 'playing') return;
+      const code = errorCode(err);
+      if (code === 'HINT_EXHAUSTED') {
+        setHintsLeft(0);
+        setNotice('힌트를 모두 사용했습니다.');
+      } else if (!endIfSessionLost(code)) {
+        setNotice('힌트를 불러오지 못했습니다. 다시 눌러 주세요.');
+      }
+    } finally {
+      if (hintBusyRef.current === sessionId) hintBusyRef.current = null;
+    }
+  }
+
+  /* ── 완성 판정 ── */
+  async function verifyBoard() {
+    const sessionId = state.sessionId;
+    if (!sessionId) return;
+    // 판정 전에 눌러 둔 시작 요청은 취소한다. 응답이 판을 바꾸면 기록이 새 세션으로 간다
+    startSeqRef.current++;
+    setIsLoading(false);
+    setDifficulty(state.difficulty);
+    try {
+      const { clearTimeMs } = await completeSudoku(sessionId, state.board);
+      if (sessionId !== gameSessionRef.current) return;
+      sessionIdRef.current = sessionId;  // 어드민 강제 클리어가 바꿔 둔 세션을 되돌린다
+      setNotice(null);
+      markCleared(clearTimeMs);
+    } catch (err) {
+      if (sessionId !== gameSessionRef.current) return;
+      const code = errorCode(err);
+      if (code === 'BOARD_INCORRECT') {
+        rejectBoard();
+        setNotice('정답이 아닙니다. 판을 다시 확인해 주세요.');
+      } else if (!endIfSessionLost(code)) {
+        setVerifyFailed(true);
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (state.status === 'checking') verifyBoard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
+  function handleRetryVerify() {
+    if (!verifyFailed) return;
+    setNotice(null);
+    setVerifyFailed(false);
+    verifyBoard();
+  }
+
+  function handleReset() {
+    if (verifying) return;  // 판정 중인 클리어를 버리지 않는다
+    startSeqRef.current++;  // 대기 중인 시작 응답이 초기화한 화면을 바꾸지 않게 한다
+    setIsLoading(false);
+    setNotice(null);
+    setVerifyFailed(false);
+    reset(difficulty);
   }
 
   /* ── 랭킹 제출 ── */
   async function handleSubmitRanking() {
+    if (submitState === 'loading') return;  // Enter 연타로 두 번 등록되지 않게 한다
     const name = playerName.trim();
     if (!name) return;
     if (containsProfanity(name)) { setNameBanned(true); return; }
     setNameBanned(false);
     setSubmitState('loading');
+    const sessionId = sessionIdRef.current;
     try {
       await rankingsApi.submit('sudoku', {
         level: state.difficulty,
         name,
         time: Math.round(clearTimeRef.current),
-        sessionId: sessionIdRef.current,
+        sessionId,
       });
+      if (sessionId !== sessionIdRef.current) return;  // 건너뛰고 새 판으로 간 뒤의 늦은 응답
       setModalOpen(false);
       setPlayerName('');
-      setSubmitState('idle');
       setActiveTab(state.difficulty);
       setRankLevel(state.difficulty);
       loadRanking(state.difficulty);
     } catch {
+      if (sessionId !== sessionIdRef.current) return;
       setSubmitState('error');
     }
   }
@@ -297,6 +424,7 @@ export default function SudokuBoard({ excel = false }: Props) {
     }
   }, []);
 
+  const boardNotice = notice ?? (verifyFailed ? '정답을 확인하지 못했습니다. 다시 확인해 주세요.' : null);
   const selectedVal   = state.selected ? state.board[state.selected[0]][state.selected[1]] : 0;
   const showGameArea    = !excel || activeSheet === 'game';
   const showRankingArea = !excel || activeSheet === 'ranking';
@@ -431,29 +559,35 @@ export default function SudokuBoard({ excel = false }: Props) {
                   </button>
                   <button
                     className={styles.actionBtn}
-                    disabled={state.hintsLeft <= 0 || !solutionRef.current}
+                    disabled={state.hintsLeft <= 0 || state.status === 'ended'}
+                    aria-disabled={state.status !== 'playing'}
                     onClick={handleHint}
                   >
                     {excel ? '' : '💡 '}힌트 ({state.hintsLeft})
                   </button>
+                  {state.status === 'checking' && (
+                    <button
+                      className={styles.actionBtn}
+                      aria-disabled={!verifyFailed}
+                      onClick={handleRetryVerify}
+                    >
+                      {verifyFailed ? '다시 확인' : '확인 중...'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
+
+            {/* ── 판 진행 안내: Excel 모드도 보여야 해서 보드 영역 안에 둔다 ── */}
+            {boardNotice && <p className={styles.hint} role="alert">{boardNotice}</p>}
           </div>
 
           {!excel && state.status !== 'idle' && (
-            <button className={styles.resetBtn} onClick={() => reset(difficulty)}>
+            <button className={styles.resetBtn} onClick={handleReset}>
               새 게임
             </button>
           )}
         </>
-      )}
-
-      {/* ── 세션 실패 배너 ── */}
-      {sessionFailed && state.status === 'playing' && (
-        <div className={styles.sessionFailBanner}>
-          네트워크 오류로 이 게임은 랭킹에 등록되지 않습니다
-        </div>
       )}
 
       {/* ── 일반 모드: 랭킹 ── */}
