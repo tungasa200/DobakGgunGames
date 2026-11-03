@@ -33,6 +33,9 @@ public class BattleRoomManager {
     /** roomId → 준비 완료한 playerId Set */
     private final ConcurrentHashMap<String, Set<String>> readySets = new ConcurrentHashMap<>();
 
+    /** 게임 중이거나 결과 화면인 방. 새로 들어온 사람은 활성 참가자가 아니라 큐로 간다(PRD §5.2). */
+    private final Set<String> closedToJoin = ConcurrentHashMap.newKeySet();
+
     // ─── PlayerSessionInfo ────────────────────────────────────────────────────
 
     @Getter
@@ -48,6 +51,8 @@ public class BattleRoomManager {
         private volatile int rank;       // 0 = 미결정
         /** BUG-004 수정: 자발적 이탈 여부. true 면 finishGame 전적 저장 대상 제외. */
         private volatile boolean voluntaryLeft;
+        /** 큐에서 다음 라운드를 기다리는 중. 게임 메시지를 보낼 수 없다. */
+        private volatile boolean queued;
 
         // ─── 새로고침 복원용 보드 스냅샷 캐시 ──────────────────────────────
         // 클라이언트가 200ms 주기로 송신하는 BOARD_UPDATE 의 마지막 값.
@@ -99,12 +104,21 @@ public class BattleRoomManager {
      * @return true: 즉시 참가, false: 큐에 진입
      */
     public boolean joinRoom(String roomId, PlayerSessionInfo player) {
+        return joinRoom(roomId, player, true);
+    }
+
+    /**
+     * 방에 참가자를 추가한다. 정원이 찼거나 게임 중·결과 화면이면 활성 참가자가 될 수 없다.
+     * @param allowQueue false 면 활성 참가가 안 될 때 큐에도 넣지 않는다(방 직접 입장)
+     * @return true: 즉시 참가, false: 큐에 진입했거나(allowQueue) 입장 불가
+     */
+    public boolean joinRoom(String roomId, PlayerSessionInfo player, boolean allowQueue) {
         activePlayers.putIfAbsent(roomId, new CopyOnWriteArrayList<>());
         queues.putIfAbsent(roomId, new LinkedBlockingDeque<>());
 
         List<PlayerSessionInfo> players = activePlayers.get(roomId);
         synchronized (players) {
-            if (players.size() < MAX_PLAYERS) {
+            if (!closedToJoin.contains(roomId) && players.size() < MAX_PLAYERS) {
                 players.add(player);
                 // BUG-003 수정: REST 단계에서 sessionId가 null일 수 있음.
                 // WebSocket 연결 시 registerSession()으로 실제 sessionId 등록.
@@ -115,7 +129,9 @@ public class BattleRoomManager {
                 return true;
             }
         }
-        // 정원 초과 → 큐 진입
+        if (!allowQueue) return false;
+        // 정원 초과 또는 진행 중 → 큐 진입
+        player.setQueued(true);
         queues.get(roomId).offerLast(player);
         if (player.getSessionId() != null) {
             sessionRoomMap.put(player.getSessionId(), roomId);
@@ -137,7 +153,7 @@ public class BattleRoomManager {
         if (players != null) {
             synchronized (players) {
                 Optional<PlayerSessionInfo> found = players.stream()
-                        .filter(p -> p.getSessionId().equals(sessionId))
+                        .filter(p -> sessionId.equals(p.getSessionId()))
                         .findFirst();
                 if (found.isPresent()) {
                     players.remove(found.get());
@@ -152,7 +168,7 @@ public class BattleRoomManager {
         LinkedBlockingDeque<PlayerSessionInfo> queue = queues.get(roomId);
         if (queue != null) {
             Optional<PlayerSessionInfo> found = queue.stream()
-                    .filter(p -> p.getSessionId().equals(sessionId))
+                    .filter(p -> sessionId.equals(p.getSessionId()))
                     .findFirst();
             if (found.isPresent()) {
                 queue.remove(found.get());
@@ -177,12 +193,28 @@ public class BattleRoomManager {
                 if (found.isPresent()) {
                     players.remove(found.get());
                     clearReady(roomId, playerId);
-                    sessionRoomMap.remove(found.get().getSessionId());
+                    removeSessionMapping(found.get());
                     return found.get();
                 }
             }
         }
+        LinkedBlockingDeque<PlayerSessionInfo> queue = queues.get(roomId);
+        if (queue != null) {
+            Optional<PlayerSessionInfo> found = queue.stream()
+                    .filter(p -> p.getPlayerId().equals(playerId))
+                    .findFirst();
+            if (found.isPresent() && queue.remove(found.get())) {
+                removeSessionMapping(found.get());
+                return found.get();
+            }
+        }
         return null;
+    }
+
+    private void removeSessionMapping(PlayerSessionInfo player) {
+        if (player.getSessionId() != null) {
+            sessionRoomMap.remove(player.getSessionId());
+        }
     }
 
     /**
@@ -257,10 +289,13 @@ public class BattleRoomManager {
                     p.setScore(0);
                     p.setRank(0);
                     p.setVoluntaryLeft(false);
+                    p.setQueued(false);
                     players.add(p);
                     promoted.add(p);
                 }
             }
+            // 다음 라운드 대기(WAITING) — 다시 활성 참가를 받는다
+            closedToJoin.remove(roomId);
         }
         return promoted;
     }
@@ -302,48 +337,17 @@ public class BattleRoomManager {
      * playerId → 기존 PlayerSessionInfo 의 sessionId 를 업데이트한다.
      */
     public void registerSession(String roomId, String playerId, String sessionId) {
-        // activePlayers 탐색
-        List<PlayerSessionInfo> players = activePlayers.get(roomId);
-        if (players != null) {
-            players.stream()
-                    .filter(p -> p.getPlayerId().equals(playerId))
-                    .findFirst()
-                    .ifPresent(p -> {
-                        if (p.getSessionId() != null) {
-                            sessionRoomMap.remove(p.getSessionId());
-                        }
-                        p.setSessionId(sessionId);
-                        sessionRoomMap.put(sessionId, roomId);
-                    });
-            return;
-        }
-        // 큐에서 탐색
-        LinkedBlockingDeque<PlayerSessionInfo> queue = queues.get(roomId);
-        if (queue != null) {
-            queue.stream()
-                    .filter(p -> p.getPlayerId().equals(playerId))
-                    .findFirst()
-                    .ifPresent(p -> {
-                        if (p.getSessionId() != null) {
-                            sessionRoomMap.remove(p.getSessionId());
-                        }
-                        p.setSessionId(sessionId);
-                        sessionRoomMap.put(sessionId, roomId);
-                    });
-        }
+        // 활성 참가자에 없으면 큐에서 찾는다 — 큐 사용자도 끊김·퇴장 처리를 받아야 한다
+        findPlayer(roomId, playerId).ifPresent(p -> {
+            removeSessionMapping(p);
+            p.setSessionId(sessionId);
+            sessionRoomMap.put(sessionId, roomId);
+        });
     }
 
     /** roomId에 해당 playerId 포함 여부 */
     public boolean isPlayerInRoom(String roomId, String playerId) {
-        List<PlayerSessionInfo> players = activePlayers.get(roomId);
-        if (players != null) {
-            if (players.stream().anyMatch(p -> p.getPlayerId().equals(playerId))) return true;
-        }
-        LinkedBlockingDeque<PlayerSessionInfo> queue = queues.get(roomId);
-        if (queue != null) {
-            return queue.stream().anyMatch(p -> p.getPlayerId().equals(playerId));
-        }
-        return false;
+        return findPlayer(roomId, playerId).isPresent();
     }
 
     /** 플레이어가 있는 방의 수. */
@@ -360,11 +364,22 @@ public class BattleRoomManager {
                 .sum();
     }
 
-    /** 플레이어가 속한 활성 roomId 조회 (ALREADY_IN_ROOM 체크용) */
-    public Optional<String> findActiveRoomByPlayerId(String playerId) {
-        return activePlayers.entrySet().stream()
-                .filter(e -> e.getValue().stream().anyMatch(p -> p.getPlayerId().equals(playerId)))
-                .map(Map.Entry::getKey)
+    /** 플레이어가 활성 참가자나 큐로 속한 roomId 조회 (ALREADY_IN_ROOM 체크·WS 세션 등록용) */
+    public Optional<String> findRoomIdByPlayerId(String playerId) {
+        // joinRoom 이 activePlayers 와 queues 키를 함께 만들고 cleanupRoom 이 함께 지운다
+        return queues.keySet().stream()
+                .filter(roomId -> findPlayer(roomId, playerId).isPresent())
+                .findFirst();
+    }
+
+    /** 활성 참가자 또는 큐 대기자 단건 조회 */
+    public Optional<PlayerSessionInfo> findPlayer(String roomId, String playerId) {
+        Optional<PlayerSessionInfo> active = findActivePlayer(roomId, playerId);
+        if (active.isPresent()) return active;
+        LinkedBlockingDeque<PlayerSessionInfo> queue = queues.get(roomId);
+        if (queue == null) return Optional.empty();
+        return queue.stream()
+                .filter(p -> p.getPlayerId().equals(playerId))
                 .findFirst();
     }
 
@@ -377,17 +392,36 @@ public class BattleRoomManager {
                 .findFirst();
     }
 
+    /**
+     * 게임 시작 — 이후 들어오는 사람은 큐로 간다. 같은 락 안에서 참가자 스냅샷을 돌려준다.
+     * 다음 라운드 승격(fillFromQueue)에서 다시 연다.
+     */
+    public List<PlayerSessionInfo> closeToJoin(String roomId) {
+        List<PlayerSessionInfo> players = activePlayers.get(roomId);
+        if (players == null) return Collections.emptyList();
+        synchronized (players) {
+            closedToJoin.add(roomId);
+            return new ArrayList<>(players);
+        }
+    }
+
+    /** 시작 직전 인원이 2명 미만으로 줄어 시작을 취소할 때 다시 연다. */
+    public void reopenToJoin(String roomId) {
+        closedToJoin.remove(roomId);
+    }
+
     /** 방 참가자/큐 전체 정리 (방 close 시) */
     public void cleanupRoom(String roomId) {
         List<PlayerSessionInfo> players = activePlayers.remove(roomId);
         if (players != null) {
-            players.forEach(p -> sessionRoomMap.remove(p.getSessionId()));
+            players.forEach(this::removeSessionMapping);
         }
         LinkedBlockingDeque<PlayerSessionInfo> queue = queues.remove(roomId);
         if (queue != null) {
-            queue.forEach(p -> sessionRoomMap.remove(p.getSessionId()));
+            queue.forEach(this::removeSessionMapping);
         }
         readySets.remove(roomId);
+        closedToJoin.remove(roomId);
         log.debug("BattleRoomManager.cleanupRoom: roomId={} 정리 완료", roomId);
     }
 

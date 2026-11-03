@@ -189,7 +189,7 @@ class GameDisabledGuardTest {
         @Test
         @DisplayName("방에 있는 사용자는 꺼져도 ALREADY_IN_ROOM 으로 재접속한다")
         void reconnectSurvives() {
-            when(roomManager.findActiveRoomByPlayerId("1")).thenReturn(Optional.of("r1"));
+            when(roomManager.findRoomIdByPlayerId("1")).thenReturn(Optional.of("r1"));
 
             assertThatThrownBy(() -> service.joinBattle(1L, null, false, "n"))
                     .isInstanceOf(BattleRoomService.AlreadyInRoomException.class);

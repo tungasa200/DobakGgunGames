@@ -80,8 +80,8 @@ public class BlockfallBattleWebSocketController {
         String sessionId = accessor.getSessionId();
         if (sessionId == null) return;
 
-        // 이미 방에 배정된 경우 sessionId 등록
-        battleRoomManager.findActiveRoomByPlayerId(bp.getPlayerId())
+        // 이미 방(활성 또는 큐)에 배정된 경우 sessionId 등록
+        battleRoomManager.findRoomIdByPlayerId(bp.getPlayerId())
                 .ifPresent(rid -> battleRoomManager.registerSession(rid, bp.getPlayerId(), sessionId));
 
         log.debug("BlockfallBattle CONNECT: playerId={} sessionId={}", bp.getPlayerId(), sessionId);
