@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.DayOfWeek;
@@ -62,6 +63,7 @@ public class RankingService {
         return best == null ? null : new RankingResponse(best);
     }
 
+    @Transactional(noRollbackFor = RejectedScoreException.class)
     public RankingResponse submit(String game, RankingRequest req, HttpServletRequest httpReq) {
         validateGame(game);
         validateLevel(game, req.getLevel());
@@ -79,11 +81,16 @@ public class RankingService {
         if (req.getSessionId() == null || req.getSessionId().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 요청입니다.");
         }
-        // 서버 판정 세션은 소모 전에 클리어를 확인하고, 기록은 서버 시간을 쓴다
+        // 세션을 가장 먼저 잠근다. 먼저 읽으면 이 트랜잭션의 캐시 때문에 잠금 조회가 옛 상태를 돌려준다
+        GameSession session = "baseball".equals(game)
+            ? baseballSessionService.validateWinAndConsume(req.getSessionId(), httpReq)
+            : sessionService.validateAndConsume(req.getSessionId(), game, httpReq);
+
+        // 서버 판정 세션은 클리어를 확인하고, 기록은 서버 시간을 쓴다. 거부되면 소모도 롤백된다
         Long minClearMs = SERVER_MIN_CLEAR_MS.get(game);
         Long serverClearTimeMs = minClearMs == null
             ? null
-            : playSessionSupport.serverClearTimeMs(req.getSessionId(), req.getLevel());
+            : playSessionSupport.serverClearTimeMs(session, req.getLevel());
         boolean serverTimed = serverClearTimeMs != null;
         if (serverTimed) {
             if (serverClearTimeMs < minClearMs) {
@@ -92,27 +99,43 @@ public class RankingService {
             req.setTime(serverClearTimeMs / 1000.0);
         }
 
-        GameSession session = "baseball".equals(game)
-            ? baseballSessionService.validateWinAndConsume(req.getSessionId(), httpReq)
-            : sessionService.validateAndConsume(req.getSessionId(), game, httpReq);
-
-        // Phase 2: 게임별 서버 검증
-        switch (game) {
-            case "solitaire"        -> solitaireMoveService.validateMoves(session, req);
-            case "apple"            -> appleValidationService.validate(session, req);
-            case "blockfall"        -> blockfallValidationService.validate(session, req);
-            case "blockfall-insane" -> blockfallValidationService.validate(session, req);
-            case "block-crush"      -> blockCrushValidationService.validate(session, req);
-        }
-
-        // 점수 범위 검증 (스도쿠와 서버 판정 세션은 서버 계산이므로 제외)
-        if (!"sudoku".equals(game) && !serverTimed) {
-            validateScoreBounds(game, req);
-        }
+        validateSubmittedScore(game, req, session, serverTimed);
 
         Long userId = extractUserId();
         Ranking saved = saveRanking(game, req, ipHash, userId, session);
         return new RankingResponse(saved);
+    }
+
+    private void validateSubmittedScore(String game, RankingRequest req, GameSession session, boolean serverTimed) {
+        try {
+            // Phase 2: 게임별 서버 검증
+            switch (game) {
+                case "solitaire"        -> solitaireMoveService.validateMoves(session, req);
+                case "apple"            -> appleValidationService.validate(session, req);
+                case "blockfall"        -> blockfallValidationService.validate(session, req);
+                case "blockfall-insane" -> blockfallValidationService.validate(session, req);
+                case "block-crush"      -> blockCrushValidationService.validate(session, req);
+            }
+
+            // 점수 범위 검증 (스도쿠와 서버 판정 세션은 서버 계산이므로 제외)
+            if (!"sudoku".equals(game) && !serverTimed) {
+                validateScoreBounds(game, req);
+            }
+        } catch (ResponseStatusException e) {
+            throw new RejectedScoreException(e);
+        }
+    }
+
+    /**
+     * 제출 내용이 위조로 판정됨. 소모를 롤백하지 않아 세션을 다시 쓸 수 없다.
+     * 같은 내용은 다시 내도 거부되므로 정상 사용자는 대개 잃는 것이 없다.
+     * 예외: 솔리테어는 이동 배치 전송이 계속 실패하면 정상 기록도 여기서 거부된다.
+     * 실패는 레이트리밋에 잡히지 않아 롤백하면 통과하는 값을 무제한으로 찾을 수 있다.
+     */
+    static class RejectedScoreException extends ResponseStatusException {
+        RejectedScoreException(ResponseStatusException cause) {
+            super(cause.getStatusCode(), cause.getReason(), cause);
+        }
     }
 
     private List<? extends Ranking> queryWeekly(String game, String level, LocalDateTime weekStart) {

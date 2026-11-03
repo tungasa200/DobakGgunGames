@@ -99,14 +99,10 @@ public class PlaySessionSupport {
     }
 
     /**
-     * 세션을 소모하기 전에 부른다.
      * 서버가 판정한 클리어 세션이면 그 시간을, 구버전 세션이면 null을 돌려준다.
      * 구버전 세션은 기존 경로가 그대로 검증한다.
      */
-    public Long serverClearTimeMs(String sessionId, String level) {
-        GameSession session = sessionRepo.findById(sessionId).orElse(null);
-        if (session == null) return null;
-
+    Long serverClearTimeMs(GameSession session, String level) {
         Map<String, Object> extra = readExtra(session);
         if (extra.get(CLEAR_TIME_MS) instanceof Number clearTimeMs) {
             // 쉬운 레벨의 클리어를 어려운 레벨 기록으로 내는 것을 막는다

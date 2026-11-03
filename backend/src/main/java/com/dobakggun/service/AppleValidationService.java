@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -31,6 +32,9 @@ public class AppleValidationService {
         Integer score = req.getScore();
 
         if (events == null || events.isEmpty() || score == null) return;
+        if (events.stream().anyMatch(Objects::isNull)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 이벤트 데이터입니다.");
+        }
 
         // 1. 모든 이벤트의 cells 수 합산 == score
         int totalCells = events.stream()
@@ -93,7 +97,7 @@ public class AppleValidationService {
 
             int sum = 0;
             for (List<Integer> coord : cells) {
-                if (coord == null || coord.size() < 2) {
+                if (coord == null || coord.size() < 2 || coord.get(0) == null || coord.get(1) == null) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "이벤트 좌표 형식이 잘못되었습니다.");
                 }

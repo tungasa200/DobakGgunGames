@@ -95,8 +95,7 @@ public class BaseballSessionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 종료된 세션입니다.");
         }
 
-        Instant expiresAt = session.getStartedAt().plusSeconds(EXPIRE_SECONDS);
-        if (Instant.now().isAfter(expiresAt)) {
+        if (isExpired(session)) {
             session.setState(SessionState.EXPIRED);
             sessionRepo.save(session);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "세션이 만료되었습니다.");
@@ -174,6 +173,9 @@ public class BaseballSessionService {
         if (session.getState() != SessionState.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 사용되었거나 만료된 세션입니다.");
         }
+        if (isExpired(session)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "세션이 만료되었습니다.");
+        }
 
         Map<String, Object> extra = parseExtra(session.getExtra());
         if (!Boolean.TRUE.equals(extra.get("won"))) {
@@ -198,6 +200,10 @@ public class BaseballSessionService {
         List<Integer> pool = new ArrayList<>(List.of(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
         Collections.shuffle(pool);
         return new ArrayList<>(pool.subList(0, n));
+    }
+
+    private boolean isExpired(GameSession session) {
+        return Instant.now().isAfter(session.getStartedAt().plusSeconds(EXPIRE_SECONDS));
     }
 
     private Map<String, Object> parseExtra(String extra) {

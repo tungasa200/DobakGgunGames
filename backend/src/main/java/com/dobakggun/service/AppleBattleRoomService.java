@@ -472,9 +472,11 @@ public class AppleBattleRoomService {
         if (room == null) return;
 
         PlayerInfo player = room.findPlayer(playerId);
-        if (player != null) {
-            player.setVoluntaryLeft(true);
+        if (player == null) {
+            // 늦은 LEAVE일 수 있다. 오류를 보내면 같은 계정의 다른 탭 게임 화면이 오류로 바뀐다
+            return;
         }
+        player.setVoluntaryLeft(true);
 
         log.info("handleLeave: roomId={} playerId={}", roomId, playerId);
 
