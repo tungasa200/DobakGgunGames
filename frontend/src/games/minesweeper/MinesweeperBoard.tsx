@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMinesweeperGame, type Level } from './useMinesweeperGame';
+import { startMinesweeperSession } from '../../api/minesweeper';
+import { isGameDisabledError } from '../../api/gameDisabled';
 import { rankingsApi, type RankingEntry } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminTest } from '../../context/AdminTestContext';
 import styles from './MinesweeperBoard.module.css';
 
 // 열 라벨 헬퍼 (A, B, C, ..., AA, ...)
@@ -35,10 +38,6 @@ const PRESET_LEVELS: { value: Exclude<Level, 'custom'>; label: string; shortLabe
   { value: 'expert',       label: '고급 (16×30, 99개)',   shortLabel: '어려움', icon: '📉' },
 ];
 
-// 서버 기록 하한. 첫 클릭으로 끝난 판은 0ms라 여기에 걸린다
-const MIN_RANKED_CLEAR_MS = 400;
-const UNRANKED_CLEAR_NOTICE = '첫 클릭으로 끝났거나 0.4초 미만인 판은 랭킹에 등록되지 않습니다.';
-
 const NUM_COLORS = ['', '#0000ff','#007b00','#ff0000','#00007b','#7b0000','#007b7b','#000000','#7b7b7b'];
 
 export type ThemeName = 'default' | 'classic' | 'frog' | 'autumn';
@@ -63,7 +62,7 @@ interface Props {
 export default function MinesweeperBoard({ excel = false, theme = 'default', onThemeChange }: Props) {
   const { user } = useAuth();
   const [level, setLevel] = useState<Level>('beginner');
-  const { state, reset, resetCustom, revealCell, chordClick, toggleMark } = useMinesweeperGame('beginner');
+  const { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark } = useMinesweeperGame('beginner');
 
   // 테마 선택 — 순수 리스킨, 보드/로직 변경 없음. 상태는 GamePage가 소유(전체 배경색과 동기화하기 위함)
   const cycleTheme = () => {
@@ -83,16 +82,6 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
   const [playerName, setPlayerName] = useState('');
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [nameBanned, setNameBanned] = useState(false);
-  const statusRef = useRef<HTMLDivElement>(null);
-  const boardRef = useRef<HTMLDivElement>(null);
-  const submittingRef = useRef(false);
-
-  // 모달과 함께 포커스가 사라지지 않게 결과 줄로 옮긴다. 리셋 버튼에 주면 Enter가 이어져 끝난 판이 지워진다.
-  // 다음 Tab은 리셋 버튼으로 간다. Excel 모드에는 결과 줄이 없어 보드로 옮긴다
-  function closeModal() {
-    setModalOpen(false);
-    (statusRef.current ?? boardRef.current)?.focus();
-  }
 
   // 모달이 열릴 때 로그인된 닉네임 자동 완성
   useEffect(() => {
@@ -108,24 +97,90 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
   const [rankLoading, setRankLoading] = useState(false);
   const [displayCount, setDisplayCount] = useState(10);
 
-  // 늦은 등록 응답이 지금 판의 것인지 가린다
-  const sessionIdRef = useRef(state.sessionId);
-  useEffect(() => {
-    sessionIdRef.current = state.sessionId;
-  }, [state.sessionId]);
+  // 세션 ID
+  const sessionIdRef = useRef<string>('');
+  const [sessionFailed, setSessionFailed] = useState(false);
+
+  // 최초 클릭 서버 요청 중 로딩 표시
+  const [firstClickLoading, setFirstClickLoading] = useState(false);
+
+  // 첫 클릭 시 세션 발급
+  async function handleRevealCell(r: number, c: number) {
+    if (state.status !== 'idle') {
+      revealCell(r, c);
+      return;
+    }
+
+    const rankLv = level === 'custom' ? 'beginner' : level as Exclude<typeof level, 'custom'>;
+
+    if (level === 'custom') {
+      // 커스텀 난이도: 서버 보드 없이 클라이언트 placeMines 사용
+      // 세션은 백그라운드 재시도 (첫 클릭 즉시 반응)
+      revealCell(r, c);
+      (async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const res = await startMinesweeperSession(rankLv);
+            sessionIdRef.current = res.sessionId;
+            setSessionFailed(false);
+            return;
+          } catch (e) {
+            if (isGameDisabledError(e)) return;
+            if (attempt < 2) await new Promise(r2 => setTimeout(r2, 1000));
+          }
+        }
+        sessionIdRef.current = '';
+        setSessionFailed(true);
+      })();
+      return;
+    }
+
+    // 프리셋 난이도: 서버에서 보드를 받아 적용 후 오픈 (Phase 3)
+    setFirstClickLoading(true);
+    let succeeded = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await startMinesweeperSession(rankLv, { r, c });
+        sessionIdRef.current = res.sessionId;
+        setSessionFailed(false);
+        revealFirstCellWithServerBoard(res.adjMines, r, c);
+        succeeded = true;
+        break;
+      } catch (e) {
+        if (isGameDisabledError(e)) return;
+        if (attempt < 2) await new Promise(r2 => setTimeout(r2, 1000));
+      }
+    }
+    if (!succeeded) {
+      sessionIdRef.current = '';
+      setSessionFailed(true);
+      revealCell(r, c);
+    }
+    setFirstClickLoading(false);
+  }
 
   // 양클릭 추적
   const mouseButtonsRef = useRef<Record<string, number>>({});
 
-  const clearedPreset = state.status === 'won' && state.level !== 'custom';
-  const rankable = clearedPreset && (state.clearTimeMs ?? 0) >= MIN_RANKED_CLEAR_MS;
-
   useEffect(() => {
-    // 이전 판의 등록 오류가 다음 모달에 남지 않게 한다
-    setSubmitState('idle');
-    setNameBanned(false);
-    setModalOpen(rankable);
-  }, [rankable, state.sessionId]);
+    if (state.status === 'won' && !sessionFailed && level !== 'custom') setModalOpen(true);
+  }, [state.status, sessionFailed]);
+
+  // 어드민 강제 클리어
+  const { register } = useAdminTest();
+  const forceClearRef = useRef<() => void>(() => {});
+  forceClearRef.current = async () => {
+    const lv = level === 'custom' ? 'beginner' : level as Exclude<typeof level, 'custom'>;
+    try {
+      const res = await startMinesweeperSession(lv);
+      sessionIdRef.current = res.sessionId;
+    } catch { /* ignore */ }
+    setModalOpen(true);
+  };
+  useEffect(() => {
+    register(() => forceClearRef.current());
+    return () => register(() => {});
+  }, [register]);
 
   // ===== Excel Shell 연동 =====
   const { setFormula, setStatusItems, activeSheet, setRibbonGameGroup, sheetSize, registerNewGame } = useExcelShell();
@@ -212,11 +267,11 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
     lpRef.current = setTimeout(() => {
       lpFiredRef.current = true;
       navigator.vibrate?.(60);
-      toggleMark(r, c);
+      if (state.status === 'playing') toggleMark(r, c);
     }, 500);
     (e.currentTarget as HTMLElement).dataset.tx = String(startX);
     (e.currentTarget as HTMLElement).dataset.ty = String(startY);
-  }, [toggleMark]);
+  }, [state.status, toggleMark]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const el = e.currentTarget as HTMLElement;
@@ -230,11 +285,6 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (lpRef.current) clearTimeout(lpRef.current);
     if (lpFiredRef.current) e.preventDefault();
-  }, []);
-
-  // 브라우저가 스크롤로 터치를 가져가면 길게 누르기를 취소한다(touchcancel은 preventDefault 불가)
-  const handleTouchCancel = useCallback(() => {
-    if (lpRef.current) clearTimeout(lpRef.current);
   }, []);
 
   // 커스텀 적용
@@ -257,28 +307,22 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
   }
 
   async function handleSubmitRanking() {
-    const sessionId = state.sessionId;
-    // Enter 연타로 두 번 등록되지 않게 한다. 다시 그리기 전의 두 번째 Enter도 막도록 ref로 본다
-    if (state.level === 'custom' || !sessionId || submittingRef.current) return;
+    if (level === 'custom') return;
     const name = playerName.trim();
     if (!name) return;
     if (containsProfanity(name)) { setNameBanned(true); return; }
     setNameBanned(false);
-    submittingRef.current = true;
     setSubmitState('loading');
     try {
-      const rankLv = state.level;
+      const rankLv = level;
       const roundedTime = parseFloat(state.elapsed.toFixed(2));
-      await rankingsApi.submit('minesweeper', { level: rankLv, name, time: roundedTime, sessionId });
-      if (sessionId !== sessionIdRef.current) return;  // 건너뛰고 새 판으로 간 뒤의 늦은 응답
-      closeModal();
+      await rankingsApi.submit('minesweeper', { level: rankLv, name, time: roundedTime, sessionId: sessionIdRef.current });
+      setModalOpen(false);
       setPlayerName('');
       setSubmitState('idle');
       loadRanking(rankLv);
     } catch {
-      if (sessionId === sessionIdRef.current) setSubmitState('error');
-    } finally {
-      submittingRef.current = false;
+      setSubmitState('error');
     }
   }
 
@@ -307,7 +351,6 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
     return '';
   })();
 
-  const boardNotice = state.notice ?? (clearedPreset && !rankable ? UNRANKED_CLEAR_NOTICE : null);
   const remaining = state.totalMines - state.flagCount;
   const showGameArea    = !excel || activeSheet === 'game';
   const showRankingArea = !excel || activeSheet === 'ranking';
@@ -367,18 +410,26 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
             <span className={styles.mineCount}>💣 {remaining}</span>
             <span className={styles.timer}>⏱ {state.elapsed.toFixed(1)}초</span>
           </div>
-          <div ref={statusRef} tabIndex={-1} className={`${styles.status} ${state.status === 'won' ? styles.win : state.status === 'lost' ? styles.lose : ''}`}>
+          <div className={`${styles.status} ${state.status === 'won' ? styles.win : state.status === 'lost' ? styles.lose : ''}`}>
             {statusText}
           </div>
         </>
       )}
 
+      {/* 세션 생성 실패 경고 배너 */}
+      {!excel && sessionFailed && state.status !== 'idle' && state.status !== 'won' && state.status !== 'lost' && (
+        <div className={styles.sessionFailBanner}>
+          네트워크 오류로 이 게임은 랭킹에 등록되지 않습니다
+        </div>
+      )}
+
       {/* ── 보드 ── */}
       {showGameArea && (
         <div className={styles.boardWrapper}>
+          {firstClickLoading && (
+            <div className={styles.boardLoadingOverlay}>지뢰 배치 중...</div>
+          )}
           <div
-            ref={boardRef}
-            tabIndex={-1}
             className={styles.board}
             style={{
               gridTemplateColumns: `repeat(${state.cols}, ${CELL_SIZE}px)`,
@@ -413,8 +464,6 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
                   }
                 } else if (cell.mark === 'question')   { content = '?';  cls += ' ' + styles.question; }
 
-                if (cell.isPending) cls += ' ' + styles.pressed;
-
                 const numColor = !excel && cell.isRevealed && cell.adjMines > 0 && !cell.isMine
                   ? NUM_COLORS[cell.adjMines] : undefined;
 
@@ -424,7 +473,7 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
                     key={cellKey}
                     className={cls}
                     style={{ color: numColor }}
-                    onClick={() => revealCell(r, c)}
+                    onClick={() => handleRevealCell(r, c)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       // 모바일: 꾹 터치 시 브라우저가 contextmenu를 별도로 발생시킴.
@@ -449,7 +498,6 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
                     onTouchStart={(e) => handleTouchStart(r, c, e)}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
-                    onTouchCancel={handleTouchCancel}
                   >
                     {content}
                   </div>
@@ -459,9 +507,6 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
           </div>
         </div>
       )}
-
-      {/* ── 판 진행 안내: 위에 두면 플레이 중 보드가 밀린다 ── */}
-      {showGameArea && boardNotice && <p className={styles.hint} role="alert">{boardNotice}</p>}
 
       {/* ── 일반 모드: 리셋 버튼 (보드 하단) ── */}
       {!excel && (
@@ -862,23 +907,8 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
       {/* ── 클리어 모달 ── */}
       {modalOpen && (
         <div className={styles.modalOverlay}>
-          <div
-            className={styles.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="minesweeper-clear-title"
-            onKeyDown={(e) => {
-              // 등록 중에 닫으면 실패 안내를 볼 곳이 없다
-              if (e.key === 'Escape') { if (submitState !== 'loading') closeModal(); return; }
-              if (e.key !== 'Tab') return;
-              // 뒤 화면으로 Tab이 빠지지 않게 모달 안에서 돈다. 모달 빈 곳을 눌러 포커스가 밖에 있어도 안으로 데려온다
-              const items = [...e.currentTarget.querySelectorAll<HTMLElement>('input, button:not(:disabled)')];
-              const i = items.indexOf(document.activeElement as HTMLElement);
-              if (e.shiftKey && i <= 0) { e.preventDefault(); items[items.length - 1].focus(); }
-              else if (!e.shiftKey && (i === -1 || i === items.length - 1)) { e.preventDefault(); items[0].focus(); }
-            }}
-          >
-            <h2 id="minesweeper-clear-title">CLEAR</h2>
+          <div className={styles.modal}>
+            <h2>CLEAR</h2>
             <p id="modal-time-text">클리어 시간: {state.elapsed.toFixed(2)}초</p>
             <input
               className={styles.nameInput}
@@ -891,13 +921,13 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
               autoFocus
             />
             <p className={styles.ipNotice}>어뷰징 방지를 위해 IP 주소가 수집됩니다.</p>
-            {nameBanned && <p className={styles.hint} role="alert">사용할 수 없는 닉네임입니다.</p>}
-            {submitState === 'error' && <p className={styles.hint} role="alert">등록 실패. 다시 시도해 주세요.</p>}
+            {nameBanned && <p className={styles.hint}>사용할 수 없는 닉네임입니다.</p>}
+            {submitState === 'error' && <p className={styles.hint}>등록 실패. 다시 시도해 주세요.</p>}
             <div className={styles.modalBtns}>
               <button className={`${styles.primaryBtn} ${excel ? styles.primaryBtnExcel : ''}`} disabled={submitState === 'loading'} onClick={handleSubmitRanking}>
                 {submitState === 'loading' ? '등록 중...' : '등록'}
               </button>
-              <button className={styles.secondaryBtn} disabled={submitState === 'loading'} onClick={closeModal}>건너뛰기</button>
+              <button className={styles.secondaryBtn} onClick={() => setModalOpen(false)}>건너뛰기</button>
             </div>
           </div>
         </div>
