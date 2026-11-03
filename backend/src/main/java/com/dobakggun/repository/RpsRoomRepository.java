@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +30,14 @@ public interface RpsRoomRepository extends JpaRepository<RpsRoom, Long> {
     @Query("SELECT r FROM RpsRoom r WHERE r.createdBy.id = :userId AND r.status IN :statuses")
     List<RpsRoom> findActiveRoomsByCreatedBy(@Param("userId") Long userId,
                                               @Param("statuses") List<RoomStatus> statuses);
+
+    /**
+     * 입장·퇴장·예약 만료 뒤 인원을 맞춘다. 전체 저장과 달리 다른 컬럼을 덮어쓰지 않는다.
+     */
+    @Transactional
+    @Modifying
+    @Query("UPDATE RpsRoom r SET r.currentPlayers = :count WHERE r.roomId = :roomId")
+    int updateCurrentPlayers(@Param("roomId") String roomId, @Param("count") int count);
 
     /**
      * 서버 시작 시 WAITING/PLAYING 상태 방 일괄 FINISHED 처리 (6.5 좀비 row 대응).

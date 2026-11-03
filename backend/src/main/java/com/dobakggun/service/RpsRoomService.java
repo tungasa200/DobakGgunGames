@@ -39,6 +39,7 @@ public class RpsRoomService {
     private static final int COUNTDOWN_SECONDS = 5;
     static final int TIMEOUT_SECONDS = 10;
     private static final int ROOM_TTL_MINUTES = 10;
+    private static final int RESERVATION_TTL_SECONDS = 30;
     private static final String TOPIC_PREFIX = "/topic/rps/room/";
 
     // ─── 인메모리 상태 ────────────────────────────────────────────────────────
@@ -85,6 +86,9 @@ public class RpsRoomService {
     }
 
     private final ConcurrentHashMap<String, RpsRoomState> rooms = new ConcurrentHashMap<>();
+
+    /** roomId → HTTP 매칭 뒤 아직 WS 입장하지 않은 userId */
+    private final ConcurrentHashMap<String, Set<Long>> reservations = new ConcurrentHashMap<>();
 
     // ─── 의존성 ───────────────────────────────────────────────────────────────
 
@@ -145,16 +149,25 @@ public class RpsRoomService {
      * @return null=정상 처리, 그 외=오류 코드
      */
     public String joinRoom(String roomId, Long userId, String nickname) {
+        String error = enterRoom(roomId, userId, nickname);
+        if (error != null) {
+            releaseReservation(roomId, userId); // 들어가지 못한 자리를 재매칭까지 잡아 두지 않는다
+        }
+        return error;
+    }
+
+    private String enterRoom(String roomId, Long userId, String nickname) {
         boolean disabled = gameStatusService.isDisabled(GAME_KEY);
         RpsRoomState state = rooms.get(roomId);
         if (state == null) {
             if (disabled) return GameDisabledException.CODE;
-            // 인메모리 상태 없음 → DB에서 방 정보 조회 후 초기화
+            // 인메모리 상태 없음 → HTTP 매칭으로 만들어진 대기 방일 때만 초기화
             RpsRoom dbRoom = rpsRoomRepository.findByRoomId(roomId).orElse(null);
-            String roomName = dbRoom != null ? dbRoom.getName() : roomId;
-            int maxPlayers = dbRoom != null ? dbRoom.getMaxPlayers() : 4;
+            if (dbRoom == null || dbRoom.getStatus() != RoomStatus.WAITING) {
+                return "ROOM_NOT_FOUND";
+            }
             state = rooms.computeIfAbsent(roomId,
-                    id -> new RpsRoomState(id, userId, roomName, maxPlayers));
+                    id -> new RpsRoomState(id, userId, dbRoom.getName(), dbRoom.getMaxPlayers()));
         }
 
         synchronized (state) {
@@ -174,6 +187,13 @@ public class RpsRoomService {
 
             if (disabled) return GameDisabledException.CODE;
 
+            // 예약이 만료된 늦은 입장이 다른 사람의 자리를 넘지 않게 막는다
+            Set<Long> reserved = reservedUsers(roomId);
+            if (!reserved.contains(userId)
+                    && state.participants.size() + reserved.size() >= state.maxPlayers) {
+                return "ROOM_NOT_AVAILABLE";
+            }
+
             // 방장이 아직 미설정이면 이 참가자가 방장
             if (state.hostUserId == null) {
                 state.hostUserId = userId;
@@ -183,9 +203,51 @@ public class RpsRoomService {
             log.info("joinRoom: userId={} 방 {} 입장 (현재 {}명)", userId, roomId, state.participants.size());
         }
 
+        removeReservation(roomId, userId);
+        syncCurrentPlayers(roomId);
         broadcastRoomState(state);
         checkAndStartCountdown(state);
         return null;
+    }
+
+    // ─── 자리 예약 ────────────────────────────────────────────────────────────
+
+    /**
+     * HTTP 매칭이 DB 인원을 올린 자리를 WS 입장 전까지 기억한다.
+     * 입장하지 않으면 만료 시 인원을 돌려놓는다.
+     */
+    public void reserve(String roomId, Long userId) {
+        reservations.computeIfAbsent(roomId, id -> ConcurrentHashMap.newKeySet()).add(userId);
+        taskScheduler.schedule(() -> releaseReservation(roomId, userId),
+                Instant.now().plusSeconds(RESERVATION_TTL_SECONDS));
+    }
+
+    private void releaseReservation(String roomId, Long userId) {
+        if (!removeReservation(roomId, userId)) return;
+        log.info("releaseReservation: roomId={} userId={} 입장하지 않아 예약 해제", roomId, userId);
+        syncCurrentPlayers(roomId);
+    }
+
+    private Set<Long> reservedUsers(String roomId) {
+        return reservations.getOrDefault(roomId, Set.of());
+    }
+
+    private boolean removeReservation(String roomId, Long userId) {
+        Set<Long> reserved = reservations.get(roomId);
+        return reserved != null && reserved.remove(userId);
+    }
+
+    /** DB 인원을 실제 참가자 + 남은 예약으로 맞춘다. 둘 다 없는 방은 닫는다. */
+    private void syncCurrentPlayers(String roomId) {
+        RpsRoomState state = rooms.get(roomId);
+        int count = (state != null ? state.participants.size() : 0)
+                + reservedUsers(roomId).size();
+        if (count > 0) {
+            rpsRoomRepository.updateCurrentPlayers(roomId, count);
+        } else if (state == null) {
+            reservations.remove(roomId);
+            updateDbStatusClosed(roomId);
+        }
     }
 
     // ─── 방 퇴장 ──────────────────────────────────────────────────────────────
@@ -196,6 +258,7 @@ public class RpsRoomService {
      * @param reason "LEAVE" 또는 "DISCONNECT"
      */
     public void leaveRoom(String roomId, Long userId, String reason) {
+        releaseReservation(roomId, userId);
         RpsRoomState state = rooms.get(roomId);
         if (state == null) return;
 
@@ -228,10 +291,18 @@ public class RpsRoomService {
                 .build());
 
         if (remaining == 0) {
+            if (state.status == RoomStatus.WAITING && !reservedUsers(roomId).isEmpty()) {
+                // 매칭된 사람이 오는 중 → DB 방은 두고 메모리만 비운다. 입장 시 DB에서 다시 만든다
+                discardState(state);
+                syncCurrentPlayers(roomId);
+                return;
+            }
             // 전원 퇴장
             closeRoom(state, "EMPTY");
             return;
         }
+
+        syncCurrentPlayers(roomId);
 
         synchronized (state) {
             if (wasHost && !state.participants.isEmpty()) {
@@ -539,10 +610,16 @@ public class RpsRoomService {
         }
 
         broadcastRoomState(state);
-        updateDbStatus(roomId, RoomStatus.WAITING);
 
-        // 잔존 인원 >= 2이면 자동 카운트다운 재시작 (꺼진 게임은 다음 라운드를 열지 않는다)
-        if (!gameStatusService.isDisabled(GAME_KEY)) {
+        // 꺼진 게임은 다음 라운드를 열지 않는다. 화면에 재대결 버튼이 없어 다시 켜도 재개되지 않으므로 닫는다.
+        if (gameStatusService.isDisabled(GAME_KEY)) {
+            broadcast(roomId, "ERROR", Map.of(
+                    "code", GameDisabledException.CODE,
+                    "message", GameDisabledException.USER_MESSAGE));
+            closeRoom(state, GameDisabledException.CODE);
+        } else {
+            updateDbStatus(roomId, RoomStatus.WAITING);
+            // 잔존 인원 >= 2이면 자동 카운트다운 재시작
             checkAndStartCountdown(state);
         }
         log.info("processRoundResult: roomId={} round={} complete", roomId, roundNum);
@@ -550,14 +627,18 @@ public class RpsRoomService {
 
     // ─── 방 닫기 ──────────────────────────────────────────────────────────────
 
-    private void closeRoom(RpsRoomState state, String reason) {
+    private void discardState(RpsRoomState state) {
         synchronized (state) {
             cancelCountdownNobroadcast(state);
             cancelRoundTimeout(state);
             state.status = RoomStatus.FINISHED;
         }
-
         rooms.remove(state.roomId);
+    }
+
+    private void closeRoom(RpsRoomState state, String reason) {
+        discardState(state);
+        reservations.remove(state.roomId);
 
         broadcast(state.roomId, "ROOM_CLOSED", RpsRoomClosedDto.builder()
                 .roomId(state.roomId)
@@ -673,6 +754,7 @@ public class RpsRoomService {
         for (RpsRoom room : stale) {
             String roomId = room.getRoomId();
             RpsRoomState state = rooms.remove(roomId);
+            reservations.remove(roomId);
             if (state != null) {
                 synchronized (state) {
                     cancelCountdownNobroadcast(state);
@@ -723,9 +805,14 @@ public class RpsRoomService {
      * 해당 유저가 현재 어떤 방에 참가 중인지 반환.
      */
     public Optional<String> findActiveRoomId(Long userId) {
-        return rooms.values().stream()
+        Optional<String> joined = rooms.values().stream()
                 .filter(s -> s.participants.stream().anyMatch(p -> p.userId.equals(userId)))
                 .map(s -> s.roomId)
+                .findFirst();
+        if (joined.isPresent()) return joined;
+        return reservations.entrySet().stream()
+                .filter(e -> e.getValue().contains(userId))
+                .map(Map.Entry::getKey)
                 .findFirst();
     }
 }

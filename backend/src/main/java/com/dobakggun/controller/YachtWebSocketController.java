@@ -107,7 +107,10 @@ public class YachtWebSocketController {
                 String profileImageUrl = (userId != null)
                         ? userRepository.findById(userId).map(User::getProfileImage).orElse(null)
                         : null;
-                attrs.put("profileImageUrl", profileImageUrl);
+                // 세션 속성은 ConcurrentHashMap 이라 null 을 넣을 수 없다
+                if (profileImageUrl != null) {
+                    attrs.put("profileImageUrl", profileImageUrl);
+                }
             }
         }
 
