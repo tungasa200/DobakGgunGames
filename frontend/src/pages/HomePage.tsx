@@ -120,6 +120,8 @@ interface MultiGameConfig {
   botTo?: string;
   gameKey: string;
   statusKey?: 'rps' | 'battle' | 'yacht';
+  /** 방 상태를 보여주지 않는 카드의 설명 문구 */
+  desc?: string;
 }
 
 interface RoomStatusData {
@@ -131,6 +133,8 @@ const MULTI_GAMES: MultiGameConfig[] = [
   { icon: '✌️', name: '온라인 가위바위보', to: '/online-rps',      gameKey: 'online-rps',     statusKey: 'rps'    },
   { icon: '🟦', name: '블록폴 배틀',       to: '/blockfall-battle', gameKey: 'blockfall-battle', statusKey: 'battle' },
   { icon: '🎲', name: '야추 (Yacht)',       to: '/yacht/select',     botTo: '/yacht-bot',   gameKey: 'yacht',          statusKey: 'yacht'  },
+  { icon: '💣', name: '지뢰찾기 배틀',     to: '/games/minesweeper/battle', gameKey: 'minesweeper-battle', desc: '1:1 실시간 대결' },
+  { icon: '🍎', name: '사과게임 배틀',     to: '/games/apple/battle',       gameKey: 'apple-battle',       desc: '1:1 실시간 대결' },
 ];
 
 type RankCache = Record<string, Record<string, RankingEntry[] | 'error'>>;
@@ -152,7 +156,9 @@ function MultiGameCard({ game, roomStatus, disabled }: { game: MultiGameConfig; 
         </div>
       </div>
       <div className={styles.cardRanking}>
-        {roomStatus !== undefined && roomStatus !== null && roomStatus.activeRooms > 0 ? (
+        {game.desc ? (
+          <p className={styles.placeholder} style={{ padding: '20px 0' }}>{game.desc}</p>
+        ) : roomStatus !== undefined && roomStatus !== null && roomStatus.activeRooms > 0 ? (
           <div className={styles.roomStatus} style={{ padding: '20px 0' }}>
             <span className={styles.roomStatusDot} />
             <span className={styles.roomStatusText}>
@@ -477,56 +483,6 @@ export default function HomePage() {
                   >
                     <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🟩</span>
                     <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>블록 크러시</span>
-                    <span style={{ display: 'inline-block', background: '#9e9e9e', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                      🔧 점검 중
-                    </span>
-                  </div>
-                )}
-                <hr className={styles.labDivider} />
-                {gameStatus['minesweeper-battle'] !== false ? (
-                  <Link
-                    to="/games/minesweeper/battle"
-                    className={`${styles.btn} ${styles.btnNormal}`}
-                    style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
-                  >
-                    <span style={{ fontSize: '1.15em', flexShrink: 0 }}>💣</span>
-                    <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>지뢰찾기 배틀</span>
-                    <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                      BETA
-                    </span>
-                  </Link>
-                ) : (
-                  <div
-                    className={`${styles.btn} ${styles.btnNormal}`}
-                    style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px', opacity: 0.5, cursor: 'default' }}
-                  >
-                    <span style={{ fontSize: '1.15em', flexShrink: 0 }}>💣</span>
-                    <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>지뢰찾기 배틀</span>
-                    <span style={{ display: 'inline-block', background: '#9e9e9e', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                      🔧 점검 중
-                    </span>
-                  </div>
-                )}
-                <hr className={styles.labDivider} />
-                {gameStatus['apple-battle'] !== false ? (
-                  <Link
-                    to="/games/apple/battle"
-                    className={`${styles.btn} ${styles.btnNormal}`}
-                    style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px' }}
-                  >
-                    <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🍎</span>
-                    <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>사과게임 배틀</span>
-                    <span style={{ display: 'inline-block', background: '#F59E0B', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
-                      BETA
-                    </span>
-                  </Link>
-                ) : (
-                  <div
-                    className={`${styles.btn} ${styles.btnNormal}`}
-                    style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 10px', opacity: 0.5, cursor: 'default' }}
-                  >
-                    <span style={{ fontSize: '1.15em', flexShrink: 0 }}>🍎</span>
-                    <span style={{ flex: 1, fontSize: '0.87em', fontWeight: 'bold', color: 'inherit' }}>사과게임 배틀</span>
                     <span style={{ display: 'inline-block', background: '#9e9e9e', color: '#FFFFFF', fontSize: '0.65em', fontWeight: 700, padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.05em' }}>
                       🔧 점검 중
                     </span>
