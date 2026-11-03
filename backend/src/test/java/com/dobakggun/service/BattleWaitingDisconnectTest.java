@@ -177,6 +177,42 @@ class BattleWaitingDisconnectTest {
         verify(userRepository, never()).findById(anyLong());
     }
 
+    /** 2명이 매칭된 지뢰찾기 방에서 1번이 LEAVE를 보낸다. */
+    private MinesweeperBattleRoom minesweeperMatchedAndHostLeaves(boolean started) {
+        MinesweeperBattleRoom room = minesweeperManager.getRoom("r1").orElseThrow();
+        minesweeperManager.addPlayer("r1", new MinesweeperBattleRoom.PlayerInfo("2", "b", false, 2L));
+        minesweeperManager.registerSession("r1", "2", "s2");
+        if (started) {
+            room.setStatus(MinesweeperBattleRoom.Status.PLAYING);
+            room.setServerStartAtMillis(System.currentTimeMillis());
+        } else {
+            room.setStatus(MinesweeperBattleRoom.Status.MATCH_READY);
+            room.getFirstClickSet().add("2");
+        }
+
+        minesweeperService.handleLeave("r1", "1");
+        return room;
+    }
+
+    @Test
+    @DisplayName("지뢰찾기 배틀: 양쪽 첫 클릭 전에 LEAVE하면 판은 끝나지만 전적은 0건이다 (D-36, 카드 0130)")
+    void minesweeperLeaveBeforeStartRecordsNothing() {
+        MinesweeperBattleRoom room = minesweeperMatchedAndHostLeaves(false);
+
+        assertThat(room.getStatus()).isEqualTo(MinesweeperBattleRoom.Status.FINISHED);
+        verify(userRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("지뢰찾기 배틀: 게임 시작 뒤 LEAVE하면 남은 쪽만 승리로 기록하고 나간 쪽은 미가산이다")
+    void minesweeperLeaveAfterStartGivesOpponentWin() {
+        MinesweeperBattleRoom room = minesweeperMatchedAndHostLeaves(true);
+
+        assertThat(room.getStatus()).isEqualTo(MinesweeperBattleRoom.Status.FINISHED);
+        verify(userRepository).findById(2L);
+        verify(userRepository, never()).findById(1L);
+    }
+
     @Test
     @DisplayName("지뢰찾기 배틀: 게임 시작 뒤 끊겨 유예가 끝나면 상대 승리로 전적을 남긴다")
     void minesweeperDisconnectAfterStartGivesOpponentWin() {

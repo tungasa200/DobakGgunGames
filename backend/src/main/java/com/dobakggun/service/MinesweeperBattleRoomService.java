@@ -867,10 +867,10 @@ public class MinesweeperBattleRoomService {
      */
     @Transactional
     public void recordWinLoss(MinesweeperBattleRoom room, String winnerId, String reason) {
-        // D-36: 양쪽 첫 클릭(게임 시작) 전 끊긴 사람이 있는 판은 무효 — 전적을 남기지 않는다.
+        // D-36: 양쪽 첫 클릭(게임 시작) 전 끊기거나 자발적으로 나간 사람이 있는 판은 무효 — 전적을 남기지 않는다.
         // 유예(15초)보다 첫 클릭 타임아웃(30초)이 먼저 끝나 FIRST_CLICK_TIMEOUT으로 닫혀도 같다
         if (room.getServerStartAtMillis() == 0
-                && room.getPlayers().stream().anyMatch(PlayerInfo::isDisconnected)) return;
+                && room.getPlayers().stream().anyMatch(p -> p.isDisconnected() || p.isVoluntaryLeft())) return;
 
         for (PlayerInfo player : room.getPlayers()) {
             if (player.isGuest() || player.getUserId() == null) continue;
