@@ -82,7 +82,7 @@ function HomeGrid() {
   const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    fetchGameStatus().then(setGameStatus);
+    fetchGameStatus().catch(() => ({})).then(setGameStatus);
   }, []);
 
   // 초기 수식바 / 상태바

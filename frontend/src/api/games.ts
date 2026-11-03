@@ -10,8 +10,15 @@ export interface GameStatusEntry {
 
 /** 게임 활성/비활성 상태를 { gameKey: active } 맵으로 반환 */
 export async function fetchGameStatus(): Promise<Record<string, boolean>> {
-  const res = await fetch(`${API_ORIGIN}/api/games/status`, { signal: AbortSignal.timeout(STATUS_TIMEOUT_MS) });
-  if (!res.ok) return {};
-  const list: GameStatusEntry[] = await res.json();
-  return Object.fromEntries(list.map(g => [g.gameKey, g.active]));
+  // AbortSignal.timeout이 없는 구형 브라우저도 쓰므로 직접 끊는다(D-26)
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), STATUS_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/games/status`, { signal: controller.signal });
+    if (!res.ok) return {};
+    const list: GameStatusEntry[] = await res.json();
+    return Object.fromEntries(list.map(g => [g.gameKey, g.active]));
+  } finally {
+    clearTimeout(timer);
+  }
 }

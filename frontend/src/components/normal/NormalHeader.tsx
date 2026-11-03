@@ -43,7 +43,7 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
   const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    fetchGameStatus().then(setGameStatus);
+    fetchGameStatus().catch(() => ({})).then(setGameStatus);
   }, []);
 
   /* ── 드롭다운 외부 클릭 닫기 ── */

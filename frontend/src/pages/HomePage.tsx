@@ -243,7 +243,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    fetchGameStatus().then(setGameStatus);
+    fetchGameStatus().catch(() => ({})).then(setGameStatus);
   }, []);
 
   useEffect(() => {

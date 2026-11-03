@@ -60,9 +60,16 @@ export async function requestSudokuHint(sessionId: string, row: number, col: num
 
 /** 멱등하다. 성공 뒤 다시 불러도 처음 기록을 돌려준다. 그래서 시간 초과 뒤 '다시 확인'해도 안전하다. */
 export async function completeSudoku(sessionId: string, board: number[][]): Promise<SudokuCompleteResponse> {
-  return request<SudokuCompleteResponse>(`/api/sudoku/session/${sessionId}/complete`, {
-    method: 'POST',
-    body: JSON.stringify({ board }),
-    signal: AbortSignal.timeout(15_000),
-  });
+  // AbortSignal.timeout이 없는 구형 브라우저도 쓰므로 직접 끊는다(D-26)
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    return await request<SudokuCompleteResponse>(`/api/sudoku/session/${sessionId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ board }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
