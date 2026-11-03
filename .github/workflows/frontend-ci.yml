@@ -33,4 +33,3 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_HMAC_SECRET: ${{ secrets.VITE_HMAC_SECRET }}

@@ -73,7 +73,7 @@ DobakGgunGames/
 │       ├── pages/                   # 라우트 페이지
 │       ├── styles/
 │       │   └── excel.css            # Excel UI 공통 CSS
-│       └── utils/hmac.ts            # HMAC 토큰 생성
+│       └── utils/                   # 비속어 검사, 입력 검증
 │
 ├── backend/                         # Spring Boot
 │   └── src/main/java/com/dobakggun/
@@ -103,7 +103,7 @@ DobakGgunGames/
 ```
 GET  /api/{game}/rankings?level={level}          주간 TOP 10
 GET  /api/{game}/rankings/alltime?level={level}  역대 최고 1개
-POST /api/{game}/rankings                        점수 제출 (HMAC 토큰 필수)
+POST /api/{game}/rankings                        점수 제출 (세션 ID 필수)
 ```
 
 `{game}`: `minesweeper` | `baseball` | `blockfall` | `solitaire` | `apple`
@@ -166,7 +166,6 @@ npm run dev
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASS` | MySQL 접속 정보 |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | Redis 접속 정보 |
 | `JWT_SECRET` | JWT 서명 키 |
-| `HMAC_SECRET` | 랭킹 점수 제출 서명 키 |
 | `CORS_ORIGINS` | 허용 Origin (프론트 URL) |
 | `OAUTH_GOOGLE_*` / `OAUTH_KAKAO_*` / `OAUTH_NAVER_*` | OAuth2 클라이언트 정보 |
 | `R2_ENDPOINT` / `R2_ACCESS_KEY` / `R2_SECRET_KEY` / `R2_BUCKET` | Cloudflare R2 |
@@ -179,11 +178,10 @@ npm run dev
 | `VITE_API_URL` | 백엔드 REST API URL |
 | `VITE_WS_URL` | WebSocket URL (`/ws`) |
 | `VITE_WS_BATTLE_URL` | 배틀 WebSocket URL (`/ws-battle`) |
-| `VITE_HMAC_SECRET` | HMAC 서명 키 (백엔드와 동일) |
 
 ## 보안
 
-- **HMAC 토큰**: 랭킹 점수 제출 시 공유 비밀키로 서명 — 캐주얼 부정행위 방지
+- **게임 세션**: 랭킹 점수 제출 시 서버가 발급한 세션을 검증하고 소모 — 세션 없는 제출과 재사용 거부
 - **점수 범위 검증**: 서버에서 물리적으로 불가능한 점수 거부
 - **Rate Limit**: IP당 1분에 3회 초과 시 429 응답
 - **CORS**: 등록된 Origin만 허용

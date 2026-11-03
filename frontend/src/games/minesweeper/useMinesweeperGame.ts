@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import {
+  getMinesweeperState,
+  revealMinesweeperCells,
+  startMinesweeperSession,
+  type CellPosition,
+  type MinesweeperPlayUpdate,
+} from '../../api/minesweeper';
+import { isGameDisabledError } from '../../api/gameDisabled';
 
 export type Level = 'beginner' | 'intermediate' | 'expert' | 'custom';
 export type CellMark = 'none' | 'flag' | 'question';
@@ -14,9 +22,12 @@ export interface Cell {
   isRevealed: boolean;
   mark: CellMark;   // none | flag | question
   adjMines: number;
+  /** 서버 응답을 기다리는 칸. 눌린 모양으로 보여 준다 */
+  isPending: boolean;
 }
 
-export type GameStatus = 'idle' | 'playing' | 'won' | 'lost';
+/** ended: 세션을 잃어 더 진행할 수 없다 */
+export type GameStatus = 'idle' | 'playing' | 'won' | 'lost' | 'ended';
 
 interface State {
   level: Level;
@@ -29,22 +40,28 @@ interface State {
   status: GameStatus;
   elapsed: number;
   timerRunning: boolean;
-  /** Phase 3: 서버에서 받은 보드인 경우 true → 첫 클릭에서 placeMines 생략 */
-  boardFromServer: boolean;
+  sessionId: string | null;
+  clearTimeMs: number | null;
+  notice: string | null;
+}
+
+interface ServerUpdate extends MinesweeperPlayUpdate {
+  /** 응답을 받아 눌린 표시를 풀 칸 */
+  settled: CellPosition[];
+  sessionId?: string;
 }
 
 type Action =
   | { type: 'RESET'; level: Level; customRows?: number; customCols?: number; customMines?: number }
   | { type: 'REVEAL'; r: number; c: number; newBoard: Cell[][]; revealedCount: number }
-  | { type: 'MARK'; r: number; c: number; mark: CellMark; flagDelta: number }
+  | { type: 'MARK'; r: number; c: number }
   | { type: 'WIN'; elapsed: number }
   | { type: 'LOSE'; newBoard: Cell[][] }
   | { type: 'TICK'; elapsed: number }
-  /**
-   * Phase 3: 서버 adjMines 보드를 적용한 뒤 firstClick 셀을 즉시 오픈.
-   * adjMines[r][c] === -1 → 지뢰 셀 (서버가 firstClick 안전 보장).
-   */
-  | { type: 'FIRST_REVEAL_SERVER'; adjMines: number[][]; firstR: number; firstC: number };
+  | { type: 'PRESS'; cells: CellPosition[] }
+  | { type: 'SERVER_UPDATE'; update: ServerUpdate }
+  | { type: 'CLEAR_PENDING'; notice: string | null }
+  | { type: 'SESSION_LOST'; notice: string };
 
 function emptyBoard(rows: number, cols: number): Cell[][] {
   return Array.from({ length: rows }, () =>
@@ -53,8 +70,46 @@ function emptyBoard(rows: number, cols: number): Cell[][] {
       isRevealed: false,
       mark: 'none' as CellMark,
       adjMines: 0,
+      isPending: false,
     }))
   );
+}
+
+function clearPending(board: Cell[][]): Cell[][] {
+  return board.map((row) => row.map((cell) => (cell.isPending ? { ...cell, isPending: false } : cell)));
+}
+
+function applyServerUpdate(state: State, update: ServerUpdate): State {
+  let board = state.board.map((row) => row.map((c) => ({ ...c })));
+  let { flagCount } = state;
+
+  for (const [r, c] of update.settled) board[r][c].isPending = false;
+  for (const { r, c, n } of update.revealed) {
+    const cell = board[r][c];
+    if (cell.isRevealed) continue;
+    // 요청을 보낸 뒤 꽂은 깃발은 서버가 모른다. 서버가 연 칸이 맞으므로 깃발을 뗀다
+    if (cell.mark === 'flag') flagCount--;
+    board[r][c] = { ...cell, isRevealed: true, isPending: false, mark: 'none', adjMines: n };
+  }
+
+  const next = { ...state, board, flagCount, sessionId: update.sessionId ?? state.sessionId };
+  if (update.status === 'PLAYING') return { ...next, status: 'playing', timerRunning: true };
+
+  if (update.status === 'WON') {
+    const clearTimeMs = update.clearTimeMs ?? 0;
+    return {
+      ...next,
+      board: clearPending(board),
+      status: 'won',
+      timerRunning: false,
+      elapsed: clearTimeMs / 1000,
+      clearTimeMs,
+    };
+  }
+
+  for (const [r, c] of update.mines ?? []) board[r][c].isMine = true;
+  board = revealAllMines(clearPending(board));
+  return { ...next, board, status: 'lost', timerRunning: false };
 }
 
 function reducer(state: State, action: Action): State {
@@ -74,7 +129,9 @@ function reducer(state: State, action: Action): State {
         status: 'idle',
         elapsed: 0,
         timerRunning: false,
-        boardFromServer: false,
+        sessionId: null,
+        clearTimeMs: null,
+        notice: null,
       };
     }
     case 'REVEAL':
@@ -86,50 +143,35 @@ function reducer(state: State, action: Action): State {
         timerRunning: true,
       };
     case 'MARK': {
+      // 길게 누르기 타이머가 옛 렌더에서 불러도 지금 판으로 판단하도록 여기서 정한다
+      const cell = state.board[action.r]?.[action.c];
+      if (state.status !== 'playing' || !cell || cell.isRevealed || cell.isPending) return state;
+      const mark: CellMark = cell.mark === 'none' ? 'flag' : cell.mark === 'flag' ? 'question' : 'none';
+      const flagDelta = cell.mark === 'none' ? 1 : cell.mark === 'flag' ? -1 : 0;
       const board = state.board.map((row) => row.map((c) => ({ ...c })));
-      board[action.r][action.c].mark = action.mark;
-      return { ...state, board, flagCount: state.flagCount + action.flagDelta };
+      board[action.r][action.c].mark = mark;
+      return { ...state, board, flagCount: state.flagCount + flagDelta };
     }
     case 'WIN':
       return { ...state, status: 'won', timerRunning: false, elapsed: action.elapsed };
     case 'LOSE':
       return { ...state, board: action.newBoard, status: 'lost', timerRunning: false };
     case 'TICK':
-      return { ...state, elapsed: action.elapsed };
+      // 타이머는 렌더 뒤에 꺼지므로 그 사이의 틱이 서버 기록을 덮지 못하게 한다
+      return state.timerRunning ? { ...state, elapsed: action.elapsed } : state;
 
-    case 'FIRST_REVEAL_SERVER': {
-      // Phase 3: adjMines 배열로 보드를 구성한 뒤 firstClick 셀 즉시 오픈
-      const { adjMines, firstR, firstC } = action;
-      const rows = adjMines.length;
-      const cols = adjMines[0]?.length ?? 0;
-
-      const newBoard: Cell[][] = adjMines.map((row) =>
-        row.map((val) => ({
-          isMine:     val === -1,
-          isRevealed: false,
-          mark:       'none' as CellMark,
-          adjMines:   val === -1 ? 0 : val,
-        }))
-      );
-
-      // 서버가 firstClick 안전을 보장하므로 지뢰 셀 클릭은 발생하지 않아야 함
-      if (newBoard[firstR]?.[firstC]?.isMine) {
-        return { ...state, board: revealAllMines(newBoard), status: 'lost', timerRunning: false, boardFromServer: true };
-      }
-
-      const { board: revealed, revealed: count } = revealCells(newBoard, rows, cols, firstR, firstC);
-      const won = count === rows * cols - state.totalMines;
-
-      return {
-        ...state,
-        board:         revealed,
-        revealedCount: count,
-        status:        won ? 'won' : 'playing',
-        timerRunning:  !won,
-        elapsed:       0,
-        boardFromServer: true,
-      };
+    case 'PRESS': {
+      const board = state.board.map((row) => row.map((c) => ({ ...c })));
+      // 앞선 응답이 이미 연 칸은 응답이 다시 오지 않아 눌린 표시가 풀리지 않는다
+      for (const [r, c] of action.cells) board[r][c].isPending = !board[r][c].isRevealed;
+      return { ...state, board, notice: null };
     }
+    case 'SERVER_UPDATE':
+      return applyServerUpdate(state, action.update);
+    case 'CLEAR_PENDING':
+      return { ...state, board: clearPending(state.board), notice: action.notice };
+    case 'SESSION_LOST':
+      return { ...state, board: clearPending(state.board), status: 'ended', timerRunning: false, notice: action.notice };
 
     default:
       return state;
@@ -210,7 +252,170 @@ function initState(level: Exclude<Level, 'custom'>): State {
     status: 'idle',
     elapsed: 0,
     timerRunning: false,
-    boardFromServer: false,
+    sessionId: null,
+    clearTimeMs: null,
+    notice: null,
+  };
+}
+
+const MAX_CELLS_PER_REVEAL = 8;  // 서버 한도
+const START_ATTEMPTS = 3;
+const MAX_REVEAL_FAILURES = 3;
+const RETRY_DELAY_MS = 1000;
+
+/** 이 코드를 받으면 세션을 더 쓸 수 없어 판을 끝낸다 */
+const SESSION_LOST_NOTICES: Record<string, string> = {
+  SESSION_EXPIRED: '세션이 만료되었습니다. 새 게임을 시작해 주세요.',
+  SESSION_INVALID: '세션을 확인할 수 없습니다. 새 게임을 시작해 주세요.',
+};
+const GAME_ENDED_NOTICE = '이미 종료된 게임입니다. 새 게임을 시작해 주세요.';
+
+function errorCode(e: unknown) {
+  return (e as { code?: string } | null)?.code ?? '';
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function flagPositions(board: Cell[][]): CellPosition[] {
+  return board.flatMap((row, r) =>
+    row.flatMap((cell, c): CellPosition[] => (cell.mark === 'flag' ? [[r, c]] : []))
+  );
+}
+
+/**
+ * 한 판의 서버 통신. 판마다 새로 만들고 판이 바뀌면 cancel 하므로 늦은 응답이 다음 판을 건드리지 못한다.
+ * 요청은 한 번에 하나만 보낸다. state 조회가 진행 중인 reveal을 앞지르지 않게 하고,
+ * 응답을 기다리는 사이 누른 칸은 다음 요청에 묶는다.
+ */
+function createServerRun(level: string, dispatch: (action: Action) => void, getBoard: () => Cell[][]) {
+  let queue: CellPosition[] = [];
+  let sessionId: string | null = null;
+  let busy = false;
+  let cancelled = false;
+  let failures = 0;
+  let unsynced = false;  // 응답을 잃어 서버가 연 칸을 다 받았는지 모른다
+  const opened = new Set<string>();  // dispatch 뒤 렌더 전에도 다음 요청이 볼 수 있게 따로 둔다
+
+  const isOpened = ([r, c]: CellPosition) => opened.has(`${r},${c}`);
+
+  function apply(update: Omit<ServerUpdate, 'settled'>, settled: CellPosition[]) {
+    for (const { r, c } of update.revealed) opened.add(`${r},${c}`);
+    if (update.status !== 'PLAYING') queue = [];
+    dispatch({ type: 'SERVER_UPDATE', update: { ...update, settled } });
+  }
+
+  function stop(notice: string | null) {
+    queue = [];
+    failures = 0;
+    dispatch({ type: 'CLEAR_PENDING', notice });
+  }
+
+  function endSession(notice: string) {
+    queue = [];
+    dispatch({ type: 'SESSION_LOST', notice });
+  }
+
+  async function start() {
+    const [r, c] = queue.shift()!;
+    for (let attempt = 1; attempt <= START_ATTEMPTS; attempt++) {
+      try {
+        const res = await startMinesweeperSession(level, { r, c });
+        if (cancelled) return;
+        sessionId = res.sessionId;
+        apply(res, [[r, c]]);
+        return;
+      } catch (e) {
+        if (cancelled) return;
+        if (isGameDisabledError(e)) { stop(null); return; }
+        if (attempt < START_ATTEMPTS) await delay(RETRY_DELAY_MS);
+        if (cancelled) return;
+      }
+    }
+    stop('게임을 시작하지 못했습니다. 다시 시도해 주세요.');
+  }
+
+  /** 응답을 잃었거나 받은 응답이 판과 맞지 않을 때 서버 판으로 맞춘다 */
+  async function resync(id: string) {
+    const state = await getMinesweeperState(id);
+    if (cancelled) return null;
+    unsynced = false;
+    apply(state, []);
+    return state.status;
+  }
+
+  async function recover(id: string, batch: CellPosition[], e: unknown) {
+    if (isGameDisabledError(e)) { stop(null); return; }
+    const code = errorCode(e);
+    if (SESSION_LOST_NOTICES[code]) { endSession(SESSION_LOST_NOTICES[code]); return; }
+    unsynced = true;
+    const giveUp = () => stop('연결이 불안정합니다. 칸을 다시 눌러 주세요.');
+    failures++;
+    // GAME_ENDED는 서버가 답한 것이므로 연결 실패로 끝내지 않고 서버 판을 받아 온다
+    if (code !== 'GAME_ENDED' && failures >= MAX_REVEAL_FAILURES) { giveUp(); return; }
+    await delay(RETRY_DELAY_MS);
+    if (cancelled) return;
+    try {
+      if ((await resync(id)) !== 'PLAYING') return;
+      if (code === 'GAME_ENDED') { endSession(GAME_ENDED_NOTICE); return; }
+    } catch (stateError) {
+      if (cancelled) return;
+      const lost = SESSION_LOST_NOTICES[errorCode(stateError)];
+      if (lost) { endSession(lost); return; }
+      if (failures >= MAX_REVEAL_FAILURES) { giveUp(); return; }
+    }
+    queue.unshift(...batch);  // 이미 열린 칸은 revealNext가 거른다
+  }
+
+  /** 응답에 빠진 칸을 받아 온다. 이미 끝난 판의 결과는 세션을 잃어도 유지한다 */
+  async function backfill(id: string, status: MinesweeperPlayUpdate['status']) {
+    try {
+      await resync(id);
+    } catch (e) {
+      const lost = SESSION_LOST_NOTICES[errorCode(e)];
+      if (!cancelled && lost && status === 'PLAYING') endSession(lost);
+    }
+  }
+
+  async function revealNext(id: string) {
+    queue = queue.filter((cell) => !isOpened(cell));
+    const batch = queue.splice(0, MAX_CELLS_PER_REVEAL);
+    if (batch.length === 0) return;
+    let update: MinesweeperPlayUpdate;
+    try {
+      update = await revealMinesweeperCells(id, batch, flagPositions(getBoard()));
+    } catch (e) {
+      if (!cancelled) await recover(id, batch, e);
+      return;
+    }
+    if (cancelled) return;
+    failures = 0;
+    apply(update, batch);
+    // 앞선 요청이 응답만 잃고 처리됐으면 이번 응답에 그 칸이 빠진다
+    if (unsynced || (update.status === 'PLAYING' && !batch.every(isOpened))) {
+      await backfill(id, update.status);
+    }
+  }
+
+  async function pump() {
+    if (busy) return;
+    busy = true;
+    while (queue.length > 0 && !cancelled) {
+      if (sessionId) await revealNext(sessionId);
+      else await start();
+    }
+    busy = false;
+  }
+
+  return {
+    enqueue(cells: CellPosition[]) {
+      queue.push(...cells);
+      void pump();
+    },
+    cancel() {
+      cancelled = true;
+    },
   };
 }
 
@@ -219,6 +424,19 @@ export function useMinesweeperGame(initialLevel: Exclude<Level, 'custom'> = 'beg
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
+  const runRef = useRef<ReturnType<typeof createServerRun> | null>(null);
+  const boardRef = useRef(state.board);
+
+  useEffect(() => {
+    boardRef.current = state.board;
+  }, [state.board]);
+
+  const cancelRun = useCallback(() => {
+    runRef.current?.cancel();
+    runRef.current = null;
+  }, []);
+
+  useEffect(() => cancelRun, [cancelRun]);
 
   useEffect(() => {
     if (state.timerRunning) {
@@ -234,29 +452,35 @@ export function useMinesweeperGame(initialLevel: Exclude<Level, 'custom'> = 'beg
   }, [state.timerRunning]);
 
   const reset = useCallback((level: Level = state.level) => {
+    cancelRun();
     dispatch({ type: 'RESET', level });
-  }, [state.level]);
+  }, [state.level, cancelRun]);
 
   const resetCustom = useCallback((rows: number, cols: number, mines: number) => {
+    cancelRun();
     dispatch({ type: 'RESET', level: 'custom', customRows: rows, customCols: cols, customMines: mines });
-  }, []);
+  }, [cancelRun]);
 
-  /**
-   * Phase 3: 서버 adjMines 보드를 적용하고 첫 셀을 오픈.
-   * 단일 dispatch 로 처리해 React 상태 타이밍 문제를 회피.
-   */
-  const revealFirstCellWithServerBoard = useCallback((adjMines: number[][], r: number, c: number) => {
-    dispatch({ type: 'FIRST_REVEAL_SERVER', adjMines, firstR: r, firstC: c });
-  }, []);
+  /** 프리셋은 서버가 판정한다. 응답을 기다리지 않고 칸을 먼저 눌린 모양으로 바꾼다 */
+  const pressCells = useCallback((cells: CellPosition[]) => {
+    dispatch({ type: 'PRESS', cells });
+    runRef.current ??= createServerRun(state.level, dispatch, () => boardRef.current);
+    runRef.current.enqueue(cells);
+  }, [state.level]);
 
   const revealCell = useCallback((r: number, c: number) => {
-    if (state.status === 'won' || state.status === 'lost') return;
+    if (state.status === 'won' || state.status === 'lost' || state.status === 'ended') return;
     const cell = state.board[r][c];
-    if (cell.isRevealed || cell.mark === 'flag') return;
+    if (cell.isRevealed || cell.isPending || cell.mark === 'flag') return;
 
-    // 첫 클릭 — 서버 보드가 없을 때만 클라이언트에서 지뢰 배치
+    if (state.level !== 'custom') {
+      pressCells([[r, c]]);
+      return;
+    }
+
+    // 커스텀은 랭킹이 없어 클라이언트가 판정한다. 첫 클릭에 지뢰 배치
     let board = state.board;
-    if (state.status === 'idle' && !state.boardFromServer) {
+    if (state.status === 'idle') {
       board = placeMines(board, state.rows, state.cols, state.totalMines, r, c);
     }
 
@@ -274,7 +498,7 @@ export function useMinesweeperGame(initialLevel: Exclude<Level, 'custom'> = 'beg
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
       dispatch({ type: 'WIN', elapsed });
     }
-  }, [state]);
+  }, [state, pressCells]);
 
   // 코드 클릭 (양클릭): 인접 플래그 수 == adjMines 이면 나머지 열기
   const chordClick = useCallback((r: number, c: number) => {
@@ -290,6 +514,18 @@ export function useMinesweeperGame(initialLevel: Exclude<Level, 'custom'> = 'beg
           adjFlags++;
 
     if (adjFlags !== cell.adjMines) return;
+
+    if (state.level !== 'custom') {
+      const cells: CellPosition[] = [];
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++) {
+          if (!(dr || dc) || !isValid(r + dr, c + dc, state.rows, state.cols)) continue;
+          const nb = state.board[r + dr][c + dc];
+          if (!nb.isRevealed && !nb.isPending && nb.mark !== 'flag') cells.push([r + dr, c + dc]);
+        }
+      if (cells.length > 0) pressCells(cells);
+      return;
+    }
 
     let board = state.board;
     let totalRevealed = state.revealedCount;
@@ -318,21 +554,11 @@ export function useMinesweeperGame(initialLevel: Exclude<Level, 'custom'> = 'beg
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
       dispatch({ type: 'WIN', elapsed });
     }
-  }, [state]);
+  }, [state, pressCells]);
 
   const toggleMark = useCallback((r: number, c: number) => {
-    if (state.status === 'idle' || state.status === 'won' || state.status === 'lost') return;
-    const cell = state.board[r][c];
-    if (cell.isRevealed) return;
+    dispatch({ type: 'MARK', r, c });
+  }, []);
 
-    let mark: CellMark;
-    let flagDelta = 0;
-    if (cell.mark === 'none')     { mark = 'flag';     flagDelta = +1; }
-    else if (cell.mark === 'flag') { mark = 'question'; flagDelta = -1; }
-    else                           { mark = 'none';     flagDelta = 0; }
-
-    dispatch({ type: 'MARK', r, c, mark, flagDelta });
-  }, [state.status, state.board]);
-
-  return { state, reset, resetCustom, revealCell, revealFirstCellWithServerBoard, chordClick, toggleMark };
+  return { state, reset, resetCustom, revealCell, chordClick, toggleMark };
 }
