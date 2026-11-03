@@ -4,7 +4,6 @@ import ExcelShell from '../components/excel/ExcelShell';
 import { useExcelShell } from '../components/excel/ExcelShellContext';
 import { getCachedWeekly, type RankingEntry } from '../api/rankings';
 import { fetchGameStatus } from '../api/games';
-import { useAuth } from '../context/AuthContext';
 import styles from './ExcelHomePage.module.css';
 
 const COL_A = 96;
@@ -75,7 +74,6 @@ const COL_LETTERS = ['B', 'C', 'D', 'E', 'F', 'G'];
 
 function HomeGrid() {
   const { setFormula, setStatusItems } = useExcelShell();
-  const { user } = useAuth();
   const [cache, setCache] = useState<RankCache>({});
   const [activeLevels, setActiveLevels] = useState<Record<string, string>>({
     ms: 'beginner', nb: 'easy', sl: 'draw1', tt: 'easy', ap: 'normal', su: 'easy',
@@ -84,7 +82,7 @@ function HomeGrid() {
   const [gameStatus, setGameStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    fetchGameStatus().then(setGameStatus);
+    fetchGameStatus().catch(() => ({})).then(setGameStatus);
   }, []);
 
   // 초기 수식바 / 상태바
@@ -160,7 +158,7 @@ function HomeGrid() {
         const addrB = `B${row}`;
         const addrC = `C${row}`;
         const isLastGame = row === 8;
-        const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.key] === false;
+        const isDisabled = gameStatus[game.key] === false;
         return (
           <div key={game.key} className={styles.row}>
             <div

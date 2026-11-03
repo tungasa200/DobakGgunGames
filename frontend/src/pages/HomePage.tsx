@@ -5,7 +5,6 @@ import { fetchGameStatus } from '../api/games';
 import { getRpsRoomStatus } from '../api/rps';
 import { getBattleRoomStatus } from '../api/blockfallBattleApi';
 import { getYachtRoomStatus } from '../api/yacht';
-import { useAuth } from '../context/AuthContext';
 import NormalHeader from '../components/normal/NormalHeader';
 import Footer from '../components/normal/Footer';
 import Logo from '../components/common/Logo';
@@ -231,7 +230,6 @@ function GameCard({ game, rankings, activeLevel, onLevelChange, disabled }: {
 }
 
 export default function HomePage() {
-  const { user } = useAuth();
   const [cache, setCache] = useState<RankCache>({});
   const [activeLevels, setActiveLevels] = useState<Record<string, string>>(
     Object.fromEntries(GAMES.map((g) => [g.key, g.defaultLevel]))
@@ -245,7 +243,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    fetchGameStatus().then(setGameStatus);
+    fetchGameStatus().catch(() => ({})).then(setGameStatus);
   }, []);
 
   useEffect(() => {
@@ -341,7 +339,7 @@ export default function HomePage() {
           </div>
           <div className={styles.grid}>
             {GAMES.map((game) => {
-              const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.key] === false;
+              const isDisabled = gameStatus[game.key] === false;
               return (
                 <GameCard
                   key={game.key}
@@ -369,7 +367,7 @@ export default function HomePage() {
           </div>
           <div className={styles.grid}>
             {MULTI_GAMES.map((game) => {
-              const isDisabled = user?.role !== 'ADMIN' && gameStatus[game.gameKey] === false;
+              const isDisabled = gameStatus[game.gameKey] === false;
               return (
                 <MultiGameCard
                   key={game.to}
@@ -435,7 +433,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className={styles.cardRanking}>
-                {(user?.role === 'ADMIN' || gameStatus['brickbreaker'] !== false) ? (
+                {gameStatus['brickbreaker'] !== false ? (
                   <Link
                     to="/brickbreaker"
                     className={`${styles.btn} ${styles.btnNormal}`}
@@ -460,7 +458,7 @@ export default function HomePage() {
                   </div>
                 )}
                 <hr className={styles.labDivider} />
-                {(user?.role === 'ADMIN' || gameStatus['block-crush'] !== false) ? (
+                {gameStatus['block-crush'] !== false ? (
                   <Link
                     to="/block-crush"
                     className={`${styles.btn} ${styles.btnNormal}`}
@@ -485,7 +483,7 @@ export default function HomePage() {
                   </div>
                 )}
                 <hr className={styles.labDivider} />
-                {(user?.role === 'ADMIN' || gameStatus['minesweeper-battle'] !== false) ? (
+                {gameStatus['minesweeper-battle'] !== false ? (
                   <Link
                     to="/games/minesweeper/battle"
                     className={`${styles.btn} ${styles.btnNormal}`}
@@ -510,7 +508,7 @@ export default function HomePage() {
                   </div>
                 )}
                 <hr className={styles.labDivider} />
-                {(user?.role === 'ADMIN' || gameStatus['apple-battle'] !== false) ? (
+                {gameStatus['apple-battle'] !== false ? (
                   <Link
                     to="/games/apple/battle"
                     className={`${styles.btn} ${styles.btnNormal}`}
