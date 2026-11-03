@@ -34,6 +34,8 @@ import java.util.stream.Collectors;
 public class BattleRoomService {
 
     private static final int COUNTDOWN_SECONDS = 5;
+    /** 큐에 사람이 있을 때 결과 화면 뒤 자동 승격까지의 시간 (PRD §5.3, [pm 결정] 블록폴 큐 승격 시점) */
+    static final int AUTO_NEXT_ROUND_SECONDS = 10;
     private static final int RECONNECT_GRACE_SECONDS = 15;
     private static final String TOPIC_PREFIX = "/topic/blockfall-battle/room/";
     private static final int MAX_PLAYERS = 5;
@@ -42,6 +44,10 @@ public class BattleRoomService {
     private final ConcurrentHashMap<String, ScheduledFuture<?>> countdownFutures = new ConcurrentHashMap<>();
     /** 카운트다운 종료 예정 시각 (남은 초 계산용) */
     private final ConcurrentHashMap<String, Instant> countdownEndTimes = new ConcurrentHashMap<>();
+    /** 결과 화면 자동 승격 예약 */
+    private final ConcurrentHashMap<String, ScheduledFuture<?>> nextRoundFutures = new ConcurrentHashMap<>();
+    /** 결과 화면(FINISHED)에 있는 방. prepareNextRound 가 remove 로 한 번만 진행권을 얻는다. */
+    private final Set<String> resultScreenRooms = ConcurrentHashMap.newKeySet();
 
     // ─── 의존성 ───────────────────────────────────────────────────────────────
     private final BattleRoomManager roomManager;
@@ -82,43 +88,37 @@ public class BattleRoomService {
     public BattleJoinResponse joinBattle(Long userId, String guestId, boolean isGuest, String nickname) {
         String playerId = isGuest ? guestId : String.valueOf(userId);
 
-        // EC-8: 이미 활성 방에 참가 중인지 확인
-        Optional<String> existingRoom = roomManager.findActiveRoomByPlayerId(playerId);
-        if (existingRoom.isPresent()) {
-            String existingRoomId = existingRoom.get();
-            Optional<BattleRoomManager.PlayerSessionInfo> stale =
-                    roomManager.findActivePlayer(existingRoomId, playerId);
-            // sessionId == null: REST join 후 WS 연결 미완료(stale) → 제거 후 재진입 허용
-            if (stale.isPresent() && stale.get().getSessionId() == null) {
-                roomManager.removePlayerById(existingRoomId, playerId);
-                log.info("joinBattle: stale(sessionless) entry evicted roomId={} playerId={}", existingRoomId, playerId);
-            } else {
-                throw new AlreadyInRoomException(existingRoomId);
-            }
-        }
+        // EC-8: 이미 방(활성 또는 큐)에 참가 중인지 확인
+        evictStaleOrThrow(playerId);
 
         gameStatusService.requireEnabled(GAME_KEY);
 
         BattleRoomManager.PlayerSessionInfo player = new BattleRoomManager.PlayerSessionInfo(
                 playerId, nickname, isGuest, null, isGuest ? null : userId);
 
-        // 1. WAITING 방 + 정원 미달 탐색
-        Optional<BattleRoom> waitingRoom = battleRoomRepository.findFirstByStatus(
+        // 1. WAITING 방 탐색, 없으면 2. PLAYING 방의 큐 (PRD §5.2)
+        Optional<BattleRoom> existing = battleRoomRepository.findFirstByStatus(
                 "WAITING", Sort.by(Sort.Direction.ASC, "createdAt"));
+        if (existing.isEmpty()) {
+            existing = battleRoomRepository.findFirstByStatus(
+                    "PLAYING", Sort.by(Sort.Direction.ASC, "createdAt"));
+        }
 
-        if (waitingRoom.isPresent()) {
-            BattleRoom room = waitingRoom.get();
-            boolean joined = roomManager.joinRoom(room.getRoomId(), player);
+        if (existing.isPresent()) {
+            BattleRoom room = existing.get();
+            String roomId = room.getRoomId();
+            // 게임 중·결과 화면·정원 초과면 큐로 들어간다. DB 상태가 아니라 인메모리 락 안에서 판정한다.
+            boolean joined = roomManager.joinRoom(roomId, player);
             if (joined) {
-                int playerCount = roomManager.getActivePlayers(room.getRoomId()).size();
+                int playerCount = roomManager.getActivePlayers(roomId).size();
                 room.setCurrentPlayers(playerCount);
                 battleRoomRepository.save(room);
 
-                broadcastRoomState(room.getRoomId());
-                tryStartCountdown(room.getRoomId());
+                broadcastRoomState(roomId);
+                tryStartCountdown(roomId);
 
                 return BattleJoinResponse.builder()
-                        .roomId(room.getRoomId())
+                        .roomId(roomId)
                         .status("WAITING")
                         .playerCount(playerCount)
                         .maxPlayers(MAX_PLAYERS)
@@ -128,43 +128,20 @@ public class BattleRoomService {
                         .playerId(playerId)
                         .build();
             }
-            // WAITING 방이 인메모리에서 꽉 찬 경우 → 해당 방 큐에 진입
-            int queuePos = roomManager.getQueueSize(room.getRoomId());
+            // 큐 진입 — queuePosition != null 이 큐 상태를 뜻한다
+            int queuePos = roomManager.getQueueSize(roomId);
             room.setQueueCount(queuePos);
             battleRoomRepository.save(room);
-            broadcastRoomState(room.getRoomId());
+            // PLAYING 으로 읽은 뒤 방이 결과 화면이 됐으면(큐가 비어 예약이 없었으면) 지금 예약한다
+            if (resultScreenRooms.contains(roomId)) scheduleNextRound(roomId);
+            broadcastRoomState(roomId);
 
             return BattleJoinResponse.builder()
-                    .roomId(room.getRoomId())
-                    .status("WAITING")
-                    .playerCount(roomManager.getActivePlayers(room.getRoomId()).size())
+                    .roomId(roomId)
+                    .status(room.getStatus())
+                    .playerCount(roomManager.getActivePlayers(roomId).size())
                     .maxPlayers(MAX_PLAYERS)
                     .queuePosition(queuePos)
-                    .isGuest(isGuest)
-                    .guestToken(isGuest ? guestId : null)
-                    .playerId(playerId)
-                    .build();
-        }
-
-        // 2. PLAYING 방의 큐에 진입
-        Optional<BattleRoom> playingRoom = battleRoomRepository.findFirstByStatus(
-                "PLAYING", Sort.by(Sort.Direction.ASC, "createdAt"));
-
-        if (playingRoom.isPresent()) {
-            BattleRoom room = playingRoom.get();
-            roomManager.joinRoom(room.getRoomId(), player);  // 큐 진입
-            int queueSize = roomManager.getQueueSize(room.getRoomId());
-            room.setQueueCount(queueSize);
-            battleRoomRepository.save(room);
-
-            broadcastRoomState(room.getRoomId());
-
-            return BattleJoinResponse.builder()
-                    .roomId(room.getRoomId())
-                    .status("PLAYING")
-                    .playerCount(roomManager.getActivePlayers(room.getRoomId()).size())
-                    .maxPlayers(MAX_PLAYERS)
-                    .queuePosition(queueSize)
                     .isGuest(isGuest)
                     .guestToken(isGuest ? guestId : null)
                     .playerId(playerId)
@@ -206,6 +183,9 @@ public class BattleRoomService {
      * PRD §10.3.3
      */
     public void handleBoardState(String roomId, String senderPlayerId, BoardStateMessage msg) {
+        // 큐 대기자·방 밖 사용자의 보드는 받지 않는다
+        Optional<BattleRoomManager.PlayerSessionInfo> sender = roomManager.findActivePlayer(roomId, senderPlayerId);
+        if (sender.isEmpty()) return;
         if (msg.getBoard() == null) {
             sendError(senderPlayerId, "INVALID_BOARD", "board 형식이 올바르지 않습니다.");
             return;
@@ -213,16 +193,12 @@ public class BattleRoomService {
 
         // BUG-COMM-02 수정: PlayerSessionInfo.score 갱신 (handlePlayerFinished 에서 사용)
         // + 새로고침 복원용 보드 스냅샷 캐시 갱신
-        List<BattleRoomManager.PlayerSessionInfo> activePlayers = roomManager.getActivePlayers(roomId);
-        activePlayers.stream()
-                .filter(p -> p.getPlayerId().equals(senderPlayerId))
-                .findFirst()
-                .ifPresent(p -> p.updateGameStateCache(
-                        msg.getBoard(),
-                        msg.getScore(),
-                        msg.getLines(),
-                        msg.getLevel(),
-                        msg.getCombo()));
+        sender.get().updateGameStateCache(
+                msg.getBoard(),
+                msg.getScore(),
+                msg.getLines(),
+                msg.getLevel(),
+                msg.getCombo());
 
         BoardUpdatePayload payload = BoardUpdatePayload.builder()
                 .playerId(senderPlayerId)
@@ -247,6 +223,7 @@ public class BattleRoomService {
      * PRD §7
      */
     public void handleComboAttack(String roomId, String fromPlayerId, ComboAttackMessage msg) {
+        if (roomManager.findActivePlayer(roomId, fromPlayerId).isEmpty()) return;
         int combo = msg.getCombo();
         if (combo < 0) {
             sendError(fromPlayerId, "INVALID_COMBO", "combo 값이 유효하지 않습니다.");
@@ -326,6 +303,15 @@ public class BattleRoomService {
     private void handleLeaveInternal(String roomId, BattleRoomManager.PlayerSessionInfo player) {
         String playerId = player.getPlayerId();
 
+        // 큐 대기자는 게임에 없으므로 순위·카운트다운과 무관하다. 인원과 큐 순서만 갱신한다.
+        if (player.isQueued()) {
+            updateRoomDB(roomId);
+            broadcastRoomState(roomId);
+            updateQueuePositions(roomId);
+            closeIfFinishedAndEmpty(roomId);
+            return;
+        }
+
         // BUG-004 수정: 자발적 이탈 플래그 설정 → finishGame 전적 저장 제외
         player.setVoluntaryLeft(true);
 
@@ -334,6 +320,7 @@ public class BattleRoomService {
 
         // 게임 중 이탈이면 PLAYER_FINISHED 처리 (removePlayer 이후이므로 현재 alive 수 + 1 = rank)
         BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
+        boolean leftResultScreen = room != null && "FINISHED".equals(room.getStatus());
         if (room != null && "PLAYING".equals(room.getStatus()) && player.isAlive()) {
             int aliveCount = roomManager.getAlivePlayers(roomId).size();
             int rank = aliveCount + 1; // 이미 제거된 상태이므로 +1
@@ -353,6 +340,13 @@ public class BattleRoomService {
                 .build();
         broadcast(roomId, "PLAYER_LEFT", leftPayload);
 
+        // 대기 방의 빈자리는 새로 오는 사람보다 큐 대기자가 먼저 채운다
+        if (room != null && "WAITING".equals(room.getStatus()) && roomManager.getQueueSize(roomId) > 0) {
+            roomManager.fillFromQueue(roomId);
+            updateQueuePositions(roomId);
+            tryStartCountdown(roomId);
+        }
+
         // 방 상태 갱신
         updateRoomDB(roomId);
         broadcastRoomState(roomId);
@@ -370,6 +364,45 @@ public class BattleRoomService {
                     log.info("BattleRoomService: roomId={} WAITING 빈 방 정리 완료", roomId);
                 }
             });
+        }
+
+        // 결과 화면에서 나간 경우(T-46): 남은 사람이 이미 모두 준비했으면 다음 라운드를 연다
+        if (leftResultScreen) {
+            if (closeIfFinishedAndEmpty(roomId)) return;
+            startNextRoundIfAllReady(roomId);
+        }
+    }
+
+    /**
+     * 결과 화면 방에 활성 참가자도 큐도 없으면 닫는다. 자동 승격 예약도 취소한다.
+     * @return 닫았으면 true
+     */
+    private boolean closeIfFinishedAndEmpty(String roomId) {
+        if (!roomManager.getActivePlayers(roomId).isEmpty() || roomManager.getQueueSize(roomId) > 0) {
+            return false;
+        }
+        BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
+        if (room == null || !"FINISHED".equals(room.getStatus())) return false;
+        cancelNextRound(roomId);
+        resultScreenRooms.remove(roomId);
+        room.setClosedAt(LocalDateTime.now());
+        battleRoomRepository.save(room);
+        roomManager.cleanupRoom(roomId);
+        log.info("BattleRoomService: roomId={} 결과 화면 빈 방 정리 완료", roomId);
+        return true;
+    }
+
+    /** 결과 화면에서 준비 상태를 다시 알리고, 남은 활성 참가자(2명 이상)가 모두 준비했으면 다음 라운드로. */
+    private void startNextRoundIfAllReady(String roomId) {
+        int activeCount = roomManager.getActivePlayers(roomId).size();
+        int readyCount = roomManager.getReadyCount(roomId);
+        broadcast(roomId, "READY_STATE", ReadyStatePayload.builder()
+                .readyCount(readyCount)
+                .totalCount(activeCount)
+                .build());
+        if (activeCount >= 2 && readyCount >= activeCount && !gameStatusService.isDisabled(GAME_KEY)) {
+            roomManager.clearReadySet(roomId);
+            prepareNextRound(roomId);
         }
     }
 
@@ -394,6 +427,12 @@ public class BattleRoomService {
      * PRD §10.3.5
      */
     public void handlePlayerFinished(String roomId, String playerId, int score) {
+        // 큐 대기자·방 밖 사용자·이미 끝난 참가자는 순위를 만들 수 없다
+        boolean aliveMember = roomManager.findActivePlayer(roomId, playerId)
+                .map(BattleRoomManager.PlayerSessionInfo::isAlive)
+                .orElse(false);
+        if (!aliveMember) return;
+
         List<BattleRoomManager.PlayerSessionInfo> alivePlayers = roomManager.getAlivePlayers(roomId);
         int aliveCount = alivePlayers.size();
 
@@ -481,8 +520,12 @@ public class BattleRoomService {
         // WAITING 상태에서만 시작
         if (!"WAITING".equals(room.getStatus())) return;
 
-        List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
-        if (players.size() < 2) return;
+        // 이 시점부터 들어오는 사람은 큐로 간다. 같은 락에서 뜬 스냅샷이 이번 판의 참가자다.
+        List<BattleRoomManager.PlayerSessionInfo> players = roomManager.closeToJoin(roomId);
+        if (players.size() < 2) {
+            roomManager.reopenToJoin(roomId);
+            return;
+        }
 
         room.setStatus("PLAYING");
         room.setStartedAt(LocalDateTime.now());
@@ -595,14 +638,54 @@ public class BattleRoomService {
         broadcast(roomId, "GAME_RESULT", resultPayload);
         log.info("BattleRoomService.finishGame: roomId={} GAME_RESULT 브로드캐스트", roomId);
 
-        // ⑤ 플레이어 없으면 방 즉시 정리, 있으면 Ready 시스템 대기 (자동 재시작 없음)
-        if (players.isEmpty()) {
+        // ⑤ 큐에 사람이 있으면 10초 뒤 자동 승격, 없으면 Ready 시스템 대기. 아무도 없으면 방 정리.
+        // 결과 화면 표시를 큐 확인보다 먼저 남긴다 — 동시에 큐로 들어온 사람은 joinBattle 쪽에서 예약한다.
+        resultScreenRooms.add(roomId);
+        if (roomManager.getQueueSize(roomId) > 0) {
+            scheduleNextRound(roomId);
+            broadcastRoomState(roomId);
+        } else if (players.isEmpty()) {
+            resultScreenRooms.remove(roomId);
             room.setClosedAt(LocalDateTime.now());
             battleRoomRepository.save(room);
             roomManager.cleanupRoom(roomId);
             log.info("BattleRoomService.finishGame: roomId={} 플레이어 없음 → 방 정리", roomId);
         }
-        // 자동 prepareNextRound 스케줄 없음 — Ready 시스템으로 대체
+    }
+
+    /**
+     * 결과 화면 뒤 자동 승격 예약. 이미 예약돼 있으면 그대로 둔다.
+     * 예약 뒤 큐가 비어도 화면 카운트다운과 맞추려고 그대로 진행한다.
+     */
+    private void scheduleNextRound(String roomId) {
+        nextRoundFutures.computeIfAbsent(roomId, id -> taskScheduler.schedule(
+                () -> autoNextRound(id), Instant.now().plusSeconds(AUTO_NEXT_ROUND_SECONDS)));
+    }
+
+    private void autoNextRound(String roomId) {
+        nextRoundFutures.remove(roomId);
+        // 꺼진 게임은 다음 라운드를 열지 않는다 (T-33 Ready 차단과 동일).
+        // 큐 대기자가 갇히지 않게 다시 예약해 두고, 켜지면 그때 승격한다.
+        if (gameStatusService.isDisabled(GAME_KEY)) {
+            scheduleNextRound(roomId);
+            broadcastRoomState(roomId);
+            return;
+        }
+        roomManager.clearReadySet(roomId);
+        prepareNextRound(roomId);
+    }
+
+    private void cancelNextRound(String roomId) {
+        ScheduledFuture<?> future = nextRoundFutures.remove(roomId);
+        if (future != null) future.cancel(false);
+    }
+
+    /** 자동 승격까지 남은 초 (올림). 예약이 없으면 null. */
+    private Integer nextRoundInSeconds(String roomId) {
+        ScheduledFuture<?> future = nextRoundFutures.get(roomId);
+        if (future == null) return null;
+        long millis = future.getDelay(TimeUnit.MILLISECONDS);
+        return (int) Math.max(0, (millis + 999) / 1000);
     }
 
     /**
@@ -658,9 +741,12 @@ public class BattleRoomService {
     @Transactional
     public void prepareNextRound(String roomId) {
         BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
-        if (room == null) return;
+        // 결과 화면에서만 진행한다 — 전원 준비와 자동 승격 타이머가 겹쳐도 remove 에 성공한 한 쪽만 실행된다
+        if (room == null || !"FINISHED".equals(room.getStatus())) return;
+        if (!resultScreenRooms.remove(roomId)) return;
+        cancelNextRound(roomId);
 
-        // 큐에서 최대 4명 승격 (기존 참가자 + 큐 대기자)
+        // 큐에서 빈 자리만큼 승격 (기존 참가자 + 큐 대기자)
         List<BattleRoomManager.PlayerSessionInfo> promoted = roomManager.fillFromQueue(roomId);
         List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
 
@@ -703,25 +789,19 @@ public class BattleRoomService {
     public void handleRequestState(String roomId, String playerId) {
         // ROOM_STATE 개인 전송
         List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
-        BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
-        String status = room != null ? room.getStatus() : "WAITING";
-
-        List<PlayerInfo> playerInfos = players.stream()
-                .map(p -> PlayerInfo.builder()
-                        .id(p.getPlayerId())
-                        .nickname(p.getNickname())
-                        .isGuest(p.isGuest())
-                        .build())
-                .toList();
-
-        RoomStatePayload roomStatePayload = RoomStatePayload.builder()
-                .roomId(roomId)
-                .status(status)
-                .players(playerInfos)
-                .queueCount(roomManager.getQueueSize(roomId))
-                .build();
+        RoomStatePayload roomStatePayload = buildRoomState(roomId);
+        String status = roomStatePayload.getStatus();
         messagingTemplate.convertAndSendToUser(
                 playerId, "/queue/blockfall-battle/state", buildEnvelope("ROOM_STATE", roomStatePayload));
+
+        // 큐 대기자에게는 자기 순번을 알려 준다
+        List<BattleRoomManager.PlayerSessionInfo> queue = roomManager.getQueuePlayers(roomId);
+        for (int i = 0; i < queue.size(); i++) {
+            if (queue.get(i).getPlayerId().equals(playerId)) {
+                sendQueuePosition(playerId, i + 1, queue.size());
+                break;
+            }
+        }
 
         // 새로고침 복원 — PLAYING 상태이고 본인 게임 스냅샷이 캐싱돼 있으면 MY_GAME_STATE 전송
         if ("PLAYING".equals(status)) {
@@ -768,11 +848,14 @@ public class BattleRoomService {
     }
 
     private void broadcastRoomState(String roomId) {
-        List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
+        broadcast(roomId, "ROOM_STATE", buildRoomState(roomId));
+    }
+
+    private RoomStatePayload buildRoomState(String roomId) {
         BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
         String status = room != null ? room.getStatus() : "WAITING";
 
-        List<PlayerInfo> playerInfos = players.stream()
+        List<PlayerInfo> playerInfos = roomManager.getActivePlayers(roomId).stream()
                 .map(p -> PlayerInfo.builder()
                         .id(p.getPlayerId())
                         .nickname(p.getNickname())
@@ -780,14 +863,13 @@ public class BattleRoomService {
                         .build())
                 .toList();
 
-        RoomStatePayload payload = RoomStatePayload.builder()
+        return RoomStatePayload.builder()
                 .roomId(roomId)
                 .status(status)
                 .players(playerInfos)
                 .queueCount(roomManager.getQueueSize(roomId))
+                .nextRoundInSeconds("FINISHED".equals(status) ? nextRoundInSeconds(roomId) : null)
                 .build();
-
-        broadcast(roomId, "ROOM_STATE", payload);
     }
 
     private void sendError(String playerId, String code, String message) {
@@ -800,14 +882,17 @@ public class BattleRoomService {
         List<BattleRoomManager.PlayerSessionInfo> queue = roomManager.getQueuePlayers(roomId);
         int total = queue.size();
         for (int i = 0; i < queue.size(); i++) {
-            BattleRoomManager.PlayerSessionInfo p = queue.get(i);
-            QueuePositionPayload qp = QueuePositionPayload.builder()
-                    .position(i + 1)
-                    .totalInQueue(total)
-                    .build();
-            BattleEnvelope envelope = buildEnvelope("QUEUE_POSITION", qp);
-            messagingTemplate.convertAndSendToUser(p.getPlayerId(), "/queue/blockfall-battle/queue", envelope);
+            sendQueuePosition(queue.get(i).getPlayerId(), i + 1, total);
         }
+    }
+
+    private void sendQueuePosition(String playerId, int position, int total) {
+        QueuePositionPayload qp = QueuePositionPayload.builder()
+                .position(position)
+                .totalInQueue(total)
+                .build();
+        messagingTemplate.convertAndSendToUser(
+                playerId, "/queue/blockfall-battle/queue", buildEnvelope("QUEUE_POSITION", qp));
     }
 
     @Transactional
@@ -899,17 +984,7 @@ public class BattleRoomService {
     public BattleJoinResponse createRoomOnly(Long userId, String guestId, boolean isGuest, String nickname) {
         String playerId = isGuest ? guestId : String.valueOf(userId);
 
-        Optional<String> existingRoom = roomManager.findActiveRoomByPlayerId(playerId);
-        if (existingRoom.isPresent()) {
-            String existingRoomId = existingRoom.get();
-            Optional<BattleRoomManager.PlayerSessionInfo> stale =
-                    roomManager.findActivePlayer(existingRoomId, playerId);
-            if (stale.isPresent() && stale.get().getSessionId() == null) {
-                roomManager.removePlayerById(existingRoomId, playerId);
-            } else {
-                throw new AlreadyInRoomException(existingRoomId);
-            }
-        }
+        evictStaleOrThrow(playerId);
 
         gameStatusService.requireEnabled(GAME_KEY);
 
@@ -952,17 +1027,7 @@ public class BattleRoomService {
     public BattleJoinResponse joinSpecificRoom(String roomId, Long userId, String guestId, boolean isGuest, String nickname) {
         String playerId = isGuest ? guestId : String.valueOf(userId);
 
-        Optional<String> existingRoom = roomManager.findActiveRoomByPlayerId(playerId);
-        if (existingRoom.isPresent()) {
-            String existingRoomId = existingRoom.get();
-            Optional<BattleRoomManager.PlayerSessionInfo> stale =
-                    roomManager.findActivePlayer(existingRoomId, playerId);
-            if (stale.isPresent() && stale.get().getSessionId() == null) {
-                roomManager.removePlayerById(existingRoomId, playerId);
-            } else {
-                throw new AlreadyInRoomException(existingRoomId);
-            }
-        }
+        evictStaleOrThrow(playerId);
 
         gameStatusService.requireEnabled(GAME_KEY);
 
@@ -976,7 +1041,8 @@ public class BattleRoomService {
         BattleRoomManager.PlayerSessionInfo player = new BattleRoomManager.PlayerSessionInfo(
                 playerId, nickname, isGuest, null, isGuest ? null : userId);
 
-        boolean joined = roomManager.joinRoom(roomId, player);
+        // 직접 입장은 큐로 들어가지 않는다 — 막히면 아무 데도 남기지 않고 거절
+        boolean joined = roomManager.joinRoom(roomId, player, false);
         if (!joined) {
             throw new RoomFullOrStartedException();
         }
@@ -998,6 +1064,25 @@ public class BattleRoomService {
                 .guestToken(isGuest ? guestId : null)
                 .playerId(playerId)
                 .build();
+    }
+
+    /**
+     * 이미 방(활성 또는 큐)에 있으면 ALREADY_IN_ROOM.
+     * 단, REST join 후 WS 연결이 안 된(sessionId == null) 항목은 제거하고 재진입을 허용한다.
+     */
+    private void evictStaleOrThrow(String playerId) {
+        Optional<String> existingRoom = roomManager.findRoomIdByPlayerId(playerId);
+        if (existingRoom.isEmpty()) return;
+        String existingRoomId = existingRoom.get();
+        Optional<BattleRoomManager.PlayerSessionInfo> stale = roomManager.findPlayer(existingRoomId, playerId);
+        if (stale.isPresent() && stale.get().getSessionId() == null) {
+            BattleRoomManager.PlayerSessionInfo removed = roomManager.removePlayerById(existingRoomId, playerId);
+            // 일반 퇴장과 같게 처리한다 — 카운트다운 취소, 자동 우승, 큐 순번, 빈 방 정리
+            if (removed != null) handleLeaveInternal(existingRoomId, removed);
+            log.info("stale(sessionless) entry evicted roomId={} playerId={}", existingRoomId, playerId);
+            return;
+        }
+        throw new AlreadyInRoomException(existingRoomId);
     }
 
     // ─── 예외 ────────────────────────────────────────────────────────────────

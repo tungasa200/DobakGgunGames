@@ -13,4 +13,6 @@ public class RoomStatePayload {
     private String status;
     private List<PlayerInfo> players;
     private int queueCount;
+    /** 결과 화면(FINISHED)에서 큐 자동 승격까지 남은 초. 예약이 없으면 null. */
+    private Integer nextRoundInSeconds;
 }

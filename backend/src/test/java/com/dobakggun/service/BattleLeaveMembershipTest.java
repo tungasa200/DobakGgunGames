@@ -15,11 +15,13 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -40,10 +42,14 @@ class BattleLeaveMembershipTest {
             minesweeperManager, mock(MinesweeperRoomRepository.class), mock(MinesweeperBattleRecordRepository.class),
             mock(UserRepository.class), mock(GameStatusService.class), mock(ThreadPoolTaskScheduler.class));
 
+    private final ReentrantLock roomLock = new ReentrantLock();
+
     @BeforeEach
     void injectMessaging() {
         ReflectionTestUtils.setField(apple, "messagingTemplate", messagingTemplate);
         ReflectionTestUtils.setField(minesweeper, "messagingTemplate", messagingTemplate);
+        when(appleManager.getRoomLock("r1")).thenReturn(roomLock);
+        when(minesweeperManager.getRoomLock("r1")).thenReturn(roomLock);
     }
 
     private AppleBattleRoom appleRoom(AppleBattleRoom.Status status) {
@@ -120,5 +126,81 @@ class BattleLeaveMembershipTest {
 
         assertThat(room.getFinished().get()).isFalse();
         verifyIgnored();
+    }
+
+    @Test
+    @DisplayName("사과: 대기 방 LEAVE는 입장과 같은 방 잠금 안에서 방을 닫는다")
+    void appleLeaveHoldsRoomLock() {
+        appleRoom(AppleBattleRoom.Status.WAITING);
+        doAnswer(inv -> {
+            assertThat(roomLock.isHeldByCurrentThread()).isTrue();
+            return null;
+        }).when(appleManager).closeRoom("r1");
+
+        apple.handleLeave("r1", "1");
+
+        verify(appleManager).closeRoom("r1");
+        assertThat(roomLock.isLocked()).isFalse();
+    }
+
+    @Test
+    @DisplayName("지뢰찾기: 대기 방 LEAVE는 입장과 같은 방 잠금 안에서 방을 닫는다")
+    void minesweeperLeaveHoldsRoomLock() {
+        minesweeperRoom(MinesweeperBattleRoom.Status.WAITING);
+        doAnswer(inv -> {
+            assertThat(roomLock.isHeldByCurrentThread()).isTrue();
+            return null;
+        }).when(minesweeperManager).closeRoom("r1");
+
+        minesweeper.handleLeave("r1", "1");
+
+        verify(minesweeperManager).closeRoom("r1");
+        assertThat(roomLock.isLocked()).isFalse();
+    }
+
+    @Test
+    @DisplayName("사과·지뢰찾기: REST 대기 취소도 입장과 같은 방 잠금 안에서 방을 닫는다")
+    void cancelWaitingHoldsRoomLock() {
+        appleRoom(AppleBattleRoom.Status.WAITING);
+        minesweeperRoom(MinesweeperBattleRoom.Status.WAITING);
+        doAnswer(inv -> {
+            assertThat(roomLock.isHeldByCurrentThread()).isTrue();
+            return null;
+        }).when(appleManager).closeRoom("r1");
+        doAnswer(inv -> {
+            assertThat(roomLock.isHeldByCurrentThread()).isTrue();
+            return null;
+        }).when(minesweeperManager).closeRoom("r1");
+
+        assertThat(apple.cancelWaiting("r1", "1")).isTrue();
+        assertThat(minesweeper.cancelWaiting("r1", "1")).isTrue();
+
+        verify(appleManager).closeRoom("r1");
+        verify(minesweeperManager).closeRoom("r1");
+        assertThat(roomLock.isLocked()).isFalse();
+    }
+
+    @Test
+    @DisplayName("사과: 방 밖의 사용자는 REQUEST_STATE로 방 상태를 받지 못하고, 참가자는 받는다")
+    void appleRequestStateMembersOnly() {
+        appleRoom(AppleBattleRoom.Status.MATCHED);
+
+        apple.handleRequestState("r1", "outsider");
+        verifyIgnored();
+
+        apple.handleRequestState("r1", "1");
+        verify(messagingTemplate).convertAndSendToUser(eq("1"), eq(AppleBattleRoomService.USER_QUEUE_STATE), any(Object.class));
+    }
+
+    @Test
+    @DisplayName("지뢰찾기: 방 밖의 사용자는 REQUEST_STATE로 방 상태를 받지 못하고, 참가자는 받는다")
+    void minesweeperRequestStateMembersOnly() {
+        minesweeperRoom(MinesweeperBattleRoom.Status.PLAYING);
+
+        minesweeper.handleRequestState("r1", "outsider");
+        verifyIgnored();
+
+        minesweeper.handleRequestState("r1", "1");
+        verify(messagingTemplate).convertAndSendToUser(eq("1"), anyString(), any(Object.class));
     }
 }

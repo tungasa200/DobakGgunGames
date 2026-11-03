@@ -387,13 +387,20 @@ public class MinesweeperBattleRoomService {
 
         if (room.findPlayer(playerId) == null) return false;
 
-        if (room.getStatus() != MinesweeperBattleRoom.Status.WAITING) return false;
+        // 입장(join)과 같은 방 잠금 — 닫히는 대기 방에 누가 들어오는 경합을 막는다
+        ReentrantLock lock = roomManager.getRoomLock(roomId);
+        lock.lock();
+        try {
+            if (room.getStatus() != MinesweeperBattleRoom.Status.WAITING) return false;
 
-        log.info("cancelWaiting(REST): roomId={} playerId={}", roomId, playerId);
-        room.setStatus(MinesweeperBattleRoom.Status.FINISHED);
-        roomManager.closeRoom(roomId);
-        updateBattleRoomDB(roomId, "FINISHED", 0);
-        return true;
+            log.info("cancelWaiting(REST): roomId={} playerId={}", roomId, playerId);
+            room.setStatus(MinesweeperBattleRoom.Status.FINISHED);
+            roomManager.closeRoom(roomId);
+            updateBattleRoomDB(roomId, "FINISHED", 0);
+            return true;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
@@ -404,37 +411,44 @@ public class MinesweeperBattleRoomService {
         MinesweeperBattleRoom room = getRoom(roomId).orElse(null);
         if (room == null) return;
 
-        PlayerInfo player = room.findPlayer(playerId);
-        if (player == null) {
-            // 늦은 LEAVE일 수 있다. 오류를 보내면 같은 계정의 다른 탭 게임 화면이 오류로 바뀐다
-            return;
-        }
-        player.setVoluntaryLeft(true);
-        player.setEndReason("LEAVE");
+        // 입장(join)·유예 만료와 같은 방 잠금 — 닫히는 대기 방에 누가 들어오는 경합을 막는다
+        ReentrantLock lock = roomManager.getRoomLock(roomId);
+        lock.lock();
+        try {
+            PlayerInfo player = room.findPlayer(playerId);
+            if (player == null) {
+                // 늦은 LEAVE일 수 있다. 오류를 보내면 같은 계정의 다른 탭 게임 화면이 오류로 바뀐다
+                return;
+            }
+            player.setVoluntaryLeft(true);
+            player.setEndReason("LEAVE");
 
-        log.info("handleLeave: roomId={} playerId={}", roomId, playerId);
+            log.info("handleLeave: roomId={} playerId={}", roomId, playerId);
 
-        if (room.getStatus() == MinesweeperBattleRoom.Status.PLAYING
-                || room.getStatus() == MinesweeperBattleRoom.Status.MATCH_READY) {
-            if (room.getFinished().compareAndSet(false, true)) {
+            if (room.getStatus() == MinesweeperBattleRoom.Status.PLAYING
+                    || room.getStatus() == MinesweeperBattleRoom.Status.MATCH_READY) {
+                if (room.getFinished().compareAndSet(false, true)) {
+                    PlayerInfo opponent = room.findOpponent(playerId);
+                    String winnerId = (opponent != null) ? opponent.getPlayerId() : playerId;
+                    finishGame(room, winnerId, "OPPONENT_LEAVE");
+                }
+            } else if (room.getStatus() == MinesweeperBattleRoom.Status.WAITING) {
+                // 대기 중 이탈 — 방 정리
+                room.setStatus(MinesweeperBattleRoom.Status.FINISHED);
+                roomManager.closeRoom(roomId);
+                updateBattleRoomDB(roomId, "FINISHED", 0);
+            } else if (room.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
+                // 게임 종료 후 이탈 — 재대결 대기 중인 상대에게 REMATCH_DECLINED 발송
                 PlayerInfo opponent = room.findOpponent(playerId);
-                String winnerId = (opponent != null) ? opponent.getPlayerId() : playerId;
-                finishGame(room, winnerId, "OPPONENT_LEAVE");
+                if (opponent != null && opponent.getPlayerId() != null
+                        && room.getRematchSet().contains(opponent.getPlayerId())) {
+                    messagingTemplate.convertAndSendToUser(
+                            opponent.getPlayerId(), USER_QUEUE_STATE,
+                            buildEnvelope("REMATCH_DECLINED", Map.of("reason", "OPPONENT_LEFT")));
+                }
             }
-        } else if (room.getStatus() == MinesweeperBattleRoom.Status.WAITING) {
-            // 대기 중 이탈 — 방 정리
-            room.setStatus(MinesweeperBattleRoom.Status.FINISHED);
-            roomManager.closeRoom(roomId);
-            updateBattleRoomDB(roomId, "FINISHED", 0);
-        } else if (room.getStatus() == MinesweeperBattleRoom.Status.FINISHED) {
-            // 게임 종료 후 이탈 — 재대결 대기 중인 상대에게 REMATCH_DECLINED 발송
-            PlayerInfo opponent = room.findOpponent(playerId);
-            if (opponent != null && opponent.getPlayerId() != null
-                    && room.getRematchSet().contains(opponent.getPlayerId())) {
-                messagingTemplate.convertAndSendToUser(
-                        opponent.getPlayerId(), USER_QUEUE_STATE,
-                        buildEnvelope("REMATCH_DECLINED", Map.of("reason", "OPPONENT_LEFT")));
-            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -548,6 +562,11 @@ public class MinesweeperBattleRoomService {
         MinesweeperBattleRoom room = getRoom(roomId).orElse(null);
         if (room == null) {
             sendError(playerId, "STATE_RESTORE_FAILED", "방을 찾을 수 없습니다.");
+            return;
+        }
+        if (room.findPlayer(playerId) == null) {
+            // 방 밖의 사용자에게 상태(보드 포함)를 주지 않는다.
+            // 오류를 보내면 같은 계정의 다른 탭 게임 화면이 오류로 바뀌므로 조용히 무시한다
             return;
         }
 
@@ -848,6 +867,11 @@ public class MinesweeperBattleRoomService {
      */
     @Transactional
     public void recordWinLoss(MinesweeperBattleRoom room, String winnerId, String reason) {
+        // D-36: 양쪽 첫 클릭(게임 시작) 전 끊기거나 자발적으로 나간 사람이 있는 판은 무효 — 전적을 남기지 않는다.
+        // 유예(15초)보다 첫 클릭 타임아웃(30초)이 먼저 끝나 FIRST_CLICK_TIMEOUT으로 닫혀도 같다
+        if (room.getServerStartAtMillis() == 0
+                && room.getPlayers().stream().anyMatch(p -> p.isDisconnected() || p.isVoluntaryLeft())) return;
+
         for (PlayerInfo player : room.getPlayers()) {
             if (player.isGuest() || player.getUserId() == null) continue;
             if (player.isVoluntaryLeft()) continue; // 자발적 이탈 — 미가산

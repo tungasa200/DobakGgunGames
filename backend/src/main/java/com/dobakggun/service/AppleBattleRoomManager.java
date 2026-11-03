@@ -160,15 +160,14 @@ public class AppleBattleRoomManager {
     }
 
     /**
-     * WAITING 상태이고 플레이어가 1명인 방 목록을 반환한다.
+     * 참가 가능한(isJoinable) 공개 방 목록을 반환한다.
+     * 끊김 유예 중인 플레이어가 있는 방은 빠진다(재연결하면 다시 나온다).
      * GET /api/apple-battle/rooms/waiting 에서 사용. 최대 20개.
      */
     public List<AppleBattleRoom> getWaitingRooms() {
         List<AppleBattleRoom> result = new ArrayList<>();
         for (AppleBattleRoom room : rooms.values()) {
-            if (room.getStatus() == AppleBattleRoom.Status.WAITING
-                    && room.getPlayerCount() < 2
-                    && !room.isPrivateRoom()) {
+            if (room.isJoinable() && !room.isPrivateRoom()) {
                 result.add(room);
                 if (result.size() >= 20) break;
             }

@@ -51,6 +51,8 @@ export interface RoomStatePayload {
   status: BattleRoomStatus;
   players: BattlePlayer[];
   queueCount: number;
+  /** 결과 화면 뒤 큐 자동 승격까지 남은 초. 큐가 없거나 FINISHED가 아니면 null. 구버전 서버는 보내지 않는다. */
+  nextRoundInSeconds?: number | null;
 }
 
 export interface GameStartedPayload {
