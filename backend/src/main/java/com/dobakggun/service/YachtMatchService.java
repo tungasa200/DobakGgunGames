@@ -68,22 +68,12 @@ public class YachtMatchService {
         // 1. Rate limit
         checkRateLimit(RATE_PREFIX + userId);
 
-        // 2. 인메모리 ALREADY_IN_ROOM (모드 무관)
-        Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
-        if (inMemory.isPresent()) {
-            throw new AlreadyInRoomException(inMemory.get());
-        }
-
-        // 3. DB ALREADY_IN_ROOM (모드 무관)
-        List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
-                userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
-        if (!active.isEmpty()) {
-            throw new AlreadyInRoomException(active.get(0).getRoomId());
-        }
+        // 2. ALREADY_IN_ROOM (모드 무관)
+        rejectIfInRoom(userId);
 
         gameStatusService.requireEnabled(YachtGameService.GAME_KEY);
 
-        // 4. Redis 분산락 (diceType별 분리 락)
+        // 3. Redis 분산락 (diceType별 분리 락)
         String lockKey   = LOCK_PREFIX + diceType.name();
         String lockValue = UUID.randomUUID().toString();
         boolean locked   = acquireLock(lockKey, lockValue);
@@ -118,19 +108,7 @@ public class YachtMatchService {
         if (!available.isEmpty()) {
             YachtRoom room = available.get(0);
 
-            List<YachtParticipant> existing = yachtParticipantRepository.findByRoomOrderByJoinOrderAsc(room);
-            int joinOrder = existing.size();
-
-            YachtParticipant participant = YachtParticipant.builder()
-                    .room(room)
-                    .userId(userId)
-                    .joinOrder(joinOrder)
-                    .ready(false)
-                    .build();
-            yachtParticipantRepository.save(participant);
-
-            room.setCurrentPlayers(room.getCurrentPlayers() + 1);
-            yachtRoomRepository.save(room);
+            enterRoom(room, userId);
 
             log.info("doMatch: userId={} 기존 방 {} 입장 ({}명, status={}, diceType={}, spectator={})",
                     userId, room.getRoomId(), room.getCurrentPlayers(), room.getStatus(), diceType, asSpectator);
@@ -179,6 +157,47 @@ public class YachtMatchService {
                 .build();
     }
 
+    /**
+     * 나간 사람의 행은 (room_id, user_id) 유니크 제약 때문에 새로 넣을 수 없어 되살린다.
+     * 인원은 퇴장 때 줄지 않으므로 활성 참가자 수로 다시 센다.
+     */
+    private void enterRoom(YachtRoom room, Long userId) {
+        List<YachtParticipant> rows = yachtParticipantRepository.findByRoomOrderByJoinOrderAsc(room);
+        rows.stream().filter(p -> p.getUserId().equals(userId)).findFirst().ifPresentOrElse(
+                previous -> {
+                    previous.setLeftAt(null);
+                    previous.setReady(false);
+                },
+                () -> yachtParticipantRepository.save(YachtParticipant.builder()
+                        .room(room)
+                        .userId(userId)
+                        .joinOrder(rows.size())
+                        .ready(false)
+                        .build()));
+
+        room.setCurrentPlayers(yachtParticipantRepository.countActiveParticipants(room));
+        yachtRoomRepository.save(room);
+    }
+
+    /**
+     * 사용자 행을 잠가 같은 사용자의 입장 요청을 커밋까지 줄세운다. 잠금 뒤의 조회여야
+     * 앞선 요청이 커밋한 참가 기록을 본다(MySQL 스냅샷은 첫 일반 조회 때 만들어진다).
+     */
+    private void rejectIfInRoom(Long userId) {
+        Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
+        if (inMemory.isPresent()) {
+            throw new AlreadyInRoomException(inMemory.get());
+        }
+
+        userRepository.findByIdForUpdate(userId);
+
+        List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
+                userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
+        if (!active.isEmpty()) {
+            throw new AlreadyInRoomException(active.get(0).getRoomId());
+        }
+    }
+
     // ─── 봇 매칭 ─────────────────────────────────────────────────────────────
 
     /**
@@ -190,12 +209,7 @@ public class YachtMatchService {
     @Transactional
     public YachtMatchResponse matchBot(Long userId, YachtDiceType diceType) {
         // 기존 활성 방 중복 참여 방지
-        Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
-        if (inMemory.isPresent()) throw new AlreadyInRoomException(inMemory.get());
-
-        List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
-                userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
-        if (!active.isEmpty()) throw new AlreadyInRoomException(active.get(0).getRoomId());
+        rejectIfInRoom(userId);
 
         gameStatusService.requireEnabled(YachtGameService.GAME_KEY);
 
@@ -344,18 +358,7 @@ public class YachtMatchService {
         // Rate limit
         checkRateLimit(RATE_PREFIX + userId);
 
-        // 인메모리 ALREADY_IN_ROOM
-        Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
-        if (inMemory.isPresent()) {
-            throw new AlreadyInRoomException(inMemory.get());
-        }
-
-        // DB ALREADY_IN_ROOM
-        List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
-                userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
-        if (!active.isEmpty()) {
-            throw new AlreadyInRoomException(active.get(0).getRoomId());
-        }
+        rejectIfInRoom(userId);
 
         gameStatusService.requireEnabled(YachtGameService.GAME_KEY);
 
@@ -400,18 +403,7 @@ public class YachtMatchService {
      */
     @Transactional
     public YachtMatchResponse joinRoom(Long userId, String roomId) {
-        // 인메모리 ALREADY_IN_ROOM
-        Optional<String> inMemory = yachtGameService.findActiveRoomId(userId);
-        if (inMemory.isPresent()) {
-            throw new AlreadyInRoomException(inMemory.get());
-        }
-
-        // DB ALREADY_IN_ROOM
-        List<YachtRoom> active = yachtRoomRepository.findActiveRoomsByUserId(
-                userId, List.of(YachtRoomStatus.WAITING, YachtRoomStatus.PLAYING));
-        if (!active.isEmpty()) {
-            throw new AlreadyInRoomException(active.get(0).getRoomId());
-        }
+        rejectIfInRoom(userId);
 
         gameStatusService.requireEnabled(YachtGameService.GAME_KEY);
 
@@ -425,18 +417,7 @@ public class YachtMatchService {
             throw new RoomFullOrStartedException();
         }
 
-        List<YachtParticipant> existing = yachtParticipantRepository.findByRoomOrderByJoinOrderAsc(room);
-        int joinOrder = existing.size();
-
-        yachtParticipantRepository.save(YachtParticipant.builder()
-                .room(room)
-                .userId(userId)
-                .joinOrder(joinOrder)
-                .ready(false)
-                .build());
-
-        room.setCurrentPlayers(room.getCurrentPlayers() + 1);
-        yachtRoomRepository.save(room);
+        enterRoom(room, userId);
 
         log.info("joinRoom: userId={} 방 {} 직접 입장 ({}명)", userId, roomId, room.getCurrentPlayers());
 
