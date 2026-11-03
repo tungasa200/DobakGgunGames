@@ -392,7 +392,11 @@ public class BattleRoomService {
         return true;
     }
 
-    /** 결과 화면에서 준비 상태를 다시 알리고, 남은 활성 참가자(2명 이상)가 모두 준비했으면 다음 라운드로. */
+    /**
+     * 결과 화면에서 준비 상태를 다시 알리고, 남은 활성 참가자(2명 이상)가 모두 준비했으면 다음 라운드로.
+     * D-38: 혼자 남으면 10초 타이머를 기다리지 않고 바로 대기실(WAITING)로 돌린다 — 큐 대기자는 이때 승격되고,
+     * 큐가 없으면 자동 매칭(WAITING 검색)이 새 상대를 넣는다. 남은 타이머는 prepareNextRound 가 취소한다.
+     */
     private void startNextRoundIfAllReady(String roomId) {
         int activeCount = roomManager.getActivePlayers(roomId).size();
         int readyCount = roomManager.getReadyCount(roomId);
@@ -400,7 +404,8 @@ public class BattleRoomService {
                 .readyCount(readyCount)
                 .totalCount(activeCount)
                 .build());
-        if (activeCount >= 2 && readyCount >= activeCount && !gameStatusService.isDisabled(GAME_KEY)) {
+        if (gameStatusService.isDisabled(GAME_KEY)) return;
+        if (activeCount == 1 || (activeCount >= 2 && readyCount >= activeCount)) {
             roomManager.clearReadySet(roomId);
             prepareNextRound(roomId);
         }
@@ -728,7 +733,8 @@ public class BattleRoomService {
                 .build());
         log.debug("handlePlayerReady: roomId={} playerId={} readyCount={}/{}", roomId, playerId, readyCount, totalCount);
 
-        if (allReady) {
+        // D-38: 게임 중 상대가 나가 결과 화면에 혼자 남았으면 준비로 대기실(WAITING)에 돌아간다
+        if (allReady || totalCount == 1) {
             roomManager.clearReadySet(roomId);
             prepareNextRound(roomId);
         }
@@ -787,6 +793,9 @@ public class BattleRoomService {
      * REST join → WS 구독 사이에 브로드캐스트된 MATCH_COUNTDOWN을 놓친 플레이어를 위한 catch-up.
      */
     public void handleRequestState(String roomId, String playerId) {
+        // T-41(R7): 방 밖의 사용자에게는 아무것도 보내지 않는다. 큐 사용자는 순번 표시에 ROOM_STATE 가 필요하므로 받는다.
+        if (!roomManager.isPlayerInRoom(roomId, playerId)) return;
+
         // ROOM_STATE 개인 전송
         List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
         RoomStatePayload roomStatePayload = buildRoomState(roomId);

@@ -273,6 +273,9 @@ export default function BlockfallBattlePage() {
       // 재연결 시: 서버가 이미 PLAYING/FINISHED → 실제 상태로 보정
       if (rs.status === 'PLAYING' && (prev === 'waiting' || prev === 'countdown')) return 'playing';
       if (rs.status === 'FINISHED' && (prev === 'waiting' || prev === 'countdown')) return 'finished';
+      // 결과 화면 중 다음 라운드로 넘어갔는데(FINISHED→WAITING) 남은 인원이 1명이면 카운트다운이 오지 않는다.
+      // 결과 화면에 두면 준비 버튼도 서버가 무시하므로 대기실로 보낸다. 2명 이상이면 MATCH_COUNTDOWN이 이어서 온다.
+      if (rs.status === 'WAITING' && prev === 'finished' && amIn && rs.players.length < 2) return 'waiting';
       return prev;
     });
 
