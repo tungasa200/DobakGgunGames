@@ -44,6 +44,12 @@ type PagePhase =
   | 'finished'  // 결과 화면
   | 'error';    // 에러
 
+// queuePosition이 있으면 큐 대기 — status가 WAITING이어도(결과 화면 중 입장 등) 큐로 본다.
+// 저장된 joinInfo로 복구할 때도 쓰며, 실제 상태는 ROOM_STATE가 보정한다.
+function initialPhaseFor(info: BattleJoinResponse): PagePhase {
+  return info.queuePosition != null || info.status !== 'WAITING' ? 'queued' : 'waiting';
+}
+
 interface BattleToastState {
   id: number;
   tag: string;
@@ -85,6 +91,7 @@ export default function BlockfallBattlePage() {
   const [eliminatedPlayers, setEliminatedPlayers] = useState<Map<string, { rank: number }>>(new Map());
   const [garbagePending, setGarbagePending] = useState(0);
   const [countdown, setCountdown] = useState(0);
+  const [nextRoundLeft, setNextRoundLeft] = useState<number | null>(null);
 
   // 플레이어 이탈·WS 오류 토스트
   const [battleToast, setBattleToast] = useState<BattleToastState | null>(null);
@@ -140,12 +147,7 @@ export default function BlockfallBattlePage() {
       saveJoinInfo(res);
       setJoinInfo(res);
 
-      if (res.status === 'WAITING') {
-        setPhase('waiting');
-      } else {
-        // PLAYING — 큐 진입
-        setPhase('queued');
-      }
+      setPhase(initialPhaseFor(res));
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string };
       if (e.code === GAME_DISABLED_CODE) { clearJoinInfo(); return; }
@@ -154,7 +156,7 @@ export default function BlockfallBattlePage() {
         const stored = getStoredJoinInfo();
         if (stored) {
           setJoinInfo(stored);
-          setPhase('waiting'); // ROOM_STATE 수신 시 실제 phase로 보정됨
+          setPhase(initialPhaseFor(stored)); // ROOM_STATE 수신 시 실제 phase로 보정됨
           // ROOM_STATE 수신 전까지 연습 화면이 보이지 않도록 복구 플래그 설정
           setRecoveringFromRefresh(true);
           return;
@@ -184,7 +186,7 @@ export default function BlockfallBattlePage() {
         const stored = getStoredJoinInfo();
         if (stored) {
           setJoinInfo(stored);
-          setPhase('waiting');
+          setPhase(initialPhaseFor(stored));
           setRecoveringFromRefresh(true);
           return;
         }
@@ -205,7 +207,7 @@ export default function BlockfallBattlePage() {
       const res = await joinBattleRoom(roomId, accessToken, existingToken);
       saveJoinInfo(res);
       setJoinInfo(res);
-      setPhase('waiting');
+      setPhase(initialPhaseFor(res));
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string };
       if (e.code === GAME_DISABLED_CODE) { clearJoinInfo(); return; }
@@ -213,7 +215,7 @@ export default function BlockfallBattlePage() {
         const stored = getStoredJoinInfo();
         if (stored) {
           setJoinInfo(stored);
-          setPhase('waiting');
+          setPhase(initialPhaseFor(stored));
           setRecoveringFromRefresh(true);
           return;
         }
@@ -250,9 +252,24 @@ export default function BlockfallBattlePage() {
       isGuest: p.isGuest,
     })));
 
+    // 큐 대기자는 활성 players에 없다. 승격(FINISHED→WAITING) 때 players에 들어온다.
+    const amIn = rs.players.some(p => p.id === joinInfo?.playerId);
+
+    // 승격됐으면 저장된 큐 위치를 지운다 — 이후 새로고침이 큐 대기로 복구되지 않도록
+    if (amIn && joinInfo && joinInfo.queuePosition != null) {
+      const promoted = { ...joinInfo, queuePosition: null };
+      saveJoinInfo(promoted);
+      setJoinInfo(promoted);
+    }
+
     // setPhase 콜백으로 현재 phase를 참조 — stale closure 방지
     setPhase(prev => {
-      if (rs.status === 'WAITING' && prev === 'queued') return 'waiting';
+      if (prev === 'queued') {
+        if (!amIn) return 'queued';
+        // 승격 또는 저장된 큐 정보로 복구했는데 이미 활성 참가자인 경우 실제 상태로 보정
+        if (rs.status === 'WAITING') return ws.countdown > 0 ? 'countdown' : 'waiting';
+        return rs.status === 'PLAYING' ? 'playing' : 'finished';
+      }
       // 재연결 시: 서버가 이미 PLAYING/FINISHED → 실제 상태로 보정
       if (rs.status === 'PLAYING' && (prev === 'waiting' || prev === 'countdown')) return 'playing';
       if (rs.status === 'FINISHED' && (prev === 'waiting' || prev === 'countdown')) return 'finished';
@@ -262,9 +279,27 @@ export default function BlockfallBattlePage() {
     // ROOM_STATE 도착 후:
     // - PLAYING 상태가 아니면 즉시 복구 완료 (MY_GAME_STATE 기대 X)
     // - PLAYING 이면 MY_GAME_STATE 도착(또는 타임아웃) 까지 복구 대기 유지
-    if (rs.status !== 'PLAYING') {
+    // - 큐 대기자는 MY_GAME_STATE를 받지 않으므로 즉시 복구 완료
+    if (rs.status !== 'PLAYING' || !amIn) {
       setRecoveringFromRefresh(false);
     }
+  // ROOM_STATE 도착에만 반응한다. joinInfo를 의존성에 넣으면 재입장 때 이전 방의 roomState로 다시 돈다.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws.roomState]);
+
+  // 결과 화면의 큐 자동 승격 카운트다운 — 서버 남은 초 기준으로 클라이언트에서 줄인다
+  useEffect(() => {
+    const rs = ws.roomState;
+    const seconds = rs?.status === 'FINISHED' ? rs.nextRoundInSeconds ?? null : null;
+    setNextRoundLeft(seconds);
+    if (seconds == null || seconds <= 0) return;
+    const deadline = Date.now() + seconds * 1000;
+    const t = setInterval(() => {
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setNextRoundLeft(left);
+      if (left === 0) clearInterval(t);
+    }, 1000);
+    return () => clearInterval(t);
   }, [ws.roomState]);
 
   // MY_GAME_STATE 도착 시 복구 완료
@@ -284,6 +319,8 @@ export default function BlockfallBattlePage() {
   // GAME_STARTED
   useEffect(() => {
     if (!ws.gameStarted) return;
+    // 이번 라운드 참가자가 아니면(큐 대기자) 큐 화면 유지
+    if (!ws.gameStarted.players.some(p => p.id === joinInfo?.playerId)) return;
     myGameOverRef.current = false;
     myFinalScoreRef.current = 0;
     setOpponents(new Map());
@@ -295,6 +332,8 @@ export default function BlockfallBattlePage() {
       isGuest: p.isGuest,
     })));
     setPhase('playing');
+  // GAME_STARTED 도착에만 반응한다(재입장 때 이전 방 이벤트로 다시 돌지 않도록 joinInfo는 넣지 않음)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ws.gameStarted]);
 
   // BOARD_UPDATE — 상대 보드 갱신
@@ -343,14 +382,16 @@ export default function BlockfallBattlePage() {
     // joinInfo는 유지 — Ready 시스템으로 다음 라운드 참여 가능
     // 명시적 이탈(handleLeave) 시에만 clearJoinInfo() 호출
 
-    setPhase('finished');
+    // 이번 라운드에 뛰지 않은 큐 대기자는 결과 화면으로 가지 않고 큐 화면 유지
+    setPhase(prev => (prev === 'queued' ? 'queued' : 'finished'));
   }, [ws.gameResult, joinInfo?.playerId]);
 
   // MATCH_COUNTDOWN
   useEffect(() => {
     if (ws.countdown > 0) {
       setCountdown(ws.countdown);
-      setPhase(prev => (prev === 'playing' ? 'playing' : 'countdown'));
+      // 큐 대기자는 승격(ROOM_STATE로 waiting 전환) 전까지 카운트다운 화면으로 가지 않는다
+      setPhase(prev => (prev === 'playing' || prev === 'queued' ? prev : 'countdown'));
     } else if (ws.countdown === 0) {
       // 카운트다운 취소 → 대기로 복귀
       // functional updater 사용: GAME_STARTED effect와 배칭 시 'playing'으로 전환된 경우 무시
@@ -533,13 +574,19 @@ export default function BlockfallBattlePage() {
 
     const playerCount = players.length;
     const queueCount = ws.roomState?.queueCount ?? 0;
-    const qp = ws.queuePosition;
+    // QUEUE_POSITION 도착 전에는 join 응답의 위치를 쓴다('?' 노출 방지)
+    const queuePos = ws.queuePosition?.position ?? joinInfo?.queuePosition ?? null;
+    const queueLabel = queuePos != null ? `대기열 ${queuePos}번째` : '대기열 등록 중';
 
     return (
       <div className="battle-status-bar">
         {phase === 'queued' ? (
           <span className="battle-status-text">
-            현재 게임 진행 중 — 대기열 {qp?.position ?? '?'}번째
+            {ws.roomState?.status === 'FINISHED'
+              ? `결과 확인 중${nextRoundLeft ? ` — ${nextRoundLeft}초 뒤 합류` : ''} · ${queueLabel}`
+              : ws.roomState?.status === 'WAITING'
+                ? `다음 라운드 대기 중 — ${queueLabel}`
+                : `현재 게임 진행 중 — ${queueLabel}`}
           </span>
         ) : phase === 'countdown' ? (
           <span className="battle-status-text">
@@ -746,6 +793,15 @@ export default function BlockfallBattlePage() {
             {ws.readyState && (
               <p style={{ textAlign: 'center', color: '#8b949e', fontSize: 13, margin: '8px 0 0' }}>
                 준비 완료: {ws.readyState.readyCount} / {ws.readyState.totalCount}명
+              </p>
+            )}
+
+            {/* 큐 자동 승격 카운트다운 — 매초 읽히지 않도록 live region은 두지 않는다 */}
+            {nextRoundLeft != null && (
+              <p style={{ textAlign: 'center', color: '#8b949e', fontSize: 13, margin: '4px 0 0' }}>
+                {nextRoundLeft > 0
+                  ? `대기열 플레이어가 ${nextRoundLeft}초 뒤 합류합니다`
+                  : '대기열 플레이어가 합류하는 중...'}
               </p>
             )}
 
