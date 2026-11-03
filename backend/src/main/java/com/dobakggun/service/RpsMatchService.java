@@ -130,6 +130,7 @@ public class RpsMatchService {
             int newCount = room.getCurrentPlayers() + 1;
             room.setCurrentPlayers(newCount);
             rpsRoomRepository.save(room);
+            rpsRoomService.reserve(room.getRoomId(), effectiveUserId);
 
             log.info("doMatch: effectiveUserId={} 기존 방 {} 입장 ({}명)", effectiveUserId, room.getRoomId(), newCount);
 
@@ -155,6 +156,7 @@ public class RpsMatchService {
                 .createdBy(user) // 게스트이면 null
                 .build();
         rpsRoomRepository.save(newRoom);
+        rpsRoomService.reserve(newRoomId, effectiveUserId);
 
         log.info("doMatch: effectiveUserId={} 신규 방 {} 생성 (guest={})", effectiveUserId, newRoomId, guestToken != null);
 

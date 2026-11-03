@@ -141,6 +141,7 @@ public class BattleRoomManager {
                         .findFirst();
                 if (found.isPresent()) {
                     players.remove(found.get());
+                    clearReady(roomId, found.get().getPlayerId());
                     log.debug("BattleRoomManager.removePlayer: roomId={} playerId={} (활성 제거)", roomId, found.get().getPlayerId());
                     return found.get();
                 }
@@ -175,6 +176,7 @@ public class BattleRoomManager {
                         .findFirst();
                 if (found.isPresent()) {
                     players.remove(found.get());
+                    clearReady(roomId, playerId);
                     sessionRoomMap.remove(found.get().getSessionId());
                     return found.get();
                 }
@@ -406,6 +408,14 @@ public class BattleRoomManager {
 
     public void clearReadySet(String roomId) {
         readySets.remove(roomId);
+    }
+
+    /** 나간 멤버의 준비가 남으면 남은 사람이 준비하기 전에 다음 라운드가 열린다. */
+    private void clearReady(String roomId, String playerId) {
+        Set<String> ready = readySets.get(roomId);
+        if (ready != null) {
+            ready.remove(playerId);
+        }
     }
 
     /**

@@ -2,6 +2,7 @@ package com.dobakggun.service;
 
 import com.dobakggun.domain.apple.AppleBattleRoom;
 import com.dobakggun.domain.minesweeper.MinesweeperBattleRoom;
+import com.dobakggun.dto.rps.RpsEnvelopeDto;
 import com.dobakggun.entity.battle.BattleRoom;
 import com.dobakggun.entity.User;
 import com.dobakggun.entity.yacht.YachtDiceType;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -393,16 +395,24 @@ class GameDisabledGuardTest {
         }
 
         @Test
-        @DisplayName("진행 중 라운드는 끝까지 처리하되 다음 라운드는 자동으로 열지 않는다")
-        void roundFinishesWithoutAutoRestart() {
+        @DisplayName("진행 중 라운드는 끝까지 처리한 뒤 GAME_DISABLED 를 알리고 방을 닫는다")
+        void roundFinishesThenRoomCloses() {
             RpsRoomService.RpsRoomState state = twoPlayerRoom();
             state.status = com.dobakggun.entity.rps.RoomStatus.PLAYING;
             roomsOf(roomService).put("r1", state);
 
             roomService.processRoundResult("r1");
 
-            assertThat(state.status).isEqualTo(com.dobakggun.entity.rps.RoomStatus.WAITING);
-            verify(messagingTemplate, Mockito.atLeastOnce()).convertAndSend(anyString(), any(Object.class));
+            ArgumentCaptor<Object> sent = ArgumentCaptor.forClass(Object.class);
+            verify(messagingTemplate, Mockito.atLeastOnce()).convertAndSend(eq("/topic/rps/room/r1"), sent.capture());
+            List<RpsEnvelopeDto> envelopes = sent.getAllValues().stream().map(RpsEnvelopeDto.class::cast).toList();
+            assertThat(envelopes).extracting(RpsEnvelopeDto::getType)
+                    .containsExactly("ROUND_RESULT", "ROOM_STATE", "ERROR", "ROOM_CLOSED");
+            assertThat(envelopes.get(2).getPayload()).isEqualTo(Map.of(
+                    "code", GameDisabledException.CODE, "message", GameDisabledException.USER_MESSAGE));
+
+            assertThat(state.status).isEqualTo(com.dobakggun.entity.rps.RoomStatus.FINISHED);
+            assertThat(roomsOf(roomService)).isEmpty();
             verify(taskScheduler, never()).schedule(any(Runnable.class), any(Instant.class));
         }
 
