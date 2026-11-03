@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { rankingsApi, startSession } from '../../api/rankings';
+import { isGameDisabledError } from '../../api/gameDisabled';
 import { containsProfanity } from '../../utils/profanity';
 import { useAuth } from '../../context/AuthContext';
 import { useAdminTest } from '../../context/AdminTestContext';
@@ -382,6 +383,7 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
   // 세션
   const sessionIdRef      = useRef('');
   const sessionFailedRef  = useRef(false);
+  const sessionRunRef     = useRef(0);
   const [sessionFailed, setSessionFailed] = useState(false);
 
   // ===== C: Camera Shake ref =====
@@ -1556,7 +1558,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     try {
       const id = await startSession('blockfall-insane', currentLevelRef.current);
       sessionIdRef.current = id;
-    } catch { /* ignore */ }
+    } catch {
+      return;
+    }
     setModalOpen(true);
   };
   useEffect(() => {
@@ -2369,17 +2373,21 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     activeBgmRef.current = 'default';
     submittedIdRef.current = null;
 
+    const run = ++sessionRunRef.current;
     (async () => {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const id = await startSession('blockfall-insane', level);
+          if (run !== sessionRunRef.current) return;
           sessionIdRef.current = id;
           sessionFailedRef.current = false;
           setSessionFailed(false);
           return;
-        } catch {
+        } catch (e) {
+          if (isGameDisabledError(e)) return;
           if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
         }
+        if (run !== sessionRunRef.current) return;
       }
       sessionIdRef.current = '';
       sessionFailedRef.current = true;
@@ -2387,6 +2395,9 @@ export default function BlockfallInsaneBoard({ onThemeChange }: InsaneBoardProps
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameLoop]);
+
+  // 화면을 떠나면 세션 재시도를 멈춘다.
+  useEffect(() => () => { sessionRunRef.current++; }, []);
 
   // ===== 일시정지 =====
   const togglePause = useCallback(() => {

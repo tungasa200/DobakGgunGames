@@ -152,7 +152,7 @@ export default function NormalHeader({ currentGame = '', gameName = '', accentCo
               const isCurrent = g.isHome ? currentGame === '' : g.key === currentGame;
               const normalHref = g.isHome ? '/' : `/${g.key}`;
               const excelHref  = g.isHome ? '/excel' : `/${g.key}/excel`;
-              const isDisabled = !g.isHome && user?.role !== 'ADMIN' && gameStatus[g.key] === false;
+              const isDisabled = !g.isHome && gameStatus[g.key] === false;
               return (
                 <div key={g.key || 'home'} className={`${styles.dropItem} ${isDisabled ? styles.dropItemDisabled : ''}`}>
                   <span className={styles.dropIcon}>{g.icon}</span>

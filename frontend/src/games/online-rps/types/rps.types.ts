@@ -26,7 +26,8 @@ export type RpsEventType =
   | 'ROUND_RESULT'
   | 'PLAYER_LEFT'
   | 'HOST_CHANGED'
-  | 'ROOM_CLOSED';
+  | 'ROOM_CLOSED'
+  | 'ERROR';
 
 export interface RpsWsMessage<T = unknown> {
   type: RpsEventType;
@@ -101,7 +102,7 @@ export interface HostChangedPayload {
 
 export interface RoomClosedPayload {
   roomId: string;
-  reason: 'EMPTY' | 'HOST_LEFT_ALONE';
+  reason: 'EMPTY' | 'HOST_LEFT_ALONE' | 'GAME_DISABLED';
 }
 
 // ── REST API 타입 ────────────────────────────────────────────

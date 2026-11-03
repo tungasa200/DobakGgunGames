@@ -18,6 +18,7 @@ export interface MatchError {
   alreadyInRoom: false;
   status: number;
   error: string;
+  code?: string;
 }
 
 export type MatchOutcome = MatchResult | MatchAlreadyInRoom | MatchError;
@@ -58,7 +59,7 @@ export async function postMatch(token?: string | null): Promise<MatchOutcome> {
     return { ok: true, data };
   }
 
-  const body = await res.json().catch(() => ({})) as Partial<AlreadyInRoomError & { error: string }>;
+  const body = await res.json().catch(() => ({})) as Partial<AlreadyInRoomError & { error: string; code: string }>;
 
   if (res.status === 409 && body.error === 'ALREADY_IN_ROOM' && body.roomId) {
     return { ok: false, alreadyInRoom: true, roomId: body.roomId };
@@ -69,5 +70,6 @@ export async function postMatch(token?: string | null): Promise<MatchOutcome> {
     alreadyInRoom: false,
     status: res.status,
     error: body.error ?? '매칭 요청에 실패했습니다',
+    code: body.code,
   };
 }

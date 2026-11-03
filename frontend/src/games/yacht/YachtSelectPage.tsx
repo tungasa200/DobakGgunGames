@@ -9,6 +9,8 @@ import {
   getYachtRoomStatus,
 } from '../../api/yacht';
 import type { YachtWaitingRoomInfo } from '../../api/yacht';
+import { GAME_DISABLED_CODE } from '../../api/gameDisabled';
+import { getMatchErrorMessage } from '../../api/matchError';
 import type { DiceType } from './types/yacht.types';
 import YachtModeCard from './components/YachtModeCard';
 import styles from './components/yacht.module.css';
@@ -59,8 +61,8 @@ export default function YachtSelectPage() {
       navigate(`/yacht?mode=${diceType}`, {
         state: { roomId: outcome.roomId, diceType },
       });
-    } else {
-      showToast(`오류: ${outcome.error}`);
+    } else if (outcome.code !== GAME_DISABLED_CODE) {
+      showToast(getMatchErrorMessage(outcome.error));
     }
   };
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { rankingsApi, startSession } from '../../api/rankings';
+import { isGameDisabledError } from '../../api/gameDisabled';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
@@ -847,7 +848,8 @@ export default function BlockfallBoard({ excel = false }: Props) {
           sessionFailedRef.current = false;
           setSessionFailed(false);
           return;
-        } catch {
+        } catch (e) {
+          if (isGameDisabledError(e)) return;
           if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
         }
       }

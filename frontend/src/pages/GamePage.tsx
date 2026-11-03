@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ExcelShell from '../components/excel/ExcelShell';
 import NormalHeader from '../components/normal/NormalHeader';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { useAuth } from '../context/AuthContext';
-import { fetchGameStatus } from '../api/games';
 import type { ThemeName as MinesweeperThemeName } from '../games/minesweeper/MinesweeperBoard';
 
 const BaseballBoard    = lazy(() => import('../games/baseball/BaseballBoard'));
@@ -90,14 +88,10 @@ const ACCENT_COLORS: Record<string, string> = {
   'blockfall-insane': '#ff2d55',
 };
 
-// blockfall-insane은 AdminRoute로 보호되므로 게임 상태 점검 제외
-const ADMIN_ONLY_GAMES = new Set(['blockfall-insane']);
-
 export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?: string }) {
   const { game: paramGame } = useParams<{ game: string }>();
   const game = gameKey ?? paramGame;
   const name = game ? GAME_NAMES[game] : undefined;
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   // blockfall-insane 헤더 강조색 + 배경색 — 첫 이벤트 전: 일반 블록폴 스타일, 이후: 인세인 스타일
@@ -153,17 +147,6 @@ export default function GamePage({ excel, gameKey }: { excel: boolean; gameKey?:
     if (!name || !game) return;
     document.title = excel ? (FILE_TITLES[game] ?? game) : name;
   }, [game, excel, name]);
-
-  // 비활성 게임 URL 직접 접근 차단 (어드민 전용 게임 및 어드민 유저 제외)
-  useEffect(() => {
-    if (!game || ADMIN_ONLY_GAMES.has(game) || user?.role === 'ADMIN') return;
-    fetchGameStatus().then(status => {
-      if (status[game] === false) {
-        alert('현재 점검 중인 게임입니다.\n이용에 불편을 드려 죄송합니다.');
-        navigate('/', { replace: true });
-      }
-    });
-  }, [game, user, navigate]);
 
   // blockfall-insane은 엑셀 모드 미지원 — 일반 모드로 강제 리다이렉트
   if (game === 'blockfall-insane' && excel) {

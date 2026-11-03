@@ -17,6 +17,8 @@ const GAME_LABELS: Record<string, { name: string; icon: string }> = {
   'minesweeper-battle': { name: '지뢰찾기 배틀',  icon: '💣' },
   yacht:            { name: '야추 (Yacht)',      icon: '🎲' },
   brickbreaker:     { name: '벽돌깨기',         icon: '🧱' },
+  'block-crush':    { name: '블록 크러시',      icon: '🟩' },
+  'blockfall-insane': { name: '블록폴: 인세인', icon: '🟥' },
 };
 
 export default function AdminGamesPage() {
@@ -46,7 +48,7 @@ export default function AdminGamesPage() {
     const next = !currentActive;
     const msg = next
       ? `${label}을(를) 활성화하시겠습니까?`
-      : `${label}을(를) 비활성화하시겠습니까?\n일반 사용자는 해당 게임에 접근할 수 없습니다.`;
+      : `${label}을(를) 비활성화하시겠습니까?\n어드민을 포함한 모든 사용자가 새 판을 시작할 수 없습니다. 진행 중인 판은 끝까지 진행됩니다.`;
     if (!confirm(msg)) return;
 
     setToggling(key);
@@ -107,7 +109,7 @@ export default function AdminGamesPage() {
                   <td style={{ fontSize: 12, color: '#888' }}>
                     {g.active
                       ? '모든 사용자가 접근 가능합니다'
-                      : '일반 사용자 접근 불가 (점검 중)'}
+                      : '어드민 포함 새 판 시작 불가 (점검 중)'}
                   </td>
                   <td>
                     <button
@@ -127,9 +129,9 @@ export default function AdminGamesPage() {
       </div>
 
       <div style={{ marginTop: 16, fontSize: 12, color: '#999', lineHeight: 1.6 }}>
-        * 비활성화된 게임은 메인 페이지와 헤더에서 점검 중으로 표시됩니다.<br />
-        * 일반 사용자가 URL로 직접 접근하면 메인으로 리다이렉트됩니다.<br />
-        * 어드민은 비활성화 상태에서도 게임에 정상 접근할 수 있습니다.
+        * 비활성화된 게임은 일반·Excel 메인과 헤더에서 점검 중으로 표시됩니다.<br />
+        * URL로 직접 접근하면 메인으로 리다이렉트됩니다.<br />
+        * 어드민도 예외 없이 막히며, 진행 중인 판은 끝까지 진행됩니다.
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { postYachtBotMatch, getYachtRoom } from '../../../api/yacht';
+import { closeDisabledGame, GAME_DISABLED_CODE } from '../../../api/gameDisabled';
+import { getMatchErrorMessage } from '../../../api/matchError';
 import { connectYacht } from '../../../lib/yachtStompClient';
 import type { YachtStompClientHandle } from '../../../lib/yachtStompClient';
 import type {
@@ -82,6 +84,7 @@ export function useYachtBotGame(initialDiceType: DiceType = 'D6'): UseYachtBotGa
   const roomIdRef = useRef<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roomClosedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef<boolean>(false);
   const diceTypeRef = useRef<DiceType>(initialDiceType);
 
@@ -255,18 +258,20 @@ export function useYachtBotGame(initialDiceType: DiceType = 'D6'): UseYachtBotGa
       },
       onRoomClosed: () => {
         setErrorMessage('방이 닫혔습니다. 홈으로 이동합니다.');
-        setTimeout(() => goHome(), 3000);
+        if (roomClosedTimerRef.current !== null) clearTimeout(roomClosedTimerRef.current);
+        roomClosedTimerRef.current = setTimeout(() => goHome(), 3000);
       },
       onPlayerReconnecting: () => {},
       onPlayerReturned: () => {},
       onKickVote: () => {},
       onChat: () => {},
       onError: (code: string, message: string) => {
+        if (code === GAME_DISABLED_CODE) { closeDisabledGame(); return; }
         if (code === 'UNAUTHORIZED' || code === 'ROOM_NOT_FOUND') {
           setErrorMessage(message || '연결 오류가 발생했습니다');
           setPhase('error');
         } else {
-          showToast(message || `오류: ${code}`);
+          showToast(getMatchErrorMessage(message || code));
         }
       },
       onStatusChange: (status: ConnectionStatus) => {
@@ -315,8 +320,8 @@ export function useYachtBotGame(initialDiceType: DiceType = 'D6'): UseYachtBotGa
       showToast('이미 진행 중인 방이 있습니다. 재진입합니다.');
       setPhase('connecting');
       connectWs(id, accessToken);
-    } else {
-      setErrorMessage(`매칭 실패: ${outcome.error}`);
+    } else if (outcome.code !== GAME_DISABLED_CODE) {
+      setErrorMessage(getMatchErrorMessage(outcome.error));
       setPhase('error');
     }
   }, [accessToken, connectWs, showToast]);
@@ -378,6 +383,7 @@ export function useYachtBotGame(initialDiceType: DiceType = 'D6'): UseYachtBotGa
       }
       if (toastTimerRef.current !== null) clearTimeout(toastTimerRef.current);
       if (rollingTimerRef.current !== null) clearTimeout(rollingTimerRef.current);
+      if (roomClosedTimerRef.current !== null) clearTimeout(roomClosedTimerRef.current);
     };
   }, []);
 

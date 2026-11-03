@@ -4,6 +4,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { postMatch } from '../../../api/rps';
 import { connectRps } from '../../../lib/rpsStompClient';
 import type { RpsStompClientHandle } from '../../../lib/rpsStompClient';
+import { closeDisabledGame, GAME_DISABLED_CODE } from '../../../api/gameDisabled';
+import { getMatchErrorMessage } from '../../../api/matchError';
 import type {
   RpsPhase,
   RpsChoice,
@@ -13,6 +15,7 @@ import type {
   RoundResultPayload,
   PlayerLeftPayload,
   HostChangedPayload,
+  RoomClosedPayload,
   ConnectionStatus,
 } from '../types/rps.types';
 
@@ -59,6 +62,8 @@ export function useRpsGame(): UseRpsGameReturn {
   const roomIdRef = useRef<string | null>(null);
   const gameTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roomClosedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unmountedRef = useRef(false);
 
   const myUserId = user?.id ?? null;
 
@@ -93,8 +98,12 @@ export function useRpsGame(): UseRpsGameReturn {
       clientRef.current = null;
     }
 
+    let joinConfirmed = false;
+
     const handle = connectRps(token, id, {
       onRoomState: (payload: RoomStatePayload) => {
+        // 입장 전에도 다른 참가자의 ROOM_STATE가 오므로 내가 들어 있을 때만 입장으로 본다.
+        if (payload.participants.some((p) => p.userId === myUserId)) joinConfirmed = true;
         setRoom(payload);
         setPhase((prev) => {
           if (prev === 'connecting' || prev === 'waiting' || prev === 'countdown') return 'waiting';
@@ -144,19 +153,33 @@ export function useRpsGame(): UseRpsGameReturn {
       onHostChanged: (payload: HostChangedPayload) => {
         showToast(`${payload.newHostNickname}님이 새로운 호스트가 되었습니다`);
       },
-      onRoomClosed: () => {
+      onRoomClosed: (payload: RoomClosedPayload) => {
+        if (payload.reason === GAME_DISABLED_CODE) {
+          closeDisabledGame();
+          return;
+        }
         setErrorMessage('방이 닫혔습니다. 홈으로 이동합니다.');
         clearGameTimer();
-        setTimeout(() => {
+        if (roomClosedTimerRef.current !== null) clearTimeout(roomClosedTimerRef.current);
+        roomClosedTimerRef.current = setTimeout(() => {
           goHome();
         }, 3000);
       },
       onError: (code: string, message: string) => {
-        if (code === 'UNAUTHORIZED' || code === 'ROOM_NOT_FOUND') {
+        if (code === GAME_DISABLED_CODE) {
+          closeDisabledGame();
+        } else if (
+          code === 'UNAUTHORIZED'
+          || code === 'ROOM_NOT_FOUND'
+          // 서버는 참가자 재연결의 /join도 게임 중이면 이 코드로 거부하므로 첫 입장 때만 치명이다.
+          || (code === 'ROOM_NOT_AVAILABLE' && !joinConfirmed)
+        ) {
+          clientRef.current?.disconnect();
+          clientRef.current = null;
           setErrorMessage(message || '연결 오류가 발생했습니다');
           setPhase('error');
         } else {
-          showToast(message || `오류: ${code}`);
+          showToast(getMatchErrorMessage(message || code));
         }
       },
       onStatusChange: (status: ConnectionStatus) => {
@@ -169,7 +192,7 @@ export function useRpsGame(): UseRpsGameReturn {
     });
 
     clientRef.current = handle;
-  }, [clearGameTimer, goHome, showToast]);
+  }, [clearGameTimer, goHome, myUserId, showToast]);
 
   // 매칭 시작 — 로그인 필수 (AuthRoute가 비로그인 접근을 이미 차단)
   const startMatch = useCallback(async () => {
@@ -177,6 +200,8 @@ export function useRpsGame(): UseRpsGameReturn {
     setErrorMessage(null);
 
     const outcome = await postMatch(accessToken);
+    // 응답 전에 화면을 떠났으면 정리해 줄 곳이 없으므로 소켓을 열지 않는다.
+    if (unmountedRef.current) return;
 
     if (outcome.ok) {
       const id = outcome.data.roomId;
@@ -191,8 +216,8 @@ export function useRpsGame(): UseRpsGameReturn {
       showToast('이미 진행 중인 방이 있습니다. 재진입합니다.');
       setPhase('connecting');
       connectWs(id, accessToken);
-    } else {
-      setErrorMessage(`매칭 실패: ${outcome.error}`);
+    } else if (outcome.code !== GAME_DISABLED_CODE) {
+      setErrorMessage(getMatchErrorMessage(outcome.error));
       setPhase('error');
     }
   }, [accessToken, connectWs, showToast]);
@@ -238,13 +263,16 @@ export function useRpsGame(): UseRpsGameReturn {
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
+      unmountedRef.current = true;
       if (clientRef.current) {
         clientRef.current.disconnect();
         clientRef.current = null;
       }
       clearGameTimer();
       if (toastTimerRef.current !== null) clearTimeout(toastTimerRef.current);
+      if (roomClosedTimerRef.current !== null) clearTimeout(roomClosedTimerRef.current);
     };
   }, [clearGameTimer]);
 

@@ -89,6 +89,7 @@ export function connectRps(
 
       // 개인 에러 구독
       client.subscribe('/user/queue/errors', (frame) => {
+        if (disconnectRequested) return;
         try {
           const err = JSON.parse(frame.body) as WsErrorPayload;
           onError(err.code, err.message ?? '오류가 발생했습니다');
@@ -118,6 +119,8 @@ export function connectRps(
   });
 
   function dispatchEvent(type: RpsEventType, payload: unknown) {
+    // deactivate는 비동기라 소켓이 닫히기 전에 도착한 프레임이 화면을 덮어쓰지 않게 한다.
+    if (disconnectRequested) return;
     switch (type) {
       case 'ROOM_STATE':
         onRoomState(payload as RoomStatePayload);
@@ -143,6 +146,11 @@ export function connectRps(
       case 'ROOM_CLOSED':
         onRoomClosed(payload as RoomClosedPayload);
         break;
+      case 'ERROR': {
+        const err = payload as WsErrorPayload;
+        onError(err.code, err.message ?? '오류가 발생했습니다');
+        break;
+      }
       default:
         break;
     }

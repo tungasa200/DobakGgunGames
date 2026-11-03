@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMinesweeperGame, type Level } from './useMinesweeperGame';
 import { startMinesweeperSession } from '../../api/minesweeper';
+import { isGameDisabledError } from '../../api/gameDisabled';
 import { rankingsApi, type RankingEntry } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
@@ -123,7 +124,8 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
             sessionIdRef.current = res.sessionId;
             setSessionFailed(false);
             return;
-          } catch {
+          } catch (e) {
+            if (isGameDisabledError(e)) return;
             if (attempt < 2) await new Promise(r2 => setTimeout(r2, 1000));
           }
         }
@@ -144,7 +146,8 @@ export default function MinesweeperBoard({ excel = false, theme = 'default', onT
         revealFirstCellWithServerBoard(res.adjMines, r, c);
         succeeded = true;
         break;
-      } catch {
+      } catch (e) {
+        if (isGameDisabledError(e)) return;
         if (attempt < 2) await new Promise(r2 => setTimeout(r2, 1000));
       }
     }

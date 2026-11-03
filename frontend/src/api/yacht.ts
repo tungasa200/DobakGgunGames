@@ -26,6 +26,7 @@ export interface YachtMatchError {
   alreadyInRoom: false;
   status: number;
   error: string;
+  code?: string;
 }
 
 export type YachtMatchOutcome = YachtMatchResult | YachtMatchAlreadyInRoom | YachtMatchError;
@@ -77,7 +78,7 @@ export async function postYachtMatch(
     return { ok: true, data };
   }
 
-  const body = await res.json().catch(() => ({})) as Partial<{ error: string; roomId: string }>;
+  const body = await res.json().catch(() => ({})) as Partial<{ error: string; code: string; roomId: string }>;
 
   if (res.status === 409 && body.error === 'ALREADY_IN_ROOM' && body.roomId) {
     return { ok: false, alreadyInRoom: true, roomId: body.roomId };
@@ -88,6 +89,7 @@ export async function postYachtMatch(
     alreadyInRoom: false,
     status: res.status,
     error: body.error ?? '매칭 요청에 실패했습니다',
+    code: body.code,
   };
 }
 
@@ -113,7 +115,7 @@ export async function postYachtBotMatch(
     return { ok: true, data };
   }
 
-  const body = await res.json().catch(() => ({})) as Partial<{ error: string; roomId: string }>;
+  const body = await res.json().catch(() => ({})) as Partial<{ error: string; code: string; roomId: string }>;
 
   if (res.status === 409 && body.error === 'ALREADY_IN_ROOM' && body.roomId) {
     return { ok: false, alreadyInRoom: true, roomId: body.roomId };
@@ -124,6 +126,7 @@ export async function postYachtBotMatch(
     alreadyInRoom: false,
     status: res.status,
     error: body.error ?? '봇 매칭 요청에 실패했습니다',
+    code: body.code,
   };
 }
 
@@ -179,11 +182,11 @@ export async function postYachtCreate(
     return { ok: true, data };
   }
 
-  const body = await res.json().catch(() => ({})) as Partial<{ error: string; roomId: string }>;
+  const body = await res.json().catch(() => ({})) as Partial<{ error: string; code: string; roomId: string }>;
   if (res.status === 409 && body.error === 'ALREADY_IN_ROOM' && body.roomId) {
     return { ok: false, alreadyInRoom: true, roomId: body.roomId };
   }
-  return { ok: false, alreadyInRoom: false, status: res.status, error: body.error ?? '방 생성에 실패했습니다' };
+  return { ok: false, alreadyInRoom: false, status: res.status, error: body.error ?? '방 생성에 실패했습니다', code: body.code };
 }
 
 /** POST /api/yacht/join/{roomId} — 특정 방 직접 입장 (로그인 필수) */
@@ -204,11 +207,11 @@ export async function postYachtJoinRoom(
     return { ok: true, data };
   }
 
-  const body = await res.json().catch(() => ({})) as Partial<{ error: string; roomId: string }>;
+  const body = await res.json().catch(() => ({})) as Partial<{ error: string; code: string; roomId: string }>;
   if (res.status === 409 && body.error === 'ALREADY_IN_ROOM' && body.roomId) {
     return { ok: false, alreadyInRoom: true, roomId: body.roomId };
   }
-  return { ok: false, alreadyInRoom: false, status: res.status, error: body.error ?? '방 입장에 실패했습니다' };
+  return { ok: false, alreadyInRoom: false, status: res.status, error: body.error ?? '방 입장에 실패했습니다', code: body.code };
 }
 
 /**
