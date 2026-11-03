@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 블록폴 배틀 인메모리 방 상태 관리 컴포넌트.
@@ -53,6 +54,8 @@ public class BattleRoomManager {
         private volatile boolean voluntaryLeft;
         /** 큐에서 다음 라운드를 기다리는 중. 게임 메시지를 보낼 수 없다. */
         private volatile boolean queued;
+        /** T48-RISK1: WS 가 끊겨 재연결 유예 중. 혼자 남음·전원 준비·카운트다운·게임 시작 판정에서 빼고 센다. */
+        private volatile boolean disconnected;
 
         // ─── 새로고침 복원용 보드 스냅샷 캐시 ──────────────────────────────
         // 클라이언트가 200ms 주기로 송신하는 BOARD_UPDATE 의 마지막 값.
@@ -314,6 +317,34 @@ public class BattleRoomManager {
         return Collections.unmodifiableList(players);
     }
 
+    /** 끊김 유예 중이 아닌 활성 참가자 (T48-RISK1). WS 연결 전(sessionId == null)인 참가자는 포함한다. */
+    public List<PlayerSessionInfo> getConnectedPlayers(String roomId) {
+        return getActivePlayers(roomId).stream()
+                .filter(p -> !p.isDisconnected())
+                .collect(Collectors.toList());
+    }
+
+    /** 끊김 유예 중이 아닌 활성 참가자 가운데 준비한 사람 수 */
+    public int getConnectedReadyCount(String roomId) {
+        Set<String> ready = readySets.getOrDefault(roomId, Collections.emptySet());
+        return (int) getConnectedPlayers(roomId).stream()
+                .filter(p -> ready.contains(p.getPlayerId()))
+                .count();
+    }
+
+    /**
+     * WS 끊김 — 그 세션의 참가자(활성 또는 큐)를 유예 중으로 표시한다.
+     * 이미 재연결해 세션이 바뀌었으면 매핑이 없어 아무것도 하지 않는다.
+     */
+    public void markDisconnected(String sessionId) {
+        String roomId = sessionRoomMap.get(sessionId);
+        if (roomId == null) return;
+        Stream.concat(getActivePlayers(roomId).stream(), getQueuePlayers(roomId).stream())
+                .filter(p -> sessionId.equals(p.getSessionId()))
+                .findFirst()
+                .ifPresent(p -> p.setDisconnected(true));
+    }
+
     /** 큐 대기열 목록 */
     public List<PlayerSessionInfo> getQueuePlayers(String roomId) {
         LinkedBlockingDeque<PlayerSessionInfo> queue = queues.get(roomId);
@@ -335,14 +366,18 @@ public class BattleRoomManager {
     /**
      * REST join 후 WebSocket 연결 시점에 sessionId 등록.
      * playerId → 기존 PlayerSessionInfo 의 sessionId 를 업데이트한다.
+     * @return 끊김 유예 중이던 사람이 돌아왔으면 true
      */
-    public void registerSession(String roomId, String playerId, String sessionId) {
+    public boolean registerSession(String roomId, String playerId, String sessionId) {
         // 활성 참가자에 없으면 큐에서 찾는다 — 큐 사용자도 끊김·퇴장 처리를 받아야 한다
-        findPlayer(roomId, playerId).ifPresent(p -> {
+        return findPlayer(roomId, playerId).map(p -> {
+            boolean wasDisconnected = p.isDisconnected();
             removeSessionMapping(p);
             p.setSessionId(sessionId);
+            p.setDisconnected(false);
             sessionRoomMap.put(sessionId, roomId);
-        });
+            return wasDisconnected;
+        }).orElse(false);
     }
 
     /** roomId에 해당 playerId 포함 여부 */
@@ -393,7 +428,9 @@ public class BattleRoomManager {
     }
 
     /**
-     * 게임 시작 — 이후 들어오는 사람은 큐로 간다. 같은 락 안에서 참가자 스냅샷을 돌려준다.
+     * 게임 시작 — 이후 들어오는 사람은 큐로 간다. 같은 락 안에서 이번 판의 참가자(연결된 사람)를 돌려준다.
+     * 연결된 사람이 2명 이상이면 끊김 유예 중인 사람은 판에 넣지 않고 큐 앞으로 옮긴다(T48-RISK1) —
+     * 유예 안에 재연결하면 다음 라운드에 들어가고, 유예가 끝나면 큐에서 정리된다.
      * 다음 라운드 승격(fillFromQueue)에서 다시 연다.
      */
     public List<PlayerSessionInfo> closeToJoin(String roomId) {
@@ -401,7 +438,23 @@ public class BattleRoomManager {
         if (players == null) return Collections.emptyList();
         synchronized (players) {
             closedToJoin.add(roomId);
-            return new ArrayList<>(players);
+            List<PlayerSessionInfo> connected = players.stream()
+                    .filter(p -> !p.isDisconnected())
+                    .collect(Collectors.toList());
+            if (connected.size() < 2) return connected;
+            List<PlayerSessionInfo> ghosts = players.stream()
+                    .filter(PlayerSessionInfo::isDisconnected)
+                    .toList();
+            LinkedBlockingDeque<PlayerSessionInfo> queue = queues.computeIfAbsent(roomId, k -> new LinkedBlockingDeque<>());
+            // 큐에 먼저 넣고 활성에서 뺀다 — removePlayer 가 어느 쪽에서든 찾을 수 있게
+            for (int i = ghosts.size() - 1; i >= 0; i--) {
+                PlayerSessionInfo ghost = ghosts.get(i);
+                ghost.setQueued(true);
+                queue.offerFirst(ghost);
+                players.remove(ghost);
+                clearReady(roomId, ghost.getPlayerId());
+            }
+            return connected;
         }
     }
 
