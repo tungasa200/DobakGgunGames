@@ -81,6 +81,7 @@
   min-height: 1.5em;
   margin-bottom: 16px;
   color: #2c3e50;
+  outline: none;  /* 모달을 닫을 때 코드로만 포커스가 온다 */
 }
 .win  { color: #27ae60; }
 .lose { color: #c0392b; }
@@ -88,24 +89,11 @@
 /* 게임판 — 원본: #board-wrap { overflow: hidden; max-width: 100%; border: 2px solid #333; } */
 .boardWrapper { position: relative; overflow-x: auto; overflow-y: visible; max-width: 100%; border: 2px solid #333; }
 
-/* 최초 클릭 후 서버 지뢰 배치 대기 중 오버레이 */
-.boardLoadingOverlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.75);
-  font-size: 13px;
-  color: #555;
-  z-index: 10;
-  pointer-events: none;
-}
-
 /* 원본: #game-board { display: grid; } */
 .board {
   display: inline-grid;
   user-select: none;
+  outline: none;  /* Excel 모드에서 모달을 닫을 때 코드로만 포커스가 온다 */
 }
 
 /* 셀 — 원본: width/height: var(--cell-size)=30px; border: 1px solid #ccc; background: #ddd */
@@ -126,6 +114,9 @@
   touch-action: manipulation;
   box-sizing: border-box;
 }
+
+/* 서버 응답을 기다리는 칸 — 지연 동안 클릭이 먹혔음을 보여 준다 */
+.pressed { background-color: #bdbdbd; box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.35); }
 
 /* 열린 셀 — 원본: background: #fff */
 .revealed { background-color: #fff; cursor: default; }
@@ -331,6 +322,7 @@
 /* 원본 excel: .cell.mine { background: #ffc7ce; color: #9c0006 } */
 .excelMode .mine      { background: #ffc7ce; color: #9c0006; }
 .excelMode .wrongFlag { background: white; }
+.excelMode .pressed { background: #d9d9d9; }
 
 /* 랭킹/룰 시트 (엑셀 모드) */
 .excelMode .rankSection   { padding: 12px 8px; background: white; width: auto; max-width: none; margin-top: 0; }
@@ -532,8 +524,6 @@
 /* 원본: .xrb.xdiff-active */
 .xrbActive { background: #c8e6c9 !important; border-color: #4caf50 !important; }
 
-.sessionFailBanner { width: 100%; padding: 8px 12px; margin-bottom: 8px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.5); border-radius: 6px; color: #f1948a; font-size: 0.85em; text-align: center; }
-
 /* ===== 클래식(윈도우95) 테마 — 순수 리스킨, 보드 크기/좌표/로직 변경 없음 ===== */
 .classicTheme {
   font-family: 'Tahoma', 'MS Sans Serif', sans-serif;
@@ -627,6 +617,7 @@
   line-height: 1;
   box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
 }
+.classicTheme .pressed { box-shadow: inset 1px 1px #808080; }
 .classicTheme .revealed {
   background: #c0c0c0;
   box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
@@ -664,9 +655,6 @@
 .classicTheme .resetBtn:active {
   box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
 }
-
-/* 세션 실패 배너 */
-.classicTheme .sessionFailBanner { background: #ffe0e0; border: 1px solid #b00000; border-radius: 0; color: #b00000; }
 
 /* 랭킹 */
 .classicTheme .rankTitle { color: #000080; }
@@ -767,6 +755,7 @@
   border-radius: 4px;
   color: #1f4d34;
 }
+.frogTheme .pressed { background: #5a9668; }
 .frogTheme .revealed { background: #f2fbf3; }
 .frogTheme .flag { background: #5fb3cc; border-color: #2f7d91; }
 .frogTheme .question { background: #6fae7c; color: #1f4d34; }
@@ -789,8 +778,6 @@
   justify-content: center;
 }
 .frogTheme .resetBtn:hover { background: #4a8a5c; }
-
-.frogTheme .sessionFailBanner { background: #fbe4dc; border-color: #c1694f; border-radius: 12px; color: #a8402a; }
 
 /* 랭킹 */
 .frogTheme .rankTitle { color: #2f6b4f; }
@@ -881,6 +868,7 @@
   border-radius: 2px;
   color: #4a473e;
 }
+.autumnTheme .pressed { background: #c2bdae; }
 .autumnTheme .revealed { background: #f7f5f0; }
 .autumnTheme .flag { background: #f0e2ae; border-color: #cda233; }
 .autumnTheme .question { background: #d6d2c5; color: #4a473e; }
@@ -910,8 +898,6 @@
   border-color: #3a4570;
 }
 .autumnTheme .autumnResetWon:hover { background: #2e365e; }
-
-.autumnTheme .sessionFailBanner { background: #fbe3d6; border-color: #d98a68; border-radius: 12px; color: #c1543a; }
 
 /* 랭킹 */
 .autumnTheme .rankTitle { color: #a97830; }
