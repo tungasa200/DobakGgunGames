@@ -733,7 +733,8 @@ public class BattleRoomService {
                 .build());
         log.debug("handlePlayerReady: roomId={} playerId={} readyCount={}/{}", roomId, playerId, readyCount, totalCount);
 
-        if (allReady) {
+        // D-38: 게임 중 상대가 나가 결과 화면에 혼자 남았으면 준비로 대기실(WAITING)에 돌아간다
+        if (allReady || totalCount == 1) {
             roomManager.clearReadySet(roomId);
             prepareNextRound(roomId);
         }

@@ -280,6 +280,67 @@ class BattleMidGameJoinTest {
         verifyNoInteractions(messagingTemplate);
     }
 
+    /** 게임 중 상대 이탈로 끝난 결과 화면(FINISHED, 1명)에서 준비 → WAITING, 자동 매칭으로 새 상대가 들어온다. */
+    private void readyAloneThenRematch() {
+        assertThat(room.getStatus()).isEqualTo("FINISHED");
+        assertThat(roomManager.getActivePlayers("r1")).hasSize(1);
+
+        service.handlePlayerReady("r1", "1");
+
+        assertThat(room.getStatus()).isEqualTo("WAITING");
+        assertThat(lastRoomState().getStatus()).isEqualTo("WAITING");
+
+        when(repository.findFirstByStatus(eq("WAITING"), any(Sort.class))).thenReturn(Optional.of(room));
+        BattleJoinResponse response = service.joinBattle(4L, null, false, "new");
+
+        assertThat(response.getRoomId()).isEqualTo("r1");
+        assertThat(response.getQueuePosition()).isNull();
+        assertThat(roomManager.getActivePlayers("r1")).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("D-38: 게임 중 상대가 LEAVE 해 혼자 남은 결과 화면은 그대로 보이고, 준비하면 WAITING 으로 가 새 상대를 받는다")
+    void midGameLeaveAloneReadyReturnsToWaiting() {
+        join("1");
+        join("2");
+        service.startGame("r1");
+
+        service.handleExplicitLeave("s-2");
+
+        readyAloneThenRematch();
+        verify(messagingTemplate, never())
+                .convertAndSendToUser(anyString(), eq("/queue/blockfall-battle/errors"), any(Object.class));
+    }
+
+    @Test
+    @DisplayName("D-38: 게임 중 상대의 끊김 유예가 끝나 혼자 남은 결과 화면도 준비하면 WAITING 으로 간다")
+    void midGameDisconnectAloneReadyReturnsToWaiting() {
+        join("1");
+        join("2");
+        service.startGame("r1");
+
+        service.handleLeaveBySession("s-2");
+        ArgumentCaptor<Runnable> grace = ArgumentCaptor.forClass(Runnable.class);
+        verify(taskScheduler).schedule(grace.capture(), any(Instant.class));
+        grace.getValue().run();
+
+        readyAloneThenRematch();
+    }
+
+    @Test
+    @DisplayName("D-38: 게임이 꺼져 있으면 혼자 준비해도 결과 화면에 남는다")
+    void midGameLeaveAloneReadyDisabledStaysFinished() {
+        join("1");
+        join("2");
+        service.startGame("r1");
+        service.handleExplicitLeave("s-2");
+        when(gameStatusService.isDisabled("blockfall-battle")).thenReturn(true);
+
+        service.handlePlayerReady("r1", "1");
+
+        assertThat(room.getStatus()).isEqualTo("FINISHED");
+    }
+
     // ─── R7(T-41 확장): 상태 재요청은 참가자·큐 사용자만 ─────────────────────
 
     private List<String> stateTypesSentTo(String playerId) {
