@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
-export type GameStatus = 'idle' | 'playing' | 'won';
+/** checking: 판이 다 찼고 서버 판정을 기다린다. ended: 세션을 잃어 더 진행할 수 없다. */
+export type GameStatus = 'idle' | 'playing' | 'checking' | 'won' | 'ended';
 
 export interface SudokuState {
   board: number[][];
@@ -24,7 +25,11 @@ type Action =
   | { type: 'INPUT'; num: number }
   | { type: 'DELETE' }
   | { type: 'TOGGLE_NOTE' }
-  | { type: 'USE_HINT'; row: number; col: number; answer: number }
+  | { type: 'USE_HINT'; row: number; col: number; answer: number; hintsLeft: number }
+  | { type: 'SET_HINTS_LEFT'; hintsLeft: number }
+  | { type: 'CLEARED'; clearTimeMs: number }
+  | { type: 'BOARD_REJECTED' }
+  | { type: 'SESSION_LOST' }
   | { type: 'TICK'; elapsed: number }
   | { type: 'RESET'; difficulty: Difficulty };
 
@@ -112,8 +117,8 @@ function reducer(state: SudokuState, action: Action): SudokuState {
       board[r][c] = action.num;
       const notes = state.notes.map(row => row.map(s => new Set(s)));
       notes[r][c] = new Set();
-      const won = checkComplete(board);
-      return { ...state, board, notes, status: won ? 'won' : 'playing', timerRunning: !won };
+      const filled = checkComplete(board);
+      return { ...state, board, notes, status: filled ? 'checking' : 'playing', timerRunning: !filled };
     }
 
     case 'DELETE': {
@@ -131,22 +136,39 @@ function reducer(state: SudokuState, action: Action): SudokuState {
       return { ...state, isNoteMode: !state.isNoteMode };
 
     case 'USE_HINT': {
-      if (state.hintsLeft <= 0 || state.status !== 'playing') return state;
+      // 응답이 늦게 오면 그사이 입력을 덮지 않는다. 서버가 쓴 횟수만 맞춘다.
+      if (state.status !== 'playing' || state.board[action.row][action.col] !== 0) {
+        return { ...state, hintsLeft: action.hintsLeft };
+      }
       const board = state.board.map(row => [...row]);
       const fixed = state.fixed.map(row => [...row]);
       const notes = state.notes.map(row => row.map(s => new Set(s)));
       board[action.row][action.col] = action.answer;
       fixed[action.row][action.col] = true;
       notes[action.row][action.col] = new Set();
-      const won = checkComplete(board);
+      const filled = checkComplete(board);
       return {
         ...state, board, fixed, notes,
-        hintsLeft: state.hintsLeft - 1,
-        selected: [action.row, action.col],
-        status: won ? 'won' : 'playing',
-        timerRunning: !won,
+        hintsLeft: action.hintsLeft,
+        status: filled ? 'checking' : 'playing',
+        timerRunning: !filled,
       };
     }
+
+    case 'SET_HINTS_LEFT':
+      return { ...state, hintsLeft: action.hintsLeft };
+
+    case 'CLEARED':
+      if (state.status !== 'checking') return state;
+      return { ...state, status: 'won', timerRunning: false, elapsed: action.clearTimeMs / 1000 };
+
+    case 'BOARD_REJECTED':
+      if (state.status !== 'checking') return state;
+      return { ...state, status: 'playing', timerRunning: true };
+
+    case 'SESSION_LOST':
+      if (state.status !== 'playing' && state.status !== 'checking') return state;
+      return { ...state, status: 'ended', timerRunning: false };
 
     case 'TICK':
       return { ...state, elapsed: action.elapsed };
@@ -197,13 +219,32 @@ export function useSudokuGame(initialDifficulty: Difficulty = 'easy') {
     dispatch({ type: 'TOGGLE_NOTE' });
   }, []);
 
-  const applyHint = useCallback((row: number, col: number, answer: number) => {
-    dispatch({ type: 'USE_HINT', row, col, answer });
+  const applyHint = useCallback((row: number, col: number, answer: number, hintsLeft: number) => {
+    dispatch({ type: 'USE_HINT', row, col, answer, hintsLeft });
+  }, []);
+
+  const setHintsLeft = useCallback((hintsLeft: number) => {
+    dispatch({ type: 'SET_HINTS_LEFT', hintsLeft });
+  }, []);
+
+  const markCleared = useCallback((clearTimeMs: number) => {
+    dispatch({ type: 'CLEARED', clearTimeMs });
+  }, []);
+
+  const rejectBoard = useCallback(() => {
+    dispatch({ type: 'BOARD_REJECTED' });
+  }, []);
+
+  const loseSession = useCallback(() => {
+    dispatch({ type: 'SESSION_LOST' });
   }, []);
 
   const reset = useCallback((difficulty?: Difficulty) => {
     dispatch({ type: 'RESET', difficulty: difficulty ?? state.difficulty });
   }, [state.difficulty]);
 
-  return { state, startGame, selectCell, inputNumber, deleteCell, toggleNote, applyHint, reset };
+  return {
+    state, startGame, selectCell, inputNumber, deleteCell, toggleNote, applyHint,
+    setHintsLeft, markCleared, rejectBoard, loseSession, reset,
+  };
 }

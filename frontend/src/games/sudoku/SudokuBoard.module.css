@@ -21,7 +21,6 @@
 .excelMode .diffRow  { display: none; }
 .excelMode .infoBar  { display: none; }
 .excelMode .resetBtn { display: none; }
-.excelMode .sessionFailBanner { display: none; }
 
 /* 보드 영역 — 좌정렬, 보드↔컨트롤 1칸(40px) 간격 */
 .excelMode .boardArea { gap: 40px; align-items: flex-start; }
@@ -124,7 +123,7 @@
   align-items: center;
   justify-content: center;
 }
-.excelMode .actionBtn:hover:not(:disabled) { background: #e3f2fd; }
+.excelMode .actionBtn:hover:not(:disabled):not([aria-disabled='true']) { background: #e3f2fd; }
 .excelMode .actionBtnActive {
   background: #e2efda;
   border-color: #d0d0d0;
@@ -414,8 +413,9 @@
   color: #2c3e50;
   transition: background 0.12s;
 }
-.actionBtn:hover:not(:disabled) { background: #d0e8f5; }
-.actionBtn:disabled { opacity: 0.4; cursor: default; }
+.actionBtn:hover:not(:disabled):not([aria-disabled='true']) { background: #d0e8f5; }
+.actionBtn:disabled,
+.actionBtn[aria-disabled='true'] { opacity: 0.4; cursor: default; }
 .actionBtnActive {
   background: #2980b9;
   color: #fff;
@@ -435,17 +435,6 @@
   transition: background 0.12s;
 }
 .resetBtn:hover { background: #f0f3f7; }
-
-/* ── Session Fail Banner ── */
-.sessionFailBanner {
-  background: #fef2f2;
-  color: #e74c3c;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 13px;
-  text-align: center;
-}
 
 /* ── Ranking Section ── */
 .rankSection { margin-top: 28px; width: 100%; max-width: min(420px, 100%); }
