@@ -280,6 +280,13 @@ public class BattleRoomService {
         String roomId = roomManager.getRoomIdBySession(sessionId);
         if (roomId == null) return;
 
+        // T48-RISK1: 유예 중인 사람은 시작 판정에서 빠진다 — 연결된 사람이 2명 미만이 되면 카운트다운을 멈춘다
+        roomManager.markDisconnected(sessionId);
+        cancelCountdownIfNeeded(roomId);
+        // 결과 화면: 남은 연결된 사람(2명 이상)이 모두 준비했으면 유예를 기다리지 않고 다음 라운드로.
+        // 혼자 남음(D-38)은 순간 끊김에 대기실로 밀리지 않게 유예가 끝날 때 판정한다.
+        if (resultScreenRooms.contains(roomId)) startNextRoundIfAllReady(roomId, false);
+
         final String capturedRoomId = roomId;
         taskScheduler.schedule(() -> {
             // old sessionId가 여전히 map에 있으면 재연결 안 한 것 → 실제 제거
@@ -287,6 +294,22 @@ public class BattleRoomService {
             if (player == null) return; // 재연결 성공 → sessionId 이미 갱신됨 → 무시
             handleLeaveInternal(capturedRoomId, player);
         }, Instant.now().plusSeconds(RECONNECT_GRACE_SECONDS));
+    }
+
+    /**
+     * WS 연결(첫 연결·재연결) 때 세션을 등록한다. 유예 중이던 사람이 돌아오면 다시 시작 판정에 들어간다:
+     * 대기실이면 카운트다운을 다시 검토하고(정원이 차도 즉시 시작하지 않는다 — 돌아온 사람이 구독하기 전이다),
+     * 결과 화면이면 준비 수를 다시 알린다. 혼자 남은 결과 화면은 그대로 두고 준비로 진행한다(D-38).
+     */
+    public void registerSession(String playerId, String sessionId) {
+        roomManager.findRoomIdByPlayerId(playerId).ifPresent(roomId -> {
+            if (!roomManager.registerSession(roomId, playerId, sessionId)) return;
+            if (resultScreenRooms.contains(roomId)) {
+                startNextRoundIfAllReady(roomId, false);
+            } else {
+                tryStartCountdown(roomId, false);
+            }
+        });
     }
 
     /**
@@ -369,7 +392,7 @@ public class BattleRoomService {
         // 결과 화면에서 나간 경우(T-46): 남은 사람이 이미 모두 준비했으면 다음 라운드를 연다
         if (leftResultScreen) {
             if (closeIfFinishedAndEmpty(roomId)) return;
-            startNextRoundIfAllReady(roomId);
+            startNextRoundIfAllReady(roomId, true);
         }
     }
 
@@ -396,16 +419,18 @@ public class BattleRoomService {
      * 결과 화면에서 준비 상태를 다시 알리고, 남은 활성 참가자(2명 이상)가 모두 준비했으면 다음 라운드로.
      * D-38: 혼자 남으면 10초 타이머를 기다리지 않고 바로 대기실(WAITING)로 돌린다 — 큐 대기자는 이때 승격되고,
      * 큐가 없으면 자동 매칭(WAITING 검색)이 새 상대를 넣는다. 남은 타이머는 prepareNextRound 가 취소한다.
+     * T48-RISK1: 끊김 유예 중인 사람은 세지 않는다. 유예 중인 사람만 남으면 열지 않고, 유예가 끝날 때 방이 닫힌다.
+     * @param soloToWaiting 혼자 남았을 때 대기실로 돌릴지 (퇴장 때만 true — 끊김·재연결 때는 준비를 기다린다)
      */
-    private void startNextRoundIfAllReady(String roomId) {
-        int activeCount = roomManager.getActivePlayers(roomId).size();
-        int readyCount = roomManager.getReadyCount(roomId);
+    private void startNextRoundIfAllReady(String roomId, boolean soloToWaiting) {
+        int activeCount = roomManager.getConnectedPlayers(roomId).size();
+        int readyCount = roomManager.getConnectedReadyCount(roomId);
         broadcast(roomId, "READY_STATE", ReadyStatePayload.builder()
                 .readyCount(readyCount)
                 .totalCount(activeCount)
                 .build());
         if (gameStatusService.isDisabled(GAME_KEY)) return;
-        if (activeCount == 1 || (activeCount >= 2 && readyCount >= activeCount)) {
+        if ((soloToWaiting && activeCount == 1) || (activeCount >= 2 && readyCount >= activeCount)) {
             roomManager.clearReadySet(roomId);
             prepareNextRound(roomId);
         }
@@ -467,15 +492,19 @@ public class BattleRoomService {
      * 4인 꽉 차면 즉시 시작 (OQ-3 결정: 즉시 시작).
      */
     public void tryStartCountdown(String roomId) {
-        List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
-        int count = players.size();
+        tryStartCountdown(roomId, true);
+    }
+
+    private void tryStartCountdown(String roomId, boolean startNowIfFull) {
+        // T48-RISK1: 끊김 유예 중인 사람은 세지 않는다
+        int count = roomManager.getConnectedPlayers(roomId).size();
 
         if (count < 2) return;
 
         BattleRoom room = battleRoomRepository.findByRoomId(roomId).orElse(null);
         if (room == null || !"WAITING".equals(room.getStatus())) return;
 
-        if (count >= MAX_PLAYERS) {
+        if (startNowIfFull && count >= MAX_PLAYERS) {
             // 즉시 시작 (이미 카운트다운 중이면 취소 후 즉시)
             ScheduledFuture<?> existing = countdownFutures.remove(roomId);
             if (existing != null) existing.cancel(false);
@@ -501,8 +530,7 @@ public class BattleRoomService {
     }
 
     private void cancelCountdownIfNeeded(String roomId) {
-        List<BattleRoomManager.PlayerSessionInfo> players = roomManager.getActivePlayers(roomId);
-        if (players.size() < 2) {
+        if (roomManager.getConnectedPlayers(roomId).size() < 2) {
             ScheduledFuture<?> future = countdownFutures.remove(roomId);
             if (future != null && !future.isDone()) {
                 future.cancel(false);
@@ -526,6 +554,7 @@ public class BattleRoomService {
         if (!"WAITING".equals(room.getStatus())) return;
 
         // 이 시점부터 들어오는 사람은 큐로 간다. 같은 락에서 뜬 스냅샷이 이번 판의 참가자다.
+        // 끊김 유예 중인 사람은 판에 넣지 않고 큐로 옮긴다(T48-RISK1).
         List<BattleRoomManager.PlayerSessionInfo> players = roomManager.closeToJoin(roomId);
         if (players.size() < 2) {
             roomManager.reopenToJoin(roomId);
@@ -535,6 +564,7 @@ public class BattleRoomService {
         room.setStatus("PLAYING");
         room.setStartedAt(LocalDateTime.now());
         room.setCurrentPlayers(players.size());
+        room.setQueueCount(roomManager.getQueueSize(roomId));
         battleRoomRepository.save(room);
 
         // 새 라운드 시작 — 모든 플레이어의 보드 스냅샷 캐시 초기화
@@ -558,6 +588,7 @@ public class BattleRoomService {
                 .build();
 
         broadcast(roomId, "GAME_STARTED", payload);
+        updateQueuePositions(roomId);
         log.info("BattleRoomService.startGame: roomId={} players={}", roomId, players.size());
     }
 
@@ -716,28 +747,17 @@ public class BattleRoomService {
             roomManager.clearReadySet(roomId);
             broadcast(roomId, "READY_STATE", ReadyStatePayload.builder()
                     .readyCount(0)
-                    .totalCount(members.size())
+                    .totalCount(roomManager.getConnectedPlayers(roomId).size())
                     .build());
             sendError(playerId, GameDisabledException.CODE, GameDisabledException.USER_MESSAGE);
             return;
         }
 
-        boolean allReady = roomManager.markPlayerReady(roomId, playerId);
-        int readyCount = roomManager.getReadyCount(roomId);
-        int totalCount = members.size();
-
-        // READY_STATE 브로드캐스트
-        broadcast(roomId, "READY_STATE", ReadyStatePayload.builder()
-                .readyCount(readyCount)
-                .totalCount(totalCount)
-                .build());
-        log.debug("handlePlayerReady: roomId={} playerId={} readyCount={}/{}", roomId, playerId, readyCount, totalCount);
-
-        // D-38: 게임 중 상대가 나가 결과 화면에 혼자 남았으면 준비로 대기실(WAITING)에 돌아간다
-        if (allReady || totalCount == 1) {
-            roomManager.clearReadySet(roomId);
-            prepareNextRound(roomId);
-        }
+        roomManager.markPlayerReady(roomId, playerId);
+        log.debug("handlePlayerReady: roomId={} playerId={}", roomId, playerId);
+        // READY_STATE 를 알리고, 연결된 사람이 모두 준비했거나 혼자 남았으면(D-38) 다음 라운드로.
+        // T48-RISK1: 준비한 뒤 끊긴 사람(유예 중)은 준비 수에도 전체 수에도 넣지 않는다.
+        startNextRoundIfAllReady(roomId, true);
     }
 
     /**

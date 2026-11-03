@@ -3,7 +3,6 @@ package com.dobakggun.controller;
 import com.dobakggun.dto.battle.BoardStateMessage;
 import com.dobakggun.dto.battle.ComboAttackMessage;
 import com.dobakggun.security.BattlePrincipal;
-import com.dobakggun.service.BattleRoomManager;
 import com.dobakggun.service.BattleRoomService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,22 +43,19 @@ import java.util.Map;
 public class BlockfallBattleWebSocketController {
 
     private final BattleRoomService battleRoomService;
-    private final BattleRoomManager battleRoomManager;
 
     @Lazy
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    public BlockfallBattleWebSocketController(BattleRoomService battleRoomService,
-                                               BattleRoomManager battleRoomManager) {
+    public BlockfallBattleWebSocketController(BattleRoomService battleRoomService) {
         this.battleRoomService = battleRoomService;
-        this.battleRoomManager = battleRoomManager;
     }
 
     // ─── CONNECT ──────────────────────────────────────────────────────────────
 
     /**
-     * /ws-battle 연결 후 sessionId 를 BattleRoomManager 에 등록.
+     * /ws-battle 연결 후 sessionId 를 방 참가자에 등록.
      * Principal 설정은 StompChannelInterceptor.handleConnect 에서 처리됨.
      */
     @EventListener
@@ -80,9 +76,8 @@ public class BlockfallBattleWebSocketController {
         String sessionId = accessor.getSessionId();
         if (sessionId == null) return;
 
-        // 이미 방(활성 또는 큐)에 배정된 경우 sessionId 등록
-        battleRoomManager.findRoomIdByPlayerId(bp.getPlayerId())
-                .ifPresent(rid -> battleRoomManager.registerSession(rid, bp.getPlayerId(), sessionId));
+        // 이미 방(활성 또는 큐)에 배정된 경우 sessionId 등록 (재연결이면 유예 표시도 풀린다)
+        battleRoomService.registerSession(bp.getPlayerId(), sessionId);
 
         log.debug("BlockfallBattle CONNECT: playerId={} sessionId={}", bp.getPlayerId(), sessionId);
     }
