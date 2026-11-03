@@ -1,4 +1,6 @@
 import { useReducer, useRef, useEffect, useCallback, type Dispatch } from 'react';
+import { closeDisabledGame, GAME_DISABLED_CODE } from '../../../api/gameDisabled';
+import { clearMbJoinInfo } from '../../../api/minesweeperBattle';
 import type {
   BattleState,
   BattleAction,
@@ -564,7 +566,8 @@ export function useMinesweeperBattleGame(): UseMinesweeperBattleGameReturn {
   }, []);
 
   const handleError = useCallback((code: string, message: string) => {
-    dispatchBattle({ type: 'ERROR', message: `${code}: ${message}` });
+    if (code === GAME_DISABLED_CODE) { clearMbJoinInfo(); closeDisabledGame(); return; }
+    dispatchBattle({ type: 'ERROR', message });
   }, []);
 
   const resetGame = useCallback(() => {

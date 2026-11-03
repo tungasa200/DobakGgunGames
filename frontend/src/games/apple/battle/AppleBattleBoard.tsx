@@ -13,6 +13,7 @@ import {
   cancelAppleBattle,
 } from '../../../api/appleBattle';
 import type { AbWaitingRoomInfo, AbJoinResponse } from '../../../api/appleBattle';
+import { closeDisabledGame, GAME_DISABLED_CODE } from '../../../api/gameDisabled';
 import { useAppleBattleGame } from './useAppleBattleGame';
 import { useAppleBattleSocket } from './useAppleBattleSocket';
 import type {
@@ -345,7 +346,8 @@ export default function AppleBattleBoard() {
     }, 50);
   }, []);
 
-  const onErrorStable = useCallback((_code: string, message: string) => {
+  const onErrorStable = useCallback((code: string, message: string) => {
+    if (code === GAME_DISABLED_CODE) { clearAbJoinInfo(); closeDisabledGame(); return; }
     dispatchBattle({ type: 'ERROR', message });
   }, []);
 
@@ -391,6 +393,7 @@ export default function AppleBattleBoard() {
       dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string; playerId?: string };
+      if (e.code === GAME_DISABLED_CODE) return;
       if (e.code === 'ALREADY_IN_ROOM') {
         const storedInfo = getStoredAbJoinInfo();
         const roomId = storedInfo?.roomId ?? e.roomId;

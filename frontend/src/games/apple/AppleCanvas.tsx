@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppleGame } from './useAppleGame';
 import { rankingsApi } from '../../api/rankings';
 import { startAppleSession } from '../../api/apple';
+import { isGameDisabledError } from '../../api/gameDisabled';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
@@ -777,7 +778,8 @@ export default function AppleCanvas({ excel = false }: Props) {
       try {
         res = await startAppleSession(level, !excel && window.innerHeight > window.innerWidth);
         break;
-      } catch {
+      } catch (e) {
+        if (isGameDisabledError(e)) return;
         if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
       }
     }

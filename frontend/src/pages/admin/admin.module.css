@@ -186,6 +186,7 @@
 /* ── 탭 ── */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   margin-bottom: 16px;
   border-bottom: 1px solid #d4d4d4;
 }

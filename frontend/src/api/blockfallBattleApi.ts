@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { closeDisabledGame, GAME_DISABLED_CODE } from './gameDisabled';
 import { connectBattle } from '../lib/battleStompClient';
 import type { BattleStompClientHandle } from '../lib/battleStompClient';
 import type {
@@ -59,14 +60,14 @@ export async function joinBattle(
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; code?: string; roomId?: string };
     const err = new Error(body.error ?? '배틀 참가에 실패했습니다') as Error & {
       status: number;
       code?: string;
       roomId?: string;
     };
     err.status = res.status;
-    err.code = body.error;
+    err.code = body.code ?? body.error;
     err.roomId = body.roomId;
     throw err;
   }
@@ -117,10 +118,10 @@ export async function createBattle(
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; code?: string; roomId?: string };
     const err = new Error(body.error ?? '방 생성에 실패했습니다') as Error & { status: number; code?: string; roomId?: string };
     err.status = res.status;
-    err.code = body.error;
+    err.code = body.code ?? body.error;
     err.roomId = body.roomId;
     throw err;
   }
@@ -146,10 +147,10 @@ export async function joinBattleRoom(
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; code?: string; roomId?: string };
     const err = new Error(body.error ?? '방 입장에 실패했습니다') as Error & { status: number; code?: string; roomId?: string };
     err.status = res.status;
-    err.code = body.error;
+    err.code = body.code ?? body.error;
     err.roomId = body.roomId;
     throw err;
   }
@@ -212,6 +213,8 @@ export interface BattleWebSocketState {
   readyState: ReadyStatePayload | null;
   myGameState: MyGameStatePayload | null;
   wsStatus: ConnectionStatus;
+  /** 사용자에게 보여줄 WS 오류. 같은 문구가 다시 와도 알림이 뜨도록 매번 새 객체다. */
+  notice: { message: string } | null;
 }
 
 export interface UseBattleWebSocketReturn extends BattleWebSocketState {
@@ -241,6 +244,7 @@ export function useBattleWebSocket(
   const [readyState, setReadyState] = useState<ReadyStatePayload | null>(null);
   const [myGameState, setMyGameState] = useState<MyGameStatePayload | null>(null);
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('connecting');
+  const [notice, setNotice] = useState<{ message: string } | null>(null);
 
   const clientRef = useRef<BattleStompClientHandle | null>(null);
 
@@ -309,6 +313,8 @@ export function useBattleWebSocket(
   }, []);
 
   const handleError = useCallback((code: string, message: string) => {
+    if (code === GAME_DISABLED_CODE) { clearJoinInfo(); closeDisabledGame(); return; }
+    if (code === 'NOT_IN_ROOM') { setNotice({ message }); return; }
     console.warn(`[BattleWS] Error ${code}: ${message}`);
   }, []);
 
@@ -384,6 +390,7 @@ export function useBattleWebSocket(
     readyState,
     myGameState,
     wsStatus,
+    notice,
     sendBoardState,
     sendComboAttack,
     sendPlayerFinished,

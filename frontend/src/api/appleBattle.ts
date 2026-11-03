@@ -45,7 +45,7 @@ export async function joinAppleBattle(opts?: {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string; playerId?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; code?: string; roomId?: string; playerId?: string };
     const err = new Error(body.error ?? '배틀 참가에 실패했습니다') as Error & {
       status: number;
       code?: string;
@@ -53,7 +53,7 @@ export async function joinAppleBattle(opts?: {
       playerId?: string;
     };
     err.status = res.status;
-    err.code = body.error;
+    err.code = body.code ?? body.error;
     err.roomId = body.roomId;
     err.playerId = body.playerId;
     throw err;
@@ -81,7 +81,7 @@ export async function createAppleBattle(opts?: {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string; playerId?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; code?: string; roomId?: string; playerId?: string };
     const err = new Error(body.error ?? '방 생성에 실패했습니다') as Error & {
       status: number;
       code?: string;
@@ -89,7 +89,7 @@ export async function createAppleBattle(opts?: {
       playerId?: string;
     };
     err.status = res.status;
-    err.code = body.error;
+    err.code = body.code ?? body.error;
     err.roomId = body.roomId;
     err.playerId = body.playerId;
     throw err;
@@ -119,7 +119,7 @@ export async function joinAppleBattleRoom(
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string; roomId?: string; playerId?: string };
+    const body = await res.json().catch(() => ({})) as { error?: string; code?: string; roomId?: string; playerId?: string };
     const err = new Error(body.error ?? '방 입장에 실패했습니다') as Error & {
       status: number;
       code?: string;
@@ -127,7 +127,7 @@ export async function joinAppleBattleRoom(
       playerId?: string;
     };
     err.status = res.status;
-    err.code = body.error;
+    err.code = body.code ?? body.error;
     err.roomId = body.roomId;
     err.playerId = body.playerId;
     throw err;

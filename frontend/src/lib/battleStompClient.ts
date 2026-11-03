@@ -137,7 +137,9 @@ export function connectBattle(
       // 개인 채널: 에러
       client.subscribe('/user/queue/blockfall-battle/errors', (frame) => {
         try {
-          const err = JSON.parse(frame.body) as WsErrorPayload;
+          // GAME_DISABLED는 {type, payload}로 감싸서 온다.
+          const body = JSON.parse(frame.body) as WsErrorPayload & { payload?: WsErrorPayload };
+          const err = body.payload ?? body;
           onError(err.code, err.message ?? '오류가 발생했습니다');
         } catch {
           // 파싱 실패 무시

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useSolitaireGame, type DrawMode, type Card, type Selection } from './useSolitaireGame';
 import { rankingsApi } from '../../api/rankings';
 import { sendMovesBatch, startSolitaireSession } from '../../api/solitaire';
+import { isGameDisabledError } from '../../api/gameDisabled';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
 import { useAuth } from '../../context/AuthContext';
@@ -359,7 +360,8 @@ export default function CardBoard({ excel = false, bgColor = '#0b5e20', onBgColo
       try {
         res = await startSolitaireSession(dm);
         break;
-      } catch {
+      } catch (e) {
+        if (isGameDisabledError(e)) return;
         if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
       }
     }

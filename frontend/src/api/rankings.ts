@@ -41,7 +41,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+    const { error, code } = body as { error?: string; code?: string };
+    throw Object.assign(new Error(error ?? `HTTP ${res.status}`), { code });
   }
   return res.json() as Promise<T>;
 }

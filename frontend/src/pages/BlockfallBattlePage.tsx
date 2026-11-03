@@ -13,6 +13,7 @@ import {
 } from '../api/blockfallBattleApi';
 import type { BattleWaitingRoomInfo } from '../api/blockfallBattleApi';
 import { useBattleWebSocket } from '../api/blockfallBattleApi';
+import { GAME_DISABLED_CODE } from '../api/gameDisabled';
 import BlockfallBattleBoard from '../games/blockfall/battle/BlockfallBattleBoard';
 import type {
   PlayerInfo,
@@ -43,9 +44,10 @@ type PagePhase =
   | 'finished'  // 결과 화면
   | 'error';    // 에러
 
-interface PlayerLeftToastState {
+interface BattleToastState {
   id: number;
-  nickname: string;
+  tag: string;
+  message: string;
 }
 
 export default function BlockfallBattlePage() {
@@ -84,9 +86,17 @@ export default function BlockfallBattlePage() {
   const [garbagePending, setGarbagePending] = useState(0);
   const [countdown, setCountdown] = useState(0);
 
-  // 플레이어 이탈 토스트
-  const [playerLeftToast, setPlayerLeftToast] = useState<PlayerLeftToastState | null>(null);
+  // 플레이어 이탈·WS 오류 토스트
+  const [battleToast, setBattleToast] = useState<BattleToastState | null>(null);
   const toastIdRef = useRef(0);
+
+  const showBattleToast = useCallback((tag: string, message: string) => {
+    const id = ++toastIdRef.current;
+    setBattleToast({ id, tag, message });
+    setTimeout(() => {
+      setBattleToast(prev => (prev?.id === id ? null : prev));
+    }, 2200);
+  }, []);
 
   // 결과 화면 상태
   const [results, setResults] = useState<BattleResultEntry[]>([]);
@@ -138,6 +148,7 @@ export default function BlockfallBattlePage() {
       }
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string };
+      if (e.code === GAME_DISABLED_CODE) { clearJoinInfo(); return; }
       if (e.code === 'ALREADY_IN_ROOM') {
         // 리프레시 등으로 ALREADY_IN_ROOM → 저장된 joinInfo로 WS 재연결 시도
         const stored = getStoredJoinInfo();
@@ -168,6 +179,7 @@ export default function BlockfallBattlePage() {
       setPhase('waiting');
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string };
+      if (e.code === GAME_DISABLED_CODE) { clearJoinInfo(); return; }
       if (e.code === 'ALREADY_IN_ROOM') {
         const stored = getStoredJoinInfo();
         if (stored) {
@@ -196,6 +208,7 @@ export default function BlockfallBattlePage() {
       setPhase('waiting');
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string };
+      if (e.code === GAME_DISABLED_CODE) { clearJoinInfo(); return; }
       if (e.code === 'ALREADY_IN_ROOM') {
         const stored = getStoredJoinInfo();
         if (stored) {
@@ -377,10 +390,14 @@ export default function BlockfallBattlePage() {
   // PLAYER_LEFT
   useEffect(() => {
     if (!ws.playerLeft) return;
-    showPlayerLeftToast(ws.playerLeft.nickname);
-  // showPlayerLeftToast는 안정 ref 기반 콜백이므로 의존성 생략 안전
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ws.playerLeft]);
+    showBattleToast('[나감]', `${ws.playerLeft.nickname}님이 나갔습니다`);
+  }, [ws.playerLeft, showBattleToast]);
+
+  // 사용자에게 보여줄 WS 오류
+  useEffect(() => {
+    if (!ws.notice) return;
+    showBattleToast('[오류]', ws.notice.message);
+  }, [ws.notice, showBattleToast]);
 
   // ── 게임 이벤트 핸들러 ────────────────────────────────
 
@@ -440,14 +457,6 @@ export default function BlockfallBattlePage() {
     return () => { document.title = '도박꾼게임즈'; };
   }, []);
 
-  const showPlayerLeftToast = useCallback((nickname: string) => {
-    const id = ++toastIdRef.current;
-    setPlayerLeftToast({ id, nickname });
-    setTimeout(() => {
-      setPlayerLeftToast(prev => (prev?.id === id ? null : prev));
-    }, 2200);
-  }, []);
-
   // ── 공통 컴포넌트 ─────────────────────────────────────
 
   const renderHeader = () => (
@@ -481,14 +490,14 @@ export default function BlockfallBattlePage() {
     </div>
   ) : null;
 
-  const renderPlayerLeftToast = () => playerLeftToast ? (
+  const renderBattleToast = () => battleToast ? (
     <div
       className="battle-player-left-toast"
       role="alert"
       aria-live="assertive"
     >
-      <span>[나감]</span>
-      <span>{playerLeftToast.nickname}님이 나갔습니다</span>
+      <span>{battleToast.tag}</span>
+      <span>{battleToast.message}</span>
     </div>
   ) : null;
 
@@ -658,7 +667,7 @@ export default function BlockfallBattlePage() {
             </div>
           </div>
         </div>
-        {renderPlayerLeftToast()}
+        {renderBattleToast()}
       </div>
     );
   }
@@ -742,14 +751,17 @@ export default function BlockfallBattlePage() {
 
             {/* 버튼 */}
             <div className="result-btns">
-              <button
-                className="battle-btn-primary"
-                onClick={handleReady}
-                type="button"
-                disabled={ws.wsStatus !== 'connected'}
-              >
-                {ws.wsStatus !== 'connected' ? '재연결 중...' : '다음 라운드 준비'}
-              </button>
+              {/* 큐 대기자는 활성 플레이어 목록에 없고, 준비를 보내도 서버가 거부한다. */}
+              {players.some(p => p.id === joinInfo?.playerId) && (
+                <button
+                  className="battle-btn-primary"
+                  onClick={handleReady}
+                  type="button"
+                  disabled={ws.wsStatus !== 'connected'}
+                >
+                  {ws.wsStatus !== 'connected' ? '재연결 중...' : '다음 라운드 준비'}
+                </button>
+              )}
               <button
                 className="battle-btn-secondary"
                 onClick={handleLeave}
@@ -774,7 +786,7 @@ export default function BlockfallBattlePage() {
             )}
           </div>
         </div>
-        {renderPlayerLeftToast()}
+        {renderBattleToast()}
       </div>
     );
   }
@@ -822,7 +834,7 @@ export default function BlockfallBattlePage() {
             isPractice={true}
           />
         </div>
-        {renderPlayerLeftToast()}
+        {renderBattleToast()}
       </div>
     );
   }
@@ -873,7 +885,7 @@ export default function BlockfallBattlePage() {
           } : null}
         />
       </div>
-      {renderPlayerLeftToast()}
+      {renderBattleToast()}
     </div>
   );
 }

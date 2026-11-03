@@ -13,6 +13,7 @@ import {
   cancelMinesweeperBattle,
 } from '../../../api/minesweeperBattle';
 import type { MbWaitingRoomInfo, MbDifficulty } from '../../../api/minesweeperBattle';
+import { GAME_DISABLED_CODE } from '../../../api/gameDisabled';
 import { useMinesweeperBattleGame } from './useMinesweeperBattleGame';
 import { useMinesweeperBattleSocket } from './useMinesweeperBattleSocket';
 import type { MatchReadyPayload, ProgressUpdatePayload, StateSnapshotPayload } from './types';
@@ -97,6 +98,7 @@ export default function MinesweeperBattleBoard() {
 
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string; playerId?: string };
+      if (e.code === GAME_DISABLED_CODE) return;
 
       if (e.code === 'ALREADY_IN_ROOM') {
         const stored = getStoredMbJoinInfo();
@@ -157,6 +159,7 @@ export default function MinesweeperBattleBoard() {
       dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string; playerId?: string };
+      if (e.code === GAME_DISABLED_CODE) return;
       if (e.code === 'ALREADY_IN_ROOM') {
         const stored = getStoredMbJoinInfo();
         const roomId = stored?.roomId ?? e.roomId;
@@ -198,6 +201,7 @@ export default function MinesweeperBattleBoard() {
       dispatchBattle({ type: 'JOIN_REQUESTED', roomId: res.roomId, playerId: res.playerId, nickname });
     } catch (err) {
       const e = err as Error & { code?: string; roomId?: string; playerId?: string };
+      if (e.code === GAME_DISABLED_CODE) return;
       if (e.code === 'ALREADY_IN_ROOM') {
         const stored = getStoredMbJoinInfo();
         const roomId = stored?.roomId ?? e.roomId;

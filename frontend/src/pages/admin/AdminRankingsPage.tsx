@@ -10,6 +10,10 @@ const GAMES = [
   { key: 'apple',       label: '사과게임' },
   { key: 'baseball',    label: '숫자야구' },
   { key: 'blockfall',   label: '블록폴' },
+  { key: 'blockfall-insane', label: '블록폴: 인세인' },
+  { key: 'sudoku',      label: '스도쿠' },
+  { key: 'brickbreaker', label: '벽돌깨기' },
+  { key: 'block-crush', label: '블록 크러시' },
 ];
 
 interface GameConfig {
@@ -55,6 +59,37 @@ const GAME_CONFIG: Record<string, GameConfig> = {
     columns: [
       { key: 'score',     label: '점수',      fmt: r => r.score     != null ? String(r.score)     : '-' },
       { key: 'gameLevel', label: '도달 레벨', fmt: r => r.gameLevel != null ? String(r.gameLevel) : '-' },
+    ],
+  },
+  'blockfall-insane': {
+    levels: ['hard'],
+    levelLabel: { hard: '인세인' },
+    columns: [
+      { key: 'score',     label: '점수',      fmt: r => r.score     != null ? String(r.score)     : '-' },
+      { key: 'gameLevel', label: '도달 레벨', fmt: r => r.gameLevel != null ? String(r.gameLevel) : '-' },
+    ],
+  },
+  sudoku: {
+    levels: ['easy', 'normal', 'hard'],
+    levelLabel: { easy: '초급', normal: '중급', hard: '고급' },
+    columns: [
+      { key: 'clearTime', label: '기록(초)', fmt: r => r.clearTime != null ? String(r.clearTime) : '-' },
+    ],
+  },
+  brickbreaker: {
+    levels: ['normal'],
+    levelLabel: { normal: '일반' },
+    columns: [
+      { key: 'score',     label: '점수',        fmt: r => r.score     != null ? String(r.score)     : '-' },
+      { key: 'gameLevel', label: '도달 스테이지', fmt: r => r.gameLevel != null ? String(r.gameLevel) : '-' },
+    ],
+  },
+  'block-crush': {
+    levels: ['classic'],
+    levelLabel: { classic: '클래식' },
+    columns: [
+      { key: 'score',        label: '점수',    fmt: r => r.score != null ? String(r.score) : '-' },
+      { key: 'linesCleared', label: '지운 줄', fmt: r => r.linesCleared != null ? String(r.linesCleared) : '-' },
     ],
   },
 };

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useBaseballGame, DIGIT_COUNT, MAX_ATTEMPTS, type Level } from './useBaseballGame';
 import { startBaseballSession } from '../../api/baseball';
+import { isGameDisabledError } from '../../api/gameDisabled';
 import { rankingsApi } from '../../api/rankings';
 import { containsProfanity } from '../../utils/profanity';
 import { useExcelShell } from '../../components/excel/ExcelShellContext';
@@ -57,7 +58,8 @@ export default function BaseballBoard({ excel = false }: Props) {
         sessionIdRef.current = res.sessionId;
         setSessionFailed(false);
         return;
-      } catch {
+      } catch (e) {
+        if (isGameDisabledError(e)) return;
         if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
       }
     }

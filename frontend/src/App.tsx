@@ -4,8 +4,12 @@ import AdminRoute from './components/admin/AdminRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import FriendRoute from './components/guards/FriendRoute';
 import AuthRoute from './components/AuthRoute';
+import GameGuard, { GameDisabledRedirect } from './components/GameGuard';
 import AdminClearButton from './components/admin/AdminClearButton';
 import { AdminTestProvider } from './context/AdminTestContext';
+import { getStoredAbJoinInfo } from './api/appleBattle';
+import { getStoredMbJoinInfo } from './api/minesweeperBattle';
+import { getStoredJoinInfo } from './api/blockfallBattleApi';
 
 // 페이지 lazy 로딩 — 방문 시점에 청크 다운로드
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -114,7 +118,7 @@ export default function App() {
         {/* Yacht — 로그인 필수 */}
         <Route
           path="/yacht/select"
-          element={<AuthRoute><YachtSelectPage /></AuthRoute>}
+          element={<AuthRoute><GameGuard gameKey="yacht"><YachtSelectPage /></GameGuard></AuthRoute>}
         />
         <Route
           path="/yacht"
@@ -128,36 +132,36 @@ export default function App() {
         {/* 사과게임 배틀 (로그인 필수, 게스트 불가) */}
         <Route
           path="/games/apple/battle"
-          element={<AuthRoute><AppleBattleBoard /></AuthRoute>}
+          element={<AuthRoute><GameGuard gameKey="apple-battle" hasRoom={() => getStoredAbJoinInfo() !== null}><AppleBattleBoard /></GameGuard></AuthRoute>}
         />
 
         {/* 지뢰찾기 배틀 (로그인 필수, 게스트 불가) */}
         <Route
           path="/games/minesweeper/battle"
-          element={<AuthRoute><MinesweeperBattleBoard /></AuthRoute>}
+          element={<AuthRoute><GameGuard gameKey="minesweeper-battle" hasRoom={() => getStoredMbJoinInfo() !== null}><MinesweeperBattleBoard /></GameGuard></AuthRoute>}
         />
 
         {/* 블록폴 배틀 (정식, 로그인 필수, 게스트 불가) */}
         <Route
           path="/blockfall-battle"
-          element={<AuthRoute><BlockfallBattlePage /></AuthRoute>}
+          element={<AuthRoute><GameGuard gameKey="blockfall-battle" hasRoom={() => getStoredJoinInfo() !== null}><BlockfallBattlePage /></GameGuard></AuthRoute>}
         />
         {/* Test Lab URL 하위 호환 유지 */}
         <Route
           path="/test-lab/blockfall-battle"
-          element={<AuthRoute><BlockfallBattlePage /></AuthRoute>}
+          element={<AuthRoute><GameGuard gameKey="blockfall-battle" hasRoom={() => getStoredJoinInfo() !== null}><BlockfallBattlePage /></GameGuard></AuthRoute>}
         />
 
         {/* 벽돌깨기 — 로그인/게스트 모두 허용 */}
         <Route
           path="/brickbreaker"
-          element={<BrickBreakerPage />}
+          element={<GameGuard gameKey="brickbreaker"><BrickBreakerPage /></GameGuard>}
         />
 
         {/* 블록 크러시 — 로그인/게스트 모두 허용 */}
         <Route
           path="/block-crush"
-          element={<BlockCrushPage />}
+          element={<GameGuard gameKey="block-crush"><BlockCrushPage /></GameGuard>}
         />
 
         {/* DEV — 배틀 UI 테스트 (통신 없이 로컬 확인용) */}
@@ -185,7 +189,7 @@ export default function App() {
         {/* 인세인 모드 — 로그인 유저 전용, /:game 보다 위에 선언 */}
         <Route
           path="/blockfall-insane"
-          element={<AuthRoute><GamePage excel={false} gameKey="blockfall-insane" /></AuthRoute>}
+          element={<AuthRoute><GameGuard gameKey="blockfall-insane"><GamePage excel={false} gameKey="blockfall-insane" /></GameGuard></AuthRoute>}
         />
         {/* 인세인 엑셀 모드 없음 — 접근 시 인세인 일반 모드로 리다이렉트 */}
         <Route path="/blockfall-insane/excel" element={<Navigate to="/blockfall-insane" replace />} />
@@ -196,13 +200,14 @@ export default function App() {
         <Route path="/ladder" element={<LadderPage />} />
 
         {/* 게임 라우트 (가장 마지막 — 다른 경로와 충돌 방지) */}
-        <Route path="/:game" element={<GamePage excel={false} />} />
-        <Route path="/:game/excel" element={<GamePage excel={true} />} />
+        <Route path="/:game" element={<GameGuard><GamePage excel={false} /></GameGuard>} />
+        <Route path="/:game/excel" element={<GameGuard><GamePage excel={true} /></GameGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
       <AdminClearButton />
+      <GameDisabledRedirect />
     </BrowserRouter>
     </AdminTestProvider>
   );
